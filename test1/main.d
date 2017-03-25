@@ -34,6 +34,8 @@ int main(string[] argv)
 			if (cur_event.type == sfEvtClosed)
 				break;
 		}
+		sfRenderWindow_clear(window, sfColor(25, 25, 25, 0));
+		sfRenderWindow_display(window);
 	}
 
     writeln("Close event!");
