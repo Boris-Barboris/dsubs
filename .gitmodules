@@ -1,0 +1,6 @@
+[submodule "DerelictSFML2/DerelictSFML2"]
+	path = DerelictSFML2/DerelictSFML2
+	url = https://github.com/Boris-Barboris/DerelictSFML2.git
+[submodule "DerelictUtil/DerelictUtil"]
+	path = DerelictUtil/DerelictUtil
+	url = https://github.com/Boris-Barboris/DerelictUtil.git
