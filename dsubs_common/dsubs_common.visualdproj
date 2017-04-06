@@ -412,6 +412,8 @@
   <Folder name="threading">
    <File path="threading\taskgraph.d" />
   </Folder>
+  <File path="config.d" />
+  <File path="logging.d" />
   <File path="main.d" />
   <File path="mutstring.d" />
  </Folder>
