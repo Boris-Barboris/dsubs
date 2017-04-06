@@ -1,10 +1,11 @@
 module threading.taskgraph;
 
 import core.cpuid;
+import core.thread;
 import std.algorithm.iteration;
 import std.algorithm.searching;
-import std.concurrency;
-import std.container.dlist;
+
+alias Action = void delegate();
 
 /// Abstract action generator, that provides runtime with actions
 /// to perform. It can be a component manager, for example animation
@@ -14,7 +15,7 @@ interface TaskGenerator
 {
 	/// Returns concurrent action to perform, or null if no
 	/// more work is needed for this generator.
-	void delegate() generate();
+	Action generate();
 }
 
 /// Collection of generators, that are guaranteed to be capable of performing
@@ -22,16 +23,20 @@ interface TaskGenerator
 /// stage, or rendering stage, or maybe user event processing stage.
 class TaskBlock
 {
-	DList!TaskGenerator generators;
+	TaskGenerator[] generators;
 
-	synchronized void delegate() generate()
+	private uint cursor = 0;
+
+	Action generate()
 	{
-		foreach (g; generators)
+		for (int i = cursor; i < generatos.length; i++)
 		{
+			auto g = generators[i];
 			auto action = g.generate();
 			if (action != null)
 				return action;
 		}
+		cursor = 0;
 		return null;
 	}
 }
@@ -40,21 +45,16 @@ class TaskBlock
 /// Performs thread managing.
 class TaskGraph
 {
-	private DList!TaskBlock blocks;
-	private Tid[] threads;
-	private uint[Tid] tid_map;
-	private uint[] thread_queues;
+	private TaskBlock[] blocks;
+	private ThreadGroup threads;
 
 	this(uint thread_count = coresPerCPU)
 	{
-		// Spawn threads and make them listen
-		threads = new Tid[thread_count];
+		threads = new ThreadGroup;
 		for (uint i = 0; i < thread_count; i++)
 		{
-			threads[i] = spawn(cast(shared void delegate(Tid)) &worker_function, thisTid);
-			tid_map[threads[i]] = i;
+			threads.create(&worker_function);
 		}
-		thread_queues = new uint[thread_count];
 	}
 
 	/// Explicit resource deallocation
@@ -64,7 +64,7 @@ class TaskGraph
 	}
 
 	/// Main loop of worker thread
-	private void worker_function(Tid owner)
+	private void worker_function()
 	{
 		bool stop_requested = false;
 		while (!stop_requested)
@@ -102,14 +102,14 @@ class TaskGraph
 				if (free_worker == -1)
 				{
 					// all workers are busy, let's wait
-					Tid id = receiveOnly!Tid();
+					auto id = receiveOnly!Tid();
 					uint index = tid_map[id];
 					// give this new action to the worker
 					send(id, action);
 				}
 				else
 				{
-					Tid id = threads[free_worker];
+					auto id = threads[free_worker];
 					send(id, action);
 					thread_queues[free_worker]++;
 				}
