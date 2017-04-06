@@ -409,6 +409,9 @@
   <filesToClean>*.obj;*.cmd;*.build;*.json;*.dep</filesToClean>
  </Config>
  <Folder name="dsubs_common">
+  <Folder name="threading">
+   <File path="threading\taskgraph.d" />
+  </Folder>
   <File path="main.d" />
   <File path="mutstring.d" />
  </Folder>
