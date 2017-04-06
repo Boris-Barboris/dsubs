@@ -1,7 +1,11 @@
 module threading.taskgraph;
 
+import core.atomic;
 import core.cpuid;
 import core.thread;
+import core.sync.condition;
+import core.sync.barrier;
+import core.sync.mutex;
 import std.algorithm.iteration;
 import std.algorithm.searching;
 
@@ -25,14 +29,13 @@ class TaskBlock
 {
 	TaskGenerator[] generators;
 
-	private uint cursor = 0;
+	protected uint cursor = 0;
 
 	Action generate()
 	{
-		for (int i = cursor; i < generatos.length; i++)
+		for (int i = cursor; i < generators.length; i++)
 		{
-			auto g = generators[i];
-			auto action = g.generate();
+			auto action = generators[i].generate();
 			if (action != null)
 				return action;
 		}
@@ -45,11 +48,30 @@ class TaskBlock
 /// Performs thread managing.
 class TaskGraph
 {
-	private TaskBlock[] blocks;
-	private ThreadGroup threads;
+	public TaskBlock[] blocks;
+	protected ThreadGroup threads;
+
+	protected Condition block_done;		// last worker signals dispatcher that
+										// he's done via this condition
+	
+	protected Barrier barrier;			// barrier to await next block start on
+	protected Mutex consume_mutex;
+	public const uint thread_count;
+	
+	protected shared uint running_threads = 0;
+	protected uint current_block = 0;
+
+	// set to true when we're disposing
+	protected bool exit_requested = false;
 
 	this(uint thread_count = coresPerCPU)
 	{
+		this.thread_count = thread_count;
+		consume_mutex = new Mutex;
+		block_done = new Condition(new Mutex);
+		// thread_count + 1 because dispatcher thread that changes
+		// current block needs to wait on barrier too.
+		barrier = new Barrier(thread_count + 1);
 		threads = new ThreadGroup;
 		for (uint i = 0; i < thread_count; i++)
 		{
@@ -57,33 +79,46 @@ class TaskGraph
 		}
 	}
 
-	/// Explicit resource deallocation
+	/// Tell workers to stop. Better be called from dispatcher thread.
 	void dispose()
 	{
+		exit_requested = true;
+		barrier.wait();
+		threads.joinAll();
+	}
 
+	private Action consume_action()
+	{
+		synchronized(consume_mutex)
+		{			
+			return blocks[current_block].generate();
+		}
 	}
 
 	/// Main loop of worker thread
 	private void worker_function()
 	{
-		bool stop_requested = false;
-		while (!stop_requested)
+		while (true)
 		{
-			// Perform the action passed or exit if any int was passed
-			receive (
-				(void delegate() action) 
-				{ 
-					handle_action(action);
-					send(owner, thisTid);		// notify dispatcher thread that we're done
-				},
-				(int code) { stop_requested = true; }
-			);
+			barrier.wait();		// wait for next block start
+			if (exit_requested)
+				return;
+			auto action = consume_action();
+			while (action != null)
+			{
+				handle_action(action);
+				action = consume_action();
+			}
+			// we're finished on this block, need to report to dispatcher
+			assert(running_threads > 0);
+			atomicOp!"-="(running_threads, 1);
+			if (running_threads == 0)
+				block_done.notify();
 		}
-		send(owner, thisTid);
 	}
 
 	/// Overload to handle errors.
-	protected void handle_action(void delegate() action)
+	protected void handle_action(Action action)
 	{
 		action();
 	}
@@ -92,55 +127,69 @@ class TaskGraph
 	/// thread serves as a dispatcher.
 	void run_cycle()
 	{
+		if (blocks.length == 0)
+			return;
 		// for each task block
-		foreach (block; blocks)
+		for (current_block = 0; current_block < blocks.length; current_block++)
 		{
-			auto action = block.generate();
-			while (action != null)
+			running_threads = thread_count;
+			// set workers loose by entering barrier			
+			barrier.wait();
+			// wait for the signal from last worker
+			block_done.wait();
+		}
+	}
+}
+
+
+
+
+// Some live tests
+
+void test_graph_runner()
+{
+	import std.conv;
+	import std.stdio;
+	import core.time;
+
+	writeln("Running test_graph_runner");
+
+	class PrinterGenerator: TaskGenerator
+	{
+		string str;
+		int counter = 0;
+
+		this(string what_to_print)
+		{
+			str = what_to_print;
+		}
+
+		void do_print()
+		{
+			writeln(str ~ to!string(Thread.getThis.id));
+			Thread.sleep( dur!("msecs")(100) );
+		}
+
+		Action generate()
+		{
+			if (counter < 10)
 			{
-				int free_worker = find_free_worker();
-				if (free_worker == -1)
-				{
-					// all workers are busy, let's wait
-					auto id = receiveOnly!Tid();
-					uint index = tid_map[id];
-					// give this new action to the worker
-					send(id, action);
-				}
-				else
-				{
-					auto id = threads[free_worker];
-					send(id, action);
-					thread_queues[free_worker]++;
-				}
-				action = block.generate();
+				counter++;
+				return &do_print;
 			}
-			// we're out of actions, let's wait for all workers
-			// to finish the block
-			wait_all();
+			return null;
 		}
 	}
 
-	static immutable uint QUEUE_SIZE = 2;
+	auto gen1 = new PrinterGenerator("gen1 ");
+	auto gen2 = new PrinterGenerator("gen2 ");
+	auto gen3 = new PrinterGenerator("gen3 ");
 
-	private int find_free_worker()
-	{
-		for (int i = 0; i < QUEUE_SIZE; i++)
-			for (int j = 0; j < threads.length; j++)
-			{
-				if (thread_queues[j] == i)
-					return j;
-			}
-		return -1;
-	}
+	auto block = new TaskBlock();
+	block.generators = [gen1, gen2, gen3];
 
-	private void wait_all()
-	{
-		auto busy_count = sum(thread_queues);
-		for (int i = 0; i < busy_count; i++)
-			receiveOnly!Tid();
-		// reset thread queues counters
-		for (int i = 0; i < threads.length; i++)
-			thread_queues[i] = 0;
-	}
+	auto graph = new TaskGraph(3);
+	graph.blocks = [block];
+	graph.run_cycle();
+	graph.dispose();
 }
