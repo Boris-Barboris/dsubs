@@ -18,7 +18,7 @@ alias Action = void delegate();
 interface TaskGenerator
 {
 	/// Returns concurrent action to perform, or null if no
-	/// more work is needed for this generator.
+	/// more work is required by this generator.
 	Action generate();
 }
 
@@ -146,13 +146,23 @@ class TaskGraph
 
 // Some live tests
 
-void test_graph_runner()
+unittest
 {
 	import std.conv;
-	import std.stdio;
+	//import std.stdio;
 	import core.time;
 
-	writeln("Running test_graph_runner");
+	//writeln("Running test_graph_runner");
+
+	shared string[] result;
+
+	void append(string str)
+	{
+		synchronized
+		{
+			result ~= str;
+		}
+	}
 
 	class PrinterGenerator: TaskGenerator
 	{
@@ -166,13 +176,14 @@ void test_graph_runner()
 
 		void do_print()
 		{
-			writeln(str ~ to!string(Thread.getThis.id));
-			Thread.sleep( dur!("msecs")(100) );
+			//writeln(str ~ to!string(Thread.getThis.id));
+			append(str);
+			Thread.sleep( dur!("msecs")(50) );
 		}
 
 		Action generate()
 		{
-			if (counter < 10)
+			if (counter < 5)
 			{
 				counter++;
 				return &do_print;
@@ -192,4 +203,6 @@ void test_graph_runner()
 	graph.blocks = [block];
 	graph.run_cycle();
 	graph.dispose();
+
+	assert(result.length == 15);
 }
