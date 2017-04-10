@@ -93,7 +93,7 @@
   <libpaths />
   <deffile />
   <resfile />
-  <exefile>$(OutDir)\$(ProjectName).lib</exefile>
+  <exefile>$(OutDir)\$(ProjectName).exe</exefile>
   <useStdLibPath>1</useStdLibPath>
   <cRuntime>2</cRuntime>
   <privatePhobos>0</privatePhobos>
@@ -416,5 +416,6 @@
   <File path="logging.d" />
   <File path="main.d" />
   <File path="mutstring.d" />
+  <File path="reflection.d" />
  </Folder>
 </DProject>
