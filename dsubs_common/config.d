@@ -3,6 +3,8 @@ module config;
 import std.conv: to;
 import std.json;
 import std.file;
+import std.meta;
+import std.traits;
 
 import reflection;
 
@@ -53,45 +55,6 @@ struct DefaultValue(T)
 	this(T val) { default_val = val; }
 }
 
-// this function deserializes field from json
-void jsonToField(GroupType, FieldType, string field_name)
-				(JSONValue json, ref FieldType field)
-{
-	// check if field is not internal json config field
-	static if (field_name == "_tree" || field_name == "_filename")
-		return;
-	// check if it is struct
-
-	// check if it is present in JSONValue
-	if (field_name in json)
-	{
-		// assign and return;
-		enum getter = json_getter!(FieldType)();
-		pragma(msg, "binding json[field_name]." ~ getter ~ " to " ~ field_name);
-		FieldType val = to!FieldType(mixin("json[field_name]." ~ getter));
-		field = val;
-		return;
-	}
-	else
-	{
-		// maybe field has attribute assigned to it
-		enum attrs = __traits(getAttributes, 
-			mixin(GroupType.stringof ~ "." ~ field_name));
-		pragma(msg, "Attributes ", attrs);
-		foreach (attr; attrs)
-		{
-			if (is (attr == DefaultValue!(FieldType)))
-			{
-				pragma(msg, "Binding default value of ", attr.default_val, 
-					   " to " ~ field_name);
-				field = attr.default_val;
-				break;
-			}
-		}
-		return;
-	}
-}
-
 string json_getter(fieldType)()
 {
 	string typeName = fieldType.stringof;
@@ -107,6 +70,60 @@ string json_getter(fieldType)()
 	}
 }
 
+T jsonValueToField(T)(JSONValue tree)
+{
+	switch (tree.type)
+	{
+		case JSON_TYPE.STRING: return to!T(tree.str);
+		case JSON_TYPE.INTEGER: return to!T(tree.integer);
+		case JSON_TYPE.UINTEGER: return to!T(tree.uinteger);
+		case JSON_TYPE.FLOAT: return to!T(tree.floating);
+		default:
+			throw new Exception("can't assing field of type " ~ T.stringof ~
+								"from JSONValue of type " ~ 
+								to!string(tree.type));
+	}
+}
+
+void Deserialize(T, FieldFlags flags)(auto ref T obj, JSONValue tree)
+{
+	//mixin(_Deserilize);
+	enum fields = TypeMembers!(T, FieldFlags.Fields)();
+	pragma(msg, "struct fields string array ", fields);
+	// Iterate over those with Default Value attributes
+	foreach (field; aliasSeqOf!(fields))
+	{
+		// check if it has DefaultValue attribute
+		enum attrs = FieldAttributes!(T, field);
+		alias fieldType = typeof(mixin("T." ~ field));
+		foreach (attr; attrs)
+		{
+			static if (is (typeof(attr) == DefaultValue!fieldType))
+			{
+				pragma(msg, "Binding default value of ", attr.default_val, 
+					   " to " ~ field);
+				mixin("obj." ~ field) = attr.default_val;
+			}
+		}
+		static if (!isAggregateType!fieldType)
+		{
+			// now assign non-aggregate fields
+			pragma(msg, "generating deserialization for ", T, ".", field);
+			if (field in tree)
+				mixin("obj." ~ field) = jsonValueToField!fieldType(tree[field]);
+		}
+		else
+		{
+			// aggregate field - time for recursion
+			pragma(msg, "generating aggregate deserialization for ", 
+				   T, ".", field);
+			JSONValue local_tree = parseJSON(`{}`);
+			if (field in tree)
+				local_tree = tree[field];
+			Deserialize!(fieldType, flags)(mixin("obj." ~ field), local_tree);
+		}
+	}
+}
 
 // tests
 
@@ -136,13 +153,7 @@ private class TestConfigJSON: ConfigJSON
 
 	override void load_from_jsonvalue(JSONValue tree)
 	{
-		// we need to iterate over our fields
-		//immutable auto fields = __traits(allMembers, TestConfigJSON);
-		//enum fields = TypeFields!(TestConfigJSON, FieldFlags.Fields)();
-		//pragma(msg, "fields string array", fields);
-
-		jsonToField!(TestConfigGroup, int, "option4")(tree, group1.option4);
-		jsonToField!(TestConfigJSON, int, "global_option1")(tree, global_option1);
+		Deserialize!(TestConfigJSON, FieldFlags.Fields)(this, tree);
 	}
 
 	override string save_to_string() { return "mock"; }
@@ -150,5 +161,18 @@ private class TestConfigJSON: ConfigJSON
 
 unittest
 {
-	TestConfigJSON config = new TestConfigJSON("{}");
+	string test_json = `{
+		"global_option1": 2,
+		"group1": {
+			"option1": 3.5,
+			"option2": 4,
+			"option3": "teststring"
+		}
+	}`;
+	TestConfigJSON config = new TestConfigJSON(test_json);	
+	assert(config.global_option1 == 2);
+	assert(config.group1.option1 == 3.5);
+	assert(config.group1.option2 == 4);
+	assert(config.group1.option3 == "teststring");
+	assert(config.group1.option4 == 4);
 }
