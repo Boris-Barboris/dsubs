@@ -49,13 +49,12 @@ class TaskBlock
 class TaskGraph
 {
 	public TaskBlock[] blocks;
-	protected ThreadGroup threads;
+	private ThreadGroup threads;
 
-	protected Condition block_done;		// last worker signals dispatcher that
+	private Condition block_done;		// last worker signals dispatcher that
 										// he's done via this condition
 	
-	protected Barrier barrier;			// barrier to await next block start on
-	protected Mutex consume_mutex;
+	private Barrier barrier;			// barrier to await next block start on
 	public const uint thread_count;
 	
 	protected shared uint running_threads = 0;
@@ -67,7 +66,6 @@ class TaskGraph
 	this(uint thread_count = coresPerCPU)
 	{
 		this.thread_count = thread_count;
-		consume_mutex = new Mutex;
 		block_done = new Condition(new Mutex);
 		// thread_count + 1 because dispatcher thread that changes
 		// current block needs to wait on barrier too.
@@ -89,7 +87,7 @@ class TaskGraph
 
 	private Action consume_action()
 	{
-		synchronized(consume_mutex)
+		synchronized
 		{			
 			return blocks[current_block].generate();
 		}
@@ -148,11 +146,7 @@ class TaskGraph
 
 unittest
 {
-	import std.conv;
-	//import std.stdio;
 	import core.time;
-
-	//writeln("Running test_graph_runner");
 
 	shared string[] result;
 
@@ -176,7 +170,6 @@ unittest
 
 		void do_print()
 		{
-			//writeln(str ~ to!string(Thread.getThis.id));
 			append(str);
 			Thread.sleep( dur!("msecs")(50) );
 		}
@@ -197,10 +190,12 @@ unittest
 	auto gen3 = new PrinterGenerator("gen3 ");
 
 	auto block = new TaskBlock();
-	block.generators = [gen1, gen2, gen3];
+	block.generators = [gen1, gen2];
+	auto block2 = new TaskBlock();
+	block2.generators = [gen3];
 
 	auto graph = new TaskGraph(3);
-	graph.blocks = [block];
+	graph.blocks = [block, block2];
 	graph.run_cycle();
 	graph.dispose();
 
