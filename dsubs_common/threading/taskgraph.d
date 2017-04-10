@@ -1,4 +1,4 @@
-module threading.taskgraph;
+module dsubs_common.threading.taskgraph;
 
 import core.atomic;
 import core.cpuid;

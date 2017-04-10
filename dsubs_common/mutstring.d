@@ -1,4 +1,4 @@
-module mutstring;
+module dsubs_common.mutstring;
 
 import std.algorithm.comparison;
 import std.string;

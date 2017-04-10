@@ -1,4 +1,4 @@
-module logging;
+module dsubs_common.logging;
 
 import std.experimental.logger.filelogger;
 import std.file;

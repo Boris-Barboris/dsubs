@@ -1,4 +1,4 @@
-module config;
+module dsubs_common.config;
 
 import std.conv: to;
 import std.json;
@@ -6,7 +6,7 @@ import std.file;
 import std.meta;
 import std.traits;
 
-import reflection;
+import dsubs_common.reflection;
 
 
 class Config

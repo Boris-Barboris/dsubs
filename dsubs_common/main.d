@@ -1,3 +1,5 @@
+module dsubs_common.main;
+
 import std.stdio;
 
 int main(string[] argv)

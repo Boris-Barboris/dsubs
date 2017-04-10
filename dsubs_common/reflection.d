@@ -1,4 +1,4 @@
-module reflection;
+module dsubs_common.reflection;
 
 import std.array;
 import std.algorithm;
