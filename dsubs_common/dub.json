@@ -6,7 +6,6 @@
 		"Boris-Barboris"
 	],
     "dependencies": {
-        "vibe-d": "~>0.7.31",
 		"gfm:math": "~>6.2.7"
 	},
 	"description": "Common library for dsubs.",
