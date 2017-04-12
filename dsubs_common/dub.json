@@ -1,0 +1,15 @@
+{
+	"name": "dsubs_common",
+    "targetType": "executable",
+    "version": "0.0.1",
+	"authors": [
+		"Boris-Barboris"
+	],
+    "dependencies": {
+        "vibe-d": "~>0.7.31",
+		"gfm:math": "~>6.2.7"
+	},
+	"description": "Common library for dsubs.",
+	"copyright": "Copyright (C), Alexander Baranin",
+	"license": "GPL-2.0"
+}
