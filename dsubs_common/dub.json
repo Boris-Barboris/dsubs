@@ -1,6 +1,6 @@
 {
 	"name": "dsubs_common",
-    "targetType": "executable",
+    "targetType": "staticLibrary",
     "version": "0.0.1",
 	"authors": [
 		"Boris-Barboris"
@@ -9,6 +9,13 @@
 		"gfm:math": "~>6.2.7"
 	},
 	"description": "Common library for dsubs.",
-	"copyright": "Copyright (C), Alexander Baranin",
-	"license": "GPL-2.0"
+	"copyright": "Copyright (C) 2017, Alexander Baranin",
+	"license": "GPL-2.0",
+    "configurations": [
+		{
+			"name": "unittest-app",
+			"targetType": "executable",
+            "buildOptions": ["debugMode", "debugInfo", "unittests"]
+		}
+    ]
 }

@@ -1,0 +1,15 @@
+{
+	"name": "dsubs_server",
+    "targetType": "executable",
+    "version": "0.0.1",
+	"authors": [
+		"Boris-Barboris"
+	],
+    "dependencies": {
+        "dsubs_common": "*",
+        "vibe-d": "*",
+    },
+	"description": "Main dsub server application.",
+	"copyright": "Copyright (C) 2017, Alexander Baranin",
+	"license": "GPL-2.0"
+}
