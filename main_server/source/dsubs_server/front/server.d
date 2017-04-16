@@ -2,7 +2,7 @@ module dsubs_server.front.server;
 
 import core.time;
 
-import vibe.core.core: runTask, sleep;
+import vibe.core.core;
 import vibe.core.log;
 import vibe.core.net;
 import vibe.stream.operations;
@@ -23,8 +23,8 @@ class DsubsTCPServer
 
 	void start()
 	{
-		//TCPListenOptions opts = TCPListenOptions.distribute;
-		listener = listenTCP(port, &tcp_callback, address);//, opts);
+		TCPListenOptions opts = TCPListenOptions.distribute;
+		listener = listenTCP(port, &tcp_callback, address, opts);
 	}
 
 	void stop()
@@ -33,6 +33,25 @@ class DsubsTCPServer
 	}
 
 	void tcp_callback(TCPConnection con)
+	{
+		logInfo("Established TCP connection from " ~ con.peerAddress);
+		while (true && con.connected)
+		{
+			bool ready = con.waitForData();	// dur!"msecs"(500)
+			if (ready)
+			{
+				// TODO
+			}
+		}
+	}
+}
+
+
+private class TestTCPServer: DsubsTCPServer
+{
+	this(string address, ushort port) { super(address, port); }
+
+	override void tcp_callback(TCPConnection con)
 	{
 		logInfo("Established connection from " ~ con.peerAddress);
 		while (true && con.connected)
@@ -43,23 +62,24 @@ class DsubsTCPServer
 				logInfo("Stream ready to be read");
 			    string text = con.readAllUTF8();
 				logInfo("Got tcp frame with content " ~ text);
+				if (text == "shutdown")
+					exitEventLoop(true);
 			}
 		}
 	}
 }
 
 
-
 unittest
 {
-	auto server = new DsubsTCPServer("0.0.0.0", 19320);
-	server.start();	
+	auto server = new TestTCPServer("0.0.0.0", 19320);
+	server.start();
 	scope(exit) server.stop();
-	auto client = connectTCP("127.0.0.1", 19320);
-	scope(exit) client.close();
-	client.write("123");
-	client.flush();
-	assert(client.waitForData());
-	string result = client.readAllUTF8();
-	assert(result == "Hello");
+	runTask({
+		auto client = connectTCP("127.0.0.1", 19320);
+		scope(exit) client.close();
+		client.write("shutdown");
+		client.flush();
+	});
+	runEventLoop();
 }
