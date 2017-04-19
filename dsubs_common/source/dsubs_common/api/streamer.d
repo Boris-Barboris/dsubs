@@ -58,11 +58,12 @@ class APIStreamer
 {
 	UnitHandler[header_t] handlers;
 
-	UnitHandler register_handler(UnitType)(UnitHandler func)
+	UnitHandler register_handler(UnitType)(void delegate(UnitType*) func)
 	{
 		auto key = UnitType.header;
 		auto res = key in handlers;
-		handlers[key] = func;
+		UnitHandler func_casted = cast(UnitHandler) func;
+		handlers[key] = func_casted;
 		if (res is null)
 			return null;
 		return *res;
@@ -105,7 +106,7 @@ unittest
 	}
 
 	APIStreamer streamer = new APIStreamer;
-	streamer.register_handler!(StatusResponse)(cast(UnitHandler) &handle_StatusResponse);
+	streamer.register_handler!(StatusResponse)(&handle_StatusResponse);
 	streamer.process(stream);
 	assert(called);
 }
