@@ -91,22 +91,29 @@ class APIStreamer
 
 unittest
 {
-	ubyte[] stream = new ubyte[20];
+	ubyte[] stream = new ubyte[64];
 	StatusResponse sr1;
+	StatusRequest srq1;
 	sr1.status = ServerStatus.OFF;
 	sr1.api_version = 1337;
-	sr1.marshal(stream);
-	bool called = false;
+	auto shift = sr1.marshal(stream);
+	auto mstream = stream[shift .. $];
+	shift = srq1.marshal(mstream);
+	mstream = mstream[shift .. $];
+	shift = sr1.marshal(mstream);
+	mstream = mstream[shift .. $];
+	sr1.marshal(mstream);
+	uint called = 0;
 
 	void handle_StatusResponse(StatusResponse* rsp)
 	{
 		assert(rsp.status == ServerStatus.OFF);
 		assert(rsp.api_version == 1337);
-		called = true;
+		called++;
 	}
 
 	APIStreamer streamer = new APIStreamer;
 	streamer.register_handler!(StatusResponse)(&handle_StatusResponse);
 	streamer.process(stream);
-	assert(called);
+	assert(called == 3);
 }
