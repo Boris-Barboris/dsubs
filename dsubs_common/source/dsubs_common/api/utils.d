@@ -55,7 +55,7 @@ template ArrayAwareMarshaller(T)
 					foreach (attr; attrs)
 					{
 						static if (is(typeof(attr) == MaxLenAttr))
-							max_length = min(max_length, attr.max_length);
+							max_length = attr.max_length;
 					}
 					// serialize array size
 					FieldType arr = mixin("ptr." ~ field);
@@ -115,7 +115,7 @@ template ArrayAwareDemarshaller(T)
 					foreach (attr; attrs)
 					{
 						static if (is(typeof(attr) == MaxLenAttr))
-							max_length = min(max_length, attr.max_length);
+							max_length = attr.max_length;
 					}
 					uint arr_length = *(cast(uint*) data.ptr);
 					if (arr_length > max_length)

@@ -16,6 +16,10 @@ import dsubs_common.api.utils;
 public immutable string[] api_units = [
 	"StatusRequest",
 	"StatusResponse",
+	"DisconnectSignal",
+	"AuthLoginRequest",
+	"RegisterRequest",
+	"AuthRegisterRequest",
 ];
 
 // Generate code to fill dict with function pointers
@@ -25,6 +29,7 @@ private string UnitMarshallers(string[] unit_names, string demarsh_name,
 	string result;
 	foreach (unit_type; aliasSeqOf!unit_names)
 	{
+		// register unit header
 		result ~= dict_name ~ "[" ~ unit_type ~ ".header] = cast(" ~ func_type ~
 			") &" ~ demarsh_name ~ "!(" ~ unit_type ~ ")." ~ func_name ~ ";\n";
 	}
@@ -33,6 +38,7 @@ private string UnitMarshallers(string[] unit_names, string demarsh_name,
 
 private alias Demarshaller = void* function(ubyte[] data, out uint shift);
 
+/// Global hash-map of demarshalling functions
 immutable Demarshaller[header_t] demarshallers;
 
 pragma(msg, "demarshallers:\n",
@@ -48,7 +54,7 @@ static this()
 /// Prototype of unit handler
 alias UnitHandler = void delegate(void* unit_ptr);
 
-/// Class that handles byte stream parsing and
+/// Class that handles byte stream marshalling of API Units
 class APIStreamer
 {
 	UnitHandler[header_t] handlers;
@@ -61,7 +67,7 @@ class APIStreamer
 		handlers[key] = func_casted;
 		if (res is null)
 			return null;
-		return *res;
+		return *res;		// return old handler
 	}
 
 	/// Handle all units in byte stream

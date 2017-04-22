@@ -1,4 +1,7 @@
-Common
+Common:
+    API units defined in dsubs_common.
+    Common byte stream marshalling of API units defined in dsubs_common as well.
+    Networking and API constantes defined in dsubs_common as well.
 
 Engine:
     ECS as main pattern.

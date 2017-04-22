@@ -13,7 +13,7 @@ alias Action = void delegate();
 
 /// Abstract action generator, that provides runtime with actions
 /// to perform. It can be a component manager, for example animation
-/// component, that generates tasks to update states of 
+/// component, that generates tasks to update states of
 /// all animated entities.
 interface TaskGenerator
 {
@@ -53,10 +53,10 @@ class TaskGraph
 
 	private Condition block_done;		// last worker signals dispatcher that
 										// he's done via this condition
-	
+
 	private Barrier barrier;			// barrier to await next block start on
 	public const uint thread_count;
-	
+
 	protected shared uint running_threads = 0;
 	protected uint current_block = 0;
 
@@ -88,7 +88,7 @@ class TaskGraph
 	private Action consume_action()
 	{
 		synchronized
-		{			
+		{
 			return blocks[current_block].generate();
 		}
 	}
@@ -131,7 +131,7 @@ class TaskGraph
 		for (current_block = 0; current_block < blocks.length; current_block++)
 		{
 			running_threads = thread_count;
-			// set workers loose by entering barrier			
+			// set workers loose by entering barrier
 			barrier.wait();
 			// wait for the signal from last worker
 			block_done.wait();
