@@ -18,22 +18,15 @@ public immutable string[] api_units = [
 	"StatusResponse",
 ];
 
-private mixin template UnitHandlers(string[] unit_names)
-{
-	mixin("void delegate(" ~ unit_names[$-1] ~ "*) " ~ unit_names[$-1] ~ "_handler;");
-	static if (unit_names.length > 1)
-		mixin UnitHandlers!(unit_names[0 .. $-1]);
-}
-
 // Generate code to fill dict with function pointers
-private string UnitMarshallers(string[] unit_names, string dict_name,
-							   string func_type, string func_name)()
+private string UnitMarshallers(string[] unit_names, string demarsh_name,
+	string dict_name, string func_type, string func_name)()
 {
 	string result;
 	foreach (unit_type; aliasSeqOf!unit_names)
 	{
 		result ~= dict_name ~ "[" ~ unit_type ~ ".header] = cast(" ~ func_type ~
-				  ") &" ~ unit_type ~ "." ~ func_name ~ ";\n";
+			") &" ~ demarsh_name ~ "!(" ~ unit_type ~ ")." ~ func_name ~ ";\n";
 	}
 	return result;
 }
@@ -42,12 +35,14 @@ private alias Demarshaller = void* function(ubyte[] data, out uint shift);
 
 immutable Demarshaller[header_t] demarshallers;
 
-pragma(msg, "demarshallers:\n", UnitMarshallers!(api_units, "demarshallers",
-								"Demarshaller", "demarshal"));
+pragma(msg, "demarshallers:\n",
+	UnitMarshallers!(api_units,	"ArrayAwareDemarshaller", "demarshallers",
+				     "Demarshaller", "demarshal"));
 
 static this()
 {
-	mixin(UnitMarshallers!(api_units, "demarshallers", "Demarshaller", "demarshal"));
+	mixin(UnitMarshallers!(api_units, "ArrayAwareDemarshaller", "demarshallers",
+						   "Demarshaller", "demarshal"));
 }
 
 /// Prototype of unit handler
@@ -91,24 +86,29 @@ class APIStreamer
 
 unittest
 {
-	ubyte[] stream = new ubyte[64];
+	import dsubs_common.mutstring;
+
+	ubyte[] stream = new ubyte[256];
 	StatusResponse sr1;
 	StatusRequest srq1;
 	sr1.status = ServerStatus.OFF;
 	sr1.api_version = 1337;
-	auto shift = sr1.marshal(stream);
+	mutstring welcome_string = _s("TestString");
+	sr1.welcome_string = welcome_string;
+	auto shift = ArrayAwareMarshaller!StatusResponse.marshal(&sr1, stream);
 	auto mstream = stream[shift .. $];
-	shift = srq1.marshal(mstream);
+	shift = ArrayAwareMarshaller!StatusRequest.marshal(&srq1, mstream);
 	mstream = mstream[shift .. $];
-	shift = sr1.marshal(mstream);
+	shift = ArrayAwareMarshaller!StatusResponse.marshal(&sr1, mstream);
 	mstream = mstream[shift .. $];
-	sr1.marshal(mstream);
+	ArrayAwareMarshaller!StatusResponse.marshal(&sr1, mstream);
 	uint called = 0;
 
 	void handle_StatusResponse(StatusResponse* rsp)
 	{
 		assert(rsp.status == ServerStatus.OFF);
 		assert(rsp.api_version == 1337);
+		assert(rsp.welcome_string == welcome_string);
 		called++;
 	}
 

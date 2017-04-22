@@ -45,7 +45,7 @@ template DerivedFilter(T, FieldFlags flags, TList...)
 		enum DerivedFilter = TList;
 	else
 	{
-		enum str_diff = stringSetIntersect!([TList], 
+		enum str_diff = stringSetIntersect!([TList],
 											[__traits(derivedMembers, T)])();
 		enum DerivedFilter = aliasSeqOf!(str_diff);
 	}
@@ -64,7 +64,7 @@ template FunctionalMembersFilter(T, FieldFlags flags, TList...)
 	static if (flags & FieldFlags.Functions)
 		enum FunctionalMembersFilter = TList;
 	else
-		enum FunctionalMembersFilter = 
+		enum FunctionalMembersFilter =
 			Filter!(templateNot!(isFunctionName!(T).isFuncField), TList);
 }
 
@@ -82,4 +82,10 @@ string[] TypeMembers(T, FieldFlags flags)() if (isAggregateType!(T))
 template FieldAttributes(T, string field_name)
 {
 	enum FieldAttributes = __traits(getAttributes, mixin("T." ~ field_name));
+}
+
+/// Return type of array element
+template ArrayElementType(T : T[])
+{
+  alias ArrayElementType = T;
 }
