@@ -32,6 +32,7 @@ class Transform2D
 		vec2d _translation;
 		// Resulting transformations
 		mat3x3d local_transform;
+		bool dirty;				// set to true when some of parents changed
 		mat3x3d world_cache;	// cached value of world-coordinates transform
 		Transform2D _parent;
 		DList!Transform2D _children;
@@ -42,23 +43,32 @@ class Transform2D
 		from_components(vec2d(1.0, 1.0), 0.0, vec2d(0.0, 0.0));
 	}
 
-	/// Propagate parent's world transform to curren one
+	/// Propagate the `dirty` signal from parent
 	protected void propagate()
 	{
 		// multiply parent's world_cache onto local_transform and save the
 		// result as current transform world_cache.
 		if (_parent)
-			world_cache = _parent.world_cache * local_transform;
+			dirty = true;
 		else
+		{
+			dirty = false;
 			world_cache = local_transform;
+		}
 		update_children();
 	}
 
-	// Force child transforms to recalculate their matrixes
+	protected void calculate_world()
+	{
+		world_cache = _parent.global * local_transform;
+		dirty = false;
+	}
+
+	// Signal child transforms to recalculate their matrixes
 	protected void update_children()
 	{
 		foreach (t; _children)
-			t.propagate();
+			t.dirty = true;
 	}
 
 	void add_child(Transform2D child)
@@ -107,7 +117,13 @@ class Transform2D
 
 	@property ref const(mat3x3d) local() const { return local_transform; }
 
-	@property ref const(mat3x3d) global() const { return world_cache; }
+	@property ref const(mat3x3d) global()
+	{
+		// lazy world transform recalculation
+		if (dirty)
+			calculate_world();
+		return world_cache;
+	}
 
 	/// returns local scale
 	@property vec2d scale() const { return _scale; }
@@ -164,19 +180,26 @@ class Transform2D
 	}
 
 	/// Transform local point into world space
-	vec2d transform(vec2d point) const
+	vec2d transform(vec2d point)
 	{
 		vec3d homog = vec3d(point[0], point[1], 1.0);
 		vec3d res = this.global * homog;
 		return vec2d(res[0] / res[2], res[1] / res[2]);
 	}
 
-	/// Transform local angle into world angle
-	double transform(double angle) const
+	/// Transform local direction into world space
+	vec2d direction(vec2d dir)
 	{
-		vec2d v1 = vec2d(0, 0);
+		vec3d homog = vec3d(dir[0], dir[1], 0.0);
+		vec3d res = this.global * homog;
+		return vec2d(res[0], res[1]).normalized;
+	}
+
+	/// Transform local angle into world angle
+	double transform(double angle)
+	{
 		vec2d v2 = vec2d(-sin(angle), cos(angle));
-		auto dir = (transform(v2) - transform(v1)).normalized;
+		auto dir = direction(v2);
 		if (abs(dir.x) < 0.6)	// precision of asin and acos requires attention
 		{
 			if (dir.y >= 0.0)
