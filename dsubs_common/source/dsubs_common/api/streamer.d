@@ -92,14 +92,12 @@ class APIStreamer
 
 unittest
 {
-	import dsubs_common.mutstring;
-
 	ubyte[] stream = new ubyte[256];
 	StatusResponse sr1;
 	StatusRequest srq1;
 	sr1.status = ServerStatus.OFF;
 	sr1.api_version = 1337;
-	mutstring welcome_string = _s("TestString");
+	string welcome_string = "TestString";
 	sr1.welcome_string = welcome_string;
 	auto shift = ArrayAwareMarshaller!StatusResponse.marshal(&sr1, stream);
 	auto mstream = stream[shift .. $];

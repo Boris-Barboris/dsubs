@@ -3,7 +3,7 @@
 module dsubs_common.api.status;
 
 import dsubs_common.api.utils;
-public import dsubs_common.mutstring;
+//public import dsubs_common.mutstring;
 
 
 /// Unit to send in order to get server status.
@@ -24,12 +24,12 @@ struct StatusResponse
 	ServerStatus status;
 	uint api_version;
 	uint players_online;
-	@MaxLenAttr(128) mutstring welcome_string;
+	@MaxLenAttr(128) string welcome_string;
 }
 
 /// Server sends this unit to the client when it drops the connection.
 struct DisconnectSignal
 {
 	static header_t header = cast(header_t) "signdrop";
-	@MaxLenAttr(128) mutstring reason;
+	@MaxLenAttr(128) string reason;
 }

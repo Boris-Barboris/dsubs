@@ -1,6 +1,6 @@
 module dsubs_common.objects.map;
 
-import gfm.math.box;
+public import gfm.math.box;
 
 /// Game world map.
 /// At first versions of dsubs it's a simple rectangle. No internal topology.
@@ -8,4 +8,6 @@ import gfm.math.box;
 class Map
 {
     box2d bounds;
+
+    this(box2d bound) { bounds = bound; }
 }

@@ -3,7 +3,6 @@
 module dsubs_common.api.auth;
 
 import dsubs_common.api.utils;
-public import dsubs_common.mutstring;
 
 
 enum AuthResponse: ubyte
@@ -19,16 +18,16 @@ enum AuthResponse: ubyte
 struct AuthLoginRequest
 {
     static header_t header = cast(header_t) "loginreq";
-    @MaxLenAttr(64) mutstring username;
-    @MaxLenAttr(64) mutstring password;
+    @MaxLenAttr(64) string username;
+    @MaxLenAttr(64) string password;
 }
 
 /// Send this unit in order to register new account.
 struct RegisterRequest
 {
     static header_t header = cast(header_t) "register";
-    @MaxLenAttr(64) mutstring username;
-    @MaxLenAttr(64) mutstring password;
+    @MaxLenAttr(64) string username;
+    @MaxLenAttr(64) string password;
 }
 
 /// Server's response on authorization or registration request.
