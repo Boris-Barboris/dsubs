@@ -9,12 +9,12 @@ public import gfm.math.matrix;
 public import gfm.math.vector;
 
 
-// Returns a - b, clamped to [-PI_2; PI_2]
+// Returns a - b, clamped to [-PI; PI]
 double angleDist(double a, double b)
 {
-	double val = fmod(a - b, PI);
-	if (abs(val) > PI_2)
-		val -= sgn(val) * PI;
+	double val = fmod(a - b, 2 * PI);
+	if (abs(val) > PI)
+		val -= sgn(val) * 2 * PI;
 	return val;
 }
 
@@ -34,6 +34,8 @@ class Transform2D
 		mat3x3d local_transform;
 		bool dirty;				// set to true when some of parents changed
 		mat3x3d world_cache;	// cached value of world-coordinates transform
+		bool inverse_dirty;
+		mat3x3d inverse_cache;	// inverted world matrix
 		Transform2D _parent;
 		DList!Transform2D _children;
 	}
@@ -46,29 +48,34 @@ class Transform2D
 	/// Propagate the `dirty` signal from parent
 	protected void propagate()
 	{
-		// multiply parent's world_cache onto local_transform and save the
-		// result as current transform world_cache.
-		if (_parent)
-			dirty = true;
-		else
-		{
-			dirty = false;
-			world_cache = local_transform;
-		}
+		dirty = true;
+		inverse_dirty = true;
 		update_children();
 	}
 
-	protected void calculate_world()
+	protected void rebuild()
 	{
-		world_cache = _parent.global * local_transform;
+		local_transform = mat3x3d.scaling(_scale);
+		local_transform = mat3x3d.rotateZ(_rotation) * local_transform;
+		local_transform = mat3x3d.translation(_translation) * local_transform;
+		if (_parent)
+			world_cache = _parent.global * local_transform;
+		else
+			world_cache = local_transform;
 		dirty = false;
+	}
+
+	protected void calculate_inverse()
+	{
+		inverse_cache = global.inverse();
+		inverse_dirty = false;
 	}
 
 	// Signal child transforms to recalculate their matrixes
 	protected void update_children()
 	{
 		foreach (t; _children)
-			t.dirty = true;
+			t.inverse_dirty = t.dirty = true;
 	}
 
 	void add_child(Transform2D child)
@@ -115,14 +122,27 @@ class Transform2D
 		return _parent;
 	}
 
-	@property ref const(mat3x3d) local() const { return local_transform; }
+	@property ref const(mat3x3d) local()
+	{
+		if (dirty)
+			rebuild();
+		return local_transform;
+	}
 
 	@property ref const(mat3x3d) global()
 	{
 		// lazy world transform recalculation
 		if (dirty)
-			calculate_world();
+			rebuild();
 		return world_cache;
+	}
+
+	@property ref const(mat3x3d) inversed()
+	{
+		// lazy inverse transform recalculation
+		if (inverse_dirty)
+			calculate_inverse();
+		return inverse_cache;
 	}
 
 	/// returns local scale
@@ -132,7 +152,7 @@ class Transform2D
 	@property vec2d scale(vec2d val)
 	{
 		_scale = val;
-		rebuild();
+		propagate();
 		return _scale;
 	}
 
@@ -143,7 +163,7 @@ class Transform2D
 	@property double rotation(double val)
 	{
 		_rotation = val;
-		rebuild();
+		propagate();
 		return _rotation;
 	}
 
@@ -154,7 +174,7 @@ class Transform2D
 	@property vec2d translation(vec2d val)
 	{
 		_translation = val;
-		rebuild();
+		propagate();
 		return _translation;
 	}
 
@@ -166,40 +186,38 @@ class Transform2D
 		_scale = scale;
 		_rotation = rotation;
 		_translation = translation;
-		rebuild();
-	}
-
-	/// Recalculate transform matrixes from components and propagate changes
-	/// to children.
-	protected void rebuild()
-	{
-		local_transform = mat3x3d.scaling(_scale);
-		local_transform = mat3x3d.rotateZ(_rotation) * local_transform;
-		local_transform = mat3x3d.translation(_translation) * local_transform;
 		propagate();
 	}
 
-	/// Transform local point into world space
-	vec2d transform(vec2d point)
+	/// Transform point
+	vec2d transform(vec2d point, bool inverse = false)
 	{
 		vec3d homog = vec3d(point[0], point[1], 1.0);
-		vec3d res = this.global * homog;
+		vec3d res;
+		if (inverse)
+			res = this.inversed * homog;
+		else
+			res = this.global * homog;
 		return vec2d(res[0] / res[2], res[1] / res[2]);
 	}
 
-	/// Transform local direction into world space
-	vec2d direction(vec2d dir)
+	/// Transform direction
+	vec2d direction(vec2d dir, bool inverse = false)
 	{
 		vec3d homog = vec3d(dir[0], dir[1], 0.0);
-		vec3d res = this.global * homog;
+		vec3d res;
+		if (inverse)
+			res = this.inversed * homog;
+		else
+			res = this.global * homog;
 		return vec2d(res[0], res[1]).normalized;
 	}
 
 	/// Transform local angle into world angle
-	double transform(double angle)
+	double transform(double angle, bool inverse = false)
 	{
 		vec2d v2 = vec2d(-sin(angle), cos(angle));
-		auto dir = direction(v2);
+		auto dir = direction(v2, inverse);
 		if (abs(dir.x) < 0.6)	// precision of asin and acos requires attention
 		{
 			if (dir.y >= 0.0)
@@ -222,6 +240,7 @@ class Transform2D
 		t.rotation = -PI_2;
 		assert(abs(t.transform(0.0) + PI_2) < 1e-6);
 		assert(abs(t.transform(PI_2)) < 1e-6);
+		assert(abs(t.transform(-PI_2, true)) < 1e-6);
 		assert(angleDist(t.transform(-PI_2) + PI, 0.0) < 1e-6);
 	}
 }
