@@ -1,0 +1,9 @@
+{
+	"fileVersion": 1,
+	"versions": {
+		"derelict-sfml2": "3.0.2",
+		"derelict-util": "2.0.6",
+		"dsubs_common": "0.0.1",
+		"gfm": "6.2.7"
+	}
+}
