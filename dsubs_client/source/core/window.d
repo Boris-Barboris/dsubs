@@ -1,5 +1,6 @@
 module dsubs_client.core.window;
 
+import std.conv;
 import std.experimental.logger;
 
 public import derelict.sfml2.graphics;
@@ -15,8 +16,11 @@ class Window
 		if (fullscreen)
 			mode = chooseBiggestMode();
 		else
+		{
 			mode = sfVideoMode_getDesktopMode();
-		ctx_settings.depthBits = 32;
+			mode.width = to!uint(mode.width / 1.5);
+			mode.height = to!uint(mode.height / 1.5);
+		}
 		ctx_settings.depthBits = 24;
 		ctx_settings.stencilBits = 8;
 		ctx_settings.antialiasingLevel = 4;
@@ -27,9 +31,10 @@ class Window
 		info("Creating window...");
 		wnd = sfRenderWindow_createUnicode(mode, window_name.ptr,
 										   sfDefaultStyle, &ctx_settings);
+		sfRenderWindow_setVerticalSyncEnabled(wnd, true);
 		info("OK");
-		// register default close handler
-		register_handler(sfEvtClosed, &close_window);
+		// register default handlers
+		register_handler(sfEvtResized, &resized_handler);
 	}
 
 	static const(sfVideoMode)[] getSupportedModes()
@@ -54,6 +59,8 @@ class Window
 		event_handlers[type] ~= handler;
 	}
 
+	/// Function polls all events in window buffer and calls respective
+	/// handlers, if registered.
 	void poll_events()
 	{
 		sfEvent event;
@@ -65,6 +72,18 @@ class Window
 		}
 	}
 
+	void close_window()
+	{
+		info("Closing window");
+		sfRenderWindow_close(wnd);
+	}
+
+	// Raw SFML window pointer
+	sfRenderWindow* ptr() { return wnd; }
+
+	uint width() const { return mode.width; }
+	uint height() const { return mode.height; }
+
 private:
 	sfRenderWindow* wnd;
 	sfVideoMode mode;
@@ -72,9 +91,10 @@ private:
 	bool fullscreen = false;
 	sfEventHandler[][sfEvtCount] event_handlers;
 
-	void close_window(const sfEvent* evt)
+	void resized_handler(const sfEvent* evt)
 	{
-		info("Closing window");
-		sfRenderWindow_close(wnd);
+		mode.width = evt.size.width;
+		mode.height = evt.size.height;
+		info("Resize event caught, ", width, "x", height);
 	}
 }

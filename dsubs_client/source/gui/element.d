@@ -123,6 +123,8 @@ class Div(DivType dType): GuiElement
 	// type of division
 	@property DivType divType() { return dType; }
 
+	override @property vec2d size() { return _size; }
+
 	@property vec2d size(vec2d val)
 	{
 		_size = val;
