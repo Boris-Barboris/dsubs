@@ -7,6 +7,13 @@ import std.traits;
 
 public import gfm.math.vector;
 
+import derelict.sfml2.graphics;
+import derelict.sfml2.window;
+
+import dsubs_client.core.sfml;		// for conversions
+import dsubs_client.core.window;
+import dsubs_client.gui.manager;
+
 
 // Size types sorted in priority order. Same-type elements are treated
 // equally
@@ -18,48 +25,77 @@ enum SizeType
 }
 
 /// GUI tree element
-class GuiElement
+class GuiElement: GuiComponent
 {
 	protected
 	{
 		GuiElement _parent;
-		vec2d _position = vec2d(0, 0);
-		vec2d _size = vec2d(0, 0);
+		vec2f _position = vec2f(0, 0);
+		vec2f _size = vec2f(0, 0);
 		double _fraction = 0.0;
 		SizeType _sizeType;
 	}
 
-	this()
+	this(GuiManager manager)
 	{
+		super(manager);
 		_sizeType = SizeType.GREEDY;
+		rect = sfRectangleShape_create();
 	}
 
-	this(SizeType st, vec2d size)
+	this(GuiManager manager, SizeType st, vec2f size)
 	{
+		super(manager);
 		_sizeType = st;
 		_size = size;
+		rect = sfRectangleShape_create();
 	}
 
 	@property GuiElement parent() { return _parent; }
 
 	// position in tree-space
-	@property vec2d position() { return _position; }
+	@property vec2f position() { return _position; }
 
-	@property vec2d size() { return _size; }
+	@property vec2f size() { return _size; }
 
-	@property double fraction() { return _fraction; }
+	@property float fraction() { return _fraction; }
 
 	// type of division
 	@property SizeType sizeType() { return _sizeType; }
 
 	/// Return deepest GuiElement that contains the point, null otherwise.
-	GuiElement get_from_point(vec2d point)
+	GuiElement get_from_point(vec2f point)
 	{
 		if ((point.x >= position.x && point.x < position.x + size.x) &&
 			(point.y >= position.y && point.y < position.y + size.y))
 			return this;
 		else
 			return null;
+	}
+
+	// rendering stuff
+	protected
+	{
+		sfRectangleShape* rect;
+	}
+
+	sfColor backgroud_color = sfColor(255, 255, 255, 15);
+	sfColor border_color = sfWhite;
+	float border_width = 2.0f;
+
+	override void draw(Window wnd)
+	{
+		// TODO: optimise, no need to push all this every frame
+		sfRectangleShape_setPosition(rect, position.tosf);
+		sfRectangleShape_setSize(rect, size.tosf);
+		sfRectangleShape_setOutlineThickness(rect, border_width);
+		sfRectangleShape_setOutlineColor(rect, border_color);
+		sfRectangleShape_setFillColor(rect, backgroud_color);
+
+		sfRenderStates states;
+		states.blendMode = sfBlendAlpha;
+		states.transform = sfTransform_Identity;
+		sfRenderWindow_drawRectangleShape(wnd.ptr, rect, &states);
 	}
 }
 
@@ -79,29 +115,30 @@ class Div(DivType dType): GuiElement
 {
 	protected GuiElement[] children;
 
-	this(Children...)(SizeType st, vec2d size, Children kids)
+	this(Children...)(GuiManager manager, SizeType st, vec2f size, Children kids)
 		if (allSatisfy!(isGuiElement, Children))
 	{
-		super(st, size);
+		super(manager, st, size);
 		children = [kids];
 		foreach (kid; children)
 			kid._parent = this;
 		update_children();
 	}
 
-	this(Children...)(vec2d size, Children kids)
+	this(Children...)(GuiManager manager, vec2f size, Children kids)
 		if (allSatisfy!(isGuiElement, Children))
 	{
-		super(SizeType.FIXED, size);
+		super(manager, SizeType.FIXED, size);
 		children = [kids];
 		foreach (kid; children)
 			kid._parent = this;
 		update_children();
 	}
 
-	this(Children...)(double fraction, Children kids)
+	this(Children...)(GuiManager manager, float fraction, Children kids)
 		if (allSatisfy!(isGuiElement, Children))
 	{
+		super(manager);
 		_sizeType = SizeType.FRACT;
 		_fraction = fraction;
 		children = [kids];
@@ -110,9 +147,10 @@ class Div(DivType dType): GuiElement
 		update_children();
 	}
 
-	this(Children...)(Children kids)
+	this(Children...)(GuiManager manager, Children kids)
 		if (allSatisfy!(isGuiElement, Children))
 	{
+		super(manager);
 		_sizeType = SizeType.GREEDY;
 		children = [kids];
 		foreach (kid; children)
@@ -123,9 +161,9 @@ class Div(DivType dType): GuiElement
 	// type of division
 	@property DivType divType() { return dType; }
 
-	override @property vec2d size() { return _size; }
+	override @property vec2f size() { return _size; }
 
-	@property vec2d size(vec2d val)
+	@property vec2f size(vec2f val)
 	{
 		_size = val;
 		update_children();
@@ -146,24 +184,24 @@ class Div(DivType dType): GuiElement
 	// recalculate child dimensions
 	protected void update_children()
 	{
-		double budget = size[dim];
+		float budget = size[dim];
 		// fixed-sized kids
 		int child_count = 0;
 		foreach (child; children.filter!(a => a.sizeType == SizeType.FIXED))
 		{
-			double new_size = chip(budget, child.size[dim]);
+			float new_size = chip(budget, child.size[dim]);
 			budget -= new_size;
 			child._size[dim] = new_size;
 			child_count++;
 		}
 		// now fractual kids
 		auto fract_kids = children.filter!(a => a.sizeType == SizeType.FRACT);
-		double fract_sum = fold!((a, b) => a + b.fraction)(fract_kids, 0.0);
+		float fract_sum = fold!((a, b) => a + b.fraction)(fract_kids, 0.0);
 		fract_sum = fmax(1.0, fract_sum);
-		double budget_save =  budget;
+		float budget_save =  budget;
 		foreach (child; fract_kids)
 		{
-			double new_size = child.fraction / fract_sum * budget_save;
+			float new_size = child.fraction / fract_sum * budget_save;
 			child._size[dim] = new_size;
 			budget -= new_size;
 			child_count++;
@@ -175,7 +213,7 @@ class Div(DivType dType): GuiElement
 			child._size[dim] = chip(budget, budget / greedy_count);
 		}
 		// all offsets now are calcuated, we can set positions and sizes
-		double offset = 0.0;
+		float offset = 0.0;
 		foreach (child; children)
 		{
 			child._position[dim] = position[dim] + offset;
@@ -185,19 +223,19 @@ class Div(DivType dType): GuiElement
 		}
 	}
 
-	protected double chip(double budget, double desired_val)
+	protected float chip(float budget, float desired_val)
 	{
 		return fmin(fmax(0.0, budget), fmax(0.0, desired_val));
 	}
 
-	override GuiElement get_from_point(vec2d point)
+	override GuiElement get_from_point(vec2f point)
 	{
 		if (this.GuiElement.get_from_point(point))
 		{
 			if (children.length == 0)
 				return this;
-			double offset = point[dim] - position[dim];
-			double cursor = 0.0;
+			float offset = point[dim] - position[dim];
+			float cursor = 0.0;
 			foreach (kid; children)
 			{
 				auto check = kid.get_from_point(point);
@@ -219,19 +257,21 @@ alias VDiv = Div!(DivType.VERT);
 
 unittest
 {
+	loadSfmlLibraries();
+	auto mgr = new GuiManager();
 	auto frame =
-		new HDiv(vec2d(640, 480),
-			new HDiv(vec2d(400, 0)),
-			new VDiv(0.5),
-			new HDiv());
+		new HDiv(mgr, vec2f(640, 480),
+			new HDiv(mgr, vec2f(400, 0)),
+			new VDiv(mgr, 0.5),
+			new HDiv(mgr));
 	assert(fabs(frame.children[0].size.x - 400.0) < 1e-6);
 	assert(fabs(frame.children[1].size.x - 120.0) < 1e-6);
 	assert(fabs(frame.children[2].size.x - 120.0) < 1e-6);
 	assert(fabs(frame.children[0].size.y - 480.0) < 1e-6);
 	assert(fabs(frame.children[1].size.y - 480.0) < 1e-6);
 	assert(fabs(frame.children[2].size.y - 480.0) < 1e-6);
-	assert(frame.get_from_point(vec2d(100.0, 50.0)) is frame.children[0]);
-	assert(frame.get_from_point(vec2d(410.0, 300.0)) is frame.children[1]);
-	assert(frame.get_from_point(vec2d(635.999, 300.0)) is frame.children[2]);
-	assert(frame.get_from_point(vec2d(640.0, 400.0)) is null);
+	assert(frame.get_from_point(vec2f(100.0, 50.0)) is frame.children[0]);
+	assert(frame.get_from_point(vec2f(410.0, 300.0)) is frame.children[1]);
+	assert(frame.get_from_point(vec2f(635.999, 300.0)) is frame.children[2]);
+	assert(frame.get_from_point(vec2f(640.0, 400.0)) is null);
 }

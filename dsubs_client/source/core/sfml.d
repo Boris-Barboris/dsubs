@@ -2,6 +2,8 @@ module dsubs_client.core.sfml;
 
 import std.experimental.logger;
 
+import gfm.math.vector;
+
 import derelict.sfml2.system;
 import derelict.sfml2.window;
 import derelict.sfml2.audio;
@@ -19,3 +21,8 @@ void loadSfmlLibraries()
     DerelictSFML2Network.load();
     info("OK");
 }
+
+
+// utility conversions
+sfVector2f tosf(vec2d v) { return sfVector2f(v.x, v.y); }
+sfVector2f tosf(vec2f v) { return sfVector2f(v.x, v.y); }

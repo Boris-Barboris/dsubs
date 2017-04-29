@@ -32,6 +32,14 @@ class Render
 	this(Window wnd)
 	{
 		window = wnd;
+		wnd.register_handler(sfEvtResized, &wnd_resized);
+	}
+
+	protected void wnd_resized(const sfEvent* evt)
+	{
+		sfView* view = sfView_createFromRect(
+			sfFloatRect(0, 0, evt.size.width, evt.size.height));
+		sfRenderWindow_setView(window.ptr, view);
 	}
 
 	void start()

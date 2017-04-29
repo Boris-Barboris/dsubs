@@ -18,6 +18,8 @@ class Component(string sysname)
 
 	CompState state() { return _state; }
 
+	bool active() { return _state == CompState.ON; }
+
 	CompState setState(CompState new_state)
 	{
 		_state = new_state;
