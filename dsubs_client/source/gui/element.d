@@ -79,23 +79,24 @@ class GuiElement: GuiComponent
 		sfRectangleShape* rect;
 	}
 
-	sfColor backgroud_color = sfColor(255, 255, 255, 15);
+	sfColor backgroud_color = sfTransparent;
 	sfColor border_color = sfWhite;
-	float border_width = 2.0f;
+	float border_width = 1.0f;
+	bool is_rendered = true;
 
 	override void draw(Window wnd)
 	{
-		// TODO: optimise, no need to push all this every frame
-		sfRectangleShape_setPosition(rect, position.tosf);
-		sfRectangleShape_setSize(rect, size.tosf);
-		sfRectangleShape_setOutlineThickness(rect, border_width);
-		sfRectangleShape_setOutlineColor(rect, border_color);
-		sfRectangleShape_setFillColor(rect, backgroud_color);
+		if (is_rendered)
+		{
+			// TODO: optimise, no need to push all this every frame
+			sfRectangleShape_setPosition(rect, position.tosf);
+			sfRectangleShape_setSize(rect, size.tosf);
+			sfRectangleShape_setOutlineThickness(rect, border_width);
+			sfRectangleShape_setOutlineColor(rect, border_color);
+			sfRectangleShape_setFillColor(rect, backgroud_color);
 
-		sfRenderStates states;
-		states.blendMode = sfBlendAlpha;
-		states.transform = sfTransform_Identity;
-		sfRenderWindow_drawRectangleShape(wnd.ptr, rect, &states);
+			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, null);
+		}
 	}
 }
 
