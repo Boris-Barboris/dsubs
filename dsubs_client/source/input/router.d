@@ -28,6 +28,7 @@ class Router
 	IWindowEventHandler gui_router;
 	IWindowEventHandler overlay_router;
 	IWindowEventHandler world_router;
+	IWindowEventHandler hotkey_router;
 
 	Window window() { return _window; }
 
@@ -57,5 +58,8 @@ class Router
 		if (!res.passThrough)
 			return;
 		res = world_router.handleEvent(this, evt);
+		if (!res.passThrough)
+			return;
+		hotkey_router.handleEvent(this, evt);
 	}
 }
