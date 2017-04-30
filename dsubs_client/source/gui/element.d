@@ -37,6 +37,22 @@ class GuiElement: GuiComponent
 		SizeType _sizeType = SizeType.GREEDY;
 	}
 
+	/// Mixins to reduce boilerplate
+	protected mixin template ElementAccessor(ElType, T, string field_name, string update_code)
+	{
+		mixin(T.stringof ~ " " ~ field_name ~ "() { return _" ~ field_name ~ ";};");
+		mixin(ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
+			"{ _" ~ field_name ~ "=val;" ~ update_code ~ "return this;}");
+	}
+
+	protected mixin template SuperAccessor(ElType, T, string field_name, string update_code)
+	{
+		mixin("override " ~ T.stringof ~ " " ~ field_name ~
+			"() { return _" ~ field_name ~ ";};");
+		mixin("override " ~ ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
+			"{ super." ~ field_name ~ "(val);" ~ update_code ~ "return this;}");
+	}
+
 	this(GuiManager manager)
 	{
 		super(manager);
@@ -48,46 +64,20 @@ class GuiElement: GuiComponent
 	// Called by child when it has changed somehow
 	void child_changed(GuiElement child) {}
 
-	// position in tree-space
-	vec2f position() { return _position; }
+	mixin ElementAccessor!(GuiElement, vec2f, "position",
+		"_visuals_dirty = true;");
 
-	GuiElement position(vec2f val)
-	{
-		_position = val;
-		_visuals_dirty = true;
-		return this;
-	}
-
-	vec2f size() { return _size; }
-
-	GuiElement size(vec2f size)
-	{
-		_size = size;
-		if (_sizeType == SizeType.FIXED && _parent)
+	mixin ElementAccessor!(GuiElement, vec2f, "size",
+		"if (_sizeType == SizeType.FIXED && _parent)
 			_parent.child_changed(this);
-		_visuals_dirty = true;
-		return this;
-	}
+		_visuals_dirty = true;");
 
-	float fraction() { return _fraction; }
-
-	GuiElement fraction(float val)
-	{
-		_fraction = val;
-		if (_sizeType == SizeType.FRACT && _parent)
+	mixin ElementAccessor!(GuiElement, float, "fraction",
+		"if (_sizeType == SizeType.FRACT && _parent)
 			_parent.child_changed(this);
-		_visuals_dirty = true;
-		return this;
-	}
+		_visuals_dirty = true;");
 
-	// type of division
-	SizeType sizeType() { return _sizeType; }
-
-	GuiElement sizeType(SizeType val)
-	{
-		_sizeType = val;
-		return this;
-	}
+	mixin ElementAccessor!(GuiElement, SizeType, "sizeType", "");
 
 	/// Return deepest GuiElement that contains the point, null otherwise.
 	GuiElement get_from_point(vec2f point)
@@ -108,7 +98,7 @@ class GuiElement: GuiComponent
 		sfRectangleShape* rect;
 	}
 
-	bool visible = true;
+	bool _visible = true;
 
 	protected
 	{
@@ -118,30 +108,22 @@ class GuiElement: GuiComponent
 		bool _visuals_dirty = true;
 	}
 
-	sfColor backgroud_color() { return _backgroud_color; }
+	mixin ElementAccessor!(GuiElement, sfColor, "backgroud_color",
+		"_visuals_dirty = true;");
 
-	GuiElement backgroud_color(sfColor val)
-	{
-		_backgroud_color = val;
-		_visuals_dirty = true;
-		return this;
-	}
+	mixin ElementAccessor!(GuiElement, sfColor, "border_color",
+		"_visuals_dirty = true;");
 
-	sfColor border_color() { return _border_color; }
+	mixin ElementAccessor!(GuiElement, float, "border_width",
+		"_visuals_dirty = true;");
 
-	GuiElement border_color(sfColor val)
-	{
-		_border_color = val;
-		_visuals_dirty = true;
-		return this;
-	}
+	mixin ElementAccessor!(GuiElement, bool, "visible", "");
 
 	/// Update rendering-related parameters from state
 	void update_visual()
 	{
 		sfRectangleShape_setPosition(rect, tosf(_position));
 		sfVector2f new_size = tosf(_size);
-		new_size.x -= 1; new_size.y -= 1;	// border shenanigans
 		sfRectangleShape_setSize(rect, new_size);
 		sfRectangleShape_setOutlineThickness(rect, _border_width);
 		sfRectangleShape_setOutlineColor(rect, _border_color);
@@ -171,7 +153,7 @@ enum DivType
 }
 
 /// Divider
-class Div(DivType dType): GuiElement
+class Div(uint dim, uint odim): GuiElement
 {
 	protected GuiElement[] children;
 
@@ -185,37 +167,20 @@ class Div(DivType dType): GuiElement
 		update_children();
 	}
 
-	// type of division
-	immutable DivType divType = dType;
-
-	override vec2f position() { return _position; }
-
-	override Div!dType position(vec2f val)
+	static if (dim == 0)
 	{
-		super.position(val);
-		update_children();
-		return this;
+		immutable DivType divType = DivType.HORZ;
+	}
+	static if (dim == 1)
+	{
+		immutable DivType divType = DivType.VERT;
 	}
 
-	override vec2f size() { return _size; }
+	mixin SuperAccessor!(Div!(dim, odim), vec2f, "position",
+		"update_children();");
 
-	override Div!dType size(vec2f val)
-	{
-		super.size(val);
-		update_children();
-		return this;
-	}
-
-	static if (dType == DivType.HORZ)
-	{
-		enum dim = 0;
-		enum odim = 1;
-	}
-	else
-	{
-		enum dim = 1;
-		enum odim = 0;
-	}
+	mixin SuperAccessor!(Div!(dim, odim), vec2f, "size",
+		"update_children();");
 
 	// anti-recusrion flag.
 	protected bool _updating_children = true;
@@ -314,8 +279,8 @@ class Div(DivType dType): GuiElement
 	}
 }
 
-alias HDiv = Div!(DivType.HORZ);
-alias VDiv = Div!(DivType.VERT);
+alias HDiv = Div!(0, 1);
+alias VDiv = Div!(1, 0);
 
 unittest
 {

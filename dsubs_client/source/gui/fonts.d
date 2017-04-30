@@ -13,6 +13,7 @@ static this()
 {
 	font_files = [
 		"Sans": "fonts/LiberationSans-Regular.ttf",
+		"SansMono": "fonts/LiberationMono-Regular.ttf",
 	];
 }
 
@@ -28,4 +29,5 @@ void load_fonts()
 		sfFont* font = sfFont_createFromFile(cstr);
 		loadedFonts[name] = font;
 	}
+	_fonts_loaded = true;
 }

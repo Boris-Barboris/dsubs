@@ -8,6 +8,6 @@ import dsubs_client.tests;
 int main(string[] argv)
 {
 	info("Unit tests OK");
-	test_div_render();
+	test_menu_layout();
 	return 0;
 }
