@@ -48,7 +48,11 @@ void test_div_render()
 	Render render = new Render(wnd);
 	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	GuiManager mgr = new GuiManager();
-	auto div = new HDiv(mgr, vec2f(300, 200));
+	auto div =
+		new HDiv(mgr,
+			new GuiElement(mgr),
+			new GuiElement(mgr)
+		).sizeType(SizeType.FIXED).size(vec2f(400, 200));
 	mgr.addAsPanel(div);
 	render.gui_render = mgr;
 	render.start();

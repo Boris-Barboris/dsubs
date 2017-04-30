@@ -15,8 +15,8 @@ interface IWindowDrawer
 	void draw(Render ctx, Window wnd);
 }
 
-// move to config
-sfColor clear_color = sfColor(24, 24, 24, 255);
+// TODO: move to config
+sfColor clear_color = sfColor(28, 28, 28, 255);
 
 /// Rendering context, renders one window.
 class Render
@@ -49,7 +49,7 @@ class Render
 		info("Deactivating window GL context in parent thread...");
 		sfRenderWindow_setActive(window.ptr, false);
 		info("OK");
-		info("Starting render...");
+		info("Starting render thread...");
 		worker = new Thread(&render).start();
 		info("OK");
 	}
@@ -60,7 +60,8 @@ class Render
 	void stop()
 	{
 		stop_flag = true;
-		worker.join();
+		if (worker)
+			worker.join();
 	}
 
 	// Thread function

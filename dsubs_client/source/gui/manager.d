@@ -26,7 +26,7 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer
 {
 	void draw(Render ctx, Window wnd)
 	{
-		// we render from deepest elements
+		// deepest panels first
 		foreach (panel; panels)
 		{
 			if (!panel.active)
