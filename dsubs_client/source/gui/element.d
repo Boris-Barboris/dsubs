@@ -23,7 +23,7 @@ enum SizeType
 }
 
 /// GUI tree element. This is not an abstract class, just an empty rectangle.
-class GuiElement: GuiComponent
+class GuiElement: Component!"Gui"
 {
 	package GuiElement _parent;		// TODO: protected
 	protected
@@ -131,7 +131,7 @@ class GuiElement: GuiComponent
 		sfRectangleShape_setFillColor(rect, _backgroud_color);
 	}
 
-	override void draw(Window wnd)
+	void draw(Window wnd)
 	{
 		if (visible)
 		{
@@ -139,6 +139,22 @@ class GuiElement: GuiComponent
 				update_visual();
 			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, null);
 		}
+	}
+
+	// Event handling
+	GuiHandleResult handleMousePosEvent(const sfEvent* evt,
+		int x, int y, sfMouseButton btn, int delta)
+	{
+		return GuiHandleResult(false, get_from_point(vec2f(x, y)));
+	}
+
+	void handleMouseEnter() {}
+
+	void handleMouseLeave() {}
+
+	GuiHandleResult handleKeyboard(const sfEvent* evt)
+	{
+		return GuiHandleResult();
 	}
 }
 

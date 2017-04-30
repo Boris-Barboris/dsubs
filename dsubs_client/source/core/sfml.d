@@ -5,8 +5,8 @@ import std.experimental.logger;
 
 import gfm.math.vector;
 
-import derelict.sfml2.system;
-import derelict.sfml2.window;
+public import derelict.sfml2.system;
+public import derelict.sfml2.window;
 import derelict.sfml2.audio;
 import derelict.sfml2.graphics;
 import derelict.sfml2.network;
@@ -23,6 +23,72 @@ void loadSfmlLibraries()
 	info("OK");
 }
 
+// event stuff
+
+bool isMousePosEvent(const sfEvent* evt, out int x, out int y,
+	out sfMouseButton mbutton, out int wheel_delta)
+{
+	if (evt.type == sfEvtMouseMoved)
+	{
+		x = evt.mouseMove.x;
+		y = evt.mouseMove.y;
+		mbutton = -1;
+		wheel_delta = 0;
+		return true;
+	}
+	if (evt.type == sfEvtMouseButtonPressed)
+	{
+		x = evt.mouseButton.x;
+		y = evt.mouseButton.y;
+		mbutton = evt.mouseButton.button;
+		wheel_delta = 0;
+		return true;
+	}
+	if (evt.type == sfEvtMouseButtonReleased)
+	{
+		x = evt.mouseButton.x;
+		y = evt.mouseButton.y;
+		mbutton = evt.mouseButton.button;
+		wheel_delta = 0;
+		return true;
+	}
+	if (evt.type == sfEvtMouseWheelMoved)
+	{
+		x = evt.mouseWheel.x;
+		y = evt.mouseWheel.y;
+		mbutton = -1;
+		wheel_delta = evt.mouseWheel.delta;
+		return true;
+	}
+	return false;
+}
+
+bool isMousePosEvent(const sfEvent* evt)
+{
+	return (evt.type == sfEvtMouseMoved ||
+			evt.type == sfEvtMouseButtonPressed ||
+			evt.type == sfEvtMouseButtonReleased ||
+			evt.type == sfEvtMouseWheelMoved)
+}
+
+bool isMouseEvent(const sfEvent* evt)
+{
+	return (isMousePosEvent(evt) ||
+			isMouseEnterLeave(evt));
+}
+
+bool isMouseEnterLeave(const sfEvent* evt)
+{
+	return (evt.type == sfEvtMouseEntered ||
+			evt.type == sfEvtMouseLeft);
+}
+
+bool isKeyboardEvent(const sfEvent* evt)
+{
+	return (evt.type == sfEvtTextEntered ||
+			evt.type == sfEvtKeyPressed ||
+			evt.type == sfEvtKeyReleased);
+}
 
 // conversions
 sfVector2f tosf(const vec2f v)

@@ -148,6 +148,27 @@ class Div(uint dim, uint odim): GuiElement
 		else
 			return null;
 	}
+
+	// Event handling
+	HandleResult handleEvent(const sfEvent* evt)
+	{
+		vec2f mouse_pos;
+		case (evt.type)
+		{
+			case (sfEvtMouseMoved):
+				mouse_pos = vec2f(evt.mouseMove.x, evt.mouseMove.y)
+				goto case 100;
+				break;
+			case (sfEvtMouseButtonPressed):
+				break;
+			case (sfEvtMouseButtonReleased):
+				break;
+			case (sfEvtMouseWheelMoved):
+				break;
+			case (100):
+				// case when we actually are handling mouse event
+		}
+	}
 }
 
 alias HDiv = Div!(0, 1);
