@@ -14,11 +14,18 @@ enum CompState: ubyte
 
 class Component(string sysname)
 {
-	protected CompState _state;
+	protected CompState _state = CompState.ON;
 
 	CompState state() { return _state; }
 
+	Component state(CompState val)
+	{
+		_state = val;
+		return this;
+	}
+
 	bool active() { return _state == CompState.ON; }
+	bool deleted() { return _state == CompState.DELETED; }
 
 	CompState setState(CompState new_state)
 	{
@@ -31,12 +38,7 @@ class Component(string sysname)
 
 	this(ManagerType manager)
 	{
-		_state = CompState.ON;
 		_manager = manager;
-		synchronized (manager)
-		{
-			_manager.components ~= this;
-		}
 	}
 }
 
@@ -44,31 +46,7 @@ class ComponentManager(string sysname)
 {
 	alias ComponentType = Component!sysname;
 
-	protected ComponentType[] components;
-
 	/// Remove disposed components and recreate components array. Don't call this
 	/// frequently.
-	uint clear_disposed()
-	{
-		synchronized (this)
-		{
-			auto old_comps = components;
-			components = array(remove!(a => a.state == CompState.DELETED)(components));
-			return old_comps.length - components.length;
-		}
-	}
-
-	// get range containing active components
-	auto active_comps()
-	{
-		return filter!(a => a.state == CompState.ON)(components);
-	}
-}
-
-
-unittest
-{
-	auto mgr = new ComponentManager!"test"();
-	auto cmp = new Component!"test"(mgr);
-	assert(mgr.active_comps.takeOne[0] is cmp);
+	abstract void clear_disposed();
 }

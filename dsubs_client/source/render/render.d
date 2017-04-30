@@ -21,17 +21,19 @@ sfColor clear_color = sfColor(28, 28, 28, 255);
 /// Rendering context, renders one window.
 class Render
 {
-	Window window;
+	protected Window _window;
 	IWindowDrawer gui_render;
 	IWindowDrawer overlay_render;
 	IWindowDrawer world_render;
+
+	Window window() { return _window; }
 
 	protected Thread worker;    // rendering thread
 	protected bool stop_flag;	// true when stop was requested
 
 	this(Window wnd)
 	{
-		window = wnd;
+		_window = wnd;
 		wnd.register_handler(sfEvtResized, &wnd_resized);
 	}
 
@@ -39,7 +41,7 @@ class Render
 	{
 		sfView* view = sfView_createFromRect(
 			sfFloatRect(0, 0, evt.size.width, evt.size.height));
-		sfRenderWindow_setView(window.ptr, view);
+		sfRenderWindow_setView(_window.ptr, view);
 	}
 
 	void start()
@@ -47,7 +49,7 @@ class Render
 		if (worker)
 			throw new Exception("Render already started");
 		info("Deactivating window GL context in parent thread...");
-		sfRenderWindow_setActive(window.ptr, false);
+		sfRenderWindow_setActive(_window.ptr, false);
 		info("OK");
 		info("Starting render thread...");
 		worker = new Thread(&render).start();
@@ -69,14 +71,14 @@ class Render
 	{
 		while (!stop_flag)
 		{
-			sfRenderWindow_clear(window.ptr, clear_color);
+			sfRenderWindow_clear(_window.ptr, clear_color);
 			if (world_render)
-				world_render.draw(this, window);
+				world_render.draw(this, _window);
 			if (overlay_render)
-				overlay_render.draw(this, window);
+				overlay_render.draw(this, _window);
 			if (gui_render)
-				gui_render.draw(this, window);
-			sfRenderWindow_display(window.ptr);		// present backbuffer
+				gui_render.draw(this, _window);
+			sfRenderWindow_display(_window.ptr);		// present backbuffer
 		}
 		info("Terminating Render, stop_flag is ", stop_flag);
 		worker = null;

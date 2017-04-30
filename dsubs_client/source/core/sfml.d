@@ -25,9 +25,9 @@ void loadSfmlLibraries()
 
 
 // conversions
-auto ref sfVector2f tosf(ref vec2f v)
+sfVector2f tosf(const vec2f v)
 {
-	return *(cast(sfVector2f*)(&v));
+	return sfVector2f(v.x, v.y);
 }
 
 sfVector2f tosf(const vec2d v)

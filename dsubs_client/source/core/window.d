@@ -1,5 +1,7 @@
 module dsubs_client.core.window;
 
+import std.algorithm;
+import std.array;
 import std.conv;
 import std.experimental.logger;
 
@@ -57,6 +59,11 @@ class Window
 	void register_handler(sfEventType type, sfEventHandler handler)
 	{
 		event_handlers[type] ~= handler;
+	}
+
+	void unregister_handler(sfEventType type, sfEventHandler handler)
+	{
+		event_handlers[type] = array(remove!(a => a == handler)(event_handlers[type]));
 	}
 
 	/// Function polls all events in window buffer and calls respective

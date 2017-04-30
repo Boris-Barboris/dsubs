@@ -7,6 +7,7 @@ import dsubs_client.core.window;
 import dsubs_client.render.render;
 import dsubs_client.gui.manager;
 import dsubs_client.gui.element;
+import dsubs_client.gui.div;
 import dsubs_client.gui.label;
 
 
