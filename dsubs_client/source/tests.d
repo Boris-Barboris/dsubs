@@ -112,26 +112,32 @@ void test_menu_routing()
 	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	GuiManager mgr = new GuiManager();
 	Button exitBtn = new Button(mgr).content("Exit").font_size(20).asButton;
-	auto menu =
+	VDiv menu =
+		new VDiv(mgr,
+			new Label(mgr).content("DSUBS").font_size(40).sizeType(SizeType.FIXED).
+				size(vec2f(0.0f, 100.0f)),
+			new Label(mgr).content("Connect").font_size(20),
+			new Label(mgr).content("Options").font_size(20),
+			exitBtn,
+		).sizeType(SizeType.FIXED).size(vec2f(300, 0)).asVdiv;
+	auto panel =
 		new VDiv(mgr,
 			new GuiElement(mgr),
-			new VDiv(mgr,
-				new Label(mgr).content("DSUBS").font_size(40).sizeType(SizeType.FIXED).
-					size(vec2f(0.0f, 100.0f)),
-				new Label(mgr).content("Connect").font_size(20),
-				new Label(mgr).content("Options").font_size(20),
-				exitBtn
-				).sizeType(SizeType.FIXED).size(vec2f(0.0, 250.0)),
+			new HDiv(mgr,
+				new GuiElement(mgr),
+				menu,
+				new GuiElement(mgr),
+			).sizeType(SizeType.FIXED).size(vec2f(0, 250)),
 			new GuiElement(mgr),
 		).sizeType(SizeType.FIXED).size(vec2f(wnd.width, wnd.height));
-	mgr.addAsPanel(menu);
+	mgr.addAsPanel(panel);
 	wnd.register_handler(sfEvtResized,
-		(const sfEvent* a) {menu.size(vec2f(a.size.width, a.size.height));});
+		(const sfEvent* a) {panel.size(vec2f(a.size.width, a.size.height));});
 	render.gui_render = mgr;
 	// events
 	Router router = new Router(wnd);
 	router.gui_router = mgr;
-	foreach (lbl; menu.asVdiv.children[1].asVdiv.children)
+	foreach (lbl; menu.children)
 	{
 		Label l = lbl.asLabel;
 		log("Registering ", l.content);

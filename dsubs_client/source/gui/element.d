@@ -70,6 +70,8 @@ class GuiElement: Component!"Gui"
 	/// Return deepest GuiElement that contains the point, null otherwise.
 	GuiElement get_from_point(vec2f point)
 	{
+		if (!this.active)
+			return null;
 		if ((point.x >= position.x && point.x < position.x + size.x) &&
 			(point.y >= position.y && point.y < position.y + size.y))
 			return this;
@@ -171,6 +173,8 @@ class GuiElement: Component!"Gui"
 
 	package GuiHandleResult handleKeyboard(const sfEvent* evt)
 	{
+		if (!this.active)
+			return GuiHandleResult(true, null);
 		switch (evt.type)
 		{
 			case (sfEvtKeyPressed):
