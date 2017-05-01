@@ -9,6 +9,7 @@ import dsubs_client.gui.manager;
 import dsubs_client.gui.element;
 import dsubs_client.gui.div;
 import dsubs_client.gui.label;
+import dsubs_client.gui.button;
 import dsubs_client.input.router;
 
 
@@ -110,6 +111,7 @@ void test_menu_routing()
 	Render render = new Render(wnd);
 	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	GuiManager mgr = new GuiManager();
+	Button exitBtn = new Button(mgr).content("Exit").font_size(20).asButton;
 	auto menu =
 		new VDiv(mgr,
 			new GuiElement(mgr),
@@ -118,7 +120,7 @@ void test_menu_routing()
 					size(vec2f(0.0f, 100.0f)),
 				new Label(mgr).content("Connect").font_size(20),
 				new Label(mgr).content("Options").font_size(20),
-				new Label(mgr).content("Exit").font_size(20)
+				exitBtn
 				).sizeType(SizeType.FIXED).size(vec2f(0.0, 250.0)),
 			new GuiElement(mgr),
 		).sizeType(SizeType.FIXED).size(vec2f(wnd.width, wnd.height));
@@ -133,15 +135,23 @@ void test_menu_routing()
 	{
 		Label l = lbl.asLabel;
 		log("Registering ", l.content);
-		auto captureEnter(Label l) { return (GuiElement s){log("Enter ", l.content); l.font_color(sfRed);};}
+		auto captureEnter(Label l)
+		{
+			return (GuiElement s)
+				{
+					log("Enter ", l.content);
+					l.font_color(sfColor(255, 150, 150, 255));
+				};
+		}
 		auto captureLeave(Label l) { return (GuiElement s){log("Leave ", l.content); l.font_color(sfWhite);};}
-		l.onMouseEnter = captureEnter(l);
-		l.onMouseLeave = captureLeave(l);
+		l.onMouseEnter += captureEnter(l);
+		l.onMouseLeave += captureLeave(l);
 	}
+	exitBtn.onClick += (Button s, sfMouseButton btn) { log("Clicked ", s.content); };
+	exitBtn.onClick += (Button s, sfMouseButton btn) { wnd.close_window(); };
 	// go
 	render.start();
 	while (!close)
 		wnd.poll_events();
-	wnd.close_window();
 	info("OK");
 }

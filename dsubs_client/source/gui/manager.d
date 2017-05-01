@@ -1,6 +1,5 @@
 module dsubs_client.gui.manager;
 
-import std.container: DList;
 import std.experimental.logger;
 import std.algorithm;
 import std.range;
@@ -9,7 +8,9 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.window;
 
 public import dsubs_client.core.component;
+import dsubs_client.containers.dlist;
 import dsubs_client.core.sfml;
+import dsubs_client.core.utils;
 public import dsubs_client.gui.element;
 import dsubs_client.input.router;
 import dsubs_client.render.render;
@@ -137,7 +138,7 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 	{
 		synchronized (this)
 		{
-			panels = DList!Panel(remove!(a => a.root.deleted)(panels[]));
+			panels.removePred(a => a.root.deleted);
 		}
 	}
 
