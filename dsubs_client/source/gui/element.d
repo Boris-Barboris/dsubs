@@ -12,6 +12,7 @@ import derelict.sfml2.window;
 public import dsubs_client.core.event;
 import dsubs_client.core.sfml;		// for conversions
 import dsubs_client.core.window;
+public import dsubs_client.core.utils;
 import dsubs_client.gui.manager;
 
 
@@ -34,31 +35,6 @@ class GuiElement: Component!"Gui"
 		vec2f _size = vec2f(0, 0);
 		float _fraction = 0.0;
 		SizeType _sizeType = SizeType.GREEDY;
-	}
-
-	/// Mixins to reduce boilerplate
-
-	protected mixin template ElementAccessor(ElType, T, string field_name, string update_code)
-	{
-		mixin(T.stringof ~ " " ~ field_name ~ "() { return _" ~ field_name ~ ";};");
-		mixin(ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
-			"{ _" ~ field_name ~ "=val;" ~ update_code ~ "return this;}");
-	}
-
-	protected mixin template SuperAccessor(ElType, T, string field_name, string update_code)
-	{
-		mixin("override " ~ T.stringof ~ " " ~ field_name ~
-			"() { return _" ~ field_name ~ ";};");
-		mixin("override " ~ ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
-			"{ super." ~ field_name ~ "(val);" ~ update_code ~ "return this;}");
-	}
-
-	protected mixin template OverrideAccessor(ElType, T, string field_name, string update_code)
-	{
-		mixin("override " ~ T.stringof ~ " " ~ field_name ~
-			"() { return _" ~ field_name ~ ";};");
-		mixin("override " ~ ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
-			"{ _" ~ field_name ~ "=val;" ~ update_code ~ "return this;}");
 	}
 
 	this(GuiManager manager)
