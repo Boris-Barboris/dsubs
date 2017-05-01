@@ -9,6 +9,7 @@ import dsubs_client.gui.manager;
 import dsubs_client.gui.element;
 import dsubs_client.gui.div;
 import dsubs_client.gui.label;
+import dsubs_client.input.router;
 
 
 void test_window()
@@ -91,6 +92,53 @@ void test_menu_layout()
 	wnd.register_handler(sfEvtResized,
 		(const sfEvent* a) {menu.size(vec2f(a.size.width, a.size.height));});
 	render.gui_render = mgr;
+	render.start();
+	while (!close)
+		wnd.poll_events();
+	wnd.close_window();
+	info("OK");
+}
+
+
+void test_menu_routing()
+{
+	info("test_menu_routing...");
+	loadSfmlLibraries();
+	Window wnd = new Window();
+	bool close = false;
+	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { close = true; });
+	Render render = new Render(wnd);
+	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
+	GuiManager mgr = new GuiManager();
+	auto menu =
+		new VDiv(mgr,
+			new GuiElement(mgr),
+			new VDiv(mgr,
+				new Label(mgr).content("DSUBS").font_size(40).sizeType(SizeType.FIXED).
+					size(vec2f(0.0f, 100.0f)),
+				new Label(mgr).content("Connect").font_size(20),
+				new Label(mgr).content("Options").font_size(20),
+				new Label(mgr).content("Exit").font_size(20)
+				).sizeType(SizeType.FIXED).size(vec2f(0.0, 250.0)),
+			new GuiElement(mgr),
+		).sizeType(SizeType.FIXED).size(vec2f(wnd.width, wnd.height));
+	mgr.addAsPanel(menu);
+	wnd.register_handler(sfEvtResized,
+		(const sfEvent* a) {menu.size(vec2f(a.size.width, a.size.height));});
+	render.gui_render = mgr;
+	// events
+	Router router = new Router(wnd);
+	router.gui_router = mgr;
+	foreach (lbl; menu.asVdiv.children[1].asVdiv.children)
+	{
+		Label l = lbl.asLabel;
+		log("Registering ", l.content);
+		auto captureEnter(Label l) { return (GuiElement s){log("Enter ", l.content); l.font_color(sfRed);};}
+		auto captureLeave(Label l) { return (GuiElement s){log("Leave ", l.content); l.font_color(sfWhite);};}
+		l.onMouseEnter = captureEnter(l);
+		l.onMouseLeave = captureLeave(l);
+	}
+	// go
 	render.start();
 	while (!close)
 		wnd.poll_events();

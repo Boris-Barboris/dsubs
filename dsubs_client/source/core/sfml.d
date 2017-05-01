@@ -68,7 +68,7 @@ bool isMousePosEvent(const sfEvent* evt)
 	return (evt.type == sfEvtMouseMoved ||
 			evt.type == sfEvtMouseButtonPressed ||
 			evt.type == sfEvtMouseButtonReleased ||
-			evt.type == sfEvtMouseWheelMoved)
+			evt.type == sfEvtMouseWheelMoved);
 }
 
 bool isMouseEvent(const sfEvent* evt)

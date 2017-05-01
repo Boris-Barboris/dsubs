@@ -1,6 +1,7 @@
 module dsubs_client.gui.div;
 
 import std.algorithm;
+import std.experimental.logger;
 import std.math;
 import std.meta;
 
@@ -25,7 +26,7 @@ enum DivType
 /// Divider
 class Div(uint dim, uint odim): GuiElement
 {
-	protected GuiElement[] children;
+	GuiElement[] children;
 
 	this(Children...)(GuiManager manager, Children kids)
 		if (allSatisfy!(isGuiElement, Children))
@@ -134,6 +135,7 @@ class Div(uint dim, uint odim): GuiElement
 				return this;
 			float offset = point[dim] - _position[dim];
 			float cursor = 0.0;
+			int cycle = 0;
 			foreach (kid; filter!(a => a.active)(children))
 			{
 				auto check = kid.get_from_point(point);
@@ -142,37 +144,27 @@ class Div(uint dim, uint odim): GuiElement
 				cursor += kid.size[dim];
 				if (cursor > offset)
 					return this;
+				cycle++;
 			}
 			return this;
 		}
 		else
 			return null;
 	}
-
-	// Event handling
-	HandleResult handleEvent(const sfEvent* evt)
-	{
-		vec2f mouse_pos;
-		case (evt.type)
-		{
-			case (sfEvtMouseMoved):
-				mouse_pos = vec2f(evt.mouseMove.x, evt.mouseMove.y)
-				goto case 100;
-				break;
-			case (sfEvtMouseButtonPressed):
-				break;
-			case (sfEvtMouseButtonReleased):
-				break;
-			case (sfEvtMouseWheelMoved):
-				break;
-			case (100):
-				// case when we actually are handling mouse event
-		}
-	}
 }
 
 alias HDiv = Div!(0, 1);
 alias VDiv = Div!(1, 0);
+
+HDiv asHdiv(GuiElement el)
+{
+	return cast(HDiv) el;
+}
+
+VDiv asVdiv(GuiElement el)
+{
+	return cast(VDiv) el;
+}
 
 unittest
 {
@@ -190,8 +182,8 @@ unittest
 	assert(fabs(frame.children[0].size.y - 480.0) < 1e-6);
 	assert(fabs(frame.children[1].size.y - 480.0) < 1e-6);
 	assert(fabs(frame.children[2].size.y - 480.0) < 1e-6);
-	assert(frame.get_from_point(vec2f(100.0, 50.0)) is frame.children[0]);
-	assert(frame.get_from_point(vec2f(410.0, 300.0)) is frame.children[1]);
-	assert(frame.get_from_point(vec2f(635.999, 300.0)) is frame.children[2]);
+	assert(frame.get_from_point(vec2f(100.0, 50.0)) == frame.children[0]);
+	assert(frame.get_from_point(vec2f(410.0, 300.0)) == frame.children[1]);
+	assert(frame.get_from_point(vec2f(635.999, 300.0)) == frame.children[2]);
 	assert(frame.get_from_point(vec2f(640.0, 400.0)) is null);
 }

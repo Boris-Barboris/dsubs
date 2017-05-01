@@ -1,4 +1,4 @@
-module dsubs_client.input.inputhandler;
+module dsubs_client.input.router;
 
 import std.experimental.logger;
 
@@ -51,15 +51,26 @@ class Router
 
 	void route_event(const sfEvent* evt)
 	{
-		HandleResult res = gui_router.handleEvent(this, evt);
-		if (!res.passThrough)
-			return;
-		res = overlay_router.handleEvent(this, evt);
-		if (!res.passThrough)
-			return;
-		res = world_router.handleEvent(this, evt);
-		if (!res.passThrough)
-			return;
-		hotkey_router.handleEvent(this, evt);
+		HandleResult res;
+		if (gui_router)
+		{
+			res = gui_router.handleEvent(this, evt);
+			if (!res.passThrough)
+				return;
+		}
+		if (overlay_router)
+		{
+			res = overlay_router.handleEvent(this, evt);
+			if (!res.passThrough)
+				return;
+		}
+		if (world_router)
+		{
+			res = world_router.handleEvent(this, evt);
+			if (!res.passThrough)
+				return;
+		}
+		if (hotkey_router)
+			hotkey_router.handleEvent(this, evt);
 	}
 }

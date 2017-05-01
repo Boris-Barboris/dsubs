@@ -10,6 +10,7 @@ import derelict.sfml2.window;
 
 public import dsubs_client.core.component;
 import dsubs_client.core.sfml;
+public import dsubs_client.gui.element;
 import dsubs_client.input.router;
 import dsubs_client.render.render;
 
@@ -18,8 +19,14 @@ struct GuiHandleResult
 {
 	// result to return to router
 	HandleResult res;
-	// component that captured the event, null if was not captured
+	// component that captured the event, null otherwise
 	GuiElement interceptor;
+
+	this(bool pass, GuiElement intec)
+	{
+		res = HandleResult(pass);
+		interceptor = intec;
+	}
 }
 
 // Root of gui element tree, that is stored in the manager
@@ -28,7 +35,7 @@ class Panel
 	GuiElement root;
 
 	// last mouse event reciever, that will be tried first
-	private GuiElement mouse_event_cache;
+	package GuiElement mouse_event_cache;
 
 	this(GuiElement root)
 	{
@@ -37,7 +44,7 @@ class Panel
 
 	void draw(Window wnd) { root.draw(wnd); }
 
-	void GuiHandleResult handleEvent(const sfEvent* evt)
+	GuiHandleResult handleEvent(const sfEvent* evt)
 	{
 		int x, y, delta;
 		sfMouseButton btn;
@@ -46,24 +53,48 @@ class Panel
 			// it's mouse-related positioned event
 			GuiHandleResult res;
 			if (mouse_event_cache)
-				res = mouse_event_cache.handleEvent(evt, x, y, btn, delta);
+			{
+				res = mouse_event_cache.handleMousePosEvent(evt, x, y, btn, delta);
+				if (res.interceptor)
+				{
+					// cache hit
+					if (mouse_event_cache != res.interceptor)
+					{
+						// mouse switched from one element to another
+						mouse_event_cache.handleMouseLeave();
+						res.interceptor.handleMouseEnter();
+						mouse_event_cache = res.interceptor;
+					}
+					return res;
+				}
+				else
+				{
+					// cache miss
+					log("Panel mouse cache miss");
+					mouse_event_cache.handleMouseLeave();
+					mouse_event_cache = null;
+				}
+			}
+			// no cached handler
+			res = root.handleMousePosEvent(evt, x, y, btn, delta);
 			if (res.interceptor)
 			{
-				// cache hit
-				mouse_event_cache = res.interceptor;	// do we need this?
-				return res;
-			}
-			// cache miss
-			res = root.handleEvent(evt, x, y, btn, delta);
-			if (res.interceptor)
 				mouse_event_cache = res.interceptor;
-			else
-				mouse_event_cache = null;	// we're outside of a panel probably
+				mouse_event_cache.handleMouseEnter();
+			}
 			return res;
+		}
+		if (evt.type == sfEvtMouseLeft)
+		{
+			if (mouse_event_cache)
+			{
+				mouse_event_cache.handleMouseLeave();
+				mouse_event_cache = null;
+			}
 		}
 		// we don't handle any other events in trees. Keyboard input is done via
 		// focus mechanics
-		return GuiHandleResult(HandleResult(), null);
+		return GuiHandleResult(true, null);
 	}
 }
 
@@ -81,6 +112,11 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 	auto active_panels()
 	{
 		return filter!(a => a.root.active)(panels[]);
+	}
+
+	auto retro_active_panels()
+	{
+		return filter!(a => a.root.active)(retro(panels[]));
 	}
 
 	// Z-ordered list of GuiElement tree roots. They may be windows, may be
@@ -114,22 +150,23 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 			// keyboard event, pass it to focused element if possible
 			if (kb_focus)
 				return kb_focus.handleKeyboard(evt).res;
+			return HandleResult();
 		}
 		// Handle events from top to bottom
-		foreach (panel; retro(active_panels))
+		foreach (panel; retro_active_panels)
 		{
 			res = panel.handleEvent(evt);
 			if (res.interceptor)
 			{
-				// there was actual entity, that captured the event. Stop here.
+				// there was an actual entity, that captured the event.
 				return res.res;
 			}
-			if (!res.passThrough)
+			if (!res.res.passThrough)
 				return res.res;
 		}
 		return HandleResult();
 	}
 
-	// element that has keyboard focus, and will recieve Text events
+	// element that has keyboard focus, and will recieve Text events.
 	GuiElement kb_focus;
 }

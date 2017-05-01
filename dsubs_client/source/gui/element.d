@@ -1,6 +1,7 @@
 module dsubs_client.gui.element;
 
 import std.algorithm;
+import std.experimental.logger;
 
 public import gfm.math.vector;
 
@@ -142,20 +143,86 @@ class GuiElement: Component!"Gui"
 	}
 
 	// Event handling
-	GuiHandleResult handleMousePosEvent(const sfEvent* evt,
+	package GuiHandleResult handleMousePosEvent(const sfEvent* evt,
 		int x, int y, sfMouseButton btn, int delta)
 	{
-		return GuiHandleResult(false, get_from_point(vec2f(x, y)));
+		GuiElement interceptor = get_from_point(vec2f(x, y));
+		if (interceptor == this)
+		{
+			if (btn >= 0)
+			{
+				if (evt.type == sfEvtMouseButtonPressed)
+				{
+					// default behaviour of unsetting focus
+					GuiManager m = cast(GuiManager) _manager;
+					if (m.kb_focus && (m.kb_focus != this))
+						m.kb_focus = null;
+					if (onMouseDown)
+						onMouseDown(this, x, y, btn);
+				}
+				if (evt.type == sfEvtMouseButtonReleased)
+					if (onMouseUp)
+						onMouseUp(this, x, y, btn);
+			}
+			else if (delta != 0)
+			{
+				if (onMouseScroll)
+					onMouseScroll(this, x, y, delta);
+			}
+			else if (onMouseMove)
+			{
+				onMouseMove(this, x, y);
+			}
+			return GuiHandleResult(true, this);
+		}
+		else if (interceptor)
+			return interceptor.handleMousePosEvent(evt, x, y, btn, delta);
+		return GuiHandleResult(true, null);
 	}
 
-	void handleMouseEnter() {}
-
-	void handleMouseLeave() {}
-
-	GuiHandleResult handleKeyboard(const sfEvent* evt)
+	package void handleMouseEnter()
 	{
-		return GuiHandleResult();
+		if (onMouseEnter)
+			onMouseEnter(this);
 	}
+
+	package void handleMouseLeave()
+	{
+		if (onMouseLeave)
+			onMouseLeave(this);
+	}
+
+	package GuiHandleResult handleKeyboard(const sfEvent* evt)
+	{
+		switch (evt.type)
+		{
+			case (sfEvtKeyPressed):
+				if (onKeyPressed)
+					onKeyPressed(this, cast(const sfKeyEvent*) evt);
+				break;
+			case (sfEvtKeyReleased):
+				if (onKeyReleased)
+					onKeyReleased(this, cast(const sfKeyEvent*) evt);
+				break;
+			case (sfEvtTextEntered):
+				if (onTextEntered)
+					onTextEntered(this, cast(const sfTextEvent*) evt);
+				break;
+			default: break;
+		}
+		return GuiHandleResult(false, this);
+	}
+
+	// events for users to subscribe to
+	void delegate(GuiElement sender) onMouseEnter;
+	void delegate(GuiElement sender) onMouseLeave;
+	void delegate(GuiElement sender, int x, int y) onMouseMove;
+	void delegate(GuiElement sender, int x, int y, sfMouseButton btn) onMouseDown;
+	void delegate(GuiElement sender, int x, int y, sfMouseButton btn) onMouseUp;
+	void delegate(GuiElement sender, int x, int y, int delta) onMouseScroll;
+	void delegate(GuiElement sender, const sfKeyEvent* evt) onKeyPressed;
+	void delegate(GuiElement sender, const sfKeyEvent* evt) onKeyReleased;
+	void delegate(GuiElement sender, const sfTextEvent* evt) onTextEntered;
 }
 
 template isGuiElement(T)
