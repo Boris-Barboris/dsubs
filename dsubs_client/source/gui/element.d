@@ -45,7 +45,7 @@ class GuiElement: Component!"Gui"
 
 	GuiElement parent() { return _parent; }
 
-	// When we are disabled, we need to notify parent
+	// When we are disabled or enabled, we need to notify parent
 	mixin SuperAccessor!(GuiElement, CompState, "state",
 		"if (_parent) _parent.child_changed(this);");
 
@@ -66,18 +66,6 @@ class GuiElement: Component!"Gui"
 		_visuals_dirty = true;");
 
 	mixin ElementAccessor!(GuiElement, SizeType, "sizeType", "");
-
-	/// Return deepest GuiElement that contains the point, null otherwise.
-	GuiElement get_from_point(vec2f point)
-	{
-		if (!this.active)
-			return null;
-		if ((point.x >= position.x && point.x < position.x + size.x) &&
-			(point.y >= position.y && point.y < position.y + size.y))
-			return this;
-		else
-			return null;
-	}
 
 	//
 	// rendering stuff
@@ -130,7 +118,22 @@ class GuiElement: Component!"Gui"
 		}
 	}
 
+	//
 	// Event handling
+	//
+
+	/// Return deepest GuiElement that contains the point, null otherwise.
+	GuiElement get_from_point(vec2f point)
+	{
+		if (!this.active)
+			return null;
+		if ((point.x >= position.x && point.x < position.x + size.x) &&
+			(point.y >= position.y && point.y < position.y + size.y))
+			return this;
+		else
+			return null;
+	}
+
 	package GuiHandleResult handleMousePosEvent(const sfEvent* evt,
 		int x, int y, sfMouseButton btn, int delta)
 	{

@@ -8,6 +8,8 @@ import std.experimental.logger;
 public import derelict.sfml2.graphics;
 public import derelict.sfml2.window;
 
+import dsubs_client.core.event;
+
 
 alias sfEventHandler = void delegate(const sfEvent*);
 
@@ -58,12 +60,12 @@ class Window
 
 	void register_handler(sfEventType type, sfEventHandler handler)
 	{
-		event_handlers[type] ~= handler;
+		event_handlers[type] += handler;
 	}
 
 	void unregister_handler(sfEventType type, sfEventHandler handler)
 	{
-		event_handlers[type] = array(remove!(a => a == handler)(event_handlers[type]));
+		event_handlers[type] -= handler;
 	}
 
 	/// Function polls all events in window buffer and calls respective
@@ -72,11 +74,7 @@ class Window
 	{
 		sfEvent event;
 		while (sfRenderWindow_pollEvent(wnd, &event))
-		{
-			sfEventHandler[] handlers = event_handlers[event.type];
-			foreach (h; handlers)
-				h(&event);
-		}
+			event_handlers[event.type](&event);
 	}
 
 	void close_window()
@@ -85,9 +83,7 @@ class Window
 		// Generate artificial close event
 		sfEvent close_event;
 		close_event.type = sfEvtClosed;
-		sfEventHandler[] handlers = event_handlers[close_event.type];
-		foreach (h; handlers)
-			h(&close_event);
+		event_handlers[close_event.type](&close_event);
 		// actually close the window
 		sfRenderWindow_close(wnd);
 	}
@@ -103,7 +99,7 @@ private:
 	sfVideoMode mode;
 	sfContextSettings ctx_settings;
 	bool fullscreen = false;
-	sfEventHandler[][sfEvtCount] event_handlers;
+	Event!(sfEventHandler)[sfEvtCount] event_handlers;
 
 	void resized_handler(const sfEvent* evt)
 	{

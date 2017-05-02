@@ -42,6 +42,7 @@ class Render
 		sfView* view = sfView_createFromRect(
 			sfFloatRect(0, 0, evt.size.width, evt.size.height));
 		sfRenderWindow_setView(_window.ptr, view);
+		sfView_destroy(view);
 	}
 
 	void start()
