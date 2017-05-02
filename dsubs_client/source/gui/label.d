@@ -9,6 +9,8 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 import derelict.sfml2.window;
 
+public import dsubs_common.mutstring;
+
 import dsubs_client.core.sfml;		// for conversions
 import dsubs_client.core.window;
 public import dsubs_client.gui.element;
@@ -27,7 +29,7 @@ class Label: GuiElement
 {
 	protected
 	{
-		string _content = "";
+		mutstring _content = _s("", 64);
 		sfText* text;
 		uint _font_size = 12;
 		string _fontname = "SansMono";
@@ -53,8 +55,15 @@ class Label: GuiElement
 		sfText_setColor(text, _font_color);
 	}
 
-	mixin ElementAccessor!(Label, string, "content",
-		"sfText_setString(text, toStringz(_content)); update_text_position();");
+	mutstring content() { return _content; }
+
+	Label content(string val)
+	{
+		str2mut_copy(val, _content);
+		sfText_setString(text, _content.ptr);
+		update_text_position();
+		return this;
+	}
 
 	mixin ElementAccessor!(Label, uint, "font_size",
 		"sfText_setCharacterSize(text, _font_size); update_text_position();");
