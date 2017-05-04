@@ -1,12 +1,13 @@
 module dsubs_common.math.transform;
 
 import std.algorithm;
-import std.container : DList;
 public import std.math;
 import std.range;
 
 public import gfm.math.matrix;
 public import gfm.math.vector;
+
+import dsubs_common.containers.dlist;
 
 
 // Returns a - b, clamped to [-PI; PI]
@@ -85,16 +86,9 @@ class Transform2D
 		child.propagate();
 	}
 
-	Transform2D remove_child(Transform2D child)
+	void remove_child(Transform2D child)
 	{
-		auto existing = find(_children[], child);
-		if (!existing.empty)
-		{
-			_children.linearRemove(take(existing, 1));
-			child.parent = null;
-			return existing.front;
-		}
-		return null;
+		_children.removePred(a => a is child, (a) { a.parent = null; });
 	}
 
 	unittest

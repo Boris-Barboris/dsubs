@@ -3,7 +3,7 @@ module dsubs_client.core.event;
 import std.algorithm;
 import std.traits;
 
-import dsubs_client.containers.dlist;
+import dsubs_common.containers.dlist;
 
 
 struct Event(DelegateType : void delegate(ArgTypes), ArgTypes...)

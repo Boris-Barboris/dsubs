@@ -21,7 +21,7 @@ Modified by Boris-Barboris to support efficient removal with predicate.
 
 */
 
-module dsubs_client.containers.dlist;
+module dsubs_common.containers.dlist;
 
 ///
 unittest
@@ -616,6 +616,26 @@ Removes all elements in the list that match the predicate $(D pred).
             if (pred(p.getPayload!T()))
             {
                 BaseNode.connect(p._prev, p._next);
+            }
+            p = p._next;
+        }
+    }
+
+/**
+Removes all elements in the list that match the predicate $(D pred), and
+applise function on each removed element.
+*/
+
+    void removePred(bool delegate(T) pred, void delegate(T) func)
+    {
+        assert(_root !is null, "Cannot remove from an un-initialized List");
+        auto p = _first;
+        while (p !is _root)
+        {
+            if (pred(p.getPayload!T()))
+            {
+                BaseNode.connect(p._prev, p._next);
+                func(p.getPayload!T());
             }
             p = p._next;
         }

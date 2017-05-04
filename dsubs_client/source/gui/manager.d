@@ -7,8 +7,9 @@ import std.range;
 import derelict.sfml2.graphics;
 import derelict.sfml2.window;
 
+import dsubs_common.containers.dlist;
+
 public import dsubs_client.core.component;
-import dsubs_client.containers.dlist;
 import dsubs_client.core.sfml;
 import dsubs_client.core.utils;
 public import dsubs_client.gui.element;

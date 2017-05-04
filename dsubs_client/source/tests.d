@@ -18,11 +18,7 @@ void test_window()
 	info("test_window...");
 	loadSfmlLibraries();
 	Window wnd = new Window();
-	bool close = false;
-	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { close = true; });
-	while (!close)
-		wnd.poll_events();
-	wnd.close_window();
+	wnd.poll_events();
 	info("OK");
 }
 
@@ -31,14 +27,10 @@ void test_render()
 	info("test_window...");
 	loadSfmlLibraries();
 	Window wnd = new Window();
-	bool close = false;
-	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { close = true; });
 	Render render = new Render(wnd);
 	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	render.start();
-	while (!close)
-		wnd.poll_events();
-	wnd.close_window();
+	wnd.poll_events();
 	info("OK");
 }
 
@@ -47,8 +39,6 @@ void test_div_render()
 	info("test_div_render...");
 	loadSfmlLibraries();
 	Window wnd = new Window();
-	bool close = false;
-	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { close = true; });
 	Render render = new Render(wnd);
 	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	GuiManager mgr = new GuiManager();
@@ -60,9 +50,7 @@ void test_div_render()
 	mgr.addAsPanel(div);
 	render.gui_render = mgr;
 	render.start();
-	while (!close)
-		wnd.poll_events();
-	wnd.close_window();
+	wnd.poll_events();
 	info("OK");
 }
 
@@ -72,8 +60,6 @@ void test_menu_layout()
 	info("test_menu_layout...");
 	loadSfmlLibraries();
 	Window wnd = new Window();
-	bool close = false;
-	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { close = true; });
 	Render render = new Render(wnd);
 	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	GuiManager mgr = new GuiManager();
@@ -94,9 +80,7 @@ void test_menu_layout()
 		(const sfEvent* a) {menu.size(vec2f(a.size.width, a.size.height));});
 	render.gui_render = mgr;
 	render.start();
-	while (!close)
-		wnd.poll_events();
-	wnd.close_window();
+	wnd.poll_events();
 	info("OK");
 }
 
@@ -106,8 +90,6 @@ void test_menu_routing()
 	info("test_menu_routing...");
 	loadSfmlLibraries();
 	Window wnd = new Window();
-	bool close = false;
-	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { close = true; });
 	Render render = new Render(wnd);
 	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	GuiManager mgr = new GuiManager();
@@ -157,7 +139,6 @@ void test_menu_routing()
 	exitBtn.onClick += (Button s, sfMouseButton btn) { wnd.close_window(); };
 	// go
 	render.start();
-	while (!close)
-		wnd.poll_events();
+	wnd.poll_events();
 	info("OK");
 }

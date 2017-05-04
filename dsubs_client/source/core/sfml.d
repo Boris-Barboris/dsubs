@@ -4,6 +4,7 @@ import std.conv;
 import std.experimental.logger;
 
 import gfm.math.vector;
+import gfm.math.matrix;
 
 public import derelict.sfml2.system;
 public import derelict.sfml2.window;
@@ -99,4 +100,17 @@ sfVector2f tosf(const vec2f v)
 sfVector2f tosf(const vec2d v)
 {
 	return sfVector2f(to!float(v.x), to!float(v.y));
+}
+
+ref sfTransform tosf(ref mat3x3f m)
+{
+	return *(cast(sfTransform*)(&m));
+}
+
+sfTransform tosf(const ref mat3x3d m)
+{
+	sfTransform res;
+	for (int i = 0; i < 9; i++)
+		res.matrix[i] = to!float(m.v[i]);
+	return res;
 }

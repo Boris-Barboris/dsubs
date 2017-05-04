@@ -68,13 +68,17 @@ class Window
 		event_handlers[type] -= handler;
 	}
 
-	/// Function polls all events in window buffer and calls respective
-	/// handlers, if registered.
+	/// Function repeatedly polls all events in window buffer and calls
+	/// respective handlers, if registered. Blocks until the window is closed.
 	void poll_events()
 	{
 		sfEvent event;
-		while (sfRenderWindow_pollEvent(wnd, &event))
+		while (sfRenderWindow_waitEvent(wnd, &event))
+		{
 			event_handlers[event.type](&event);
+			if (closing)
+				break;
+		}
 	}
 
 	void close_window()
@@ -86,6 +90,7 @@ class Window
 		event_handlers[close_event.type](&close_event);
 		// actually close the window
 		sfRenderWindow_close(wnd);
+		closing = true;
 	}
 
 	// Raw SFML window pointer
@@ -99,6 +104,7 @@ private:
 	sfVideoMode mode;
 	sfContextSettings ctx_settings;
 	bool fullscreen = false;
+	bool closing = false;
 	Event!(sfEventHandler)[sfEvtCount] event_handlers;
 
 	void resized_handler(const sfEvent* evt)
