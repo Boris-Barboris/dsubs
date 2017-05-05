@@ -26,7 +26,7 @@ class Camera2D
 		// screen size in pixels
 		vec2ui _screen_size;
 
-		bool _dirty = false;
+		shared bool _dirty = false;
 	}
 
 	this(vec2ui screen_size = vec2ui(640, 480))
@@ -36,9 +36,8 @@ class Camera2D
 
 	protected void rebuild()
 	{
-		mat3x3f res;
 		_dirty = false;
-		res = mat3x3f.translation(-_center);
+		mat3x3f res = mat3x3f.translation(-_center);
 		res = mat3x3f.rotateZ(-_rotation) * res;
 		// screen Y is inversed relative to world Y, hence the minus
 		res = mat3x3f.scaling(vec2f(_zoom, -_zoom)) * res;

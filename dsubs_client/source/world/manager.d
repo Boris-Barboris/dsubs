@@ -33,7 +33,7 @@ class WorldRenderable: Component!"world"
 		depth = 0.0;
 	}
 
-	abstract void render(Window wnd, const mat3x3f mat);
+	abstract void render(Window wnd, const(mat3x3f)* mat);
 
 	void update_transform() {}
 }
@@ -127,7 +127,7 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 		{
 			auto comp = components[i];
 			if (comp.active)
-				comp.render(wnd, camera_mat);
+				comp.render(wnd, &camera_mat);
 		}
 		atomicOp!"-="(threads_rendering, 1);
 	}
@@ -214,5 +214,12 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 		assert(arr == [1, 2, 3, 2, 2]);
 		assert(arr != [1, 2, 2, 3, 2]);
 		assert(arr != [1, 2, 2, 2, 3]);
+	}
+
+	// Event handling
+
+	HandleResult handleEvent(Router ctx, const sfEvent* evt)
+	{
+		throw new Exception("not implemented yet");
 	}
 }

@@ -33,9 +33,9 @@ class Transform2D
 		vec2d _translation;
 		// Resulting transformations
 		mat3x3d local_transform;
-		bool dirty;				// set to true when some of parents changed
+		shared bool dirty;		// set to true when some of parents changed
 		mat3x3d world_cache;	// cached value of world-coordinates transform
-		bool inverse_dirty;
+		shared bool inverse_dirty;
 		mat3x3d inverse_cache;	// inverted world matrix
 		Transform2D _parent;
 		DList!Transform2D _children;
