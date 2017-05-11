@@ -45,9 +45,9 @@ class ConvexShape
 		}
 	}
 
-	void render(Window wnd, const(mat3x3f)* mat)
+	void render(Window wnd, const(mat3x3d)* mat)
 	{
-		mat3x3f tres = (*mat) * transform.global;
+		mat3x3d tres = (*mat) * transform.global;
 		state_template.transform = tres.tosf;
 		sfRenderWindow_drawConvexShape(wnd.ptr, shape, &state_template);
 	}

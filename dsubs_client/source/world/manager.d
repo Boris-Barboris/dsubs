@@ -7,20 +7,21 @@ import core.sync.mutex;
 
 import std.algorithm;
 import std.experimental.logger;
-import std.container : SList;
+import std.container.array;
 import std.range;
 
 import dsubs_common.math.transform;
 
 import dsubs_client.core.component;
 import dsubs_client.core.window;
+import dsubs_client.core.utils;
 import dsubs_client.input.router;
 import dsubs_client.render.render;
 import dsubs_client.world.camera;
 
 
 /// Something that is rendered in world space.
-/// Hierarchies are implemented using transform parenting.
+/// Hierarchies and connections are implemented using transform parenting.
 class WorldRenderable: Component!"world"
 {
 	Transform2D transform;
@@ -33,24 +34,29 @@ class WorldRenderable: Component!"world"
 		depth = 0.0;
 	}
 
-	abstract void render(Window wnd, const(mat3x3f)* mat);
+	abstract void render(Window wnd, const(mat3x3d)* mat);
 
+	// View is not model. Component transform is not bound to objects real
+	// position and may be inter\extrapolated on different refresh rate.
+	// When the frame is rendered, this method is called by that window's
+	// thread in order to update object's transform.
 	void update_transform() {}
 }
 
 
-/// Manages world-space objects rendering and IO event handling (selection).
+/// Manages world-space objects rendering and IO event handling
+/// (selection, picking).
 class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 {
+	// Let's say we always have one camera spanning whole window.
 	Camera2D[Window] cameras;
 
 	// z-sorted array of component references
-	WorldRenderable[] components = new WorldRenderable[](1024);
-	// true component count
-	private size_t comp_count = 0;
+	Array!WorldRenderable components;
 
 	this()
 	{
+		components.reserve(256);
 		add_queue_mutex = new Object();
 		remove_queue_mutex = new Object();
 		// guaranteed transform update during next rendering
@@ -59,18 +65,18 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 
 	// Components will be forced to update their transforms if this much
 	// time has passed since the last update. Default duration implies
-	// guaranteed recalculation if FPS is not larger than 200.
+	// guaranteed recalculation each frame if FPS is not greater than 200.
 	Duration target_frame_time = dur!"msecs"(1000 / 200);
 
-	// Moment of time the last transform update happenned.
+	// Moment of time the last transform update happenned
 	private MonoTime last_update;
 
 	// number of threads currently rendering
 	private shared int threads_rendering = 0;
 
 	// when transform update is needed, thread that performs the update
-	// sets this to true. When set to true, you need to block on entrance and
-	// wait until it's true again
+	// sets this to true. When set to true, you need to block on entrance to
+	// rendering block and wait until it's false again
 	private shared bool transform_sync = false;
 
 	// There may be multimple windows requesting rendering simultaneously.
@@ -82,12 +88,8 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 	void draw(Render ctx, Window wnd)
 	{
 		while (transform_sync)
-		{
-			// wait until flag is false
 			Thread.yield();
-		}
 
-		// critical section on time and transform update
 		synchronized (this)
 		{
 			MonoTime cur_time = MonoTime.currTime;
@@ -102,15 +104,12 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 				// update component list itself
 				flush_add_requests();
 				flush_remove_requests();
-				// next we force active components to update their transforms
-				for (int i = 0; i < comp_count; i++)
-				{
-					auto comp = components[i];
+				// force active components to update their transforms
+				foreach (WorldRenderable comp; components)
 					if (comp.active)
-						comp.update_transform;
-				}
+						comp.update_transform();
 				// and sort them in Z-order, deepest components first
-				sort!((a, b) => a.depth < b.depth)(components[0 .. comp_count]);
+				sort!((a, b) => a.depth < b.depth)(components[]);
 				// register update
 				last_update = cur_time;
 				transform_sync = false;
@@ -121,76 +120,44 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 		atomicOp!"+="(threads_rendering, 1);
 		// then we select the camera
 		auto camera = cameras[wnd];
-		mat3x3f camera_mat = camera.world2screen;
+		mat3x3d camera_mat = camera.world2screen;
 		// and render components on the window
-		for (int i = 0; i < comp_count; i++)
-		{
-			auto comp = components[i];
+		foreach (WorldRenderable comp; components)
 			if (comp.active)
 				comp.render(wnd, &camera_mat);
-		}
 		atomicOp!"-="(threads_rendering, 1);
 	}
 
 	Object add_queue_mutex;
-	SList!WorldRenderable add_queue;
+	Array!WorldRenderable add_queue;
 
 	private void flush_add_requests()
 	{
 		synchronized(add_queue_mutex)
 		{
-			while (!add_queue.empty)
-			{
-				WorldRenderable obj = add_queue.front;
-				_addRoot(obj);
-				add_queue.removeFront();
-			}
+			foreach (WorldRenderable obj; add_queue)
+				components.insertBack(obj);
+			add_queue.clear();
 		}
-	}
-
-	private void _addRoot(WorldRenderable obj)
-	{
-		if (comp_count == components.length)
-			components.length = comp_count * 2;
-		components[comp_count++] = obj;
 	}
 
 	void addRoot(WorldRenderable obj)
 	{
 		synchronized (add_queue_mutex)
 		{
-			add_queue.insertFront(obj);
+			add_queue.insertBack(obj);
 		}
 	}
 
 	Object remove_queue_mutex;
-	SList!WorldRenderable remove_queue;
+	Array!WorldRenderable remove_queue;
 
 	private void flush_remove_requests()
 	{
 		synchronized(remove_queue_mutex)
 		{
-			while (!remove_queue.empty)
-			{
-				WorldRenderable obj = remove_queue.front;
-				_removeRoot(obj);
-				remove_queue.removeFront();
-			}
-		}
-	}
-
-	private void _removeRoot(WorldRenderable obj)
-	{
-		for (int i = 0; i < comp_count; i++)
-		{
-			if (obj is components[i])
-			{
-				for (int j = i; j < comp_count - 1; j++)
-					components[j] = components[j + 1];
-				components[comp_count - 1] = null;
-				comp_count--;
-				return;
-			}
+			components.substract(remove_queue[]);
+			remove_queue.clear();
 		}
 	}
 
@@ -198,7 +165,7 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 	{
 		synchronized (remove_queue_mutex)
 		{
-			remove_queue.insertFront(obj);
+			remove_queue.insertBack(obj);
 		}
 	}
 
