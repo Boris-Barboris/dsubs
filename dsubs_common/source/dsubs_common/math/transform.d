@@ -19,6 +19,12 @@ double angleDist(double a, double b)
 	return val;
 }
 
+pragma(inline):
+double clampAngle(double a)
+{
+	return fmod(a, 2 * PI);
+}
+
 // Hierarchical transform.
 // Dsubs world is a 2D space. World X axis is directed to
 // the right, Y axis - up. Positive angle is counter-clockwise. Zero rotation
@@ -156,7 +162,7 @@ class Transform2D
 	/// sets local rotation
 	@property double rotation(double val)
 	{
-		_rotation = val;
+		_rotation = clampAngle(val);
 		propagate();
 		return _rotation;
 	}

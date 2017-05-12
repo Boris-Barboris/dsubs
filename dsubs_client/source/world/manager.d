@@ -98,6 +98,7 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 				// enough time has passed since last transform update to
 				// justify transform recalculations
 				transform_sync = true;
+				scope(exit) transform_sync = false;
 				// wait until no threads are drawing
 				while (threads_rendering > 0)
 					Thread.yield();
@@ -112,12 +113,12 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 				sort!((a, b) => a.depth < b.depth)(components[]);
 				// register update
 				last_update = cur_time;
-				transform_sync = false;
 			}
 		}
 
 		// rendering section
 		atomicOp!"+="(threads_rendering, 1);
+		scope(exit) atomicOp!"-="(threads_rendering, 1);
 		// then we select the camera
 		auto camera = cameras[wnd];
 		mat3x3d camera_mat = camera.world2screen;
@@ -125,7 +126,6 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 		foreach (WorldRenderable comp; components)
 			if (comp.active)
 				comp.render(wnd, &camera_mat);
-		atomicOp!"-="(threads_rendering, 1);
 	}
 
 	Object add_queue_mutex;

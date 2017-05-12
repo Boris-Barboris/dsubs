@@ -6,6 +6,8 @@ import std.math;
 public import gfm.math.vector;
 public import gfm.math.matrix;
 
+import dsubs_common.math.transform;
+
 
 /// 2D-camera class, specializes on relative, iterative
 /// transformations, caused by camera panning.
@@ -73,18 +75,18 @@ class Camera2D
 		return vec2d(rs.x / rs.z, rs.y / rs.z);
 	}
 
-	mixin template FieldDirtyProperty(T, string field_name)
+	mixin template FieldDirtyProperty(T, string field_name, string assig="val")
 	{
 		mixin("@property " ~ T.stringof ~ " " ~ field_name ~
 			"() const { return _" ~ field_name ~ ";};");
 		mixin("@property " ~ T.stringof ~ " " ~ field_name ~ "(" ~
 			T.stringof ~ " val) {" ~ "_" ~ field_name ~
-			"=val; _dirty=true;" ~
+			"=" ~ assig ~"; _dirty=true;" ~
 			"return _" ~ field_name ~ ";}");
 	}
 
 	mixin FieldDirtyProperty!(vec2d, "center");
-	mixin FieldDirtyProperty!(double, "rotation");
+	mixin FieldDirtyProperty!(double, "rotation", "clampAngle(val)");
 	mixin FieldDirtyProperty!(double, "zoom");
 	mixin FieldDirtyProperty!(vec2ui, "screen_size");
 

@@ -35,6 +35,7 @@ class Render
 	{
 		_window = wnd;
 		wnd.register_handler(sfEvtResized, &wnd_resized);
+		wnd.register_handler(sfEvtClosed, (const sfEvent* a) { this.stop(); });
 	}
 
 	protected void wnd_resized(const sfEvent* evt)

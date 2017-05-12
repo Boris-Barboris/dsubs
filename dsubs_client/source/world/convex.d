@@ -27,6 +27,7 @@ class ConvexShape
 	this(sfVector2f[] points, sfColor fill_color,
 		sfColor border_color, float border_width)
 	{
+		transform = new Transform2D();
 		shape = sfConvexShape_create();
 		sfConvexShape_setPointCount(shape, points.length);
 		for (int i = 0; i < points.length; i++)

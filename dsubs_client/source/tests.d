@@ -28,7 +28,6 @@ void test_render()
 	loadSfmlLibraries();
 	Window wnd = new Window();
 	Render render = new Render(wnd);
-	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	render.start();
 	wnd.poll_events();
 	info("OK");
@@ -40,7 +39,6 @@ void test_div_render()
 	loadSfmlLibraries();
 	Window wnd = new Window();
 	Render render = new Render(wnd);
-	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	GuiManager mgr = new GuiManager();
 	auto div =
 		new HDiv(mgr,
@@ -61,7 +59,6 @@ void test_menu_layout()
 	loadSfmlLibraries();
 	Window wnd = new Window();
 	Render render = new Render(wnd);
-	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	GuiManager mgr = new GuiManager();
 	auto menu =
 		new VDiv(mgr,
@@ -91,7 +88,6 @@ void test_menu_routing()
 	loadSfmlLibraries();
 	Window wnd = new Window();
 	Render render = new Render(wnd);
-	wnd.register_handler(sfEvtClosed, (const sfEvent* a) { render.stop(); });
 	GuiManager mgr = new GuiManager();
 	Button exitBtn = new Button(mgr).content("Exit").font_size(20).asButton;
 	VDiv menu =
@@ -137,6 +133,65 @@ void test_menu_routing()
 	}
 	exitBtn.onClick += (Button s, sfMouseButton btn) { log("Clicked ", s.content); };
 	exitBtn.onClick += (Button s, sfMouseButton btn) { wnd.close_window(); };
+	// go
+	render.start();
+	wnd.poll_events();
+	info("OK");
+}
+
+import dsubs_client.world.camera;
+import dsubs_client.world.convex;
+import dsubs_client.world.manager;
+
+void test_world_manager_simple()
+{
+	info("test_world_manager_simple...");
+	loadSfmlLibraries();
+	Window wnd = new Window();
+	Render render = new Render(wnd);
+	WorldManager mgr = new WorldManager();
+	render.world_render = mgr;
+	Camera2D camera = new Camera2D(vec2ui(wnd.width, wnd.height));
+	wnd.register_handler(sfEvtResized,
+		(const sfEvent* a) {camera.screen_size(vec2ui(a.size.width, a.size.height));});
+	mgr.cameras[wnd] = camera;
+	// some example class, rotating box
+
+	import core.time;
+
+	class BoxModel: WorldRenderable
+	{
+		ConvexShape shape;
+		this(WorldManager manager)
+		{
+			super(manager);
+			shape = new ConvexShape(
+				[sfVector2f(100.0f, 0.0f), sfVector2f(0.0f, 100.0f),
+				 sfVector2f(-100.0f, 0.0f), sfVector2f(0.0f, -100.0f)],
+				sfColor(255, 150, 150, 50),
+				sfWhite,
+				5.0f);
+			transform.add_child(shape.transform);
+			last_update = MonoTime.currTime;
+		}
+
+		override void render(Window wnd, const(mat3x3d)* mat)
+		{
+			shape.render(wnd, mat);
+		}
+
+		private MonoTime last_update;
+
+		override void update_transform()
+		{
+			MonoTime cur = MonoTime.currTime;
+			auto diff = (cur - last_update).total!"msecs";
+			transform.rotation = transform.rotation + diff * 1e-3;
+			last_update = cur;
+		}
+	}
+
+	mgr.addRoot(new BoxModel(mgr));
 	// go
 	render.start();
 	wnd.poll_events();

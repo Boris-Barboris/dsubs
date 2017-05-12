@@ -76,6 +76,14 @@ class Window
 		while (sfRenderWindow_waitEvent(wnd, &event))
 		{
 			event_handlers[event.type](&event);
+			// special case: closing
+			if (event.type == sfEvtClosed)
+			{
+				// actually close the window
+				info("Standard window close event caught");
+				sfRenderWindow_close(wnd);
+				closing = true;
+			}
 			if (closing)
 				break;
 		}
@@ -83,7 +91,7 @@ class Window
 
 	void close_window()
 	{
-		info("== Closing window");
+		info("Closing window");
 		// Generate artificial close event
 		sfEvent close_event;
 		close_event.type = sfEvtClosed;
