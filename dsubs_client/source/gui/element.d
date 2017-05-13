@@ -26,7 +26,7 @@ enum SizeType
 }
 
 /// GUI tree element. This is not an abstract class, just an empty rectangle.
-class GuiElement: Component!"Gui"
+class GuiElement: Component!"Gui", IInputReciever
 {
 	package GuiElement _parent;		// TODO: protected
 	protected

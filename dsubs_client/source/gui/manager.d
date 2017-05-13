@@ -21,13 +21,14 @@ struct GuiHandleResult
 {
 	// result to return to router
 	HandleResult res;
-	// component that captured the event, null otherwise
+	// component, that captured the event. Null is no one handled it. Generally
+	// means, that mouse missed all elements completely.
 	GuiElement interceptor;
 
-	this(bool pass, GuiElement intec)
+	this(bool pass, GuiElement interc)
 	{
 		res = HandleResult(pass);
-		interceptor = intec;
+		interceptor = interc;
 	}
 }
 

@@ -27,6 +27,21 @@ GUI:
         backfires (HTML is a good example).
     - input focus handling, capturing.
 
+On mouse input:
+    GUI elements are static, it's reasonable to handle mouse events only when
+    they are generated. World-space objects move themself, they can leave immobile
+    cursor behind.
+
+Input-related event types:
+    Mouse moved. May generate:
+        mouse entered or left component area of interest. OnMouseEnter, OnMouseLeave.
+    Mouse button or wheel pressed. May trigger input focus switch:
+        onClick... onFocusGain, onFocusLoss.
+    Component moved:
+        may leave static mouse cursor behind, or stumble upon it. OnMouseEnter,
+        OnMouseLeave.
+    Keyboard input: goes either to focused element, or to global hotkey handler.
+
 World-space render:
     + Simple convex shape rendering.
 
