@@ -106,7 +106,7 @@ class Window
 
 	uint width() const { return mode.width; }
 	uint height() const { return mode.height; }
-	bool hasFocus() const {	return sfRenderWindow_hasFocus(wnd); }
+	int hasFocus() const {	return sfRenderWindow_hasFocus(wnd); }
 
 private:
 	sfRenderWindow* wnd;

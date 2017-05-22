@@ -10,7 +10,7 @@ struct Event(DelegateType : void delegate(ArgTypes), ArgTypes...)
 	if (isDelegate!(DelegateType))
 {
 	alias HandlerType = void delegate(ArgTypes);
-	private DList!HandlerType handlers;
+	DList!HandlerType handlers;
 
 	void opOpAssign(string op)(HandlerType handler)
 	{

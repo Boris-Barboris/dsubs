@@ -13,6 +13,7 @@ public import dsubs_client.core.event;
 import dsubs_client.core.sfml;		// for conversions
 import dsubs_client.core.window;
 public import dsubs_client.core.utils;
+import dsubs_client.input.router;
 import dsubs_client.gui.manager;
 
 
@@ -22,13 +23,13 @@ enum SizeType
 {
 	FIXED,	// element has fixed size
 	FRACT,	// element takes fraction of free space, left after FIXED elements
-	GREEDY	// element tries to fill all available space.
+	GREEDY	// element tries to fill all available space in the container.
 }
 
 /// GUI tree element. This is not an abstract class, just an empty rectangle.
 class GuiElement: Component!"Gui", IInputReciever
 {
-	package GuiElement _parent;		// TODO: protected
+	package GuiElement _parent;
 	protected
 	{
 		vec2f _position = vec2f(0, 0);
@@ -42,6 +43,8 @@ class GuiElement: Component!"Gui", IInputReciever
 		super(manager);
 		rect = sfRectangleShape_create();
 	}
+
+	GuiManager manager() { return cast(GuiManager) _manager; }
 
 	GuiElement parent() { return _parent; }
 
@@ -122,6 +125,89 @@ class GuiElement: Component!"Gui", IInputReciever
 	// Event handling
 	//
 
+	//
+	// IInputReciever interface
+	//
+
+	void handleMouseEnter()
+	{
+		onMouseEnter(this);
+	}
+
+	void handleMouseLeave()
+	{
+		onMouseLeave(this);
+	}
+
+	// called when keyboard is being exclusively captured.
+	// Example implementation.
+	HandleResult handleKeyboard(const sfEvent* evt)
+	{
+		if (!this.active)
+			return HandleResult(true, true);
+		switch (evt.type)
+		{
+			case (sfEvtKeyPressed):
+				onKeyPressed(this, cast(const sfKeyEvent*) evt);
+				break;
+			case (sfEvtKeyReleased):
+				onKeyReleased(this, cast(const sfKeyEvent*) evt);
+				break;
+			case (sfEvtTextEntered):
+				onTextEntered(this, cast(const sfTextEvent*) evt);
+				break;
+			default:
+				return HandleResult(true, true);
+		}
+		// just give the focus away and pass through
+		return HandleResult(true, true);
+	}
+
+	// called when exclusive mouse focus is being captured
+	HandleResult handleMouse(const sfEvent* evt)
+	{
+		// mock
+		if (!this.active)
+			return HandleResult(true, true);
+		return HandleResult(false, false);
+	}
+
+	// focuses
+	protected bool kb_focused = false;
+	void handleKbFocusGain() { kb_focused = true; }
+	void handleKbFocusLoss() { kb_focused = false; }
+	protected bool mouse_focused = false;
+	void handleMouseFocusGain() { mouse_focused = true; }
+	void handleMouseFocusLoss() { mouse_focused = false; }
+
+	// focus manipulation methods
+
+	void requestKbFocus()
+	{
+		manager.rt.kbFocus(this);
+	}
+
+	void returnKbFocus()
+	{
+		if (kb_focused)
+			manager.rt.kbFocus(null);
+	}
+
+	void requestMouseFocus()
+	{
+		manager.rt.mouseFocus(this);
+	}
+
+	void returnMouseFocus()
+	{
+		if (mouse_focused)
+			manager.rt.mouseFocus(null);
+	}
+
+	//
+	// GUI-manager specifics
+	//
+
 	/// Return deepest GuiElement that contains the point, null otherwise.
 	GuiElement get_from_point(vec2f point)
 	{
@@ -143,13 +229,7 @@ class GuiElement: Component!"Gui", IInputReciever
 			if (btn >= 0)
 			{
 				if (evt.type == sfEvtMouseButtonPressed)
-				{
-					// default behaviour of unsetting focus
-					GuiManager m = cast(GuiManager) _manager;
-					if (m.kb_focus && (m.kb_focus != this))
-						m.kb_focus = null;
 					onMouseDown(this, x, y, btn);
-				}
 				if (evt.type == sfEvtMouseButtonReleased)
 					onMouseUp(this, x, y, btn);
 			}
@@ -157,42 +237,13 @@ class GuiElement: Component!"Gui", IInputReciever
 				onMouseScroll(this, x, y, delta);
 			else
 				onMouseMove(this, x, y);
-			return GuiHandleResult(true, this);
+			return GuiHandleResult(HandleResult(false, true), this);
 		}
 		else if (interceptor)
 			return interceptor.handleMousePosEvent(evt, x, y, btn, delta);
-		return GuiHandleResult(true, null);
+		return GuiHandleResult(HandleResult(true, true), null);
 	}
 
-	package void handleMouseEnter()
-	{
-		onMouseEnter(this);
-	}
-
-	package void handleMouseLeave()
-	{
-		onMouseLeave(this);
-	}
-
-	package GuiHandleResult handleKeyboard(const sfEvent* evt)
-	{
-		if (!this.active)
-			return GuiHandleResult(true, null);
-		switch (evt.type)
-		{
-			case (sfEvtKeyPressed):
-				onKeyPressed(this, cast(const sfKeyEvent*) evt);
-				break;
-			case (sfEvtKeyReleased):
-				onKeyReleased(this, cast(const sfKeyEvent*) evt);
-				break;
-			case (sfEvtTextEntered):
-				onTextEntered(this, cast(const sfTextEvent*) evt);
-				break;
-			default: break;
-		}
-		return GuiHandleResult(false, this);
-	}
 
 	// events for users to subscribe to
 	Event!(void delegate(GuiElement sender)) onMouseEnter;

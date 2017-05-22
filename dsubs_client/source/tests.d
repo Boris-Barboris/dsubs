@@ -33,62 +33,14 @@ void test_render()
 	info("OK");
 }
 
-void test_div_render()
-{
-	info("test_div_render...");
-	loadSfmlLibraries();
-	Window wnd = new Window();
-	Render render = new Render(wnd);
-	GuiManager mgr = new GuiManager();
-	auto div =
-		new HDiv(mgr,
-			new Label(mgr).content("div1"),
-			new Label(mgr).content("div2").font_size(20).fontname("Sans").vert_align(TextAlign.LEFT)
-		).sizeType(SizeType.FIXED).size(vec2f(400, 200));
-	mgr.addAsPanel(div);
-	render.gui_render = mgr;
-	render.start();
-	wnd.poll_events();
-	info("OK");
-}
-
-
-void test_menu_layout()
-{
-	info("test_menu_layout...");
-	loadSfmlLibraries();
-	Window wnd = new Window();
-	Render render = new Render(wnd);
-	GuiManager mgr = new GuiManager();
-	auto menu =
-		new VDiv(mgr,
-			new GuiElement(mgr),
-			new VDiv(mgr,
-				new Label(mgr).content("DSUBS").font_size(40).sizeType(SizeType.FIXED).
-					size(vec2f(0.0f, 100.0f)),
-				new Label(mgr).content("Connect").font_size(20),
-				new Label(mgr).content("Options").font_size(20),
-				new Label(mgr).content("Exit").font_size(20)
-				).sizeType(SizeType.FIXED).size(vec2f(0.0, 250.0)),
-			new GuiElement(mgr),
-		).sizeType(SizeType.FIXED).size(vec2f(wnd.width, wnd.height));
-	mgr.addAsPanel(menu);
-	wnd.register_handler(sfEvtResized,
-		(const sfEvent* a) {menu.size(vec2f(a.size.width, a.size.height));});
-	render.gui_render = mgr;
-	render.start();
-	wnd.poll_events();
-	info("OK");
-}
-
-
 void test_menu_routing()
 {
 	info("test_menu_routing...");
 	loadSfmlLibraries();
 	Window wnd = new Window();
 	Render render = new Render(wnd);
-	GuiManager mgr = new GuiManager();
+	Router router = new Router(wnd);
+	GuiManager mgr = new GuiManager(wnd, router);
 	Button exitBtn = new Button(mgr).content("Exit").font_size(20).asButton;
 	VDiv menu =
 		new VDiv(mgr,
@@ -113,8 +65,6 @@ void test_menu_routing()
 		(const sfEvent* a) {panel.size(vec2f(a.size.width, a.size.height));});
 	render.gui_render = mgr;
 	// events
-	Router router = new Router(wnd);
-	router.gui_router = mgr;
 	foreach (lbl; menu.children)
 	{
 		Label l = lbl.asLabel;
@@ -122,12 +72,19 @@ void test_menu_routing()
 		auto captureEnter(Label l)
 		{
 			return (GuiElement s)
-				{
-					log("Enter ", l.content);
-					l.font_color(sfColor(255, 150, 150, 255));
-				};
+			{
+				log("Enter ", l.content);
+				l.font_color(sfColor(255, 150, 150, 255));
+			};
 		}
-		auto captureLeave(Label l) { return (GuiElement s){log("Leave ", l.content); l.font_color(sfWhite);};}
+		auto captureLeave(Label l)
+		{
+			return (GuiElement s)
+			{
+				log("Leave ", l.content);
+				l.font_color(sfWhite);
+			};
+		}
 		l.onMouseEnter += captureEnter(l);
 		l.onMouseLeave += captureLeave(l);
 	}

@@ -27,7 +27,7 @@ class Button: Label
 		ButtonType _buttonType;
 		sfColor _pressed_color = sfRed;
 		sfColor _released_color = sfWhite;
-		bool _pressed;
+		bool _pressed, _state;
 	}
 
 	this(GuiManager manager)
@@ -36,6 +36,7 @@ class Button: Label
 		update_font_color();
 		onMouseDown += &handle_mouse_down;
 		onMouseUp += &handle_mouse_up;
+		onMouseLeave += &handle_mouse_leave;
 	}
 
 	mixin ElementAccessor!(Button, ButtonType, "buttonType", "");
@@ -46,10 +47,18 @@ class Button: Label
 		"released_color(val);");
 
 	bool pressed() { return _pressed; }
+	protected void pressed(bool val)
+	{
+		_pressed = val;
+		update_font_color();
+	}
+
+	bool state() { return _state; }
 
 	protected void update_font_color()
 	{
-		if (_pressed)
+		bool visual_state = _state != _pressed;
+		if (visual_state)
 			sfText_setColor(text, _pressed_color);
 		else
 			sfText_setColor(text, _released_color);
@@ -57,39 +66,39 @@ class Button: Label
 
 	protected void handle_mouse_down(GuiElement s, int x, int y, sfMouseButton btn)
 	{
-		if (_buttonType == ButtonType.TOGGLE)
-		{
-			_pressed = !_pressed;
-			update_font_color();
-		}
-		else if (!_pressed)
-		{
-			_pressed = true;
-			update_font_color();
-		}
+		pressed(true);
+	}
+
+	protected void handle_mouse_leave(GuiElement s)
+	{
+		pressed(false);
 	}
 
 	protected void handle_mouse_up(GuiElement s, int x, int y, sfMouseButton btn)
 	{
-		if (_buttonType == ButtonType.TOGGLE)
-			onClick(this, btn);
-		else if (_pressed)
+		if (_pressed)
 		{
-			onClick(this, btn);
-			if (_buttonType == ButtonType.SYNC)
+			if (_buttonType == ButtonType.TOGGLE)
 			{
-				_pressed = false;
-				update_font_color();
+				_state = !_state;
+				onClick(this, btn);
 			}
+			else
+			{
+				if (_buttonType == ButtonType.ASYNC)
+					_state = true;
+				onClick(this, btn);
+			}
+			pressed(false);
 		}
 	}
 
 	/// Call this for ASYNC button to finish the click
 	void signalClickEnd()
 	{
-		if (_buttonType == ButtonType.ASYNC && _pressed)
+		if (_buttonType == ButtonType.ASYNC && _state)
 		{
-			_pressed = false;
+			_state = false;
 			update_font_color();
 		}
 	}

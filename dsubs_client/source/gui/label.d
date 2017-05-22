@@ -29,7 +29,7 @@ class Label: GuiElement
 {
 	protected
 	{
-		mutstring _content = _s("", 63);
+		mutstring _content;
 		sfText* text;
 		uint _font_size = 12;
 		string _fontname = "SansMono";
@@ -42,6 +42,7 @@ class Label: GuiElement
 	this(GuiManager manager)
 	{
 		super(manager);
+		_content = _s("", 63);
 		initialize_text();
 	}
 

@@ -19,20 +19,15 @@ import dsubs_client.render.render;
 
 struct GuiHandleResult
 {
-	// result to return to router
+	// result to return to main router
 	HandleResult res;
-	// component, that captured the event. Null is no one handled it. Generally
-	// means, that mouse missed all elements completely.
+	// Component, that captured the event. For mouse events. this is the
+	// deepest element right under the cursor. Null for mouse events means, that
+	// cursor is out of bounds. Always null for keyboard-related events.
 	GuiElement interceptor;
-
-	this(bool pass, GuiElement interc)
-	{
-		res = HandleResult(pass);
-		interceptor = interc;
-	}
 }
 
-// Root of gui element tree, that is stored in the manager
+// One flat element tree instance, structural unit of the Gui manager.
 class Panel
 {
 	GuiElement root;
@@ -47,63 +42,51 @@ class Panel
 
 	void draw(Window wnd) { root.draw(wnd); }
 
-	GuiHandleResult handleEvent(const sfEvent* evt)
+	GuiHandleResult handleMousePosEvent(const sfEvent* evt, int x, int y,
+		sfMouseButton btn, int delta)
 	{
-		int x, y, delta;
-		sfMouseButton btn;
-		if (isMousePosEvent(evt, x, y, btn, delta))
+		GuiHandleResult res;
+		if (mouse_event_cache)
 		{
-			// it's mouse-related positioned event
-			GuiHandleResult res;
-			if (mouse_event_cache)
-			{
-				res = mouse_event_cache.handleMousePosEvent(evt, x, y, btn, delta);
-				if (res.interceptor)
-				{
-					// cache hit
-					if (mouse_event_cache != res.interceptor)
-					{
-						// mouse switched from one element to another
-						mouse_event_cache.handleMouseLeave();
-						res.interceptor.handleMouseEnter();
-						mouse_event_cache = res.interceptor;
-					}
-					return res;
-				}
-				else
-				{
-					// cache miss
-					log("Panel mouse cache miss");
-					mouse_event_cache.handleMouseLeave();
-					mouse_event_cache = null;
-				}
-			}
-			// no cached handler
-			res = root.handleMousePosEvent(evt, x, y, btn, delta);
+			res = mouse_event_cache.handleMousePosEvent(evt, x, y, btn, delta);
 			if (res.interceptor)
 			{
-				mouse_event_cache = res.interceptor;
-				mouse_event_cache.handleMouseEnter();
+				// cache hit
+				if (mouse_event_cache != res.interceptor)
+				{
+					// mouse switched from one element to another
+					mouse_event_cache = res.interceptor;
+				}
+				return res;
 			}
-			return res;
-		}
-		if (evt.type == sfEvtMouseLeft)
-		{
-			if (mouse_event_cache)
+			else
 			{
-				mouse_event_cache.handleMouseLeave();
+				// cache miss
+				log("Panel mouse cache miss");
 				mouse_event_cache = null;
 			}
 		}
-		// we don't handle any other events in trees. Keyboard input is done via
-		// focus mechanics
-		return GuiHandleResult(true, null);
+		// no cached handler
+		res = root.handleMousePosEvent(evt, x, y, btn, delta);
+		if (res.interceptor)
+			mouse_event_cache = res.interceptor;
+		return res;
 	}
 }
 
 // Thing that draws gui components on the window and routes window events
 class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 {
+	package Window wnd;
+	package Router rt;
+
+	this(Window wnd, Router rt)
+	{
+		this.wnd = wnd;
+		this.rt = rt;
+		if (rt)
+			rt.gui_router = this;
+	}
 
 	void draw(Render ctx, Window wnd)
 	{
@@ -148,28 +131,23 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 	HandleResult handleEvent(Router ctx, const sfEvent* evt)
 	{
 		GuiHandleResult res;
-		if (isKeyboardEvent(evt))
+		int x, y, delta;
+		sfMouseButton btn;
+		if (isMousePosEvent(evt, x, y, btn, delta))
 		{
-			// keyboard event, pass it to focused element if possible
-			if (kb_focus)
-				return kb_focus.handleKeyboard(evt).res;
-			return HandleResult();
-		}
-		// Handle events from top to bottom
-		foreach (panel; retro_active_panels)
-		{
-			res = panel.handleEvent(evt);
-			if (res.interceptor)
+			// Handle events from top to bottom
+			foreach (panel; retro_active_panels)
 			{
-				// there was an actual entity, that captured the event.
+				res = panel.handleMousePosEvent(evt, x, y, btn, delta);
+				if (res.interceptor)
+				{
+					// someone is actually under the mouse, we should
+					// set the underCursor focus of the router
+					ctx.cursorPointed(res.interceptor);
+				}
 				return res.res;
 			}
-			if (!res.res.passThrough)
-				return res.res;
 		}
-		return HandleResult();
+		return HandleResult(true, true);
 	}
-
-	// element that has keyboard focus, and will recieve Text events.
-	GuiElement kb_focus;
 }
