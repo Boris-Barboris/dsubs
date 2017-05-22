@@ -40,7 +40,10 @@ void test_menu_routing()
 	Window wnd = new Window();
 	Render render = new Render(wnd);
 	Router router = new Router(wnd);
-	GuiManager mgr = new GuiManager(wnd, router);
+	GuiManager mgr = new GuiManager();
+	render.gui_render = mgr;
+	router.gui_router = mgr;
+	render.postRender += (s) { router.simulate_mouse_move(); };
 	Button exitBtn = new Button(mgr).content("Exit").font_size(20).asButton;
 	VDiv menu =
 		new VDiv(mgr,
@@ -63,7 +66,6 @@ void test_menu_routing()
 	mgr.addAsPanel(panel);
 	wnd.register_handler(sfEvtResized,
 		(const sfEvent* a) {panel.size(vec2f(a.size.width, a.size.height));});
-	render.gui_render = mgr;
 	// events
 	foreach (lbl; menu.children)
 	{

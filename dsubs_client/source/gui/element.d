@@ -9,7 +9,7 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 import derelict.sfml2.window;
 
-public import dsubs_client.core.event;
+import dsubs_client.core.event;
 import dsubs_client.core.sfml;		// for conversions
 import dsubs_client.core.window;
 public import dsubs_client.core.utils;
@@ -184,24 +184,24 @@ class GuiElement: Component!"Gui", IInputReciever
 
 	void requestKbFocus()
 	{
-		manager.router.kbFocus(this);
+		Router.kbFocus(this);
 	}
 
 	void returnKbFocus()
 	{
 		if (kb_focused)
-			manager.router.kbFocus(null);
+			Router.kbFocus(null);
 	}
 
 	void requestMouseFocus()
 	{
-		manager.router.mouseFocus(this);
+		Router.mouseFocus(this);
 	}
 
 	void returnMouseFocus()
 	{
 		if (mouse_focused)
-			manager.router.mouseFocus(null);
+			Router.mouseFocus(null);
 	}
 
 	//

@@ -77,17 +77,6 @@ class Panel
 // Thing that draws gui components on the window and routes window events
 class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 {
-	Window wnd;
-	Router router;
-
-	this(Window wnd, Router rt)
-	{
-		this.wnd = wnd;
-		this.router = rt;
-		if (rt)
-			rt.gui_router = this;
-	}
-
 	void draw(Render ctx, Window wnd)
 	{
 		// deepest panels first
@@ -143,7 +132,7 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 				{
 					// someone is actually under the mouse, we should
 					// set the underCursor focus of the router
-					ctx.cursorPointed(res.interceptor);
+					Router.cursorPointed(res.interceptor);
 					if (evt.type == sfEvtMouseButtonPressed)
 					{
 						// default behaviour of moving clicked panel to

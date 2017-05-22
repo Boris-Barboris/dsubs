@@ -6,6 +6,7 @@ import std.experimental.logger;
 import derelict.sfml2.graphics;
 import derelict.sfml2.window;
 
+import dsubs_client.core.event;
 public import dsubs_client.core.window;
 
 
@@ -73,16 +74,25 @@ class Render
 	{
 		while (!stop_flag)
 		{
+			preRender(this);
 			sfRenderWindow_clear(_window.ptr, clear_color);
 			if (world_render)
 				world_render.draw(this, _window);
 			if (overlay_render)
 				overlay_render.draw(this, _window);
 			if (gui_render)
+			{
+				preGuiRender(this);
 				gui_render.draw(this, _window);
+			}
+			postRender(this);
 			sfRenderWindow_display(_window.ptr);		// present backbuffer
 		}
 		info("Terminating Render, stop_flag is ", stop_flag);
 		worker = null;
 	}
+
+	Event!(void delegate(Render sender)) preRender;
+	Event!(void delegate(Render sender)) postRender;
+	Event!(void delegate(Render sender)) preGuiRender;
 }

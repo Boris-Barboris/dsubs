@@ -169,7 +169,7 @@ VDiv asVdiv(GuiElement el)
 unittest
 {
 	loadSfmlLibraries();
-	auto mgr = new GuiManager(null, null);
+	GuiManager mgr = null;
 	auto frame =
 		new HDiv(mgr,
 			new HDiv(mgr).sizeType(SizeType.FIXED).size(vec2f(400, 0)),

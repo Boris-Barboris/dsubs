@@ -60,13 +60,13 @@ class Router
 	IWindowEventHandler hotkey_router;
 
 	// Focused components. Just assign them to what you need.
-	protected IInputReciever _cursorPointed, _kbFocus, _mouseFocus;
+	static __gshared IInputReciever _cursorPointed, _kbFocus, _mouseFocus;
 
 	mixin template FocusAccessor(string field_name, string loose_name,
 		string gain_name)
 	{
-		mixin("IInputReciever " ~ field_name ~ "() { return _" ~ field_name ~ ";}");
-		mixin("void " ~ field_name ~ "(IInputReciever val) " ~
+		mixin("static IInputReciever " ~ field_name ~ "() { return _" ~ field_name ~ ";}");
+		mixin("static void " ~ field_name ~ "(IInputReciever val) " ~
 			"{ if (_" ~ field_name ~ " !is val) { if (_" ~ field_name ~ ") _" ~
 			field_name ~ "." ~	loose_name ~ "(); if (val) val." ~ gain_name ~
 			"(); _" ~ field_name ~ " = val;}}");
@@ -92,7 +92,7 @@ class Router
 		wnd.register_handler(sfEvtMouseWheelMoved, &route_event);
 		wnd.register_handler(sfEvtMouseButtonPressed, &route_event);
 		wnd.register_handler(sfEvtMouseButtonReleased, &route_event);
-		wnd.register_handler(sfEvtMouseMoved, &route_event);
+		//wnd.register_handler(sfEvtMouseMoved, &route_event);
 		//wnd.register_handler(sfEvtMouseEntered, &route_event);
 		// another special case:
 		wnd.register_handler(sfEvtMouseLeft, (a) { cursorPointed(null); });
