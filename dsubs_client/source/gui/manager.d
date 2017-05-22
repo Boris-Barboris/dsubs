@@ -144,8 +144,15 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 					// someone is actually under the mouse, we should
 					// set the underCursor focus of the router
 					ctx.cursorPointed(res.interceptor);
+					if (evt.type == sfEvtMouseButtonPressed)
+					{
+						// default behaviour of moving clicked panel to
+						// the top of z-stack
+						panels.removePredFirst(a => a is panel);
+						panels.insertBack(panel);
+					}
+					return res.res;
 				}
-				return res.res;
 			}
 		}
 		return HandleResult(true, true);

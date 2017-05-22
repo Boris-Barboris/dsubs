@@ -622,6 +622,25 @@ Removes all elements in the list that match the predicate $(D pred).
     }
 
 /**
+Removes first element in the list that matches the predicate $(D pred).
+*/
+
+    void removePredFirst(bool delegate(T) pred)
+    {
+        assert(_root !is null, "Cannot remove from an un-initialized List");
+        auto p = _first;
+        while (p !is _root)
+        {
+            if (pred(p.getPayload!T()))
+            {
+                BaseNode.connect(p._prev, p._next);
+                return;
+            }
+            p = p._next;
+        }
+    }
+
+/**
 Removes all elements in the list that match the predicate $(D pred), and
 applise function on each removed element.
 */
