@@ -184,24 +184,24 @@ class GuiElement: Component!"Gui", IInputReciever
 
 	void requestKbFocus()
 	{
-		manager.rt.kbFocus(this);
+		manager.router.kbFocus(this);
 	}
 
 	void returnKbFocus()
 	{
 		if (kb_focused)
-			manager.rt.kbFocus(null);
+			manager.router.kbFocus(null);
 	}
 
 	void requestMouseFocus()
 	{
-		manager.rt.mouseFocus(this);
+		manager.router.mouseFocus(this);
 	}
 
 	void returnMouseFocus()
 	{
 		if (mouse_focused)
-			manager.rt.mouseFocus(null);
+			manager.router.mouseFocus(null);
 	}
 
 	//

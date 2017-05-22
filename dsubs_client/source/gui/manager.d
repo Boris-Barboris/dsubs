@@ -77,13 +77,13 @@ class Panel
 // Thing that draws gui components on the window and routes window events
 class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 {
-	package Window wnd;
-	package Router rt;
+	Window wnd;
+	Router router;
 
 	this(Window wnd, Router rt)
 	{
 		this.wnd = wnd;
-		this.rt = rt;
+		this.router = rt;
 		if (rt)
 			rt.gui_router = this;
 	}
