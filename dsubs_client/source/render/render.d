@@ -1,5 +1,6 @@
 module dsubs_client.render.render;
 
+import core.time;
 import core.thread;
 import std.experimental.logger;
 
@@ -84,9 +85,10 @@ class Render
 			{
 				preGuiRender(this);
 				gui_render.draw(this, _window);
+				postGuiRender(this);
 			}
 			postRender(this);
-			sfRenderWindow_display(_window.ptr);		// present backbuffer
+			sfRenderWindow_display(_window.ptr);	// present backbuffer
 		}
 		info("Terminating Render, stop_flag is ", stop_flag);
 		worker = null;
@@ -95,4 +97,5 @@ class Render
 	Event!(void delegate(Render sender)) preRender;
 	Event!(void delegate(Render sender)) postRender;
 	Event!(void delegate(Render sender)) preGuiRender;
+	Event!(void delegate(Render sender)) postGuiRender;
 }

@@ -139,13 +139,11 @@ class GuiElement: Component!"Gui", IInputReciever
 		onMouseLeave(this);
 	}
 
-	// called when keyboard is being exclusively captured.
-	// Example implementation. Text-related components may pass event
-	// deeper for non-text keyboard keys.
+	// Example implementation
 	HandleResult handleKeyboard(const sfEvent* evt)
 	{
 		if (!this.active)
-			return HandleResult(true, true);
+			return HandleResult(true);
 		switch (evt.type)
 		{
 			case (sfEvtKeyPressed):
@@ -153,27 +151,30 @@ class GuiElement: Component!"Gui", IInputReciever
 				break;
 			case (sfEvtKeyReleased):
 				onKeyReleased(this, cast(const sfKeyEvent*) evt);
-				// for example, loose focus on escape
-				if (evt.key.code == sfKeyEscape)
-					return HandleResult(false, true);
 				break;
 			case (sfEvtTextEntered):
 				onTextEntered(this, cast(const sfTextEvent*) evt);
 				break;
 			default:
-				// just give the focus away and pass through
-				return HandleResult(true, true);
+				throw new Exception("can't handle non-keyboard event here");
 		}
-		return HandleResult(false, false);
+		return HandleResult(false);
 	}
 
-	// called when exclusive mouse focus is captured
-	HandleResult handleMouse(const sfEvent* evt)
+	void handleMousePos(const sfEvent* evt, int x, int y,
+		sfMouseButton btn, int delta)
 	{
-		// mock
-		if (!this.active)
-			return HandleResult(true, true);
-		return HandleResult(false, false);	// keep focus
+		if (btn >= 0)
+		{
+			if (evt.type == sfEvtMouseButtonPressed)
+				onMouseDown(this, x, y, btn);
+			if (evt.type == sfEvtMouseButtonReleased)
+				onMouseUp(this, x, y, btn);
+		}
+		else if (delta != 0)
+			onMouseScroll(this, x, y, delta);
+		else
+			onMouseMove(this, x, y);
 	}
 
 	// focuses
@@ -224,33 +225,18 @@ class GuiElement: Component!"Gui", IInputReciever
 			return null;
 	}
 
-	/// whether mouse events are propagated lower
+	/// whether the element is transparent for mouse events
 	bool mouse_transparent = true;
 
-	package GuiHandleResult handleMousePosEvent(const sfEvent* evt,
-		int x, int y, sfMouseButton btn, int delta)
+	package GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
 		GuiElement interceptor = get_from_point(vec2f(x, y));
-		if (interceptor == this)
-		{
-			if (btn >= 0)
-			{
-				if (evt.type == sfEvtMouseButtonPressed)
-					onMouseDown(this, x, y, btn);
-				if (evt.type == sfEvtMouseButtonReleased)
-					onMouseUp(this, x, y, btn);
-			}
-			else if (delta != 0)
-				onMouseScroll(this, x, y, delta);
-			else
-				onMouseMove(this, x, y);
-			return GuiHandleResult(HandleResult(mouse_transparent, true), this);
-		}
+		if (interceptor is this)
+			return GuiRouteResult(this, mouse_transparent);
 		else if (interceptor)
-			return interceptor.handleMousePosEvent(evt, x, y, btn, delta);
-		return GuiHandleResult(HandleResult(true, true), null);
+			return interceptor.routeMousePos(evt, x, y);
+		return GuiRouteResult(null, true);
 	}
-
 
 	// events for users to subscribe to
 	Event!(void delegate(GuiElement sender)) onMouseEnter;

@@ -12,52 +12,59 @@ public import dsubs_client.core.window;
 // Generic input event reciever
 interface IInputReciever
 {
-	// When player moves his mouse, MouseMove event is generated and passed to
-	// input routers. Additionaly, every frame artificial event is generated
+	// Every frame artificial MouseMove event is generated
 	// in order to react to scene itself changing under the cursor. When mouse
 	// first enters reciever, he gets MouseEnter call from the router.
 	// When mouse leaves window, reciever, or reciever itself moves out
 	// of the cursor, it gets MouseLeave.
 	void handleMouseEnter();
 	void handleMouseLeave();
-	// By focus we mean keyboard input priority. Keyboard events first are
-	// routed in this element, and only then to other ones, if the element
-	// desires. These two functions are called on keyboard focus gain\loss.
+	// By focus we mean keyboard input priority. Keyboard events are
+	// routed in this element.
+	// These two functions are called on keyboard focus gain\loss.
 	void handleKbFocusGain();
 	void handleKbFocusLoss();
-	// Objects can also request exclusive mouse event focus. Example: dragging
+	// Recievers can also request exclusive mouse event focus. Example: dragging
 	void handleMouseFocusGain();
 	void handleMouseFocusLoss();
 	// keyboard handling method.
 	HandleResult handleKeyboard(const sfEvent* evt);
-	// mouse handling method.
-	HandleResult handleMouse(const sfEvent* evt);
+	// mouse handling method. Mouse event cannot be passed through if recieved
+	void handleMousePos(const sfEvent* evt, int x, int y,
+		sfMouseButton btn, int delta);
 }
 
-/// Result of event handling
+/// Event handling result
 struct HandleResult
 {
-	// Should the event be passed further down to lower levels?
-	bool passThrough = true;	// pass by default
-	// don't want to loose focus by default. Relevant only for focused
-	// recievers.
-	bool give_focus = false;
+	// reciever may decide to pass some events further down the chain of routers
+	bool passThrough = true;
 }
 
-/// Anything that can handle a WindowEvent
-interface IWindowEventHandler
+/// Result of event routing via subrouter.
+struct RouteResult
 {
-	HandleResult handleEvent(Router ctx, const sfEvent* evt);
+	// Entity that should recieve the event. Null sends event further down
+	// the chain.
+	IInputReciever reciever;
+}
+
+/// Anything that can route WindowEvent
+interface IWindowEventSubrouter
+{
+	RouteResult routeMousePos(Router ctx, const sfEvent* evt, int x, int y);
+	RouteResult routeKeyboard(Router ctx, const sfEvent* evt);
+	void handleWindowResize(Router ctx, Window wnd, const sfSizeEvent* evt);
 }
 
 /// Event router, that orderes window event handling by subsystems
 class Router
 {
 	protected Window _window;
-	IWindowEventHandler gui_router;
-	IWindowEventHandler overlay_router;
-	IWindowEventHandler world_router;
-	IWindowEventHandler hotkey_router;
+	IWindowEventSubrouter gui_router;
+	IWindowEventSubrouter overlay_router;
+	IWindowEventSubrouter world_router;
+	IWindowEventSubrouter hotkey_router;
 
 	// Focused components. Just assign them to what you need.
 	static __gshared IInputReciever _cursorPointed, _kbFocus, _mouseFocus;
@@ -85,13 +92,13 @@ class Router
 		// special case:
 		wnd.register_handler(sfEvtLostFocus, &on_window_lost_focus);
 		// one handler to rule them all:
-		wnd.register_handler(sfEvtResized, &route_event);
-		wnd.register_handler(sfEvtTextEntered, &route_event);
-		wnd.register_handler(sfEvtKeyPressed, &route_event);
-		wnd.register_handler(sfEvtKeyReleased, &route_event);
-		wnd.register_handler(sfEvtMouseWheelMoved, &route_event);
-		wnd.register_handler(sfEvtMouseButtonPressed, &route_event);
-		wnd.register_handler(sfEvtMouseButtonReleased, &route_event);
+		wnd.register_handler(sfEvtResized, &route_resize_event);
+		wnd.register_handler(sfEvtTextEntered, &route_keyboard_event);
+		wnd.register_handler(sfEvtKeyPressed, &route_keyboard_event);
+		wnd.register_handler(sfEvtKeyReleased, &route_keyboard_event);
+		wnd.register_handler(sfEvtMouseWheelMoved, &route_mouse_event);
+		wnd.register_handler(sfEvtMouseButtonPressed, &route_mouse_event);
+		wnd.register_handler(sfEvtMouseButtonReleased, &route_mouse_event);
 		//wnd.register_handler(sfEvtMouseMoved, &route_event);
 		// cursor-related special cases:
 		wnd.register_handler(sfEvtMouseEntered, (a) { mouse_inside = true; });
@@ -113,7 +120,7 @@ class Router
 			move_event.type = sfEvtMouseMoved;
 			move_event.mouseMove.x = mp.x;
 			move_event.mouseMove.y = mp.y;
-			route_event(&move_event);
+			route_mouse_event(&move_event);
 		}
 	}
 
@@ -130,52 +137,113 @@ class Router
 		clear_focus();
 	}
 
-	void route_event(const sfEvent* evt)
+	void route_resize_event(const sfEvent* evt)
+	{
+		const sfSizeEvent* sevt = cast(const sfSizeEvent*) evt;
+		if (gui_router)
+			gui_router.handleWindowResize(this, _window, sevt);
+		if (overlay_router)
+			overlay_router.handleWindowResize(this, _window, sevt);
+		if (world_router)
+			world_router.handleWindowResize(this, _window, sevt);
+	}
+
+	void route_keyboard_event(const sfEvent* evt)
 	{
 		HandleResult res;
-		if (_kbFocus && isKeyboardEvent(evt))
+		if (_kbFocus)
 		{
 			res = _kbFocus.handleKeyboard(evt);
-			if (res.give_focus)
-				kbFocus(null);
 			if (!res.passThrough)
 				return;
 		}
-		if (_mouseFocus && isMousePosEvent(evt))
-		{
-			res = _mouseFocus.handleMouse(evt);
-			if (res.give_focus)
-				mouseFocus(null);
-			if (!res.passThrough)
-				return;
-		}
-
-		// main cascade of child routers
+		// routing cascade
+		RouteResult rres;
 		if (gui_router)
 		{
-			res = gui_router.handleEvent(this, evt);
-			if (!res.passThrough)
+			rres = gui_router.routeKeyboard(this, evt);
+			if (rres.reciever)
+				if (!rres.reciever.handleKeyboard(evt).passThrough)
+					return;
+		}
+		if (overlay_router)
+		{
+			rres = overlay_router.routeKeyboard(this, evt);
+			if (rres.reciever)
+				if (!rres.reciever.handleKeyboard(evt).passThrough)
+					return;
+		}
+		if (world_router)
+		{
+			rres = world_router.routeKeyboard(this, evt);
+			if (rres.reciever)
+				if (!rres.reciever.handleKeyboard(evt).passThrough)
+					return;
+		}
+		if (hotkey_router)
+		{
+			rres = hotkey_router.routeKeyboard(this, evt);
+			if (rres.reciever)
+				if (!rres.reciever.handleKeyboard(evt).passThrough)
+					return;
+		}
+	}
+
+	pragma(inline)
+	private bool handle_mouse(RouteResult rres, const sfEvent* evt, int x, int y,
+		sfMouseButton btn, int delta)
+	{
+		if (rres.reciever)
+		{
+			cursorPointed(rres.reciever);
+			// mouse button events may also clear keyboard focus
+			if (evt.type == sfEvtMouseButtonPressed && rres.reciever !is _kbFocus)
+				kbFocus(null);
+			rres.reciever.handleMousePos(evt, x, y, btn, delta);
+			return true;
+		}
+		return false;
+	}
+
+	void route_mouse_event(const sfEvent* evt)
+	{
+		int x, y, delta;
+		sfMouseButton btn;
+		if (!isMousePosEvent(evt, x, y, btn, delta))
+			throw new Exception("Mouse event is not actually a mouse event");
+		HandleResult res;
+		if (_mouseFocus)
+		{
+			_mouseFocus.handleMousePos(evt, x, y, btn, delta);
+			return;
+		}
+		// routing cascade
+		RouteResult rres;
+		if (gui_router)
+		{
+			rres = gui_router.routeMousePos(this, evt, x, y);
+			if (handle_mouse(rres, evt, x, y, btn, delta))
 				return;
 		}
 		if (overlay_router)
 		{
-			res = overlay_router.handleEvent(this, evt);
-			if (!res.passThrough)
+			rres = overlay_router.routeMousePos(this, evt, x, y);
+			if (handle_mouse(rres, evt, x, y, btn, delta))
 				return;
 		}
 		if (world_router)
 		{
-			res = world_router.handleEvent(this, evt);
-			if (!res.passThrough)
+			rres = world_router.routeMousePos(this, evt, x, y);
+			if (handle_mouse(rres, evt, x, y, btn, delta))
 				return;
 		}
 		if (hotkey_router)
-			res = hotkey_router.handleEvent(this, evt);
-		if (evt.type == sfEvtMouseMoved)
 		{
-			// moved event was not captured by anything, nothing is
-			// under cursor
-			cursorPointed(null);
+			rres = hotkey_router.routeMousePos(this, evt, x, y);
+			if (handle_mouse(rres, evt, x, y, btn, delta))
+				return;
 		}
+		// mouse event was not captured by anything, nothing is under cursor
+		cursorPointed(null);
 	}
 }

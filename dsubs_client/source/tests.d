@@ -77,6 +77,7 @@ void test_menu_routing()
 			{
 				log("Enter ", l.content);
 				l.font_color(sfColor(255, 150, 150, 255));
+				l.font_size(l.font_size + 3);
 			};
 		}
 		auto captureLeave(Label l)
@@ -85,6 +86,7 @@ void test_menu_routing()
 			{
 				log("Leave ", l.content);
 				l.font_color(sfWhite);
+				l.font_size(l.font_size - 3);
 			};
 		}
 		l.onMouseEnter += captureEnter(l);

@@ -17,16 +17,11 @@ import dsubs_client.input.router;
 import dsubs_client.render.render;
 
 
-// Gui explicitly handles only mouse events, keyboard is done via
-// focus mechanics.
-struct GuiHandleResult
+// Gui explicitly handles only mouse events
+struct GuiRouteResult
 {
-	// result to return to main router
-	HandleResult res;
-	// GuiElement, that captured the event. For mouse events. this is the
-	// deepest element right under the cursor. Null for mouse events means, that
-	// cursor is out of bounds.
 	GuiElement interceptor;
+	bool mouse_transparent = true;
 }
 
 // One flat element tree instance, structural unit of the Gui manager.
@@ -46,13 +41,12 @@ class Panel
 
 	void draw(Window wnd) { root.draw(wnd); }
 
-	GuiHandleResult handleMousePosEvent(const sfEvent* evt, int x, int y,
-		sfMouseButton btn, int delta)
+	GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
-		GuiHandleResult res;
+		GuiRouteResult res;
 		if (mouse_event_cache)
 		{
-			res = mouse_event_cache.handleMousePosEvent(evt, x, y, btn, delta);
+			res = mouse_event_cache.routeMousePos(evt, x, y);
 			if (res.interceptor)
 			{
 				// cache hit, update it
@@ -67,15 +61,14 @@ class Panel
 			}
 		}
 		// no cached handler
-		res = root.handleMousePosEvent(evt, x, y, btn, delta);
-		if (res.interceptor)
-			mouse_event_cache = res.interceptor;
+		res = root.routeMousePos(evt, x, y);
+		mouse_event_cache = res.interceptor;
 		return res;
 	}
 }
 
 // Thing that draws gui components on the window and routes window events
-class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
+class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 {
 	void draw(Render ctx, Window wnd)
 	{
@@ -116,45 +109,40 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 		}
 	}
 
-	// Event handling
-	HandleResult handleEvent(Router ctx, const sfEvent* evt)
+	RouteResult routeMousePos(Router ctx, const sfEvent* evt, int x, int y)
 	{
-		GuiHandleResult res;
-		int x, y, delta;
-		sfMouseButton btn;
-		if (isMousePosEvent(evt, x, y, btn, delta))
+		GuiRouteResult res;
+		// look for reciever from top to bottom of z-ordered panel stack
+		foreach (panel; retro_active_panels)
 		{
-			// Handle events from top to bottom of z-ordered panel stack
-			foreach (panel; retro_active_panels)
+			res = panel.routeMousePos(evt, x, y);
+			if (res.interceptor)
 			{
-				res = panel.handleMousePosEvent(evt, x, y, btn, delta);
-				if (res.interceptor)
+				// event-transparent elements only update panel's lookup cache
+				if (res.mouse_transparent)
+					continue;
+				if (evt.type == sfEvtMouseButtonPressed && panel.mouse_zboost)
 				{
-					// event-transparent elements update panel cache,
-					// but are not focus-interactive
-					if (res.res.passThrough)
-						continue;
-					// we should set the underCursor focus of the router
-					Router.cursorPointed(res.interceptor);
-					if (evt.type == sfEvtMouseButtonPressed &&
-						res.interceptor !is Router.kbFocus)
-					{
-						// mouse click on something that is not event-transparent
-						// and is not keyboard-focused element, wich means
-						// we should unset keyboard focus
-						Router.kbFocus(null);
-					}
-					if (evt.type == sfEvtMouseButtonPressed && panel.mouse_zboost)
-					{
-						// default behaviour of moving clicked panel to
-						// the top of z-stack
-						panels.removePredFirst(a => a is panel);
-						panels.insertBack(panel);
-					}
-					return res.res;
+					// default behaviour of moving clicked panel to
+					// the top of z-stack
+					panels.removePredFirst(a => a is panel);
+					panels.insertBack(panel);
 				}
+				return RouteResult(res.interceptor);
 			}
 		}
-		return HandleResult(true, true);
+		return RouteResult(null);
+	}
+
+	RouteResult routeKeyboard(Router ctx, const sfEvent* evt)
+	{
+		// GUI captures keyboard only through focus mechanics
+		return RouteResult(null);
+	}
+
+	void handleWindowResize(Router ctx, Window wnd, const sfSizeEvent* evt)
+	{
+		// TODO: resize handling for greedy and fraction-sized panels, out-of
+		// window border check
 	}
 }

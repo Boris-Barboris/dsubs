@@ -21,12 +21,12 @@ GUI:
     - Image - generic render target to display graphical information.
         No need for fancy scaling or zooming, just display image.
     - use viewport to force element boundaries and provide guaranteed
-        overlap protection. May be too expensive on OpenGL side. Benefits only
+        overlap protection. May be expensive on OpenGL side. Benefits only
         labels and buttons, probably not worth it. Obligatory for text box.
     + Control content cannot dictate control size, because such scheme always
         backfires (HTML is a good example).
     + input focus handling, capturing.
-    - before\after GuiRender event.
+    + before\after GuiRender event.
 
 On mouse input:
     GUI elements are static, it's reasonable to handle mouse events only when
@@ -47,10 +47,6 @@ Input-related event types:
     Keyboard input: goes either to focused element, or to global hotkey handler.
 
 Render:
-    - Global Render is responsible for render cycle start time slice. All
-        child renders should represent objects at that time.
-    - monotonic clock time interval that passed since last render cycle
-        should be passed to components.
 
 World-space render:
     + Simple convex shape rendering.

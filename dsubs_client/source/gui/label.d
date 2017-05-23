@@ -98,24 +98,24 @@ class Label: GuiElement
 		final switch (_horz_align)
 		{
 			case TextAlign.LEFT:
-				x = _position.x + _padding;
+				x = _position.x + _padding - bounds.left;
 				break;
 			case TextAlign.RIGHT:
 				x = _position.x + _size.x - _padding - bounds.left - bounds.width;
 				break;
 			case TextAlign.CENTER:
-				x = _position.x + 0.5f * (_size.x - bounds.left - bounds.width);
+				x = _position.x + 0.5f * (_size.x - 2.0f * bounds.left - bounds.width);
 		}
 		final switch (_vert_align)
 		{
 			case TextAlign.LEFT:
-				y = _position.y + _padding;
+				y = _position.y + _padding - bounds.top;
 				break;
 			case TextAlign.RIGHT:
 				y = _position.y + _size.y - _padding - bounds.top - bounds.height;
 				break;
 			case TextAlign.CENTER:
-				y = _position.y + 0.5f * (_size.y - bounds.top - bounds.height);
+				y = _position.y + 0.5f * (_size.y - 2.0f * bounds.top - bounds.height);
 		}
 		sfText_setPosition(text, sfVector2f(to!int(x), to!int(y)));
 	}

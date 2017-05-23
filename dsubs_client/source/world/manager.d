@@ -46,7 +46,7 @@ class WorldRenderable: Component!"world"
 
 /// Manages world-space objects rendering and IO event handling
 /// (selection, picking).
-class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
+class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrouter
 {
 	// Let's say we always have one camera spanning whole window.
 	Camera2D[Window] cameras;
@@ -185,7 +185,17 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventHandler
 
 	// Event handling
 
-	HandleResult handleEvent(Router ctx, const sfEvent* evt)
+	RouteResult routeMousePos(Router ctx, const sfEvent* evt, int x, int y)
+	{
+		throw new Exception("not implemented yet");
+	}
+
+	RouteResult routeKeyboard(Router ctx, const sfEvent* evt)
+	{
+		throw new Exception("not implemented yet");
+	}
+
+	void handleWindowResize(Router ctx, Window wnd, const sfSizeEvent* evt)
 	{
 		throw new Exception("not implemented yet");
 	}
