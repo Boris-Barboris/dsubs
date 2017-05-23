@@ -79,13 +79,12 @@ class GuiElement: Component!"Gui", IInputReciever
 		sfRectangleShape* rect;
 	}
 
-	bool _visible = true;
-
 	protected
 	{
+		bool _rect_visible = true;
 		sfColor _backgroud_color = sfTransparent;
 		sfColor _border_color = sfWhite;
-		float _border_width = 1.0f;
+		float _border_width = 0.25f;
 		bool _visuals_dirty = true;
 	}
 
@@ -98,7 +97,7 @@ class GuiElement: Component!"Gui", IInputReciever
 	mixin ElementAccessor!(GuiElement, float, "border_width",
 		"_visuals_dirty = true;");
 
-	mixin ElementAccessor!(GuiElement, bool, "visible", "");
+	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
 
 	/// Update rendering-related parameters from state
 	void update_visual()
@@ -113,10 +112,11 @@ class GuiElement: Component!"Gui", IInputReciever
 
 	void draw(Window wnd)
 	{
-		if (visible)
+		if (_rect_visible)
 		{
 			if (_visuals_dirty)
 				update_visual();
+			_visuals_dirty = false;
 			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, null);
 		}
 	}

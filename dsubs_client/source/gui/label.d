@@ -36,7 +36,7 @@ class Label: GuiElement
 		sfColor _font_color = sfWhite;
 		TextAlign _horz_align = TextAlign.CENTER;
 		TextAlign _vert_align = TextAlign.CENTER;	// left is top
-		float _padding = 1.0f;		// used when align is not center
+		float _padding = 2.0f;		// used when align is not center
 	}
 
 	this(GuiManager manager)
@@ -62,6 +62,7 @@ class Label: GuiElement
 	Label content(string val)
 	{
 		str2mut_copy(val, _content);
+		// TODO: make sure unicode works OK
 		sfText_setString(text, _content.ptr);
 		update_text_position();
 		return this;
@@ -123,11 +124,8 @@ class Label: GuiElement
 	override void draw(Window wnd)
 	{
 		super.draw(wnd);
-		if (visible)
-		{
-			// draw actual text
-			sfRenderWindow_drawText(wnd.ptr, text, null);
-		}
+		// draw actual text
+		sfRenderWindow_drawText(wnd.ptr, text, null);
 	}
 }
 

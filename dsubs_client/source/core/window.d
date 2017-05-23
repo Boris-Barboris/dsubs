@@ -95,7 +95,7 @@ class Window
 		// Generate artificial close event
 		sfEvent close_event;
 		close_event.type = sfEvtClosed;
-		event_handlers[close_event.type](&close_event);
+		event_handlers[sfEvtClosed](&close_event);
 		// actually close the window
 		sfRenderWindow_close(wnd);
 		closing = true;
