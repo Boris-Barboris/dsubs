@@ -26,6 +26,7 @@ GUI:
     + Control content cannot dictate control size, because such scheme always
         backfires (HTML is a good example).
     + input focus handling, capturing.
+    - before\after GuiRender event.
 
 On mouse input:
     GUI elements are static, it's reasonable to handle mouse events only when
@@ -35,6 +36,9 @@ On mouse input:
 Input-related event types:
     Mouse moved. May generate:
         mouse entered or left component area of interest. OnMouseEnter, OnMouseLeave.
+        We simply generate mouse moved event in render cycle since mouse hover
+        is tightly coupled to view, and look for the element under cursor every
+        screen update.
     Mouse button or wheel pressed. May trigger input focus switch:
         onClick... onFocusGain, onFocusLoss.
     Component moved:
@@ -42,8 +46,20 @@ Input-related event types:
         OnMouseLeave.
     Keyboard input: goes either to focused element, or to global hotkey handler.
 
+Render:
+    - Global Render is responsible for render cycle start time slice. All
+        child renders should represent objects at that time.
+    - monotonic clock time interval that passed since last render cycle
+        should be passed to components.
+
 World-space render:
     + Simple convex shape rendering.
+    - spacial optimization, camera-bound culling, object lookup for picking.
+
+Overlay-space render:
+    - Simple shape rendering.
+    - time interval in update_transform parameters.
+    - spacial optimization, camera-bound culling, object lookup for picking.
 
 Spacial hashing:
     We're in 2d space, so let's use quadrtree. Contained element - AABB.

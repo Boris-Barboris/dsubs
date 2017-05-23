@@ -93,17 +93,20 @@ class Router
 		wnd.register_handler(sfEvtMouseButtonPressed, &route_event);
 		wnd.register_handler(sfEvtMouseButtonReleased, &route_event);
 		//wnd.register_handler(sfEvtMouseMoved, &route_event);
-		//wnd.register_handler(sfEvtMouseEntered, &route_event);
-		// another special case:
-		wnd.register_handler(sfEvtMouseLeft, (a) { cursorPointed(null); });
+		// cursor-related special cases:
+		wnd.register_handler(sfEvtMouseEntered, (a) { mouse_inside = true; });
+		wnd.register_handler(sfEvtMouseLeft, (a)
+			{ cursorPointed(null); mouse_inside = false; });
 	}
+
+	protected bool mouse_inside = true;
 
 	/// In dynamic, moving environment it's simpler to just generate
 	/// mouseMove event every time screen is redrawn in order to get new
 	/// object under the cursor. GUI router should have a good cache anyways.
 	void simulate_mouse_move()
 	{
-		if (_window.hasFocus)
+		if (_window.hasFocus && mouse_inside)
 		{
 			sfVector2i mp = sfMouse_getPositionRenderWindow(_window.ptr);
 			sfEvent move_event;
@@ -168,5 +171,11 @@ class Router
 		}
 		if (hotkey_router)
 			res = hotkey_router.handleEvent(this, evt);
+		if (evt.type == sfEvtMouseMoved)
+		{
+			// moved event was not captured by anything, nothing is
+			// under cursor
+			cursorPointed(null);
+		}
 	}
 }

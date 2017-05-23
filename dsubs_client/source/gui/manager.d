@@ -17,13 +17,15 @@ import dsubs_client.input.router;
 import dsubs_client.render.render;
 
 
+// Gui explicitly handles only mouse events, keyboard is done via
+// focus mechanics.
 struct GuiHandleResult
 {
 	// result to return to main router
 	HandleResult res;
-	// Component, that captured the event. For mouse events. this is the
+	// GuiElement, that captured the event. For mouse events. this is the
 	// deepest element right under the cursor. Null for mouse events means, that
-	// cursor is out of bounds. Always null for keyboard-related events.
+	// cursor is out of bounds.
 	GuiElement interceptor;
 }
 
@@ -31,7 +33,9 @@ struct GuiHandleResult
 class Panel
 {
 	GuiElement root;
-
+	// if true, mouse click will push this panel on top of the stack.
+	// usefull for windows.
+	bool mouse_zboost = true;
 	// last mouse event reciever, that will be tried first
 	package GuiElement mouse_event_cache;
 
@@ -51,12 +55,8 @@ class Panel
 			res = mouse_event_cache.handleMousePosEvent(evt, x, y, btn, delta);
 			if (res.interceptor)
 			{
-				// cache hit
-				if (mouse_event_cache != res.interceptor)
-				{
-					// mouse switched from one element to another
-					mouse_event_cache = res.interceptor;
-				}
+				// cache hit, update it
+				mouse_event_cache = res.interceptor;
 				return res;
 			}
 			else
@@ -124,16 +124,27 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventHandler
 		sfMouseButton btn;
 		if (isMousePosEvent(evt, x, y, btn, delta))
 		{
-			// Handle events from top to bottom
+			// Handle events from top to bottom of z-ordered panel stack
 			foreach (panel; retro_active_panels)
 			{
 				res = panel.handleMousePosEvent(evt, x, y, btn, delta);
 				if (res.interceptor)
 				{
-					// someone is actually under the mouse, we should
-					// set the underCursor focus of the router
+					// event-transparent elements update panel cache,
+					// but are not focus-interactive
+					if (res.res.passThrough)
+						continue;
+					// we should set the underCursor focus of the router
 					Router.cursorPointed(res.interceptor);
-					if (evt.type == sfEvtMouseButtonPressed)
+					if (evt.type == sfEvtMouseButtonPressed &&
+						res.interceptor !is Router.kbFocus)
+					{
+						// mouse click on something that is not event-transparent
+						// and is not keyboard-focused element, wich means
+						// we should unset keyboard focus
+						Router.kbFocus(null);
+					}
+					if (evt.type == sfEvtMouseButtonPressed && panel.mouse_zboost)
 					{
 						// default behaviour of moving clicked panel to
 						// the top of z-stack

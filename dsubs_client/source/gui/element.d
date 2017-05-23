@@ -140,7 +140,8 @@ class GuiElement: Component!"Gui", IInputReciever
 	}
 
 	// called when keyboard is being exclusively captured.
-	// Example implementation.
+	// Example implementation. Text-related components may pass event
+	// deeper for non-text keyboard keys.
 	HandleResult handleKeyboard(const sfEvent* evt)
 	{
 		if (!this.active)
@@ -152,24 +153,27 @@ class GuiElement: Component!"Gui", IInputReciever
 				break;
 			case (sfEvtKeyReleased):
 				onKeyReleased(this, cast(const sfKeyEvent*) evt);
+				// for example, loose focus on escape
+				if (evt.key.code == sfKeyEscape)
+					return HandleResult(false, true);
 				break;
 			case (sfEvtTextEntered):
 				onTextEntered(this, cast(const sfTextEvent*) evt);
 				break;
 			default:
+				// just give the focus away and pass through
 				return HandleResult(true, true);
 		}
-		// just give the focus away and pass through
-		return HandleResult(true, true);
+		return HandleResult(false, false);
 	}
 
-	// called when exclusive mouse focus is being captured
+	// called when exclusive mouse focus is captured
 	HandleResult handleMouse(const sfEvent* evt)
 	{
 		// mock
 		if (!this.active)
 			return HandleResult(true, true);
-		return HandleResult(false, false);
+		return HandleResult(false, false);	// keep focus
 	}
 
 	// focuses
@@ -220,6 +224,9 @@ class GuiElement: Component!"Gui", IInputReciever
 			return null;
 	}
 
+	/// whether mouse events are propagated lower
+	bool mouse_transparent = true;
+
 	package GuiHandleResult handleMousePosEvent(const sfEvent* evt,
 		int x, int y, sfMouseButton btn, int delta)
 	{
@@ -237,7 +244,7 @@ class GuiElement: Component!"Gui", IInputReciever
 				onMouseScroll(this, x, y, delta);
 			else
 				onMouseMove(this, x, y);
-			return GuiHandleResult(HandleResult(false, true), this);
+			return GuiHandleResult(HandleResult(mouse_transparent, true), this);
 		}
 		else if (interceptor)
 			return interceptor.handleMousePosEvent(evt, x, y, btn, delta);

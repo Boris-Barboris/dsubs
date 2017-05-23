@@ -42,6 +42,7 @@ class Label: GuiElement
 	this(GuiManager manager)
 	{
 		super(manager);
+		mouse_transparent = false;
 		_content = _s("", 63);
 		initialize_text();
 	}
