@@ -3,26 +3,27 @@ module dsubs_common.mutstring;
 import std.algorithm.comparison;
 import std.string;
 
-/// Alias for simple mutable ASCII string, that we all need so much 
+/// Alias for simple mutable ASCII string, that we all need so much
 /// in gaming in order to prevent excessive allocations.
 alias mutstring = char[];
+alias dmutstring = dchar[];		// 32-bit unicode
 
 /// Creates mutstring from string
-mutstring _s(string s) nothrow pure @safe
+CharT[] _s(CharT)(immutable(CharT)[] s) nothrow pure @safe
 {
 	size_t len = s.length;
-	mutstring res = new char[len + 1];
+	CharT[] res = new CharT[len + 1];
 	for (size_t i = 0; i < len; i++)
 		res[i] = s[i];
 	res[len] = 0;
 	return res;
 }
 
-/// Creates mutstring from string, allocating not less than size + 1 bytes
-mutstring _s(string s, size_t size) nothrow pure @safe
+/// Creates mutstring from string, allocating space for at least size symbols
+CharT[] _s(CharT)(immutable(CharT)[] s, size_t size) nothrow pure @safe
 {
 	size_t len = max(s.length, size);
-	mutstring res = new char[len + 1];
+	CharT[] res = new CharT[len + 1];
 	for (size_t i = 0; i < s.length; i++)
 		res[i] = s[i];
 	res[s.length] = 0;
@@ -31,15 +32,14 @@ mutstring _s(string s, size_t size) nothrow pure @safe
 
 /// Copy string contents into mutstring, extending it if
 /// required.
-void str2mut_copy(string s, ref mutstring ms) nothrow @safe
+void str2mut_copy(CharT)(immutable(CharT)[] s, CharT[] ms) nothrow @safe
 {
 	if (s.length > ms.length - 1)
 		ms.length = s.length + 1;
-	foreach (i, c; s)
-		ms[i] = c;
+	for (size_t i = 0; i < s.length; i++)
+		ms[i] = s[i];
 	ms[s.length] = 0;
 }
-
 
 nothrow unittest
 {
@@ -49,6 +49,13 @@ nothrow unittest
 	assert(s[4] == 0);
 	assert(indexOf(s, 'd') == 2);
 	assert(indexOf(s, 'x') == -1);
+}
+
+nothrow unittest
+{
+	auto s = _s("юникод"d);
+	static assert(is(typeof(s) == dmutstring));
+	assert(equal(s[0..1], "ю"d));
 }
 
 nothrow unittest

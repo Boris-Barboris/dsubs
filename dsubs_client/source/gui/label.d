@@ -2,6 +2,7 @@ module dsubs_client.gui.label;
 
 import std.conv;
 import std.string;
+import std.utf;
 
 public import gfm.math.vector;
 
@@ -29,7 +30,7 @@ class Label: GuiElement
 {
 	protected
 	{
-		mutstring _content;
+		dmutstring _content;
 		sfText* text;
 		uint _font_size = 12;
 		string _fontname = "SansMono";
@@ -43,7 +44,7 @@ class Label: GuiElement
 	{
 		super(manager);
 		mouse_transparent = false;
-		_content = _s("", 63);
+		_content = _s(""d, 31);
 		initialize_text();
 	}
 
@@ -53,19 +54,23 @@ class Label: GuiElement
 		load_fonts();
 		sfText_setFont(text, loadedFonts[_fontname]);
 		sfText_setCharacterSize(text, _font_size);
-		sfText_setString(text, toStringz(_content));
+		sfText_setUnicodeString(text, _content.ptr);
 		sfText_setColor(text, _font_color);
 	}
 
-	mutstring content() { return _content; }
+	const(dmutstring) content() { return _content; }
+
+	Label content(dstring val)
+	{
+		str2mut_copy(val, _content);
+		sfText_setUnicodeString(text, _content.ptr);
+		update_text_position();
+		return this;
+	}
 
 	Label content(string val)
 	{
-		str2mut_copy(val, _content);
-		// TODO: make sure unicode works OK
-		sfText_setString(text, _content.ptr);
-		update_text_position();
-		return this;
+		return content(toUTF32(val));
 	}
 
 	mixin ElementAccessor!(Label, uint, "font_size",

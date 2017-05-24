@@ -27,7 +27,10 @@ GUI:
         backfires (HTML is a good example).
     + input focus handling, capturing.
     + before\after GuiRender event.
-    - unicode support for all text
+    + unicode support for onscreen text.
+
+System and utility:
+    - unicode dmutstring support for logging.
 
 On mouse input:
     GUI elements are static, it's reasonable to handle mouse events only when

@@ -92,9 +92,9 @@ class Transform2D
 		child.propagate();
 	}
 
-	void remove_child(Transform2D child)
+	void remove_child(Transform2D kid)
 	{
-		_children.removePred(a => a is child, (a) { a.parent = null; });
+		_children.removePredFirst(a => a is kid, (a) { a.parent = null; });
 	}
 
 	unittest
