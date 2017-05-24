@@ -115,13 +115,16 @@ class Label: GuiElement
 		final switch (_vert_align)
 		{
 			case TextAlign.LEFT:
-				y = _padding - bounds.top;
+				//y = _padding - bounds.top;
+				y = _padding;
 				break;
 			case TextAlign.RIGHT:
-				y = _size.y - _padding - bounds.top - bounds.height;
+				//y = _size.y - _padding - bounds.top - bounds.height;
+				y = _size.y - _padding - _font_size * 1.25f;
 				break;
 			case TextAlign.CENTER:
-				y = 0.5f * (_size.y - 2.0f * bounds.top - bounds.height);
+				//y = 0.5f * (_size.y - 2.0f * bounds.top - bounds.height);
+				y = 0.5f * (_size.y - _font_size * 1.25f);
 		}
 		sfText_setPosition(text, sfVector2f(to!int(x), to!int(y)));
 	}
