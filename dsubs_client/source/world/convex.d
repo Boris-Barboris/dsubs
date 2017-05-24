@@ -17,16 +17,12 @@ class ConvexShape
 		sfConvexShape* shape;
 	}
 
-	protected static sfRenderStates state_template;
-
-	static this()
-	{
-		state_template.blendMode = sfBlendAlpha;
-	}
+	protected sfRenderStates state_template;
 
 	this(sfVector2f[] points, sfColor fill_color,
 		sfColor border_color, float border_width)
 	{
+		state_template.blendMode = sfBlendAlpha;
 		transform = new Transform2D();
 		shape = sfConvexShape_create();
 		sfConvexShape_setPointCount(shape, points.length);

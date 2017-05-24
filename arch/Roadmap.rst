@@ -16,7 +16,7 @@ GUI:
     + Button.
     + Toggle.
     - Text field (editable).
-    - Text box (editable). Has a scroll bar, word wrap.
+    - Text box (readonly). Has a scroll bar, word wrap.
     ? Window - essentialy, floating closable div. Maybe even resizable.
     - Image - generic render target to display graphical information.
         No need for fancy scaling or zooming, just display image.

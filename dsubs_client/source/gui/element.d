@@ -42,6 +42,7 @@ class GuiElement: Component!"Gui", IInputReciever
 	{
 		super(manager);
 		rect = sfRectangleShape_create();
+		view = sfView_create();
 	}
 
 	GuiManager manager() { return cast(GuiManager) _manager; }
@@ -77,6 +78,7 @@ class GuiElement: Component!"Gui", IInputReciever
 	protected
 	{
 		sfRectangleShape* rect;
+		sfView* view;
 	}
 
 	protected
@@ -100,25 +102,59 @@ class GuiElement: Component!"Gui", IInputReciever
 	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
 
 	/// Update rendering-related parameters from state
-	void update_visual()
+	void update_visual(Window wnd)
 	{
-		sfRectangleShape_setPosition(rect, tosf(_position));
-		sfVector2f new_size = tosf(_size);
+		// set coordinates of the view
+		sfFloatRect coord;
+		coord.left = 0.0f;
+		coord.top = 0.0f;
+		coord.width = _size.x;
+		coord.height = _size.y;
+		sfView_reset(view, coord);
+		//sfRectangleShape_setPosition(rect, tosf(_position));
+		sfRectangleShape_setPosition(rect, sfVector2f(_border_width, _border_width));
+		sfVector2f new_size = tosf(_size - 2.0f * vec2f(_border_width, _border_width));
 		sfRectangleShape_setSize(rect, new_size);
 		sfRectangleShape_setOutlineThickness(rect, _border_width);
 		sfRectangleShape_setOutlineColor(rect, _border_color);
 		sfRectangleShape_setFillColor(rect, _backgroud_color);
 	}
 
-	void draw(Window wnd)
+	void update_viewport(Window wnd)
+	{
+		sfFloatRect vp;
+		vp.left = _position.x / wnd.width;
+		vp.top = _position.y / wnd.height;
+		vp.width = _size.x / wnd.width;
+		vp.height = _size.y / wnd.height;
+		sfView_setViewport(view, vp);
+	}
+
+	void set_view(Window wnd)
+	{
+		sfRenderWindow_setView(wnd.ptr, view);
+	}
+
+	void reset_view(Window wnd)
+	{
+		sfRenderWindow_setView(wnd.ptr, wnd.view);
+	}
+
+	void do_draw(Window wnd)
 	{
 		if (_rect_visible)
-		{
-			if (_visuals_dirty)
-				update_visual();
-			_visuals_dirty = false;
 			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, null);
-		}
+	}
+
+	void draw(Window wnd)
+	{
+		if (_visuals_dirty)
+			update_visual(wnd);
+		_visuals_dirty = false;
+		update_viewport(wnd);
+		set_view(wnd);
+		do_draw(wnd);
+		reset_view(wnd);
 	}
 
 	//

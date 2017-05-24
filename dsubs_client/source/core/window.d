@@ -15,7 +15,7 @@ alias sfEventHandler = void delegate(const sfEvent*);
 
 class Window
 {
-	this(dstring window_name = "dsubs")
+	this(dstring window_name = "dsubs"d)
 	{
 		if (fullscreen)
 			mode = chooseBiggestMode();
@@ -39,6 +39,9 @@ class Window
 		info("OK");
 		// register default handlers
 		register_handler(sfEvtResized, &resized_handler);
+		_view = sfView_create();
+		sfView_reset(_view, sfFloatRect(0.0, 0.0, width, height));
+		sfRenderWindow_setView(wnd, _view);
 	}
 
 	static const(sfVideoMode)[] getSupportedModes()
@@ -108,8 +111,11 @@ class Window
 	uint height() const { return mode.height; }
 	int hasFocus() const {	return sfRenderWindow_hasFocus(wnd); }
 
+	sfView* view() { return _view; }
+
 private:
 	sfRenderWindow* wnd;
+	sfView* _view;
 	sfVideoMode mode;
 	sfContextSettings ctx_settings;
 	bool fullscreen = false;
@@ -121,5 +127,8 @@ private:
 		mode.width = evt.size.width;
 		mode.height = evt.size.height;
 		info("Resize event caught, ", width, "x", height);
+		// reset view
+		sfView_reset(_view, sfFloatRect(0.0, 0.0, mode.width, mode.height));
+		sfRenderWindow_setView(wnd, _view);
 	}
 }

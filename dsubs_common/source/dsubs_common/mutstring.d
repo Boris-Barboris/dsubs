@@ -3,8 +3,10 @@ module dsubs_common.mutstring;
 import std.algorithm.comparison;
 import std.string;
 
+
 /// Alias for simple mutable ASCII string, that we all need so much
-/// in gaming in order to prevent excessive allocations.
+/// in gaming in order to prevent excessive reallocations.
+/// Mutstrings are null-terminated.
 alias mutstring = char[];
 alias dmutstring = dchar[];		// 32-bit unicode
 
@@ -19,11 +21,14 @@ CharT[] _s(CharT)(immutable(CharT)[] s) nothrow pure @safe
 	return res;
 }
 
-/// Creates mutstring from string, allocating space for at least size symbols
+/// Creates mutstring from string, reserving space for at least size
+/// meaningful symbols
 CharT[] _s(CharT)(immutable(CharT)[] s, size_t size) nothrow pure @safe
 {
 	size_t len = max(s.length, size);
-	CharT[] res = new CharT[len + 1];
+	CharT[] res;
+	res.reserve(len + 1);
+	res.length = s.length + 1;
 	for (size_t i = 0; i < s.length; i++)
 		res[i] = s[i];
 	res[s.length] = 0;
@@ -32,13 +37,49 @@ CharT[] _s(CharT)(immutable(CharT)[] s, size_t size) nothrow pure @safe
 
 /// Copy string contents into mutstring, extending it if
 /// required.
-void str2mut_copy(CharT)(immutable(CharT)[] s, CharT[] ms) nothrow @safe
+void str2mut_copy(CharT)(immutable(CharT)[] s, ref CharT[] ms) nothrow @safe
 {
-	if (s.length > ms.length - 1)
-		ms.length = s.length + 1;
+	ms.length = s.length + 1;
 	for (size_t i = 0; i < s.length; i++)
 		ms[i] = s[i];
 	ms[s.length] = 0;
+}
+
+/// Replace symbols from index start to end in string s with one character c
+/// String never inreases it's size.
+void replace_interval(CharT)(ref CharT[] s, size_t start, size_t end, CharT c)
+{
+	s[start] = c;
+	size_t shift = end - start;
+	if (shift > 0)
+	{
+		for (size_t i = start + 1; i < s.length - shift; i++)
+			s[i] = s[i+shift];
+		s.length = s.length - shift;
+	}
+}
+
+unittest
+{
+	mutstring s = _s("as");
+	s.replace_interval(0, 1, 'd');
+	assert(equal(s[0..1], "d"));
+}
+
+void insert_at(CharT)(ref CharT[] s, CharT c, size_t at)
+{
+	++s.length;
+	for (size_t i = s.length - 1; i > at; i--)
+		s[i] = s[i - 1];
+	s[at] = c;
+}
+
+unittest
+{
+	mutstring s = _s("as");
+	s.insert_at('d', 0);
+	s.insert_at('d', 0);
+	assert(equal(s[0..4], "ddas"));
 }
 
 nothrow unittest
@@ -61,7 +102,8 @@ nothrow unittest
 nothrow unittest
 {
 	mutstring s = _s("foobar", 20);
-	assert(s.length == 21);
+	assert(s.length == 7);
+	assert(s.capacity >= 20 - 6);
 }
 
 nothrow unittest

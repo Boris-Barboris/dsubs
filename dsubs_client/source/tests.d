@@ -11,6 +11,7 @@ import dsubs_client.gui.element;
 import dsubs_client.gui.div;
 import dsubs_client.gui.label;
 import dsubs_client.gui.button;
+import dsubs_client.gui.textfield;
 import dsubs_client.input.router;
 
 
@@ -51,7 +52,7 @@ void test_menu_routing()
 			new Label(mgr).content("DSUBS").font_size(40).sizeType(SizeType.FIXED).
 				size(vec2f(0.0f, 100.0f)),
 			new Label(mgr).content("Connect").font_size(20),
-			new Label(mgr).content("Опции").font_size(20),
+			new TextField(mgr).font_size(20),
 			exitBtn,
 		).sizeType(SizeType.FIXED).size(vec2f(300, 0)).asVdiv;
 	auto panel =
@@ -71,12 +72,12 @@ void test_menu_routing()
 	foreach (lbl; menu.children)
 	{
 		Label l = lbl.asLabel;
-		log("Registering ", l.content.toUTF8);
+		log("Registering ", l.content);
 		auto captureEnter(Label l)
 		{
 			return (GuiElement s)
 			{
-				log("Enter ", l.content.toUTF8);
+				log("Enter ", l.content);
 				l.font_color(sfColor(255, 150, 150, 255));
 				l.font_size(l.font_size + 3);
 			};
@@ -85,7 +86,7 @@ void test_menu_routing()
 		{
 			return (GuiElement s)
 			{
-				log("Leave ", l.content.toUTF8);
+				log("Leave ", l.content);
 				l.font_color(sfWhite);
 				l.font_size(l.font_size - 3);
 			};
@@ -94,7 +95,7 @@ void test_menu_routing()
 		l.onMouseLeave += captureLeave(l);
 	}
 	exitBtn.onClick += (Button s, sfMouseButton btn)
-		{ log("Clicked ", s.content.toUTF8); };
+		{ log("Clicked ", s.content); };
 	exitBtn.onClick += (Button s, sfMouseButton btn) { wnd.close_window(); };
 	// go
 	render.start();
