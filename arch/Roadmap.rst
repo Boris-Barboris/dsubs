@@ -22,6 +22,7 @@ GUI:
         - horizontal scroll by mouse wheel and caret movement.
         + caret moving my left\right keys.
         + selection moving my left\right keys.
+        + handle end and home keys.
     - Text box (readonly). Has a scroll bar, word wrap.
     ? Window - essentialy, floating closable div. Maybe even resizable.
     - Image - generic render target to display graphical information.

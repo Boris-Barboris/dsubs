@@ -252,6 +252,20 @@ class TextField: Label
 					}
 					update_cursor_visuals();
 					break;
+				case sfKeyHome:
+					if (kevt.shift)
+						cursor_end = 0;
+					else
+						cursor_start = cursor_end = 0;
+					update_cursor_visuals();
+					break;
+				case sfKeyEnd:
+					if (kevt.shift)
+						cursor_end = _content.length - 1;
+					else
+						cursor_start = cursor_end = _content.length - 1;
+					update_cursor_visuals();
+					break;
 				case sfKeyDelete:
 					if (cursor_start == cursor_end)
 					{
