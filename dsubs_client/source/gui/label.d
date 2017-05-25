@@ -97,6 +97,16 @@ class Label: GuiElement
 		update_text_position();
 	}
 
+	protected
+	{
+		// text content visual parameters they way they look
+		int content_left;
+		int content_top;
+		float content_width;
+		float content_height;
+		int content_x, content_y;
+	}
+
 	void update_text_position()
 	{
 		sfFloatRect bounds = sfText_getLocalBounds(text);
@@ -110,8 +120,10 @@ class Label: GuiElement
 				x = _size.x - _padding - bounds.left - bounds.width;
 				break;
 			case TextAlign.CENTER:
-				x = + 0.5f * (_size.x - 2.0f * bounds.left - bounds.width);
+				x = 0.5f * (_size.x - 2.0f * bounds.left - bounds.width);
 		}
+		content_left = to!int(x + bounds.left);
+		content_width = bounds.width;
 		final switch (_vert_align)
 		{
 			case TextAlign.LEFT:
@@ -126,6 +138,8 @@ class Label: GuiElement
 				//y = 0.5f * (_size.y - 2.0f * bounds.top - bounds.height);
 				y = 0.5f * (_size.y - _font_size * 1.25f);
 		}
+		content_top = to!int(y);	// stable
+		content_height = 1.25f * _font_size;	// stable as well
 		sfText_setPosition(text, sfVector2f(to!int(x), to!int(y)));
 	}
 

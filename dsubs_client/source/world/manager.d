@@ -106,6 +106,7 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrout
 				flush_add_requests();
 				flush_remove_requests();
 				// force active components to update their transforms
+				// TODO: spread load on thread pool
 				foreach (WorldRenderable comp; components)
 					if (comp.active)
 						comp.update_transform();

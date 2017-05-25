@@ -15,7 +15,13 @@ GUI:
     + Simple label.
     + Button.
     + Toggle.
-    - Text field (editable).
+    + Text field (editable).
+        + insert inputed symbol at caret.
+        + replace selected symbols by inputs.
+        + delete and backspace handling.
+        - horizontal scroll by mouse wheel and caret movement.
+        + caret moving my left\right keys.
+        + selection moving my left\right keys.
     - Text box (readonly). Has a scroll bar, word wrap.
     ? Window - essentialy, floating closable div. Maybe even resizable.
     - Image - generic render target to display graphical information.
@@ -50,10 +56,15 @@ Input-related event types:
         OnMouseLeave.
     Keyboard input: goes either to focused element, or to global hotkey handler.
 
-Render:
+Render general:
+    ? world-space and screen-space renderings can in theory be parallelized,
+        by means of rendering in two textures: (world + overlay) and (gui),
+        and then merge them on window.
 
 World-space render:
     + Simple convex shape rendering.
+    - transform update loop should be paralellized, task may actually become
+        quite heavy for one thread.
     - spacial optimization, camera-bound culling, object lookup for picking.
 
 Overlay-space render:

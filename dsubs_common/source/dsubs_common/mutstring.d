@@ -46,7 +46,8 @@ void str2mut_copy(CharT)(immutable(CharT)[] s, ref CharT[] ms) nothrow @safe
 }
 
 /// Replace symbols from index start to end in string s with one character c
-/// String never inreases it's size.
+/// String never increases it's size.
+/// end is inclusive
 void replace_interval(CharT)(ref CharT[] s, size_t start, size_t end, CharT c)
 {
 	s[start] = c;
@@ -66,6 +67,25 @@ unittest
 	assert(equal(s[0..1], "d"));
 }
 
+/// end is inclusive
+void remove_interval(CharT)(ref CharT[] s, size_t start, size_t end)
+{
+	size_t shift = end - start + 1;
+	if (shift > 0)
+	{
+		for (size_t i = start; i < s.length - shift; i++)
+			s[i] = s[i+shift];
+		s.length = s.length - shift;
+	}
+}
+
+unittest
+{
+	mutstring s = _s("asdf");
+	s.remove_interval(1, 2);
+	assert(equal(s[0..2], "af"));
+}
+
 void insert_at(CharT)(ref CharT[] s, CharT c, size_t at)
 {
 	++s.length;
@@ -80,6 +100,18 @@ unittest
 	s.insert_at('d', 0);
 	s.insert_at('d', 0);
 	assert(equal(s[0..4], "ddas"));
+}
+
+void remove_at(CharT)(ref CharT[] s, size_t at)
+{
+	if (at < s.length - 1 && at >= 0)
+	{
+		for (size_t i = at; i < s.length - 1; i++)
+			s[i] = s[i + 1];
+		--s.length;
+	}
+	else
+		throw new Exception("Out of content bounds");
 }
 
 nothrow unittest

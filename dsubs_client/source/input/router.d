@@ -245,5 +245,8 @@ class Router
 		}
 		// mouse event was not captured by anything, nothing is under cursor
 		cursorPointed(null);
+		// click in emptyness clears keyboard focus
+		if (evt.type == sfEvtMouseButtonPressed)
+			kbFocus(null);
 	}
 }
