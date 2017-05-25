@@ -26,7 +26,7 @@ GUI:
     ? Window - essentialy, floating closable div. Maybe even resizable.
     - Image - generic render target to display graphical information.
         No need for fancy scaling or zooming, just display image.
-    - use viewport to force element boundaries and provide guaranteed
+    + use viewport to force element boundaries and provide guaranteed
         overlap protection. May be expensive on OpenGL side. Benefits only
         labels and buttons, probably not worth it. Obligatory for text box.
     + Control content cannot dictate control size, because such scheme always
@@ -36,7 +36,7 @@ GUI:
     + unicode support for onscreen text.
 
 System and utility:
-    - unicode dmutstring support for logging.
+    - unicode mutstring support for logging.
 
 On mouse input:
     GUI elements are static, it's reasonable to handle mouse events only when
@@ -54,22 +54,25 @@ Input-related event types:
     Component moved:
         may leave static mouse cursor behind, or stumble upon it. OnMouseEnter,
         OnMouseLeave.
-    Keyboard input: goes either to focused element, or to global hotkey handler.
+    Keyboard input: goes either to focused element,
+        or to subrouter cascade.
 
 Render general:
-    ? world-space and screen-space renderings can in theory be parallelized,
+    ? world-space and screen-space object updates can in theory be parallelized,
         by means of rendering in two textures: (world + overlay) and (gui),
-        and then merge them on window.
+        and then merge those two textures on window.
 
 World-space render:
     + Simple convex shape rendering.
     - transform update loop should be paralellized, task may actually become
         quite heavy for one thread.
     - spacial optimization, camera-bound culling, object lookup for picking.
+    - world-space and overlay-space renders are shared between windows,
+        hence they manage window context (camera, optimization structures)
+        on their own. Need to aggregate all this to some class.
 
 Overlay-space render:
     - Simple shape rendering.
-    - time interval in update_transform parameters.
     - spacial optimization, camera-bound culling, object lookup for picking.
 
 Spacial hashing:
