@@ -266,6 +266,14 @@ class TextField: Label
 						cursor_start = cursor_end = _content.length - 1;
 					update_cursor_visuals();
 					break;
+				case sfKeyA:
+					if (kevt.control)
+					{
+						cursor_start = 0;
+						cursor_end = _content.length - 1;
+						update_cursor_visuals();
+					}
+					break;
 				case sfKeyDelete:
 					if (cursor_start == cursor_end)
 					{
@@ -307,7 +315,8 @@ class TextField: Label
 					returnKbFocus();
 					break;
 				default:
-					do_handle_text(c);
+					if (c >= 32 || c == '\b')
+						do_handle_text(c);
 			}
 			return HandleResult(false);
 		}
