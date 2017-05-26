@@ -2,6 +2,7 @@ module dsubs_client.gui.label;
 
 import std.conv;
 import std.string;
+import std.math;
 import std.utf;
 
 public import gfm.math.vector;
@@ -104,7 +105,9 @@ class Label: GuiElement
 		int content_top;
 		float content_width;
 		float content_height;
-		int content_x, content_y;
+		// offset for text x coordinate
+		// may be useful for child classes to move text left and right
+		float _left_offset = 0.0f;
 	}
 
 	void update_text_position()
@@ -114,15 +117,16 @@ class Label: GuiElement
 		final switch (_horz_align)
 		{
 			case TextAlign.LEFT:
-				x = _padding - bounds.left;
+				x = _padding - bounds.left + _left_offset;
 				break;
 			case TextAlign.RIGHT:
-				x = _size.x - _padding - bounds.left - bounds.width;
+				x = _size.x - _padding - bounds.left - bounds.width + _left_offset;
 				break;
 			case TextAlign.CENTER:
-				x = 0.5f * (_size.x - 2.0f * bounds.left - bounds.width);
+				x = 0.5f * (_size.x - 2.0f * bounds.left - bounds.width) +
+					_left_offset;
 		}
-		content_left = to!int(x + bounds.left);
+		content_left = to!int(round(x + bounds.left));
 		content_width = bounds.width;
 		final switch (_vert_align)
 		{
@@ -138,9 +142,9 @@ class Label: GuiElement
 				//y = 0.5f * (_size.y - 2.0f * bounds.top - bounds.height);
 				y = 0.5f * (_size.y - _font_size * 1.25f);
 		}
-		content_top = to!int(y);	// stable
+		content_top = to!int(round(y));	// stable
 		content_height = 1.25f * _font_size;	// stable as well
-		sfText_setPosition(text, sfVector2f(to!int(x), to!int(y)));
+		sfText_setPosition(text, sfVector2f(to!int(round(x)), content_top));
 	}
 
 	override void do_draw(Window wnd)

@@ -2,6 +2,7 @@ module dsubs_client.gui.element;
 
 import std.algorithm;
 import std.experimental.logger;
+import std.math;
 
 public import gfm.math.vector;
 
@@ -179,7 +180,10 @@ class GuiElement: Component!"Gui", IInputReciever
 	HandleResult handleKeyboard(const sfEvent* evt)
 	{
 		if (!this.active)
+		{
+			returnKbFocus();
 			return HandleResult(true);
+		}
 		switch (evt.type)
 		{
 			case (sfEvtKeyPressed):

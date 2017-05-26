@@ -42,6 +42,9 @@ class TextField: Label
 		onMouseDown += &handle_mouse_down;
 		onMouseUp += &handle_mouse_up;
 		onMouseMove += &handle_mouse_move;
+		onKeyPressed += &hande_KeyPressed;
+		onTextEntered += &handle_TextEntered;
+		onMouseScroll += &handle_MouseScroll;
 	}
 
 	mixin ElementAccessor!(GuiElement, sfColor, "cursor_color",
@@ -125,22 +128,57 @@ class TextField: Label
 		update_cursor_visuals();
 	}
 
+	protected bool update_recurs = false;
+
 	void update_cursor_visuals()
 	{
 		float char_width;
 		if (_content.length <= 1)
+		{
 			char_width = 0.0f;
+			_left_offset = 0.0f;
+		}
 		else
 			char_width = content_width / (_content.length - 1);
-		// position
-		sfRectangleShape_setPosition(cursor_rect,
-			sfVector2f(
-				content_left + char_width * cursor_start,
-				content_top));
-		// size
+		// position of cursor_start
+		float start_x = content_left + char_width * cursor_start;
+		// position of cursor_end
+		float end_x = start_x + char_width * (cursor_end - cursor_start);
+		if (_content.length > 1 && !update_recurs)
+		{
+			// make sure cursor_end is always visible and is located inside
+			// element's rectangle
+			bool reupdate_visuals = false;
+			if (end_x < _padding)
+			{
+				// we need to move text right
+				_left_offset = min(0.0f, _left_offset - end_x + _padding + 1.0f);
+				reupdate_visuals = true;
+			}
+			else if (end_x > _size.x - _padding)
+			{
+				// we need to move text left
+				_left_offset -= (end_x - _size.x + 1.0f + _padding);
+				reupdate_visuals = true;
+			}
+			if (reupdate_visuals)
+			{
+				// we need to shift the text, let's use recursion
+				super.update_text_position();
+				update_recurs = true;
+				update_cursor_visuals();
+				update_recurs = false;
+				return;
+			}
+		}
+		// cursor_rect width
 		float cursor_width = 2.0f;
 		if (cursor_end != cursor_start)
-			cursor_width = char_width * (cursor_end - cursor_start);
+			cursor_width = end_x - start_x;
+		sfRectangleShape_setPosition(cursor_rect,
+			sfVector2f(
+				start_x,
+				content_top));
 		sfRectangleShape_setSize(cursor_rect,
 			sfVector2f(cursor_width, content_height));
 		sfRectangleShape_setFillColor(cursor_rect, _cursor_color);
@@ -219,108 +257,106 @@ class TextField: Label
 		update_text_position();
 	}
 
-	override HandleResult handleKeyboard(const sfEvent* evt)
+	void handle_MouseScroll(GuiElement sender, int x, int y, int delta)
 	{
-		if (!this.active)
+		if (kb_focused && !mouse_focused)
 		{
-			returnKbFocus();
-			return HandleResult(true);
+			cursor_start = max(0, min(_content.length - 1, cursor_start + delta));
+			cursor_end = cursor_start;
+			update_cursor_visuals();
 		}
-		// TODO: handle DELETE keyboard key and arrow keys
-		if (evt.type == sfEvtKeyPressed)
+	}
+
+	void hande_KeyPressed(GuiElement sender, const sfKeyEvent* kevt)
+	{
+		switch (kevt.code)
 		{
-			sfKeyEvent kevt = evt.key;
-			switch (kevt.code)
-			{
-				case sfKeyLeft:
-					if (kevt.shift)
-						cursor_end = max(0, cursor_end - 1);
-					else
-					{
-						cursor_start = max(0, cursor_start - 1);
-						cursor_end = cursor_start;
-					}
+			case sfKeyLeft:
+				if (kevt.shift)
+					cursor_end = max(0, cursor_end - 1);
+				else
+				{
+					cursor_start = max(0, cursor_start - 1);
+					cursor_end = cursor_start;
+				}
+				update_cursor_visuals();
+				break;
+			case sfKeyRight:
+				if (kevt.shift)
+					cursor_end = min(_content.length - 1, cursor_end + 1);
+				else
+				{
+					cursor_start = min(_content.length - 1, cursor_start + 1);
+					cursor_end = cursor_start;
+				}
+				update_cursor_visuals();
+				break;
+			case sfKeyHome:
+				if (kevt.shift)
+					cursor_end = 0;
+				else
+					cursor_start = cursor_end = 0;
+				update_cursor_visuals();
+				break;
+			case sfKeyEnd:
+				if (kevt.shift)
+					cursor_end = _content.length - 1;
+				else
+					cursor_start = cursor_end = _content.length - 1;
+				update_cursor_visuals();
+				break;
+			case sfKeyA:
+				if (kevt.control)
+				{
+					cursor_start = 0;
+					cursor_end = _content.length - 1;
 					update_cursor_visuals();
-					break;
-				case sfKeyRight:
-					if (kevt.shift)
-						cursor_end = min(_content.length - 1, cursor_end + 1);
-					else
-					{
-						cursor_start = min(_content.length - 1, cursor_start + 1);
-						cursor_end = cursor_start;
-					}
-					update_cursor_visuals();
-					break;
-				case sfKeyHome:
-					if (kevt.shift)
-						cursor_end = 0;
-					else
-						cursor_start = cursor_end = 0;
-					update_cursor_visuals();
-					break;
-				case sfKeyEnd:
-					if (kevt.shift)
-						cursor_end = _content.length - 1;
-					else
-						cursor_start = cursor_end = _content.length - 1;
-					update_cursor_visuals();
-					break;
-				case sfKeyA:
-					if (kevt.control)
-					{
-						cursor_start = 0;
-						cursor_end = _content.length - 1;
-						update_cursor_visuals();
-					}
-					break;
-				case sfKeyDelete:
-					if (cursor_start == cursor_end)
-					{
-						if (cursor_start < _content.length - 1)
-							_content.remove_at(cursor_start);
-					}
-					else
-					{
-						int ordered_start = min(cursor_start, cursor_end);
-						int ordered_end = max(cursor_start, cursor_end);
-						_content.remove_interval(ordered_start, ordered_end - 1);
-						cursor_start = cursor_end = ordered_start;
-					}
-					// update sfml text
-					sfText_setUnicodeString(text, _content.ptr);
-					update_text_position();
-					break;
-				default:
-					break;
-			}
-			return HandleResult(false);
+				}
+				break;
+			case sfKeyDelete:
+				if (cursor_start == cursor_end)
+				{
+					if (cursor_start < _content.length - 1)
+						_content.remove_at(cursor_start);
+				}
+				else
+				{
+					int ordered_start = min(cursor_start, cursor_end);
+					int ordered_end = max(cursor_start, cursor_end);
+					_content.remove_interval(ordered_start, ordered_end - 1);
+					cursor_start = cursor_end = ordered_start;
+				}
+				// update sfml text
+				sfText_setUnicodeString(text, _content.ptr);
+				update_text_position();
+				break;
+			default:
+				break;
 		}
-		if (evt.type == sfEvtTextEntered)
+	}
+
+	void handle_TextEntered(GuiElement sender, const sfTextEvent* evt)
+	{
+		dchar c = evt.unicode;
+		switch (c)
 		{
-			dchar c = evt.text.unicode;
-			switch (c)
-			{
-				case '\r':
-					// do nothing
-					break;
-				case '\n':
-					// do nothing
-					break;
-				case '\t':
-					// do nothing
-					break;
-				case 27:
-					// ESC character
-					returnKbFocus();
-					break;
-				default:
-					if (c >= 32 || c == '\b')
-						do_handle_text(c);
-			}
-			return HandleResult(false);
+			case '\r':
+				// do nothing
+				break;
+			case '\n':
+				// do nothing
+				break;
+			case '\t':
+				// do nothing
+				break;
+			case 27:
+				// ESC character
+				returnKbFocus();
+				break;
+			default:
+				if (c >= 32 || c == '\b')
+					do_handle_text(c);
 		}
-		return HandleResult(true);
 	}
 }
 

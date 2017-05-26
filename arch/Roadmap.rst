@@ -19,9 +19,9 @@ GUI:
         + insert inputed symbol at caret.
         + replace selected symbols by inputs.
         + delete and backspace handling.
-        - horizontal scroll by mouse wheel and caret movement.
+        + horizontal scroll by mouse wheel (wich moves caret) and caret movement.
         + caret moving my left\right keys.
-        + selection moving my left\right keys.
+        + selection moving my shift+left\right keys.
         + handle end and home keys.
         + handle ctrl+a.
     - Text box (readonly). Has a scroll bar, word wrap.
