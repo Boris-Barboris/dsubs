@@ -26,6 +26,7 @@ GUI:
         + handle ctrl+a.
     - Text box (readonly, multiline). Has a scroll bar, word wrap.
         - words separated by spaces, lines are wrapped only on spaces.
+        - very long words (one word longer whole line) wrapped using dash.
         - tab character correctly displayed.
     ? Window - essentialy, floating closable div. Maybe even resizable.
     - Image - generic render target to display graphical information.

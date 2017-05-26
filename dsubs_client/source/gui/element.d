@@ -57,8 +57,7 @@ class GuiElement: Component!"Gui", IInputReciever
 	// Called by child when it has changed somehow
 	void child_changed(GuiElement child) {}
 
-	mixin ElementAccessor!(GuiElement, vec2f, "position",
-		"_visuals_dirty = true;");
+	mixin ElementAccessor!(GuiElement, vec2f, "position", "");
 
 	mixin ElementAccessor!(GuiElement, vec2f, "size",
 		"if (_sizeType == SizeType.FIXED && _parent)
