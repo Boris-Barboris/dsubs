@@ -24,7 +24,9 @@ GUI:
         + selection moving my shift+left\right keys.
         + handle end and home keys.
         + handle ctrl+a.
-    - Text box (readonly). Has a scroll bar, word wrap.
+    - Text box (readonly, multiline). Has a scroll bar, word wrap.
+        - words separated by spaces, lines are wrapped only on spaces.
+        - tab character correctly displayed.
     ? Window - essentialy, floating closable div. Maybe even resizable.
     - Image - generic render target to display graphical information.
         No need for fancy scaling or zooming, just display image.

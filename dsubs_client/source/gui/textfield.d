@@ -110,13 +110,6 @@ class TextField: Label
 		cursor_start = cursor_end = 0;
 	}
 
-	override void update_visual(Window wnd)
-	{
-		// TODO: remove if not needed
-		super.update_visual(wnd);
-		//update_cursor_visuals();
-	}
-
 	override void update_text_position()
 	{
 		super.update_text_position();

@@ -65,7 +65,7 @@ class Label: GuiElement
 	{
 		str2mut_copy(val, _content);
 		sfText_setUnicodeString(text, _content.ptr);
-		update_text_position();
+		_visuals_dirty = true;
 		return this;
 	}
 
@@ -75,22 +75,22 @@ class Label: GuiElement
 	}
 
 	mixin ElementAccessor!(Label, uint, "font_size",
-		"sfText_setCharacterSize(text, _font_size); update_text_position();");
+		"sfText_setCharacterSize(text, _font_size); _visuals_dirty = true;");
 
 	mixin ElementAccessor!(Label, string, "fontname",
-		"sfText_setFont(text, loadedFonts[_fontname]); update_text_position();");
+		"sfText_setFont(text, loadedFonts[_fontname]); _visuals_dirty = true;");
 
 	mixin ElementAccessor!(Label, sfColor, "font_color",
 		"sfText_setColor(text, _font_color);");
 
 	mixin ElementAccessor!(Label, float, "padding",
-		"update_text_position();");
+		"_visuals_dirty = true;");
 
 	mixin ElementAccessor!(Label, TextAlign, "horz_align",
-		"update_text_position();");
+		"_visuals_dirty = true;");
 
 	mixin ElementAccessor!(Label, TextAlign, "vert_align",
-		"update_text_position();");
+		"_visuals_dirty = true;");
 
 	override void update_visual(Window wnd)
 	{
