@@ -42,10 +42,16 @@ struct SpawnResponse
 {
 	SpawnStatus status;
 	ulong usecs;		// game world absolute time in microseconds
-	box2d map_borders;	// server passes the map during spawn
+
+	// server passes the map if the status is OK
+	// if map will become more complex later on, it will need it's own
+	// unit.
+	box2d map_borders;
 
 	Map initialize_map()
 	{
 		return new Map(map_borders);
 	}
+
+	bool spawned() { return status == SpawnStatus.OK; }
 }

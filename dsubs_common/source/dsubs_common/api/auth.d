@@ -29,7 +29,7 @@ struct RegisterRequest
 }
 
 /// Server's response on authorization or registration request.
-struct AuthRegisterRequest
+struct RegisterResponse
 {
     AuthResponse response;
 }

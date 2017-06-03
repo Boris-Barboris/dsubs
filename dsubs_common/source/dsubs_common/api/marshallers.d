@@ -22,7 +22,7 @@ public immutable string[] api_units = [
 	"DisconnectSignal",
 	"AuthLoginRequest",
 	"RegisterRequest",
-	"AuthRegisterRequest",
+	"RegisterResponse",
 ];
 
 alias Demarshaller = void* function(ubyte[] data, out uint shift);
@@ -48,7 +48,6 @@ static this()
 		// generate marshaller
 		enum unit_hash = djb2(unit_type_str);
 		pragma(msg, "Generating demarshaller for ", unit_type_str);
-			//ArrayAwareMarshaller!(mixin(unit_type_str)));
 		demarshallers[unit_hash] =
 			cast(Demarshaller) &(ArrayAwareMarshaller!(mixin(unit_type_str)).demarshal);
 	}
@@ -58,7 +57,11 @@ static this()
 // Marshalling code generators
 //
 
+// Can operate on structs, that contain other structs. Leaves of the tree can
+// only contain primitive types. Arrays are allowed only in top-level
+// struct.
 template ArrayAwareMarshaller(T)
+	if (is(T == struct))
 {
 	uint marshal(const(T)* ptr, ubyte[] stream)
 	{
