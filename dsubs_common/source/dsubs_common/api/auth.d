@@ -17,7 +17,6 @@ enum AuthResponse: ubyte
 /// Authorization is done once for TCP connection.
 struct AuthLoginRequest
 {
-    static header_t header = cast(header_t) "loginreq";
     @MaxLenAttr(64) string username;
     @MaxLenAttr(64) string password;
 }
@@ -25,7 +24,6 @@ struct AuthLoginRequest
 /// Send this unit in order to register new account.
 struct RegisterRequest
 {
-    static header_t header = cast(header_t) "register";
     @MaxLenAttr(64) string username;
     @MaxLenAttr(64) string password;
 }
@@ -33,6 +31,5 @@ struct RegisterRequest
 /// Server's response on authorization or registration request.
 struct AuthRegisterRequest
 {
-    static header_t header = cast(header_t) "authresp";
     AuthResponse response;
 }

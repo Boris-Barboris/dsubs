@@ -9,13 +9,11 @@ import dsubs_common.objects.map;
 /// if now, when will you have.
 struct SpawnAvailiableReq
 {
-	static header_t header = cast(header_t) "chkspawn";
 }
 
 /// Server's response.
 struct SpawnAvailiableResp
 {
-	static header_t header = cast(header_t) "chkspwrs";
 	bool availiable;    // when true, you don't need to wait
 	uint msecs_left;    // you need to wait that many milliseconds
 	// if unavailiable, reason will be explained here in human-readable form
@@ -27,7 +25,6 @@ struct SpawnAvailiableResp
 /// will be passed by this request.
 struct SpawnRequest
 {
-	static header_t header = cast(header_t) "spawnreq";
 }
 
 enum SpawnStatus: ubyte
@@ -43,7 +40,6 @@ enum SpawnStatus: ubyte
 /// synchronization API.
 struct SpawnResponse
 {
-	static header_t header = cast(header_t) "spawnres";
 	SpawnStatus status;
 	ulong usecs;		// game world absolute time in microseconds
 	box2d map_borders;	// server passes the map during spawn

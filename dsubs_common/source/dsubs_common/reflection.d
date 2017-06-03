@@ -72,10 +72,15 @@ template FunctionalMembersFilter(T, FieldFlags flags, TList...)
 string[] TypeMembers(T, FieldFlags flags)() if (isAggregateType!(T))
 {
 	enum field_names = __traits(allMembers, T);
-	enum underscore_filtered = UnderscoreFilter!(flags, field_names);
-	enum derived_filtered = DerivedFilter!(T, flags, underscore_filtered);
-	enum function_filtered = FunctionalMembersFilter!(T, flags, derived_filtered);
-	return [function_filtered];
+	static if (field_names.length == 0)
+		return [];
+	else
+	{
+		enum underscore_filtered = UnderscoreFilter!(flags, field_names);
+		enum derived_filtered = DerivedFilter!(T, flags, underscore_filtered);
+		enum function_filtered = FunctionalMembersFilter!(T, flags, derived_filtered);
+		return [function_filtered];
+	}
 }
 
 /// Returns tumple of attributes

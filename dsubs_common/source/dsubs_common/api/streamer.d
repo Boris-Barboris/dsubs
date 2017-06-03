@@ -7,67 +7,26 @@ module dsubs_common.api.streamer;
 
 import std.meta;
 
-public import dsubs_common.api.auth;
-public import dsubs_common.api.status;
-
-import dsubs_common.api.utils;
-
-
-public immutable string[] api_units = [
-	"StatusRequest",
-	"StatusResponse",
-	"DisconnectSignal",
-	"AuthLoginRequest",
-	"RegisterRequest",
-	"AuthRegisterRequest",
-];
-
-// Generate code to fill dict with function pointers
-private string UnitMarshallers(string[] unit_names, string demarsh_name,
-	string dict_name, string func_type, string func_name)()
-{
-	string result;
-	foreach (unit_type; aliasSeqOf!unit_names)
-	{
-		// register unit header
-		result ~= dict_name ~ "[" ~ unit_type ~ ".header] = cast(" ~ func_type ~
-			") &" ~ demarsh_name ~ "!(" ~ unit_type ~ ")." ~ func_name ~ ";\n";
-	}
-	return result;
-}
-
-private alias Demarshaller = void* function(ubyte[] data, out uint shift);
-
-/// Global hash-map of demarshalling functions
-immutable Demarshaller[header_t] demarshallers;
-
-pragma(msg, "demarshallers:\n",
-	UnitMarshallers!(api_units,	"ArrayAwareDemarshaller", "demarshallers",
-				     "Demarshaller", "demarshal"));
-
-static this()
-{
-	mixin(UnitMarshallers!(api_units, "ArrayAwareDemarshaller", "demarshallers",
-						   "Demarshaller", "demarshal"));
-}
+public import dsubs_common.api.marshallers;
+public import dsubs_common.math.hash;
 
 /// Prototype of unit handler
 alias UnitHandler = void delegate(void* unit_ptr);
 
-/// Class that handles byte stream marshalling of API Units
+/// Class that handles byte stream demarshalling
 class APIStreamer
 {
 	UnitHandler[header_t] handlers;
 
-	UnitHandler register_handler(UnitType)(void delegate(UnitType*) func)
+	/// Set handler to call when unit is found in the byte stream
+	UnitHandler set_handler(UnitType)(void delegate(UnitType*) func)
 	{
-		auto key = UnitType.header;
-		auto res = key in handlers;
+		enum key = djb2(UnitType.stringof);
+		UnitHandler* res = key in handlers;
+		UnitHandler old_handler = res ? *res : null;
 		UnitHandler func_casted = cast(UnitHandler) func;
 		handlers[key] = func_casted;
-		if (res is null)
-			return null;
-		return *res;		// return old handler
+		return old_handler;
 	}
 
 	/// Handle all units in byte stream
@@ -75,7 +34,7 @@ class APIStreamer
 	{
 		while (data.length > HEADER_SIZE)
 		{
-			header_t header = data[0 .. HEADER_SIZE];
+			header_t header = *(cast(header_t*) data.ptr);
 			if (header !in demarshallers)
 				break;	// unknown header, abort processing
 			Demarshaller func = demarshallers[header];
@@ -90,25 +49,27 @@ class APIStreamer
 	}
 }
 
+import dsubs_common.api.status;
+
 unittest
 {
 	ubyte[] stream = new ubyte[256];
-	StatusResponse sr1;
-	StatusRequest srq1;
+	ServerStatusResponse sr1;
+	ServerStatusRequest srq1;
 	sr1.status = ServerStatus.OFF;
 	sr1.api_version = 1337;
 	string welcome_string = "TestString";
 	sr1.welcome_string = welcome_string;
-	auto shift = ArrayAwareMarshaller!StatusResponse.marshal(&sr1, stream);
+	auto shift = marshal!ServerStatusResponse(&sr1, stream);
 	auto mstream = stream[shift .. $];
-	shift = ArrayAwareMarshaller!StatusRequest.marshal(&srq1, mstream);
+	shift = marshal!ServerStatusRequest(&srq1, mstream);
 	mstream = mstream[shift .. $];
-	shift = ArrayAwareMarshaller!StatusResponse.marshal(&sr1, mstream);
+	shift = marshal!ServerStatusResponse(&sr1, mstream);
 	mstream = mstream[shift .. $];
-	ArrayAwareMarshaller!StatusResponse.marshal(&sr1, mstream);
+	marshal!ServerStatusResponse(&sr1, mstream);
 	uint called = 0;
 
-	void handle_StatusResponse(StatusResponse* rsp)
+	void handle_StatusResponse(ServerStatusResponse* rsp)
 	{
 		assert(rsp.status == ServerStatus.OFF);
 		assert(rsp.api_version == 1337);
@@ -117,7 +78,7 @@ unittest
 	}
 
 	APIStreamer streamer = new APIStreamer;
-	streamer.register_handler!(StatusResponse)(&handle_StatusResponse);
+	streamer.set_handler!(ServerStatusResponse)(&handle_StatusResponse);
 	streamer.process(stream);
 	assert(called == 3);
 }
