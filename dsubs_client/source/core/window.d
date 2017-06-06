@@ -111,6 +111,7 @@ class Window
 	uint height() const { return mode.height; }
 	int hasFocus() const {	return sfRenderWindow_hasFocus(wnd); }
 
+	// default window view will always be here
 	sfView* view() { return _view; }
 
 private:

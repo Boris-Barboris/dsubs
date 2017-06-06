@@ -34,7 +34,8 @@ class WorldRenderable: Component!"world"
 		depth = 0.0;
 	}
 
-	abstract void render(Window wnd, const(mat3x3d)* mat);
+	// Generally, it may well be some texture instead of window
+	abstract void render(Window wnd);
 
 	// View is not model. Component transform is not bound to objects real
 	// position and may be inter\extrapolated on different refresh rate.
@@ -43,24 +44,50 @@ class WorldRenderable: Component!"world"
 	void update_transform() {}
 }
 
+class CameraContext
+{
+	Camera2D camera;
+	mat3x3d world2screen;
+	mat3x3d screen2world;
+
+	// window or any other renderable
+	this(Window wnd)
+	{
+		camera = new Camera2D(vec2ui(wnd.width, wnd.height));
+		update();
+	}
+
+	void update()
+	{
+		world2screen = camera.world2screen;
+		screen2world = camera.screen2world;
+	}
+}
 
 /// Manages world-space objects rendering and IO event handling
 /// (selection, picking).
 class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrouter
 {
 	// Let's say we always have one camera spanning whole window.
-	Camera2D[Window] cameras;
+	CameraContext[Window] cameras;
+
+	CameraContext generate_context(Window wnd)
+	{
+		CameraContext ctx = new CameraContext(wnd);
+		cameras[wnd] = ctx;
+		return ctx;
+	}
 
 	// z-sorted array of component references
 	Array!WorldRenderable components;
 
 	this()
 	{
-		components.reserve(256);
+		components.reserve(512);
 		add_queue_mutex = new Object();
 		remove_queue_mutex = new Object();
 		// guaranteed transform update during next rendering
-		last_update = MonoTime.currTime - target_frame_time;
+		last_update = MonoTime.currTime;
 	}
 
 	// Components will be forced to update their transforms if this much
@@ -121,12 +148,15 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrout
 		atomicOp!"+="(threads_rendering, 1);
 		scope(exit) atomicOp!"-="(threads_rendering, 1);
 		// then we select the camera
-		auto camera = cameras[wnd];
-		mat3x3d camera_mat = camera.world2screen;
+		CameraContext camctx = cameras[wnd];
+		camctx.update();
+		sfRenderWindow_setView(wnd.ptr, camctx.camera.view);
 		// and render components on the window
 		foreach (WorldRenderable comp; components)
 			if (comp.active)
-				comp.render(wnd, &camera_mat);
+				comp.render(wnd);
+		// return default view to the window
+		sfRenderWindow_setView(wnd.ptr, wnd.view);
 	}
 
 	Object add_queue_mutex;
@@ -188,16 +218,19 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrout
 
 	RouteResult routeMousePos(Router ctx, const sfEvent* evt, int x, int y)
 	{
-		throw new Exception("not implemented yet");
+		return RouteResult(null);
 	}
 
 	RouteResult routeKeyboard(Router ctx, const sfEvent* evt)
 	{
-		throw new Exception("not implemented yet");
+		return RouteResult(null);
 	}
 
 	void handleWindowResize(Router ctx, Window wnd, const sfSizeEvent* evt)
 	{
-		throw new Exception("not implemented yet");
+		// we need to resize camera
+		CameraContext* camctx = wnd in cameras;
+		if (camctx)
+			camctx.camera.screen_size(vec2ui(evt.width, evt.height));
 	}
 }

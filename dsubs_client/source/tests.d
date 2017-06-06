@@ -113,35 +113,37 @@ void test_world_manager_simple()
 	loadSfmlLibraries();
 	Window wnd = new Window();
 	Render render = new Render(wnd);
+	Router router = new Router(wnd);
 	WorldManager mgr = new WorldManager();
+	router.world_router = mgr;
 	render.world_render = mgr;
-	Camera2D camera = new Camera2D(vec2ui(wnd.width, wnd.height));
-	wnd.register_handler(sfEvtResized,
-		(const sfEvent* a) {camera.screen_size(vec2ui(a.size.width, a.size.height));});
-	mgr.cameras[wnd] = camera;
+	mgr.generate_context(wnd);
 	// some example class, rotating box
 
 	import core.time;
+	import dsubs_common.math.transform;
+	import dsubs_client.core.sfml;
 
 	class BoxModel: WorldRenderable
 	{
+		Transform2D transform;
 		ConvexShape shape;
 		this(WorldManager manager)
 		{
 			super(manager);
+			transform = new Transform2D();
 			shape = new ConvexShape(
 				[sfVector2f(100.0f, 0.0f), sfVector2f(0.0f, 100.0f),
 				 sfVector2f(-100.0f, 0.0f), sfVector2f(0.0f, -100.0f)],
 				sfColor(255, 150, 150, 50),
 				sfWhite,
 				5.0f);
-			transform.add_child(shape.transform);
 			last_update = MonoTime.currTime;
 		}
 
-		override void render(Window wnd, const(mat3x3d)* mat)
+		override void render(Window wnd)
 		{
-			shape.render(wnd, mat);
+			shape.render(wnd, transform.global.tosf);
 		}
 
 		private MonoTime last_update;

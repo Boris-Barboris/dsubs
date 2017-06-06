@@ -3,10 +3,13 @@ module dsubs_client.world.camera;
 import std.conv;
 import std.math;
 
+public import gfm.math.funcs;
 public import gfm.math.vector;
 public import gfm.math.matrix;
 
-import dsubs_common.math.transform;
+import derelict.sfml2.graphics;
+import dsubs_client.core.sfml;
+import dsubs_common.math.transform: clampAngle;
 
 
 /// 2D-camera class, specializes on relative, iterative
@@ -21,19 +24,28 @@ class Camera2D
 		// camera focus in world space
 		vec2d _center;
 		// rotation in world space. 0 - North, towards world Y axis. Positive
-		// angle - counter-clockwise.
+		// angle - counter-clockwise. Radians.
 		double _rotation;
 		// zoom. 1 - 1 unit in world space takes one pixel. 2.0 - 2 pixels.
 		double _zoom;
 		// screen size in pixels
 		vec2ui _screen_size;
 
+		// sfml-scpecific implementation
+		sfView* _view;
+
 		shared bool _dirty = false;
 	}
 
 	this(vec2ui screen_size = vec2ui(640, 480))
 	{
+		_view = sfView_create();
 		from_components(vec2d(0, 0), 0, 1, screen_size);
+	}
+
+	~this()
+	{
+		sfView_destroy(_view);
 	}
 
 	protected void rebuild()
@@ -45,7 +57,14 @@ class Camera2D
 		res = mat3x3d.scaling(vec2d(_zoom, -_zoom)) * res;
 		_mat = mat3x3d.translation(vec2d(_screen_size) / 2.0) * res;
 		_imat = _mat.inverse();
+		// update view
+		sfView_setCenter(_view, sfVector2f(_center.x, -_center.y));
+		sfView_setRotation(_view, degrees(_rotation));
+		sfView_setSize(_view, tosf(_screen_size));
+		sfView_zoom(_view, _zoom);
 	}
+
+	sfView* view() { return _view; }
 
 	ref const(mat3x3d) world2screen()
 	{

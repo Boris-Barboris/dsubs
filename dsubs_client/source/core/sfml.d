@@ -97,20 +97,25 @@ sfVector2f tosf(const vec2f v)
 	return sfVector2f(v.x, v.y);
 }
 
+sfVector2f tosf(const vec2ui v)
+{
+	return sfVector2f(v.x, v.y);
+}
+
 sfVector2f tosf(const vec2d v)
 {
 	return sfVector2f(to!float(v.x), to!float(v.y));
 }
 
-ref sfTransform tosf(ref mat3x3f m)
-{
-	return *(cast(sfTransform*)(&m));
-}
+import std.meta;
 
 sfTransform tosf(const ref mat3x3d m)
 {
 	sfTransform res;
-	for (int i = 0; i < 9; i++)
+	foreach (i; AliasSeq!(0, 1, 2, 6, 7, 8))
 		res.matrix[i] = to!float(m.v[i]);
+	// stupid screen-space sfml camera matrix with inverted Y
+	foreach (j; AliasSeq!(3, 4, 5))
+		res.matrix[j] = -to!float(m.v[j]);
 	return res;
 }
