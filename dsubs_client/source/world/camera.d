@@ -59,9 +59,9 @@ class Camera2D
 		_imat = _mat.inverse();
 		// update view
 		sfView_setCenter(_view, sfVector2f(_center.x, -_center.y));
-		sfView_setRotation(_view, degrees(_rotation));
+		sfView_setRotation(_view, -degrees(_rotation));
 		sfView_setSize(_view, tosf(_screen_size));
-		sfView_zoom(_view, _zoom);
+		sfView_zoom(_view, 1.0 / _zoom);
 	}
 
 	sfView* view() { return _view; }

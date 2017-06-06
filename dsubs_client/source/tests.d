@@ -117,7 +117,7 @@ void test_world_manager_simple()
 	WorldManager mgr = new WorldManager();
 	router.world_router = mgr;
 	render.world_render = mgr;
-	mgr.generate_context(wnd);
+	auto ctx = mgr.generate_context(wnd);
 	// some example class, rotating box
 
 	import core.time;
@@ -152,12 +152,15 @@ void test_world_manager_simple()
 		{
 			MonoTime cur = MonoTime.currTime;
 			auto diff = (cur - last_update).total!"msecs";
-			transform.rotation = transform.rotation + diff * 1e-3;
+			transform.rotation = transform.rotation + diff * 3e-4;
 			last_update = cur;
 		}
 	}
 
 	mgr.addRoot(new BoxModel(mgr));
+	ctx.camera.center(vec2d(0, 50.0));
+	ctx.camera.zoom(2.0);
+	ctx.camera.rotation(0.15);
 	// go
 	render.start();
 	wnd.poll_events();

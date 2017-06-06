@@ -88,7 +88,7 @@ Render general:
 	? world-space and screen-space object updates can in theory be parallelized,
 		by means of rendering in two textures: (world + overlay) and (gui),
 		and then merge those two textures on window.
-	- Rewrite camera to use inbuilt sfml view, since manually multiplying matrixes
+	+ Rewrite camera to use inbuilt sfml view, since manually multiplying matrixes
 		on CPU is wasteful. There already is double-matrix gpu schema, no need to
 		ignore it.
 
