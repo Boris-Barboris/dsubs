@@ -6,11 +6,11 @@ import dsubs_common.objects.visual;
 
 enum InfoSource: ubyte
 {
-    Player,     // object is player's avatar.
-    Phantom,    // object is a phantom that does not correspond to real object's position,
-                // but is broadcasted for player's convenience. For example,
-                // first seconds of player's torpedo lives.
-    TrueSight,  // accurate representation of an entity
+	Player,     // object is player's avatar.
+	Phantom,    // object is a phantom that does not correspond to real object's position,
+				// but is broadcasted for player's convenience. For example,
+				// first seconds of player's torpedo lives.
+	TrueSight,  // accurate representation of an entity
 }
 
 // subs, torps, decoys, other stuff
@@ -29,16 +29,19 @@ struct ShipHull
 	string description;
 	VisualModel model;
 	MountPoint[] mounts;	// player customizes his sub using modules
+	bool controllable;
 }
 
 struct MountPoint
 {
 	ID_TYPE id;
 	string name;
-	vec2f position;
-	float rotation;
-	bool mirrored;
+	ID_TYPE[] module_choice;		// ids of module classes to choose from
 	bool visible;		// does module have a model?
+	vec2f position;		// if yes, model parameters
+	float rotation;
+	float scale;
+	bool mirrored;
 }
 
 enum ModuleType: ubyte
@@ -56,6 +59,7 @@ enum ModuleType: ubyte
 	WeaponRack,
 	PassiveJammer,
 	DirectedJammer,
+	TowedModuleMount,
 
 	ModuleTypeCount,
 }
@@ -66,4 +70,38 @@ struct ShipModuleClass
 	ModuleType type;
 	string name;
 	string description;
+}
+
+enum ModuleHealth: ubyte
+{
+	OK,
+	RECOVERABLE,
+	BROKEN,
+}
+
+enum PropellerType: ubyte
+{
+	Screw,
+	FixedModel
+}
+
+struct PropellerModel
+{
+	ID_TYPE id;
+	PropellerType type;
+	ubyte blade_count;		// for screws
+	Contour contour;
+}
+
+struct PropulsorModule
+{
+	static ModuleType type = ModuleType.Propulsor;
+	ID_TYPE id;
+	ID_TYPE class_id;
+	ID_TYPE model_id;		// id of PropellerModel
+	bool enabled;
+	ModuleHealth health;
+	// two following values are not guaranteed to represent server model:
+	float max_rpm;			// on 1.0 or -1.0 throttle this will be the rpm
+	float acc_spd;			// normalized acceleration speed
 }

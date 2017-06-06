@@ -5,6 +5,7 @@
 
 module dsubs_common.api.streamer;
 
+import std.conv;
 import std.meta;
 
 public import dsubs_common.api.marshallers;
@@ -12,6 +13,16 @@ public import dsubs_common.math.hash;
 
 /// Prototype of unit handler
 alias UnitHandler = void delegate(void* unit_ptr);
+
+class UnknownUnit: Exception
+{
+	header_t header;
+	this(header_t header)
+	{
+		super("Unknown unit header " ~ to!string(header));
+		this.header = header;
+	}
+}
 
 /// Class that handles byte stream demarshalling
 class APIStreamer
@@ -36,7 +47,7 @@ class APIStreamer
 		{
 			header_t header = *(cast(header_t*) data.ptr);
 			if (header !in demarshallers)
-				break;	// unknown header, abort processing
+				throw new UnknownUnit(header);
 			Demarshaller func = demarshallers[header];
 			uint shift;
 			void* struct_ptr = func(data[HEADER_SIZE .. $], shift);
@@ -60,13 +71,19 @@ unittest
 	sr1.api_version = 1337;
 	string welcome_string = "TestString";
 	sr1.welcome_string = welcome_string;
+	uint global_shift = 0;
 	auto shift = marshal!ServerStatusResponse(&sr1, stream);
 	auto mstream = stream[shift .. $];
+	global_shift += shift;
 	shift = marshal!ServerStatusRequest(&srq1, mstream);
+	global_shift += shift;
 	mstream = mstream[shift .. $];
 	shift = marshal!ServerStatusResponse(&sr1, mstream);
+	global_shift += shift;
 	mstream = mstream[shift .. $];
-	marshal!ServerStatusResponse(&sr1, mstream);
+	global_shift += marshal!ServerStatusResponse(&sr1, mstream);
+	stream = stream[0 .. global_shift];
+
 	uint called = 0;
 
 	void handle_StatusResponse(ServerStatusResponse* rsp)
