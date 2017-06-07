@@ -133,8 +133,8 @@ void test_world_manager_simple()
 			super(manager);
 			transform = new Transform2D();
 			shape = new ConvexShape(
-				[sfVector2f(100.0f, 0.0f), sfVector2f(0.0f, 100.0f),
-				 sfVector2f(-100.0f, 0.0f), sfVector2f(0.0f, -100.0f)],
+				[sfVector2f(60.0f, 0.0f), sfVector2f(0.0f, 100.0f),
+				 sfVector2f(-60.0f, 0.0f), sfVector2f(0.0f, -100.0f)],
 				sfColor(255, 150, 150, 50),
 				sfWhite,
 				5.0f);
@@ -154,11 +154,12 @@ void test_world_manager_simple()
 			auto diff = (cur - last_update).total!"msecs";
 			transform.rotation = transform.rotation + diff * 3e-4;
 			last_update = cur;
+			ctx.camera.center(ctx.camera.center + diff * vec2d(-0.05, 0.0));
 		}
 	}
 
 	mgr.addRoot(new BoxModel(mgr));
-	ctx.camera.center(vec2d(0, 50.0));
+	ctx.camera.center(vec2d(100.0, 50.0));
 	ctx.camera.zoom(2.0);
 	ctx.camera.rotation(0.15);
 	// go
