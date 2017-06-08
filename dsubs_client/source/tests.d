@@ -126,12 +126,10 @@ void test_world_manager_simple()
 
 	class BoxModel: WorldRenderable
 	{
-		Transform2D transform;
 		ConvexShape shape;
 		this(WorldManager manager)
 		{
 			super(manager);
-			transform = new Transform2D();
 			shape = new ConvexShape(
 				[sfVector2f(60.0f, 0.0f), sfVector2f(0.0f, 100.0f),
 				 sfVector2f(-60.0f, 0.0f), sfVector2f(0.0f, -100.0f)],
@@ -143,7 +141,7 @@ void test_world_manager_simple()
 
 		override void render(Window wnd)
 		{
-			shape.render(wnd, transform.global.tosf);
+			shape.render(wnd, transform.sfglobal);
 		}
 
 		private MonoTime last_update;

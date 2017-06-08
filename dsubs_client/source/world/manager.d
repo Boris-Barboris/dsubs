@@ -10,12 +10,11 @@ import std.experimental.logger;
 import std.container.array;
 import std.range;
 
-import dsubs_common.math.transform;
-
 import dsubs_client.core.component;
 import dsubs_client.core.window;
 import dsubs_client.core.utils;
 import dsubs_client.input.router;
+import dsubs_client.math.transform;
 import dsubs_client.render.render;
 import dsubs_client.world.camera;
 
@@ -24,13 +23,13 @@ import dsubs_client.world.camera;
 /// Hierarchies and connections are implemented using transform parenting.
 class WorldRenderable: Component!"world"
 {
-	Transform2D transform;
+	Transform transform;
 	double depth;		// yes, we're actually 2.5D
 
 	this (WorldManager manager)
 	{
 		super(manager);
-		transform = new Transform2D();
+		transform = new Transform();
 		depth = 0.0;
 	}
 
