@@ -105,7 +105,7 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 	{
 		synchronized (this)
 		{
-			panels.removePred(a => a.root.deleted);
+			panels.removeAll!(a => a.root.deleted);
 		}
 	}
 
@@ -125,7 +125,7 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 				{
 					// default behaviour of moving clicked panel to
 					// the top of z-stack
-					panels.removePredFirst(a => a is panel);
+					panels.removeFirst!(a => a is panel);
 					panels.insertBack(panel);
 				}
 				return RouteResult(res.interceptor);

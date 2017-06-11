@@ -94,7 +94,9 @@ class Transform2D
 
 	void remove_child(Transform2D kid)
 	{
-		_children.removePredFirst(a => a is kid, (a) { a.parent = null; });
+		Transform2D* removed = _children.removeFirst!(a => a is kid);
+		if (removed)
+			removed.parent = null;
 	}
 
 	unittest

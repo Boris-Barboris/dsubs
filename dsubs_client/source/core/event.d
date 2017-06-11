@@ -17,7 +17,7 @@ struct Event(DelegateType : void delegate(ArgTypes), ArgTypes...)
 		static if (op == "+") handlers ~= handler;
 		else static if (op == "-")
 		{
-			handlers.removePred(a => a is handler);
+			handlers.removeFirst!(a => a is handler);
 		}
 		else static assert(0, "Operator " ~ op ~ "= non-applicable to event");
 	}
