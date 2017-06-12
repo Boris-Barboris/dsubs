@@ -113,8 +113,11 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 	{
 		GuiRouteResult res;
 		// look for reciever from top to bottom of z-ordered panel stack
-		foreach (panel; retro_active_panels)
+		for (auto i = panels.end(); !i.end; i.prev)
 		{
+			if (!i.val.root.active)
+				continue;
+			auto panel = i.val;
 			res = panel.routeMousePos(evt, x, y);
 			if (res.interceptor)
 			{
@@ -125,7 +128,7 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 				{
 					// default behaviour of moving clicked panel to
 					// the top of z-stack
-					panels.removeFirst!(a => a is panel);
+					panels.remove(i);
 					panels.insertBack(panel);
 				}
 				return RouteResult(res.interceptor);

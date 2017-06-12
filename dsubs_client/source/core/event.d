@@ -1,16 +1,15 @@
 module dsubs_client.core.event;
 
-import std.algorithm;
 import std.traits;
 
-import dsubs_common.containers.dlist;
+import dsubs_common.containers.array;
 
 
 struct Event(DelegateType : void delegate(ArgTypes), ArgTypes...)
 	if (isDelegate!(DelegateType))
 {
 	alias HandlerType = void delegate(ArgTypes);
-	DList!HandlerType handlers;
+	HandlerType[] handlers;
 
 	void opOpAssign(string op)(HandlerType handler)
 	{
