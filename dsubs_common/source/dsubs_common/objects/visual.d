@@ -7,7 +7,6 @@ enum NamedColor: ubyte
 {
 	MainHullColor,
 	SecondaryHullColor,
-	FactionColor,
 	MainBorder,
 	SecondaryBorder,
 }

@@ -52,7 +52,7 @@ System and utility:
 On mouse input:
 	GUI elements are static, it's reasonable to handle mouse events only when
 	they are generated. World-space objects move themself, they can leave immobile
-	cursor behind. That's why renderi sexpected to generates artificial
+	cursor behind. That's why render is expected to generates artificial
 	mouseMove event on each render cycle for focused window.
 
 Input-related stuff:
@@ -97,7 +97,7 @@ World-space render:
 	- transform update loop should be paralellized, task may actually become
 		quite heavy for one thread.
 	- spacial optimization, camera-bound culling, object lookup for picking.
-	- world-space and overlay-space renders are shared between windows,
+	+ world-space and overlay-space renders are shared between windows,
 		because they manage the same set of objects - game models. Gui render, on
 		the other hand, is different for each window.
 		hence they should manage window context (camera, optimization structures)
@@ -116,12 +116,12 @@ Spacial hashing:
 	We're in 2d space, so let's use quadrtree. Contained element - AABB.
 	Each renderable entity should expose an interface to get it's bounding box.
 	Camera view frustrum is bounded as well - that's how we get elements to draw.
-	Not only leafs of a tree can contain elements, but event the root (that makes
-	an object always renderable), this is helpful when object sizes are unbounded.
+	Not only leafs of a tree can contain elements, but even the root:
+	this is helpful when object sizes are unbounded.
 	GUI elements move or change rarely. World-space objects, on the other hand,
 	do so frequently, many of them do so every frame. Tree update must be fast.
 	Caching is a must. Also, we're not forced to have a fixed tree root, when we're
-	out of bounds, we can just build an upper layer and shift the root.
+	out of bounds, we can just build a new upper layer and shift the root up.
 
 
 Game mechanics:

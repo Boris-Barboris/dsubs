@@ -101,7 +101,7 @@ struct PropulsorModule
 	ID_TYPE model_id;		// id of PropellerModel
 	bool enabled;
 	ModuleHealth health;
-	// two following values are not guaranteed to represent server model:
+	// two following values are not guaranteed to match server model:
 	float max_rpm;			// on 1.0 or -1.0 throttle this will be the rpm
 	float acc_spd;			// normalized acceleration speed
 }

@@ -7,7 +7,7 @@ public import gfm.math.box;
 /// Physical objects passing through edges will be pushed back.
 class Map
 {
-    box2d bounds;
+	box2d bounds;
 
-    this(box2d bound) { bounds = bound; }
+	this(box2d bound) { bounds = bound; }
 }
