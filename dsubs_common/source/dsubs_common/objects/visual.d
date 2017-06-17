@@ -1,6 +1,6 @@
 module dsubs_common.objects.visual;
 
-public import gfm.math.vector;
+import dsubs_common.api.utils;
 
 
 enum NamedColor: ubyte
@@ -19,7 +19,7 @@ enum ContourType: ubyte
 
 struct Contour
 {
-	vec2f[] vertices;
+	Vector2!(float)[] vertices;
 	float line_width;
 	ContourType type;
 	NamedColor fill_color;

@@ -20,7 +20,7 @@ struct ServerStatusResponse
 	ServerStatus status;
 	uint api_version;
 	uint players_online;
-	@MaxLenAttr(128) string welcome_string;
+	@MaxLenAttr(512) string welcome_string;
 }
 
 /// Server sends this unit to the client when it drops the connection.

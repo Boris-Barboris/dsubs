@@ -3,6 +3,9 @@ module dsubs_common.api.utils;
 import std.conv;
 import std.traits;
 
+import gfm.math.vector;
+
+import dsubs_common.api.constants;
 import dsubs_common.reflection;
 
 // yes, uint, no 4GB+ arrays over TCP please
@@ -29,4 +32,39 @@ class MaxLenExceeded: Exception
 template ArrayElementSize(T) if (isArray!T)
 {
 	enum ArrayElementSize = (ArrayElementType!T).sizeof;
+}
+
+/// mixin to reduce line count for units that simply pass one value
+mixin template SingleValueUnit(string unitname, FieldType, string fieldname)
+{
+	mixin("struct " ~ unitname ~ " { " ~ FieldType.stringof ~
+		" " ~ fieldname ~ ";}");
+}
+
+// same but with id
+mixin template IdAndValueUnit(string unitname, FieldType, string fieldname)
+{
+	mixin("struct " ~ unitname ~ " { ID_TYPE id; " ~ FieldType.stringof ~
+		" " ~ fieldname ~ ";}");
+}
+
+/// Reflection-friendly vector type
+struct Vector2(T)
+{
+	T x;
+	T y;
+	static if (is(T == float))
+	{
+		vec2f togfm() const pure
+		{
+			return vec2f(x, y);
+		}
+	}
+	static if (is(T == double))
+	{
+		vec2d togfm() const pure
+		{
+			return vec2d(x, y);
+		}
+	}
 }

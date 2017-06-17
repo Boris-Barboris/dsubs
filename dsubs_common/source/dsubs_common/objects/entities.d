@@ -1,6 +1,7 @@
 module dsubs_common.objects.entities;
 
 import dsubs_common.api.constants;
+import dsubs_common.api.utils;
 import dsubs_common.objects.visual;
 
 
@@ -33,7 +34,7 @@ struct Craft
 
 struct ShipHull
 {
-	ID_TYPE id;		// unique hull identifier
+	ID_TYPE id;
 	string name;
 	string description;
 	VisualModel model;
@@ -46,10 +47,10 @@ struct MountPoint
 	ID_TYPE id;
 	string name;
 	ID_TYPE[] module_choice;	// ids of module descriptors to choose from
-	bool visible;		// does module have a model?
-	vec2f position;		// if yes, model parameters
+	bool visible;				// does module have a model?
+	Vector2!float position;		// if yes, model parameters
 	float rotation;
-	vec2f scale;
+	Vector2!float scale;
 }
 
 enum ModuleType: ubyte

@@ -164,7 +164,7 @@ unittest
 {
 	DList!double l = DList!double();
 	assert(l.empty);
-	l.pushBack(1.0);
+	l.insertBack(1.0);
 	assert(!l.empty);
 	assert(l.popBack() == 1.0);
 	assert(l.empty);

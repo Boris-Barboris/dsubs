@@ -14,6 +14,9 @@ import dsubs_common.math.hash;
 import dsubs_common.reflection;
 
 import dsubs_common.api.auth;
+import dsubs_common.api.database;
+import dsubs_common.api.spawn;
+import dsubs_common.api.state;
 import dsubs_common.api.status;
 
 // List should be filled with names of all dsubs API units
@@ -24,6 +27,17 @@ public immutable string[] api_units = [
 	"AuthLoginRequest",
 	"RegisterRequest",
 	"RegisterResponse",
+	"EntityDatabase",
+	"DatabaseVersion",
+	"SpawnAvailiableReq",
+	"SpawnAvailiableResp",
+	"SpawnRequest",
+	"MapInfoUnit",
+	"TimeSync",
+	"CraftInfo",
+	"HealthUpdate",
+	"KinematicsUpdate",
+	"PlayerKilled",
 ];
 
 alias Demarshaller = void* function(ubyte[] data, out uint shift);
@@ -85,7 +99,8 @@ unittest
 //
 
 // This generator operates on nested structs, wich can include arrays
-// of primitive scalar types or other structs. Pointes are not allowed.
+// of primitive scalar types or other structs. Pointes, unions, aliases are
+// not allowed, only very simple structs.
 template GenericStructMarshaller(T)
 	if (is(T == struct))
 {
@@ -111,8 +126,9 @@ uint do_marshal(StructType)(StructType* ptr, ubyte[] stream)
 	if (is(StructType == struct))
 {
 	uint shift = 0;
-	enum fields = TypeMembers!(StructType, FieldFlags.Fields)();
-	foreach (field; aliasSeqOf!(fields))
+	enum fields = FieldNameTuple!StructType;
+	pragma(msg, "do_marshal ", StructType, fields);
+	foreach (field; fields)
 	{
 		alias FieldType = typeof(mixin("ptr." ~ field));
 		uint field_shift = do_marshal!(StructType, FieldType, field)(ptr, stream);
@@ -126,8 +142,8 @@ uint do_demarshal(StructType)(StructType* ptr, const(ubyte)[] stream)
 	if (is(StructType == struct))
 {
 	uint shift = 0;
-	enum fields = TypeMembers!(StructType, FieldFlags.Fields)();
-	foreach (field; aliasSeqOf!(fields))
+	enum fields = FieldNameTuple!StructType;
+	foreach (field; fields)
 	{
 		alias FieldType = typeof(mixin("ptr." ~ field));
 		uint field_shift = do_demarshal!(StructType, FieldType, field)(ptr, stream);
@@ -233,9 +249,9 @@ uint do_marshal(StructType, SubstructType, string FieldName)(StructType* ptr, ub
 	if (is(StructType == struct) && is(SubstructType == struct))
 {
 	uint shift = 0;
-	enum subfields = TypeMembers!(SubstructType, FieldFlags.Fields)();
+	enum subfields = FieldNameTuple!SubstructType;
 	const(SubstructType)* subptr = mixin("&(ptr." ~ FieldName ~ ")");
-	foreach (subfield; aliasSeqOf!(subfields))
+	foreach (subfield; subfields)
 	{
 		alias SubfieldType = typeof(mixin("ptr." ~ FieldName ~ "." ~ subfield));
 		uint field_shift = do_marshal!(SubstructType, SubfieldType, subfield)(subptr, stream);
@@ -249,9 +265,9 @@ uint do_demarshal(StructType, SubstructType, string FieldName)(StructType* ptr, 
 	if (is(StructType == struct) && is(SubstructType == struct))
 {
 	uint shift = 0;
-	enum subfields = TypeMembers!(SubstructType, FieldFlags.Fields)();
+	enum subfields = FieldNameTuple!SubstructType;
 	SubstructType* subptr = mixin("&(ptr." ~ FieldName ~ ")");
-	foreach (subfield; aliasSeqOf!(subfields))
+	foreach (subfield; subfields)
 	{
 		alias SubfieldType = typeof(mixin("ptr." ~ FieldName ~ "." ~ subfield));
 		uint field_shift = do_demarshal!(SubstructType, SubfieldType, subfield)(subptr, stream);
