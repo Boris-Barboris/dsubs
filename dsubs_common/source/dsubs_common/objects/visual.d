@@ -14,7 +14,7 @@ enum NamedColor: ubyte
 enum ContourType: ubyte
 {
 	ConvexContour,
-	Lines,				// sequence of rectangles
+	Lines,
 }
 
 struct Contour

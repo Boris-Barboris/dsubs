@@ -13,6 +13,14 @@ enum InfoSource: ubyte
 	TrueSight,  // accurate representation of an entity
 }
 
+enum ModuleHealth: ubyte
+{
+	OK,
+	LightDamage,
+	HeavyDamage,
+	Lost,
+}
+
 // subs, torps, decoys, other stuff
 struct Craft
 {
@@ -20,6 +28,7 @@ struct Craft
 	ID_TYPE hull_id;	// hull type identifier
 	InfoSource source;	// how does the player know about it?
 	bool alive;			// known only for Player and TrueSight ships
+	ID_TYPE[] modules;	// modules that are fitted on the craft
 }
 
 struct ShipHull
@@ -36,19 +45,16 @@ struct MountPoint
 {
 	ID_TYPE id;
 	string name;
-	ID_TYPE[] module_choice;		// ids of module classes to choose from
+	ID_TYPE[] module_choice;	// ids of module descriptors to choose from
 	bool visible;		// does module have a model?
 	vec2f position;		// if yes, model parameters
 	float rotation;
-	float scale;
-	bool mirrored;
+	vec2f scale;
 }
 
 enum ModuleType: ubyte
 {
-	HullStructure,
-	HullShell,
-	HullCovering,
+	HullMod,
 	PowerPlant,
 	PowerStorage,
 	Propulsor,
@@ -64,7 +70,7 @@ enum ModuleType: ubyte
 	ModuleTypeCount,
 }
 
-struct ShipModuleClass
+struct ShipModuleDescriptor
 {
 	ID_TYPE id;
 	ModuleType type;
@@ -72,17 +78,10 @@ struct ShipModuleClass
 	string description;
 }
 
-enum ModuleHealth: ubyte
-{
-	OK,
-	RECOVERABLE,
-	BROKEN,
-}
-
 enum PropellerType: ubyte
 {
-	Screw,
-	FixedModel
+	Screw,		// rotating blades
+	FixedModel,	// no animation, pump jet or similar
 }
 
 struct PropellerModel
@@ -90,18 +89,17 @@ struct PropellerModel
 	ID_TYPE id;
 	PropellerType type;
 	ubyte blade_count;		// for screws
-	Contour contour;
+	Contour contour;		// one blade or whole pump contour
 }
 
 struct PropulsorModule
 {
-	static ModuleType type = ModuleType.Propulsor;
+	alias type = ModuleType.Propulsor;
 	ID_TYPE id;
-	ID_TYPE class_id;
+	ID_TYPE desc_id;		// descriptor id
 	ID_TYPE model_id;		// id of PropellerModel
-	bool enabled;
-	ModuleHealth health;
 	// two following values are not guaranteed to match server model:
-	float max_rpm;			// on 1.0 or -1.0 throttle this will be the rpm
-	float acc_spd;			// normalized acceleration speed
+	float max_angvel;		// on 1.0 or -1.0 throttle will rotate blades with
+							// this angular velocity
+	float ang_acc;			// angular acceleration
 }
