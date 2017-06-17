@@ -11,7 +11,7 @@ import dsubs_common.objects;
 struct EntityDatabase
 {
 	ShipHull[] hulls;
-	ShipModuleClass[] moduleClasses;
+	ShipModuleDescriptor[] moduleClasses;
 	PropellerModel[] prop_models;
 	PropulsorModule[] propulsors;
 }

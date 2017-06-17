@@ -25,6 +25,7 @@ enum DivType
 
 /// Divider
 class Div(uint dim, uint odim): GuiElement
+	if (dim + odim == 1)
 {
 	GuiElement[] children;
 
