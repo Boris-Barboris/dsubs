@@ -2,6 +2,8 @@ module dsubs_common.containers.dlist;
 
 import std.functional : unaryFun;
 
+import dsubs_common.memory.allocation;
+
 struct DList(T)
 {
 	struct DNode
@@ -18,7 +20,7 @@ struct DList(T)
 			if (p)
 				p.next = &this;
 			if (n)
-				p.prev = &this;
+				n.prev = &this;
 		}
 	}
 
@@ -29,6 +31,17 @@ struct DList(T)
 	{
 		foreach (el; range)
 			this.insertBack(el);
+	}
+
+	~this()
+	{
+		DNode* ptr = _first;
+		while (ptr)
+		{
+			DNode* next = ptr.next;
+			_delete(ptr);
+			ptr = next;
+		}
 	}
 
 	struct Iterator
@@ -98,8 +111,9 @@ struct DList(T)
 	Iterator begin() { return Iterator(_first); }
 	Iterator end() { return Iterator(_last); }
 
-	void remove(Iterator cursor)
+	void remove(ref Iterator cursor)
 	{
+		assert(!cursor.end);
 		DNode* node = cursor._target;
 		if (node.prev)
 			node.prev.next = node.next;
@@ -109,6 +123,8 @@ struct DList(T)
 			_first = node.next;
 		if (_last == node)
 			_last = node.prev;
+		cursor.next();
+		_delete(node);
 	}
 
 	bool empty()
@@ -118,7 +134,7 @@ struct DList(T)
 
 	void insertFront(T val)
 	{
-		DNode* new_node = new DNode(null, _first, val);
+		DNode* new_node = _new!DNode(null, _first, val);
 		_first = new_node;
 		if (!_last)
 			_last = _first;
@@ -133,7 +149,7 @@ struct DList(T)
 
 	void insertBack(T val)
 	{
-		DNode* new_node = new DNode(_last, null, val);
+		DNode* new_node = _new!DNode(_last, null, val);
 		_last = new_node;
 		if (!_first)
 			_first = _last;
@@ -145,7 +161,11 @@ struct DList(T)
 		T val = _first.val;
 		if (_last == _first)
 			_last = null;
-		_first = _first.next;
+		DNode* frst_next = _first.next;
+		_delete(_first);
+		_first = frst_next;
+		if (_first)
+			_first.prev = null;
 		return val;
 	}
 
@@ -155,7 +175,11 @@ struct DList(T)
 		T val = _last.val;
 		if (_last == _first)
 			_first = null;
-		_last = _last.prev;
+		DNode* last_prev = _last.prev;
+		_delete(_last);
+		_last = last_prev;
+		if (_last)
+			_last.next = null;
 		return val;
 	}
 }
@@ -182,49 +206,55 @@ unittest
 
 void removeAll(alias pred, T)(ref DList!T list)
 {
-	for (auto i = list.begin; !i.end; i.next())
+	for (auto i = list.begin; !i.end;)
 		if (unaryFun!pred(i.val))
 			list.remove(i);
+		else
+			i.next();
 }
 
 void removeAll(T)(ref DList!T list, bool delegate(T) pred)
 {
-	for (auto i = list.begin; !i.end; i.next())
+	for (auto i = list.begin; !i.end;)
 		if (pred(i.val))
 			list.remove(i);
+		else
+			i.next();
 }
 
 /// Remove all elements that satisfy pred and apply func to them
 void removeAll(T)(ref DList!T list, bool delegate(T) pred, void delegate(ref T) func)
 {
-	for (auto i = list.begin; !i.end; i.next())
+	for (auto i = list.begin; !i.end;)
 		if (unaryFun!pred(i.val))
 		{
 			list.remove(i);
 			func(i.val);
 		}
+		else
+			i.next();
 }
 
-T* removeFirst(alias pred, T)(ref DList!T list)
+bool removeFirst(alias pred, T)(ref DList!T list)
 {
 	for (auto i = list.begin; !i.end; i.next())
 		if (unaryFun!pred(i.val))
 		{
 			list.remove(i);
-			return &i.val();
+			return true;
 		}
-	return null;
+	return false;
 }
 
-T* removeFirst(T)(ref DList!T list, bool delegate(T) pred)
+bool removeFirst(T)(ref DList!T list, bool delegate(T) pred)
 {
 	for (auto i = list.begin; !i.end; i.next())
 		if (pred(i.val))
 		{
 			list.remove(i);
-			return &i.val();
+			return true;
 		}
-	return null;
+	return false;
 }
 
 import std.algorithm.comparison: equal;

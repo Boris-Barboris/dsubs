@@ -7,7 +7,7 @@ import std.range;
 public import gfm.math.matrix;
 public import gfm.math.vector;
 
-import dsubs_common.containers.dlist;
+import dsubs_common.containers.array;
 
 
 // Returns a - b, clamped to [-PI; PI]
@@ -44,7 +44,7 @@ class Transform2D
 		shared bool inverse_dirty;
 		mat3x3d inverse_cache;	// inverted world matrix
 		Transform2D _parent;
-		DList!Transform2D _children;
+		Transform2D[] _children;
 	}
 
 	this()
@@ -94,9 +94,9 @@ class Transform2D
 
 	void remove_child(Transform2D kid)
 	{
-		Transform2D* removed = _children.removeFirst!(a => a is kid);
+		bool removed = _children.removeFirst!(a => a is kid);
 		if (removed)
-			removed.parent = null;
+			kid.parent = null;
 	}
 
 	unittest
@@ -180,7 +180,7 @@ class Transform2D
 		return _translation;
 	}
 
-	@property DList!Transform2D children() { return _children; }
+	@property Transform2D[] children() { return _children; }
 
 	/// Initialize transform by individual components, applied in semantic order
 	void from_components(vec2d scale, double rotation, vec2d translation)
