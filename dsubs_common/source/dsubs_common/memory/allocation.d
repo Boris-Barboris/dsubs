@@ -5,7 +5,7 @@ import std.experimental.allocator.mallocator;
 import std.traits;
 
 // For now malloc should suffice. If perfrormance or fragmentation will
-// be noticed, we'll use smarter allocation patterns
+// be noticed, we'll use more complex allocation patterns
 auto _new(T, Args...)(Args args)
 {
 	return Mallocator.instance.make!(T)(args);
