@@ -22,10 +22,30 @@ struct DList(T)
 			if (n)
 				n.prev = &this;
 		}
+
+		~this()
+		{
+			if (prev)
+				prev.next = next;
+			if (next)
+				next.prev = prev;
+		}
 	}
 
 	DNode* _first;
 	DNode* _last;
+
+	ref T front()
+	{
+		assert(!empty);
+		return _first.val;
+	}
+
+	ref T back()
+	{
+		assert(!empty);
+		return _last.val;
+	}
 
 	this(T[] range)
 	{
@@ -42,6 +62,18 @@ struct DList(T)
 			_delete(ptr);
 			ptr = next;
 		}
+	}
+
+	void clear()
+	{
+		DNode* ptr = _first;
+		while (ptr)
+		{
+			DNode* next = ptr.next;
+			_delete(ptr);
+			ptr = next;
+		}
+		_first = _last = null;
 	}
 
 	struct Iterator
@@ -115,10 +147,6 @@ struct DList(T)
 	{
 		assert(!cursor.end);
 		DNode* node = cursor._target;
-		if (node.prev)
-			node.prev.next = node.next;
-		if (node.next)
-			node.next.prev = node.prev;
 		if (_first == node)
 			_first = node.next;
 		if (_last == node)
@@ -155,32 +183,24 @@ struct DList(T)
 			_first = _last;
 	}
 
-	T popFront()
+	void popFront()
 	{
 		assert(_first);
-		T val = _first.val;
 		if (_last == _first)
 			_last = null;
-		DNode* frst_next = _first.next;
-		_delete(_first);
-		_first = frst_next;
-		if (_first)
-			_first.prev = null;
-		return val;
+		auto todelete = _first;
+		_first = _first.next;
+		_delete(todelete);
 	}
 
-	T popBack()
+	void popBack()
 	{
 		assert(_last);
-		T val = _last.val;
 		if (_last == _first)
 			_first = null;
-		DNode* last_prev = _last.prev;
-		_delete(_last);
-		_last = last_prev;
-		if (_last)
-			_last.next = null;
-		return val;
+		auto todelete = _last;
+		_last = _last.prev;
+		_delete(todelete);
 	}
 }
 
@@ -190,7 +210,8 @@ unittest
 	assert(l.empty);
 	l.insertBack(1.0);
 	assert(!l.empty);
-	assert(l.popBack() == 1.0);
+	assert(l.front == 1.0);
+	l.popBack();
 	assert(l.empty);
 }
 
@@ -198,9 +219,11 @@ unittest
 {
 	DList!double l = DList!double([1.0, 2.0]);
 	assert(!l.empty);
-	assert(l.popBack() == 2.0);
+	assert(l.back == 2.0);
+	l.popBack();
 	assert(!l.empty);
-	assert(l.popBack() == 1.0);
+	assert(l.back == 1.0);
+	l.popBack();
 	assert(l.empty);
 }
 
