@@ -236,7 +236,7 @@ void removeAll(alias pred, T)(ref DList!T list)
 			i.next();
 }
 
-void removeAll(T)(ref DList!T list, bool delegate(T) pred)
+void removeAll(T)(ref DList!T list, scope bool delegate(T) pred)
 {
 	for (auto i = list.begin; !i.end;)
 		if (pred(i.val))
@@ -246,7 +246,8 @@ void removeAll(T)(ref DList!T list, bool delegate(T) pred)
 }
 
 /// Remove all elements that satisfy pred and apply func to them
-void removeAll(T)(ref DList!T list, bool delegate(T) pred, void delegate(ref T) func)
+void removeAll(T)(ref DList!T list, scope bool delegate(T) pred,
+	scope void delegate(ref T) func)
 {
 	for (auto i = list.begin; !i.end;)
 		if (unaryFun!pred(i.val))
@@ -269,7 +270,7 @@ bool removeFirst(alias pred, T)(ref DList!T list)
 	return false;
 }
 
-bool removeFirst(T)(ref DList!T list, bool delegate(T) pred)
+bool removeFirst(T)(ref DList!T list, scope bool delegate(T) pred)
 {
 	for (auto i = list.begin; !i.end; i.next())
 		if (pred(i.val))
