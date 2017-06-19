@@ -216,10 +216,11 @@ unittest
 	static void* postblitPtr;
 	static void* assignPtr;
 	static void* rhsAssignPtr;
+	static void* dstrPtr;
 
 	void clear_ptrs()
 	{
-		constructPtr = postblitPtr = assignPtr = rhsAssignPtr = null;
+		dstrPtr = constructPtr = postblitPtr = assignPtr = rhsAssignPtr = null;
 	}
 
 	struct TestStruct
@@ -243,6 +244,10 @@ unittest
 			assignPtr = &this;
 			return this;
 		}
+		~this()
+		{
+			dstrPtr = &this;
+		}
 	}
 
 	TestStruct testFunc()
@@ -254,6 +259,7 @@ unittest
 	assert(!postblitPtr);
 	assert(!assignPtr);
 	assert(!rhsAssignPtr);
+	assert(!dstrPtr);
 	assert(cast(void*) &s != constructPtr);		// I can't register pointer to s :(
 
 	clear_ptrs();
@@ -266,8 +272,22 @@ unittest
 	assert(!postblitPtr);
 	assert(assignPtr);
 	assert(!rhsAssignPtr);
+	assert(dstrPtr);
 	assert(cast(void*) &s == assignPtr);	// ok, at least I have this
 	assert(cast(void*) &s != constructPtr);	// some internal pointer from tesstFun2 stack?
+	assert(dstrPtr != constructPtr);		// lol
+
+	clear_ptrs();
+	TestStruct tnew;
+	testFun2(tnew);
+	assert(constructPtr);
+	assert(!postblitPtr);
+	assert(assignPtr);
+	assert(!rhsAssignPtr);
+	assert(dstrPtr);
+	assert(cast(void*) &tnew == assignPtr);
+	assert(cast(void*) &tnew != constructPtr);
+	assert(dstrPtr != constructPtr);	// lol
 
 	clear_ptrs();
 	static void* internal_ptr;
@@ -283,6 +303,7 @@ unittest
 	assert(!postblitPtr);
 	assert(!assignPtr);		// is it RVO?...
 	assert(!rhsAssignPtr);
+	assert(!dstrPtr);
 	assert(cast(void*) &s3 == constructPtr);		// as expected
 	assert(cast(void*) &s3 == internal_ptr);		// ... yes it is RVO
 
@@ -292,6 +313,7 @@ unittest
 	assert(!postblitPtr);
 	assert(!assignPtr);
 	assert(!rhsAssignPtr);
+	assert(!dstrPtr);
 	assert(cast(void*) s1 == constructPtr);		// ok
 
 	constructPtr = postblitPtr = assignPtr = null;
@@ -303,6 +325,7 @@ unittest
 	assert(!postblitPtr);
 	assert(assignPtr);
 	assert(rhsAssignPtr);
+	assert(!dstrPtr);
 	assert(cast(void*) s1 == assignPtr);
 	assert(cast(void*) s2 == rhsAssignPtr);
 
@@ -312,8 +335,11 @@ unittest
 	assert(!postblitPtr);
 	assert(assignPtr);
 	assert(!rhsAssignPtr);
+	assert(dstrPtr);
 	assert(cast(void*) s1 != constructPtr);
 	assert(cast(void*) s1 == assignPtr);
+	assert(dstrPtr != assignPtr);
+	assert(dstrPtr != constructPtr);
 
 	clear_ptrs();
 	void testFun3(TestStruct ts)
@@ -323,11 +349,14 @@ unittest
 		assert(postblitPtr);
 		assert(!assignPtr);
 		assert(!rhsAssignPtr);
+		assert(!dstrPtr);
 		assert(cast(void*) &ls != constructPtr);
 		assert(cast(void*) &ts != constructPtr);
 		assert(cast(void*) &ls == postblitPtr);
 	}
 	testFun3(TestStruct(true));
+	assert(dstrPtr);
+	assert(dstrPtr != postblitPtr);		// sigh
 
 	clear_ptrs();
 	void testFun4(TestStruct ts)
@@ -337,9 +366,11 @@ unittest
 		assert(postblitPtr);
 		assert(!assignPtr);
 		assert(!rhsAssignPtr);
+		assert(!dstrPtr);
 		assert(cast(void*) &ls == postblitPtr);
 	}
 	testFun4(*s1);
+	assert(dstrPtr);
 
 	clear_ptrs();
 	void testFun5(ref TestStruct ts)
@@ -349,9 +380,28 @@ unittest
 		assert(postblitPtr);
 		assert(!assignPtr);
 		assert(!rhsAssignPtr);
+		assert(!dstrPtr);
 		assert(cast(void*) &ls == postblitPtr);
 	}
 	testFun5(s);
+	assert(dstrPtr);
+
+	clear_ptrs();
+	void testFun6(ref TestStruct ts)
+	{
+		TestStruct ls = TestStruct(true);
+		ls = ts;
+		assert(constructPtr);
+		assert(!postblitPtr);
+		assert(assignPtr);
+		assert(rhsAssignPtr);
+		assert(!dstrPtr);
+		assert(cast(void*) &ls == constructPtr);
+		assert(cast(void*) &ls == assignPtr);
+		assert(cast(void*) &ts == rhsAssignPtr);
+	}
+	testFun5(s);
+	assert(dstrPtr);
 }
 
 unittest
