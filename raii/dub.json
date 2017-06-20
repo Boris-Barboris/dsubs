@@ -1,0 +1,18 @@
+{
+	"name": "raii",
+	"targetType": "library",
+	"authors": [
+		"Boris-Barboris"
+	],
+	"description": "GC-free memory management primitives",
+	"copyright": "Copyright (C) 2017, Alexander Baranin aka Boris-Barboris",
+	"license": "Apache 2.0",
+	"configurations": [
+		{
+			"name": "unit",
+			"targetType": "executable",
+			"dflags-dmd": ["-vgc"],
+            "buildOptions": ["debugMode", "debugInfo", "unittests"],
+		}
+    ]
+}

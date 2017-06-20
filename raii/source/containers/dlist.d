@@ -1,18 +1,24 @@
-module dsubs_common.containers.dlist;
+module raii.containers.dlist;
 
+import std.experimental.allocator: make, dispose;
+import std.experimental.allocator.mallocator: Mallocator;
 import std.functional : unaryFun;
 
-import dsubs_common.memory.allocation;
+import raii.utils;
 
-struct DList(T)
+// Double-linked list
+struct DList(T, Allocator = Mallocator)
+	if (isAllocator!Allocator)
 {
-	struct DNode
+	static struct DNode
 	{
 		DNode* prev;
 		DNode* next;
 		T val;
 
-		this(DNode* p, DNode* n, T v)
+		@disable this();
+
+		this(DNode* p, DNode* n, ref T v)
 		{
 			prev = p;
 			next = n;
@@ -32,8 +38,7 @@ struct DList(T)
 		}
 	}
 
-	DNode* _first;
-	DNode* _last;
+	DNode* _first, _last;
 
 	ref T front()
 	{
@@ -47,42 +52,69 @@ struct DList(T)
 		return _last.val;
 	}
 
-	this(T[] range)
+	// DList is struct only because of VFT overhead
+	@disable this(this);
+
+	enum HoldsAllocator = !isStaticAllocator!Allocator;
+
+	static if (HoldsAllocator)
 	{
-		foreach (el; range)
-			this.insertBack(el);
+		private Allocator _allocator;
+
+		@property Allocator allocator() { return _allocator; }
+
+		this(Allocator allocator)
+		{
+			_allocator = allocator;
+		}
+
+		this(Allocator allocator, T[] range)
+		{
+			_allocator = allocator;
+			foreach (el; range)
+				this.insertBack(el);
+		}
+	}
+	else
+	{
+		this(T[] range)
+		{
+			foreach (el; range)
+				this.insertBack(el);
+		}
 	}
 
 	~this()
+	{
+		destroy_all();
+	}
+
+	private void destroy_all()
 	{
 		DNode* ptr = _first;
 		while (ptr)
 		{
 			DNode* next = ptr.next;
-			_delete(ptr);
+			destroy_node(ptr);
 			ptr = next;
 		}
 	}
 
 	void clear()
 	{
-		DNode* ptr = _first;
-		while (ptr)
-		{
-			DNode* next = ptr.next;
-			_delete(ptr);
-			ptr = next;
-		}
+		destroy_all();
 		_first = _last = null;
+		assert(empty);
 	}
 
+	// Two-side iterator
 	struct Iterator
 	{
 		DNode* _target;
 		this(DNode* tgt) { _target = tgt; }
-		ref T val()
+		@property ref T val()
 		{
-			assert(!this.end, "Iterator is outside of DList");
+			assert(!this.end);
 			return _target.val;
 		}
 		void next()
@@ -95,7 +127,7 @@ struct DList(T)
 			assert(!this.end);
 			_target = _target.prev;
 		}
-		bool end() const { return _target == null; }
+		@property bool end() const { return _target == null; }
 	}
 
 	struct Range
@@ -137,13 +169,20 @@ struct DList(T)
 
 	Range opSlice()
 	{
-		return Range(begin(), end());
+		return Range(begin, end);
 	}
 
-	Iterator begin() { return Iterator(_first); }
-	Iterator end() { return Iterator(_last); }
+	@property Iterator begin() { return Iterator(_first); }
+	@property Iterator end() { return Iterator(_last); }
 
-	void remove(ref Iterator cursor)
+	enum MoveDir {
+		FRWD,
+		BACK,
+	};
+
+	// MoveDirection - wich way to move cursor after underlying node is
+	// destroyed and deallocated.
+	void remove(MoveDir md = MoveDir.FRWD)(ref Iterator cursor)
 	{
 		assert(!cursor.end);
 		DNode* node = cursor._target;
@@ -151,18 +190,29 @@ struct DList(T)
 			_first = node.next;
 		if (_last == node)
 			_last = node.prev;
-		cursor.next();
-		_delete(node);
+		static if (md == MoveDir.FRWD)
+			cursor.next();
+		else
+			cursor.prev();
+		destroy_node(node);
 	}
 
-	bool empty()
+	@property bool empty()
 	{
 		return _first == null;
 	}
 
+	DNode* create_node(DNode* prev, DNode* next, ref T val)
+	{
+		static if (HoldsAllocator)
+			return this._allocator.make!DNode(prev, next, val);
+		else
+			return Allocator.instance.make!DNode(prev, next, val);
+	}
+
 	void insertFront(T val)
 	{
-		DNode* new_node = _new!DNode(null, _first, val);
+		DNode* new_node = create_node(null, _first, val);
 		_first = new_node;
 		if (!_last)
 			_last = _first;
@@ -177,7 +227,7 @@ struct DList(T)
 
 	void insertBack(T val)
 	{
-		DNode* new_node = _new!DNode(_last, null, val);
+		DNode* new_node = create_node(_last, null, val);
 		_last = new_node;
 		if (!_first)
 			_first = _last;
@@ -190,7 +240,16 @@ struct DList(T)
 			_last = null;
 		auto todelete = _first;
 		_first = _first.next;
-		_delete(todelete);
+		destroy_node(todelete);
+	}
+
+	void destroy_node(DNode* node)
+	{
+		assert(node);
+		static if (HoldsAllocator)
+			return this._allocator.dispose(node);
+		else
+			return Allocator.instance.dispose(node);
 	}
 
 	void popBack()
@@ -200,7 +259,7 @@ struct DList(T)
 			_first = null;
 		auto todelete = _last;
 		_last = _last.prev;
-		_delete(todelete);
+		destroy_node(todelete);
 	}
 }
 
