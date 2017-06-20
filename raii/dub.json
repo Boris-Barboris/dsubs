@@ -4,7 +4,7 @@
 	"authors": [
 		"Boris-Barboris"
 	],
-	"description": "GC-free memory management primitives",
+	"description": "GC-free memory management primitives and collections, integrated with phobos.",
 	"copyright": "Copyright (C) 2017, Alexander Baranin aka Boris-Barboris",
 	"license": "Apache 2.0",
 	"configurations": [
