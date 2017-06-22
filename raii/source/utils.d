@@ -1,7 +1,7 @@
 module raii.utils;
 
 import std.experimental.allocator: make, dispose;
-import std.traits: Unqual;
+import std.traits: Unqual, isArray;
 
 template isAllocator(T)
 {

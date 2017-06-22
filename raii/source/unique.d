@@ -39,43 +39,76 @@ struct Unique(T, Allocator = Mallocator)
 
     @disable this();
 
-    static if (!HoldsAllocator)
-    {
-        this(Args...)(auto ref Args args)
-        {
-            ptr = Allocator.instance.make!T(forward!args);
-            assert(valid);
-        }
-
-        // ugly way to initialize internal type with it's default constructor
-        private this(PtrT ptr)
-        {
-            this.ptr = ptr;
-        }
-
-        // factory function for types with parameterless constructors
-        static Unique!(T, Allocator) make()
-        {
-            auto ptr = Allocator.instance.make!T;
-            auto uq = Unique!(T, Allocator)(ptr);
-            assert(uq.valid);
-            return uq;
-        }
-    }
-    else
-    {
+    static if (HoldsAllocator)
         private Allocator allocator;
 
-        this(Args...)(auto ref Allocator alloc, auto ref Args args)
+    // don't generate constructors for abstract types
+    static if (!(is(T == interface) || isAbstractClass!(T)))
+    {
+        static if (!HoldsAllocator)
         {
-            allocator = alloc;
-            ptr = alloc.make!T(forward!args);
-            assert(valid);
+            private this(PtrT ptr)
+            {
+                this.ptr = ptr;
+            }
+
+            // factory function for types with parameterless constructors
+            static Unique!(T, Allocator) make(Args...)(auto ref Args args)
+            {
+                auto ptr = Allocator.instance.make!(T)(forward!args);
+                auto uq = Unique!(T, Allocator)(ptr);
+                assert(uq.valid);
+                return uq;
+            }
+
+            template from(DT)
+                if (is((T == class) || (T == interface)) && is(DT == class) &&
+                    isAssignable!(T, DT))
+            {
+                static Unique!(T, Allocator) make(Args...)(auto ref Args args)
+                {
+                    auto ptr = Allocator.instance.make!(DT)(forward!args);
+                    auto uq = Unique!(T, Allocator)(ptr);
+                    assert(uq.valid);
+                    return uq;
+                }
+            }
+        }
+        else
+        {
+            private this(PtrT ptr, Allocator alloc)
+            {
+                this.ptr = ptr;
+                this.allocator = alloc;
+            }
+
+            static Unique!(T, Allocator) make(Args...)(auto ref Allocator alloc,
+                auto ref Args args)
+            {
+                auto ptr = alloc.make!T(forward!args);
+                auto uq = Unique!(T, Allocator)(ptr, alloc);
+                assert(uq.valid);
+                return uq;
+            }
+
+            template from(DT)
+                if (is((T == class) || (T == interface)) && is(DT == class) &&
+                    isAssignable!(T, DT))
+            {
+                static Unique!(T, Allocator) make(Args...)(auto ref Allocator alloc,
+                    auto ref Args args)
+                {
+                    auto ptr = alloc.make!DT(forward!args);
+                    auto uq = Unique!(T, Allocator)(ptr, alloc);
+                    assert(uq.valid);
+                    return uq;
+                }
+            }
         }
     }
 
     // Initialize unique from another one with ownership transfer
-    this(ref Unique!(T, Allocator) rhs) @nogc
+    this(scope ref Unique!(T, Allocator) rhs) @nogc
     {
         assert(rhs.valid);
         this.ptr = rhs.ptr;
@@ -112,9 +145,9 @@ struct Unique(T, Allocator = Mallocator)
 
     @disable this(this);
 
-    @disable ref Unique!(T, Allocator) opAssign(Unique!(T, Allocator) rhs);
+    @disable ref Unique!(T, Allocator) opAssign(DT)(scope ref Unique!(DT, Allocator) rhs)
 
-    ref opAssign(ref Unique!(T, Allocator) rhs)
+    ref Unique!(T, Allocator) opAssign(DT)(scope ref Unique!(DT, Allocator) rhs)
     {
         destroy();
         this.ptr = rhs.ptr;
@@ -127,7 +160,7 @@ struct Unique(T, Allocator = Mallocator)
 
 unittest
 {
-    auto uq = Unique!int(5);
+    auto uq = Unique!int.make(5);
     assert(uq.valid);
     assert(uq.v == 5);
     uq.v = 7;
@@ -138,7 +171,7 @@ unittest
 {
     auto create_uniq()
     {
-        return Unique!int(0);
+        return Unique!int.make(0);
     }
     void consume_uniq(Unique!int u)
     {
@@ -204,10 +237,10 @@ unittest
     alias Alloc = StackFront!(4096, Mallocator);
     Alloc al;
     alias Uq = Unique!(TC, Alloc*);
-    auto u1 = Uq(&al);
+    auto u1 = Uq.make(&al);
     assert(count == 1);
     {
-        auto u2 = Uq(&al);
+        auto u2 = Uq.make(&al);
         assert(count == 2);
         assert(u2.v !is null);
         assert(u2.v.j == 3);
@@ -218,4 +251,12 @@ unittest
     }
     assert(count == 0);
     assert(total == 2);
+}
+
+unittest
+{
+    class A {}
+    class B: A {}
+    Unique!A uq = Unique!B.make();
+    assert(uq.valid);
 }

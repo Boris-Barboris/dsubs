@@ -41,46 +41,50 @@ struct RefCounted(T, bool Atomic = true, Allocator = Mallocator)
     private RefCounterT* refcount;
     private PtrT ptr;
 
+    static if (HoldsAllocator)
+        private Allocator allocator;
+
     @property bool valid() @nogc { return (*refcount > 0); }
 
     @disable this();
 
-    static if (!HoldsAllocator)
+    // don't generate constructors for abstract types
+    static if (!(is(T == interface) || isAbstractClass!(T)))
     {
-        this(Args...)(auto ref Args args)
+        static if (!HoldsAllocator)
         {
-            refcount = cast(RefCounterT*) Allocator.instance.make!size_t(1);
-            ptr = Allocator.instance.make!T(forward!args);
-            assert(valid);
-        }
+            this(Args...)(auto ref Args args)
+            {
+                refcount = cast(RefCounterT*) Allocator.instance.make!size_t(1);
+                ptr = Allocator.instance.make!T(forward!args);
+                assert(valid);
+            }
 
-        // ugly way to initialize internal type with it's default constructor
-        private this(PtrT ptr)
-        {
-            this.ptr = ptr;
-        }
+            // ugly way to initialize internal type with it's default constructor
+            package this(PtrT ptr)
+            {
+                this.refcount = cast(RefCounterT*) Allocator.instance.make!size_t(1);
+                this.ptr = ptr;
+            }
 
-        // factory function for types with parameterless constructors
-        static RefCounted!(T, Atomic, Allocator) make()
-        {
-            auto refcounter = cast(RefCounterT*) Allocator.instance.make!size_t(1);
-            auto ptr = Allocator.instance.make!T;
-            auto rq = RefCounted!(T, Atomic, Allocator)(ptr);
-            rq.refcount = refcounter;
-            assert(rq.valid);
-            return rq;
+            // factory function for types with parameterless constructors
+            static RefCounted!(T, Atomic, Allocator) make()
+            {
+                auto ptr = Allocator.instance.make!T;
+                auto rq = RefCounted!(T, Atomic, Allocator)(ptr);
+                assert(rq.valid);
+                return rq;
+            }
         }
-    }
-    else
-    {
-        private Allocator allocator;
-
-        this(Args...)(auto ref Allocator alloc, auto ref Args args)
+        else
         {
-            allocator = alloc;
-            refcount = cast(RefCounterT*) alloc.make!size_t(1);
-            ptr = alloc.make!T(forward!args);
-            assert(valid);
+            this(Args...)(auto ref Allocator alloc, auto ref Args args)
+            {
+                allocator = alloc;
+                refcount = cast(RefCounterT*) alloc.make!size_t(1);
+                ptr = alloc.make!T(forward!args);
+                assert(valid);
+            }
         }
     }
 
@@ -123,13 +127,44 @@ struct RefCounted(T, bool Atomic = true, Allocator = Mallocator)
         increment();
     }
 
-    ref opAssign(RefCounted!(T, Atomic, Allocator) rhs)
+    // handle polymorphism
+    static if (is(T == class) || is(T == interface))
     {
-        decrement();
-        this.ptr = rhs.ptr;
-        this.refcount = rhs.refcount;
-        increment();
-        return this;
+        // Polymorphism-aware assign operator
+        ref RefCounted!(T, Atomic, Allocator)
+        opAssign(DT)(RefCounted!(DT, Atomic, Allocator) rhs)
+        {
+            decrement();
+            this.ptr = rhs.ptr;
+            this.refcount = rhs.refcount;
+            static if (HoldsAllocator)
+                this.allocator = rhs.allocator;
+            increment();
+            return this;
+        }
+
+        // Polymorphism-aware constructor
+        this(DT)(RefCounted!(DT, Atomic, Allocator) rhs)
+        {
+            this.ptr = rhs.ptr;
+            this.refcount = rhs.refcount;
+            static if (HoldsAllocator)
+                this.allocator = rhs.allocator;
+            increment();
+        }
+    }
+    else
+    {
+        ref opAssign(RefCounted!(T, Atomic, Allocator) rhs)
+        {
+            decrement();
+            this.ptr = rhs.ptr;
+            this.refcount = rhs.refcount;
+            static if (HoldsAllocator)
+                this.allocator = rhs.allocator;
+            increment();
+            return this;
+        }
     }
 }
 
