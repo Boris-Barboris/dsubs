@@ -14,7 +14,7 @@ struct RefCounted(T, bool Atomic = true, Allocator = Mallocator)
 {
     enum HoldsAllocator = !isStaticAllocator!Allocator;
 
-    static if (is(T == class))
+    static if (is(T == class) || is(T == interface))
     {
         alias PtrT = T;
         @property T v() @nogc
@@ -53,24 +53,16 @@ struct RefCounted(T, bool Atomic = true, Allocator = Mallocator)
     {
         static if (!HoldsAllocator)
         {
-            this(Args...)(auto ref Args args)
-            {
-                refcount = cast(RefCounterT*) Allocator.instance.make!size_t(1);
-                ptr = Allocator.instance.make!T(forward!args);
-                assert(valid);
-            }
-
-            // ugly way to initialize internal type with it's default constructor
-            package this(PtrT ptr)
+            private this(PtrT ptr)
             {
                 this.refcount = cast(RefCounterT*) Allocator.instance.make!size_t(1);
                 this.ptr = ptr;
             }
 
-            // factory function for types with parameterless constructors
-            static RefCounted!(T, Atomic, Allocator) make()
+            static RefCounted!(T, Atomic, Allocator)
+            make(Args...)(auto ref Args args)
             {
-                auto ptr = Allocator.instance.make!T;
+                auto ptr = Allocator.instance.make!(T)(forward!args);
                 auto rq = RefCounted!(T, Atomic, Allocator)(ptr);
                 assert(rq.valid);
                 return rq;
@@ -78,12 +70,20 @@ struct RefCounted(T, bool Atomic = true, Allocator = Mallocator)
         }
         else
         {
-            this(Args...)(auto ref Allocator alloc, auto ref Args args)
+            private this(PtrT ptr, Allocator alloc)
             {
-                allocator = alloc;
-                refcount = cast(RefCounterT*) alloc.make!size_t(1);
-                ptr = alloc.make!T(forward!args);
-                assert(valid);
+                this.refcount = cast(RefCounterT*) alloc.make!size_t(1);
+                this.ptr = ptr;
+                this.allocator = alloc;
+            }
+
+            static RefCounted!(T, Atomic, Allocator)
+            make(Args...)(auto ref Allocator alloc, auto ref Args args)
+            {
+                auto ptr = alloc.make!(T)(forward!args);
+                auto rq = RefCounted!(T, Atomic, Allocator)(ptr, alloc);
+                assert(rq.valid);
+                return rq;
             }
         }
     }
@@ -152,6 +152,17 @@ struct RefCounted(T, bool Atomic = true, Allocator = Mallocator)
                 this.allocator = rhs.allocator;
             increment();
         }
+
+        // Polymorphic downcast
+        RefCounted!(BT, Atomic, Allocator) to(BT)()
+            if ((is(BT == class) || is(BT == interface)) && isAssignable!(BT, T))
+        {
+            assert(valid);
+            RefCounted!(BT, Atomic, Allocator) rv =
+                RefCounted!(BT, Atomic, Allocator)(this);
+            assert(rv.valid);
+            return rv;
+        }
     }
     else
     {
@@ -170,7 +181,7 @@ struct RefCounted(T, bool Atomic = true, Allocator = Mallocator)
 
 unittest
 {
-    auto uq = RefCounted!int(5);
+    auto uq = RefCounted!int.make(5);
     assert(uq.valid);
     assert(uq.v == 5);
     uq.v = 7;
@@ -181,7 +192,7 @@ unittest
 {
     auto create()
     {
-        return RefCounted!int(0);
+        return RefCounted!int.make(0);
     }
     void consume(RefCounted!int u)
     {
@@ -251,10 +262,10 @@ unittest
     alias Alloc = StackFront!(4096, Mallocator);
     Alloc al;
     alias Uq = RefCounted!(TC, true, Alloc*);
-    auto u1 = Uq(&al);
+    auto u1 = Uq.make(&al);
     assert(count == 1);
     {
-        auto u2 = Uq(&al);
+        auto u2 = Uq.make(&al);
         assert(count == 2);
         assert(u2.v !is null);
         assert(u2.v.j == 3);
@@ -267,4 +278,50 @@ unittest
     assert(count == 1);
     assert(*(u1.refcount) == 1);
     assert(total == 2);
+}
+
+unittest
+{
+    static int ades = 0;
+    static int bdes = 0;
+    class A { ~this() {ades++;}}
+    class B: A { ~this(){bdes++;}}
+    {
+        RefCounted!A ag = RefCounted!A.make();
+        {
+            RefCounted!A aq = ag;
+            assert(aq.valid && ag.valid);
+            {
+                RefCounted!A bq = RefCounted!B.make();
+                assert(ades == 0);
+                assert(bdes == 0);
+            }
+            assert(ades == 1);
+            assert(bdes == 1);
+        }
+        assert(ades == 1);
+        assert(bdes == 1);
+    }
+    assert(ades == 2);
+    assert(bdes == 1);
+}
+
+unittest
+{
+    static int ades = 0;
+    static int bdes = 0;
+    class A { ~this() {ades++;}}
+    class B: A { ~this(){bdes++;}}
+    void consume(RefCounted!A uq)
+    {
+        assert(uq.valid);
+    }
+    {
+        RefCounted!B aq = RefCounted!B.make();
+        consume(aq.to!A);
+        assert(ades == 0);
+        assert(bdes == 0);
+    }
+    assert(ades == 1);
+    assert(bdes == 1);
 }

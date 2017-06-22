@@ -14,7 +14,7 @@ struct Unique(T, Allocator = Mallocator)
 {
     enum HoldsAllocator = !isStaticAllocator!Allocator;
 
-    static if (is(T == class))
+    static if (is(T == class) || is(T == interface))
     {
         alias PtrT = T;
         @property T v() @nogc
@@ -60,19 +60,6 @@ struct Unique(T, Allocator = Mallocator)
                 assert(uq.valid);
                 return uq;
             }
-
-            template from(DT)
-                if (is((T == class) || (T == interface)) && is(DT == class) &&
-                    isAssignable!(T, DT))
-            {
-                static Unique!(T, Allocator) make(Args...)(auto ref Args args)
-                {
-                    auto ptr = Allocator.instance.make!(DT)(forward!args);
-                    auto uq = Unique!(T, Allocator)(ptr);
-                    assert(uq.valid);
-                    return uq;
-                }
-            }
         }
         else
         {
@@ -90,31 +77,40 @@ struct Unique(T, Allocator = Mallocator)
                 assert(uq.valid);
                 return uq;
             }
-
-            template from(DT)
-                if (is((T == class) || (T == interface)) && is(DT == class) &&
-                    isAssignable!(T, DT))
-            {
-                static Unique!(T, Allocator) make(Args...)(auto ref Allocator alloc,
-                    auto ref Args args)
-                {
-                    auto ptr = alloc.make!DT(forward!args);
-                    auto uq = Unique!(T, Allocator)(ptr, alloc);
-                    assert(uq.valid);
-                    return uq;
-                }
-            }
         }
     }
 
     // Initialize unique from another one with ownership transfer
-    this(scope ref Unique!(T, Allocator) rhs) @nogc
+    this(ref Unique!(T, Allocator) rhs) @nogc
     {
         assert(rhs.valid);
         this.ptr = rhs.ptr;
         rhs.ptr = null;
         static if (HoldsAllocator)
             this.allocator = rhs.allocator;
+    }
+
+    // Templated version for classes, in case you'll need
+    // polymorphic construction.
+    this(DT)(scope auto ref Unique!(DT, Allocator) rhs)
+    {
+        static assert ((is(T == class) || is(T == interface)) &&
+            isAssignable!(T, DT));
+        assert(rhs.valid);
+        this.ptr = rhs.ptr;
+        rhs.ptr = null;
+        static if (HoldsAllocator)
+            this.allocator = rhs.allocator;
+    }
+
+    // Polymorphic base cast with ownership transfer
+    Unique!(BT, Allocator) to(BT)()
+        if ((is(BT == class) || is(BT == interface)) && isAssignable!(BT, T))
+    {
+        Unique!(BT, Allocator) rv = Unique!(BT, Allocator)(this);
+        assert(rv.valid);
+        assert(!valid);
+        return rv;
     }
 
     // move ownership to new rvalue Unique
@@ -145,7 +141,7 @@ struct Unique(T, Allocator = Mallocator)
 
     @disable this(this);
 
-    @disable ref Unique!(T, Allocator) opAssign(DT)(scope ref Unique!(DT, Allocator) rhs)
+    @disable ref Unique!(T, Allocator) opAssign(DT)(Unique!(DT, Allocator) rhs);
 
     ref Unique!(T, Allocator) opAssign(DT)(scope ref Unique!(DT, Allocator) rhs)
     {
@@ -259,4 +255,46 @@ unittest
     class B: A {}
     Unique!A uq = Unique!B.make();
     assert(uq.valid);
+}
+
+unittest
+{
+    static int ades = 0;
+    static int bdes = 0;
+    class A { ~this() {ades++;}}
+    class B: A { ~this(){bdes++;}}
+    {
+        Unique!A aq = Unique!A.make();
+        {
+            Unique!A bq = Unique!B.make();
+            assert(ades == 0);
+            assert(bdes == 0);
+        }
+        assert(ades == 1);
+        assert(bdes == 1);
+        Unique!A cq = aq.move();
+        assert(!aq.valid);
+    }
+    assert(ades == 2);
+    assert(bdes == 1);
+}
+
+unittest
+{
+    static int ades = 0;
+    static int bdes = 0;
+    class A { ~this() {ades++;}}
+    class B: A { ~this(){bdes++;}}
+    void consume(Unique!A uq)
+    {
+        assert(uq.valid);
+    }
+    {
+        Unique!B aq = Unique!B.make();
+        consume(aq.to!A);
+        assert(ades == 1);
+        assert(bdes == 1);
+    }
+    assert(ades == 1);
+    assert(bdes == 1);
 }
