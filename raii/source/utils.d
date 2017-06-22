@@ -1,5 +1,6 @@
 module raii.utils;
 
+import std.conv: to;
 import std.experimental.allocator: make, dispose;
 import std.traits: Unqual, isArray;
 
@@ -38,4 +39,31 @@ unittest
     static assert (isStaticAllocator!Mallocator);
     static assert (!isAllocator!int);
     static assert (isAllocator!(StackFront!4096));
+}
+
+package string FieldExpand(FieldTypes...)()
+{
+    string result = "";
+    foreach (i, field; FieldTypes)
+        result ~= field.stringof ~ " field" ~ to!string(i) ~ ";";
+    return result;
+}
+
+package string enumerateFields(uint count)
+{
+    string result = "";
+    for (uint i = 0; i < count; i++)
+    {
+        result ~= "field" ~ to!string(i);
+        if (i < count - 1)
+            result ~= ", ";
+    }
+    return result;
+}
+
+package string[] RemoveTail(string[] AllArgs, string[] TailArgs)()
+{
+    enum size_t rem_length = AllArgs.length - TailArgs.length;
+    string[] res = AllArgs[0 .. rem_length];
+    return res;
 }
