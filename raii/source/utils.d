@@ -3,6 +3,7 @@ module raii.utils;
 import std.conv: to;
 import std.experimental.allocator: make, dispose;
 import std.traits: Unqual, isArray;
+import std.meta;
 
 template isAllocator(T)
 {
@@ -59,6 +60,60 @@ package string enumerateFields(uint count)
             result ~= ", ";
     }
     return result;
+}
+
+template isFunctionPointerType(T: FT*, FT)
+{
+    enum isFunctionPointerType = is(FT == function);
+}
+
+unittest
+{
+    auto p = (){};
+    static assert(isFunctionPointerType!(typeof(p)));
+}
+
+template DecomposeFunction(FuncType: FT*, FT)
+    if (isFunctionPointerType!FuncType)
+{
+    static if (is(FT Params == function))
+        alias ArgTypes = Params;
+    else
+        static assert(0);
+    static if (is(FT RT == return))
+        alias RetType = RT;
+    else
+        static assert(0);
+}
+
+unittest
+{
+    auto p = (int x){ return x; };
+    static assert(is(DecomposeFunction!(typeof(p)).RetType == int));
+    static assert(is(DecomposeFunction!(typeof(p)).ArgTypes == AliasSeq!int));
+}
+
+template Take(int count, T...)
+{
+    alias Take = T[0 .. count];
+}
+
+unittest
+{
+    alias res = Take!(2, int, int, int, float);
+    static assert(is(res == AliasSeq!(int, int)));
+    static assert(!is(res == AliasSeq!(int, float)));
+}
+
+template Skip(int count, T...)
+{
+    alias Skip = T[count .. $];
+}
+
+unittest
+{
+    alias res = Skip!(2, int, int, int, float);
+    static assert(is(res == AliasSeq!(int, float)));
 }
 
 package string[] RemoveTail(string[] AllArgs, string[] TailArgs)()

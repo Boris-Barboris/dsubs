@@ -49,40 +49,45 @@ template AllocationContext(Allocator = Mallocator, bool Atomic = true)
         }
     }
 
-    template DecomposeFunction(FuncType)
-    {
-        alias RetType = RT;
-        alias Args = Ar;
-    }
-
     auto autodlg(ExArgs...)(ExArgs exargs)
-        if (isFunction!(ExArgs[0]))
     {
-        pragma(msg, ExArgs);
-        alias RetType = DecomposeFunction!(ExArgs[0]).RetType;
-        alias Args = DecomposeFunction!(ExArgs[0]).Args;
-        pragma(msg, RetType);
-        pragma(msg, Args);
-
-        // first we need to learn Args, by removing Captured fron FuncArgs
-        static class CClosure: Closure!(Ret, Args)
+        static if (isStaticAllocator!Allocator)
+            enum f_idx = 0;
+        else
         {
-            private Ret function(Args, Captured) _f;
-            mixin(FieldExpand!Captured);
-            this(Ret function(Args, Captured) f, Captured cpt)
+            static assert(isAllocator!(ExArgs[0]));
+            enum f_idx = 1;
+        }
+        static assert(ExArgs.length > f_idx);
+        static assert(isFunctionPointerType!(ExArgs[f_idx]));
+
+        alias RetType = DecomposeFunction!(ExArgs[f_idx]).RetType;
+        alias AllArgs = DecomposeFunction!(ExArgs[f_idx]).ArgTypes;
+
+        static assert(AllArgs.length >= (ExArgs.length - 1 - f_idx));
+        enum int dlgArgCount = AllArgs.length - ExArgs.length + 1 + f_idx;
+        alias DlgArgs = Take!(dlgArgCount, AllArgs);
+        alias CapturedArgs = Skip!(dlgArgCount, AllArgs);
+
+        // specific closure class
+        static class CClosure: Closure!(RetType, DlgArgs)
+        {
+            private RetType function(AllArgs) _f;
+            mixin(FieldExpand!CapturedArgs);
+            this(RetType function(AllArgs) f, CapturedArgs cpt)
             {
                 _f = f;
-                foreach (i, field; Captured)
+                foreach (i, field; CapturedArgs)
                 {
                     mixin("field" ~ to!string(i)) = cpt[i];
                 }
             }
 
-            override Ret call(Args args)
+            override RetType call(DlgArgs args)
             {
-                static if (Captured.length > 0)
+                static if (CapturedArgs.length > 0)
                 {
-                    enum string captee_fields = enumerateFields(Captured.length);
+                    enum string captee_fields = enumerateFields(CapturedArgs.length);
                     return _f(forward!args, mixin(captee_fields));
                 }
                 else
@@ -90,9 +95,9 @@ template AllocationContext(Allocator = Mallocator, bool Atomic = true)
             }
         }
 
-        CtxRefCounted!(Closure!(Ret, Args)) rfc =
-            CtxRefCounted!(CClosure).make(f, captee);
-        Delegate!(Ret, Args) dlg = Delegate!(Ret, Args)(rfc);
+        CtxRefCounted!(Closure!(RetType, DlgArgs)) rfc =
+            CtxRefCounted!(CClosure).make(exargs);
+        Delegate!(RetType, DlgArgs) dlg = Delegate!(RetType, DlgArgs)(rfc);
         return dlg;
     }
 }
@@ -150,4 +155,32 @@ unittest
     Dlg d = Ctx.autodlg((int x, int y) => x + y);
     int sum = reduce(arr, d);
     assert(sum == 22);
+}
+
+unittest
+{
+    alias Ctx = AllocationContext!(Mallocator, true);
+    alias Dlg = Ctx.Delegate!(void);
+    Dlg d = Ctx.autodlg((){});
+    d();
+}
+
+unittest
+{
+    alias Ctx = AllocationContext!(Mallocator, true);
+    alias Dlg = Ctx.Delegate!(int, int, float);
+    Dlg d = Ctx.autodlg((int x, float y){ return 3;});
+    d(4, 4.0f);
+}
+
+import std.experimental.allocator.showcase;
+
+unittest
+{
+    alias AllocType = StackFront!(4096, Mallocator);
+    AllocType al;
+    alias Ctx = AllocationContext!(AllocType*, true);
+    alias Dlg = Ctx.Delegate!(int, int, float);
+    Dlg d = Ctx.autodlg(&al, (int x, float y){ return 3;});
+    d(4, 4.0f);
 }
