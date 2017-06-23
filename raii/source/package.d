@@ -7,7 +7,7 @@ import raii.refcounted;
 import raii.closure;
 import raii.utils;
 
-template AllocationContext(Allocator = Mallocator, bool Atomic = true)
+template AllocationContext(Allocator, bool Atomic = true)
     if (isAllocator!Allocator)
 {
     template Unique(T)
