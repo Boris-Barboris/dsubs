@@ -1,5 +1,7 @@
 module raii;
 
+import std.experimental.allocator.mallocator: Mallocator;
+
 import raii.containers.dlist;
 
 import raii.unique;
@@ -7,7 +9,7 @@ import raii.refcounted;
 import raii.closure;
 import raii.utils;
 
-template AllocationContext(Allocator, bool Atomic = true)
+template AllocationContext(Allocator = Mallocator, bool Atomic = true)
     if (isAllocator!Allocator)
 {
     template Unique(T)
