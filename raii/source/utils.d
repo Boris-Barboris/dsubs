@@ -46,7 +46,7 @@ package string FieldExpand(FieldTypes...)()
 {
     string result = "";
     foreach (i, field; FieldTypes)
-        result ~= field.stringof ~ " field" ~ to!string(i) ~ ";";
+        result ~= field.stringof ~ " __field" ~ to!string(i) ~ ";";
     return result;
 }
 
@@ -55,7 +55,7 @@ package string enumerateFields(uint count)
     string result = "";
     for (uint i = 0; i < count; i++)
     {
-        result ~= "field" ~ to!string(i);
+        result ~= "this.__field" ~ to!string(i);
         if (i < count - 1)
             result ~= ", ";
     }

@@ -79,7 +79,7 @@ template AllocationContext(Allocator = Mallocator, bool Atomic = true)
                 _f = f;
                 foreach (i, field; CapturedArgs)
                 {
-                    mixin("field" ~ to!string(i)) = cpt[i];
+                    mixin("__field" ~ to!string(i)) = cpt[i];
                 }
             }
 
