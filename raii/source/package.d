@@ -1,5 +1,7 @@
 module raii;
 
+import raii.containers.dlist;
+
 import raii.unique;
 import raii.refcounted;
 import raii.closure;
@@ -26,6 +28,11 @@ template AllocationContext(Allocator = Mallocator, bool Atomic = true)
     template autodlg(ExArgs...)
     {
         alias autodlg = raii.closure.AllocationContext!(Allocator, Atomic).autodlg!(ExArgs);
+    }
+
+    template DList(T)
+    {
+        alias DList = raii.containers.dlist.DList!(T, Allocator);
     }
 }
 
