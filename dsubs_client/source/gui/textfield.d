@@ -191,7 +191,7 @@ class TextField: Label
 			if (cursor_start == cursor_end)
 			{
 				// we have no text selected, display blinking caret
-				counter++;
+				counter++;	// framerate-dependent, but i don't really care
 				if (counter % BLINK_FREQ == 0)
 					blink_state = !blink_state;
 				if (blink_state)
@@ -202,6 +202,21 @@ class TextField: Label
 		}
 		// text is drawn over cursor
 		sfRenderWindow_drawText(wnd.ptr, text, null);
+	}
+
+	protected void insert_at(dchar c, size_t idx)
+	{
+		_content.insert_at(c, idx);
+	}
+
+	protected void remove_at(size_t idx)
+	{
+		_content.remove_at(idx);
+	}
+
+	protected void remove_interval(size_t start, size_t end)
+	{
+		_content.remove_interval(start, end);
 	}
 
 	void do_handle_text(dchar c)
@@ -215,13 +230,13 @@ class TextField: Label
 				case '\b':	// backspace
 					if (_content.length > 1 && cursor_start > 0)
 					{
-						_content.remove_at(cursor_start - 1);
+						remove_at(cursor_start - 1);
 						cursor_start = cursor_end = cursor_start - 1;
 					}
 					break;
 				default:
 					log("captured unicode symbol ", to!uint(c));
-					_content.insert_at(c, cursor_start);
+					insert_at(c, cursor_start);
 					cursor_start = cursor_end = cursor_start + 1;
 					break;
 			}
@@ -234,13 +249,13 @@ class TextField: Label
 			switch (c)
 			{
 				case '\b':	// backspace
-					_content.remove_interval(ordered_start, ordered_end - 1);
+					remove_interval(ordered_start, ordered_end - 1);
 					cursor_start = cursor_end = ordered_start;
 					break;
 				default:
 					log("captured unicode symbol ", to!uint(c));
-					_content.remove_interval(ordered_start, ordered_end - 1);
-					_content.insert_at(c, ordered_start);
+					remove_interval(ordered_start, ordered_end - 1);
+					insert_at(c, ordered_start);
 					cursor_start = cursor_end = ordered_start + 1;
 					break;
 			}
@@ -310,13 +325,13 @@ class TextField: Label
 				if (cursor_start == cursor_end)
 				{
 					if (cursor_start < _content.length - 1)
-						_content.remove_at(cursor_start);
+						remove_at(cursor_start);
 				}
 				else
 				{
 					int ordered_start = min(cursor_start, cursor_end);
 					int ordered_end = max(cursor_start, cursor_end);
-					_content.remove_interval(ordered_start, ordered_end - 1);
+					remove_interval(ordered_start, ordered_end - 1);
 					cursor_start = cursor_end = ordered_start;
 				}
 				// update sfml text
@@ -353,7 +368,7 @@ class TextField: Label
 	}
 }
 
-Label asTextField(GuiElement el)
+TextField asTextField(GuiElement el)
 {
 	return cast(TextField) el;
 }

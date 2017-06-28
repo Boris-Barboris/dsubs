@@ -9,23 +9,11 @@ Engine:
 	2d collision detection for server.
 
 Memory management:
-	Persistent data is represented by memory not on the stack or GC-heap.
-	Memory on the heap is managed by allocator.
-	Object is data with operations on it.
-	Object is created = memory is allocated + initialized + constructor.
-	Object is no longer needed = destructor called
-	Reference = pointer to object.
-	Memory owner = object owner = struct wich destructor will deallocate memory.
-	Box = memory owner.
-	CBox = reference-counting memory owner.
-	Weak reference = struct that holds pointer to object but is not managing it's
-		memory.
-	Weak = weak reference.
-	Box's destructor must invalidate all weak references that point to it.
-	Box should be able to opt out of production of Weak's, when applicable.
-	Weak should be produced by box.
-	Weak should be able to raise a callback when being destroyed. Use case:
-		box subscribes to events and is being destroyed - unsubscribe it.
+	We'll start with GC-only game.
+	If it proves to bee stuttery, we'll switch to RAII and manual memory
+	management. Biggest problem by far is Phobos, especially threading classes.
+	Thankfully, we're not on embedded platform, and we can use both GC and manual
+	management simultaniously.
 
 GUI:
 	I need markup-alike elemnt placing scheme, for fast and scalable control placement.
@@ -43,7 +31,7 @@ GUI:
 		+ selection moving my shift+left\right keys.
 		+ handle end and home keys.
 		+ handle ctrl+a.
-	- Password textfield (characters hidden).
+	+ Password textfield (characters hidden).
 	- Text box (readonly, multiline). Has a scroll bar, word wrap.
 		- words separated by spaces or tabs, lines are wrapped on spaces
 			or tabs, with no additional indent.

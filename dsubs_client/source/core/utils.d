@@ -7,27 +7,27 @@ import std.range;
 
 /// Mixins to reduce boilerplate in object hierarchies
 
-mixin template ElementAccessor(ElType, T, string field_name, string update_code)
+mixin template ElementAccessor(ElType, T, string field_name, string postupdate_code)
 {
 	mixin(T.stringof ~ " " ~ field_name ~ "() { return _" ~ field_name ~ ";};");
 	mixin(ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
-		"{ _" ~ field_name ~ "=val;" ~ update_code ~ "return this;}");
+		"{ _" ~ field_name ~ "=val;" ~ postupdate_code ~ "return this;}");
 }
 
-mixin template SuperAccessor(ElType, T, string field_name, string update_code)
+mixin template SuperAccessor(ElType, T, string field_name, string postupdate_code)
 {
 	mixin("override " ~ T.stringof ~ " " ~ field_name ~
 		"() { return _" ~ field_name ~ ";};");
 	mixin("override " ~ ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
-		"{ super." ~ field_name ~ "(val);" ~ update_code ~ "return this;}");
+		"{ super." ~ field_name ~ "(val);" ~ postupdate_code ~ "return this;}");
 }
 
-mixin template OverrideAccessor(ElType, T, string field_name, string update_code)
+mixin template OverrideAccessor(ElType, T, string field_name, string postupdate_code)
 {
 	mixin("override " ~ T.stringof ~ " " ~ field_name ~
 		"() { return _" ~ field_name ~ ";};");
 	mixin("override " ~ ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
-		"{ _" ~ field_name ~ "=val;" ~ update_code ~ "return this;}");
+		"{ _" ~ field_name ~ "=val;" ~ postupdate_code ~ "return this;}");
 }
 
 

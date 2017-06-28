@@ -12,6 +12,7 @@ import dsubs_client.gui.div;
 import dsubs_client.gui.label;
 import dsubs_client.gui.button;
 import dsubs_client.gui.textfield;
+import dsubs_client.gui.passwordfield;
 import dsubs_client.input.router;
 
 
@@ -53,6 +54,7 @@ void test_menu_routing()
 				size(vec2f(0.0f, 100.0f)),
 			new Label(mgr).content("Connect").font_size(20),
 			new TextField(mgr).font_size(20),
+			new PasswordField(mgr).font_size(16),
 			exitBtn,
 		).sizeType(SizeType.FIXED).size(vec2f(300, 0)).asVdiv;
 	auto panel =
@@ -62,7 +64,7 @@ void test_menu_routing()
 				new GuiElement(mgr),
 				menu,
 				new GuiElement(mgr),
-			).sizeType(SizeType.FIXED).size(vec2f(0, 250)),
+			).sizeType(SizeType.FIXED).size(vec2f(0, 300)),
 			new GuiElement(mgr),
 		).sizeType(SizeType.FIXED).size(vec2f(wnd.width, wnd.height));
 	mgr.addAsPanel(panel);

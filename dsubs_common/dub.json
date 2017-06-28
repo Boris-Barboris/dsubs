@@ -13,7 +13,7 @@
 	"license": "GPL-2.0",
     "configurations": [
 		{
-			"name": "unittest-app",
+			"name": "unit",
 			"targetType": "executable",
             "buildOptions": ["debugMode", "debugInfo", "unittests"]
 		}

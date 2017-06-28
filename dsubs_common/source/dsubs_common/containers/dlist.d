@@ -1,14 +1,10 @@
-module raii.containers.dlist;
+module dsubs_common.containers.dlist;
 
-import std.experimental.allocator: make, dispose;
-import std.experimental.allocator.mallocator: Mallocator;
 import std.functional : unaryFun;
 
-import raii.utils;
 
 // Double-linked list
-struct DList(T, Allocator = Mallocator)
-	if (isAllocator!Allocator)
+struct DList(T)
 {
 	static struct DNode
 	{
@@ -55,33 +51,10 @@ struct DList(T, Allocator = Mallocator)
 	// DList is struct only because of VFT overhead
 	@disable this(this);
 
-	enum HoldsAllocator = !isStaticAllocator!Allocator;
-
-	static if (HoldsAllocator)
+	this(T[] range)
 	{
-		private Allocator _allocator;
-
-		@property Allocator allocator() { return _allocator; }
-
-		this(Allocator allocator)
-		{
-			_allocator = allocator;
-		}
-
-		this(Allocator allocator, T[] range)
-		{
-			_allocator = allocator;
-			foreach (el; range)
-				this.insertBack(el);
-		}
-	}
-	else
-	{
-		this(T[] range)
-		{
-			foreach (el; range)
-				this.insertBack(el);
-		}
+		foreach (el; range)
+			this.insertBack(el);
 	}
 
 	~this()
@@ -204,10 +177,12 @@ struct DList(T, Allocator = Mallocator)
 
 	DNode* create_node(DNode* prev, DNode* next, ref T val)
 	{
+		return new DNode(prev, next, val);
+		/*
 		static if (HoldsAllocator)
 			return this._allocator.make!DNode(prev, next, val);
 		else
-			return Allocator.instance.make!DNode(prev, next, val);
+			return Allocator.instance.make!DNode(prev, next, val);*/
 	}
 
 	void insertFront(T val)
@@ -246,10 +221,12 @@ struct DList(T, Allocator = Mallocator)
 	void destroy_node(DNode* node)
 	{
 		assert(node);
+		delete node;
+		/*
 		static if (HoldsAllocator)
 			return this._allocator.dispose(node);
 		else
-			return Allocator.instance.dispose(node);
+			return Allocator.instance.dispose(node);*/
 	}
 
 	void popBack()
