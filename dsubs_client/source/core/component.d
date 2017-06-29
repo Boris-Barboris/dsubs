@@ -1,9 +1,5 @@
 module dsubs_client.core.component;
 
-import std.algorithm;
-import std.array;
-import std.range;
-
 
 enum CompState: ubyte
 {
@@ -14,24 +10,41 @@ enum CompState: ubyte
 
 class Component(string sysname)
 {
-	protected CompState _state = CompState.ON;
+	protected CompState _component_state = CompState.ON;
 
-	CompState state() { return _state; }
+	CompState component_state() { return _component_state; }
 
-	Component state(CompState val)
+	private void set_state(CompState new_state)
 	{
-		_state = val;
-		return this;
+		CompState old_state = _component_state;
+		_component_state = new_state;
+		if (old_state != new_state)
+			on_state_change();
 	}
 
-	bool active() { return _state == CompState.ON; }
-	bool deleted() { return _state == CompState.DELETED; }
-
-	CompState setState(CompState new_state)
+	void deactivate()
 	{
-		_state = new_state;
-		return _state;
+		assert(!deleted);
+		set_state(CompState.OFF);
 	}
+
+	void activate()
+	{
+		assert(!deleted);
+		set_state(CompState.ON);
+	}
+
+	void dispose()
+	{
+		assert(!deleted);
+		set_state(CompState.DELETED);
+	}
+
+	void on_state_change() {}
+
+	bool active() { return _component_state == CompState.ON; }
+	bool inactive() { return _component_state == CompState.OFF; }
+	bool deleted() { return _component_state == CompState.DELETED; }
 
 	alias ManagerType = ComponentManager!sysname;
 	protected ManagerType _manager;

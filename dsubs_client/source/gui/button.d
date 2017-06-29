@@ -47,12 +47,15 @@ class Button: Label
 		"released_color(val);");
 
 	bool pressed() { return _pressed; }
+
 	protected void pressed(bool val)
 	{
 		_pressed = val;
 		update_font_color();
 	}
 
+	// internal state, bool. Is true when toggle is activated or
+	// async button is in the process of click handling
 	bool state() { return _state; }
 
 	protected void update_font_color()
@@ -96,7 +99,8 @@ class Button: Label
 	/// Call this for ASYNC button to finish the click
 	void signalClickEnd()
 	{
-		if (_buttonType == ButtonType.ASYNC && _state)
+		assert(_buttonType == ButtonType.ASYNC);
+		if (_state)
 		{
 			_state = false;
 			update_font_color();

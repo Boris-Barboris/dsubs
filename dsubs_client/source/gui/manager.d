@@ -65,6 +65,8 @@ class Panel
 		mouse_event_cache = res.interceptor;
 		return res;
 	}
+
+	void handleWindowResize(const sfSizeEvent* evt) {}
 }
 
 // Thing that draws gui components on the window and routes window events
@@ -146,6 +148,8 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 	void handleWindowResize(Router ctx, Window wnd, const sfSizeEvent* evt)
 	{
 		// TODO: resize handling for greedy and fraction-sized panels, out-of
-		// window border check
+		// window border check etc.
+		foreach (panel; filter!(a => !a.root.deleted)(panels[]))
+			panel.handleWindowResize(evt);
 	}
 }

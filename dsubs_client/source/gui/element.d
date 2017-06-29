@@ -50,12 +50,14 @@ class GuiElement: Component!"Gui", IInputReciever
 
 	GuiElement parent() { return _parent; }
 
-	// When we are disabled or enabled, we need to notify parent
-	mixin SuperAccessor!(GuiElement, CompState, "state",
-		"if (_parent) _parent.child_changed(this);");
-
 	// Called by child when it has changed somehow
 	void child_changed(GuiElement child) {}
+
+	// When we are disabled or enabled, we need to notify parent
+	override void on_state_change()
+	{
+		if (_parent) _parent.child_changed(this);
+	}
 
 	mixin ElementAccessor!(GuiElement, vec2f, "position", "");
 

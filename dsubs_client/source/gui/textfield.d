@@ -47,7 +47,7 @@ class TextField: Label
 		onMouseScroll += &handle_MouseScroll;
 	}
 
-	mixin ElementAccessor!(GuiElement, sfColor, "cursor_color",
+	mixin ElementAccessor!(TextField, sfColor, "cursor_color",
 		"_visuals_dirty = true;");
 
 	protected void handle_mouse_down(GuiElement s, int x, int y, sfMouseButton btn)
@@ -219,6 +219,10 @@ class TextField: Label
 		_content.remove_interval(start, end);
 	}
 
+	// function to filter entered symbols by. Should return true if
+	// symbol is acceptable, otherwise false.
+	bool function(dchar) symbol_filter;
+
 	void do_handle_text(dchar c)
 	{
 		// first we check wether we had range of symbols selected
@@ -236,6 +240,11 @@ class TextField: Label
 					break;
 				default:
 					log("captured unicode symbol ", to!uint(c));
+					if (symbol_filter && !symbol_filter(c))
+					{
+						log("ignored by filter");
+						return;
+					}
 					insert_at(c, cursor_start);
 					cursor_start = cursor_end = cursor_start + 1;
 					break;
@@ -254,6 +263,11 @@ class TextField: Label
 					break;
 				default:
 					log("captured unicode symbol ", to!uint(c));
+					if (symbol_filter && !symbol_filter(c))
+					{
+						log("ignored by filter");
+						return;
+					}
 					remove_interval(ordered_start, ordered_end - 1);
 					insert_at(c, ordered_start);
 					cursor_start = cursor_end = ordered_start + 1;
@@ -337,6 +351,11 @@ class TextField: Label
 				// update sfml text
 				sfText_setUnicodeString(text, _content.ptr);
 				update_text_position();
+				break;
+			case sfKeyReturn:
+				// we interpret enter as desire to commit changes and return
+				// keyboard focus
+				returnKbFocus();
 				break;
 			default:
 				break;

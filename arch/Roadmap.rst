@@ -16,7 +16,7 @@ Memory management:
 	management simultaniously.
 
 GUI:
-	I need markup-alike elemnt placing scheme, for fast and scalable control placement.
+	I need markup-alike elemnet placing scheme, for fast and scalable UI creation.
 	I need basic functionality of:
 	+ div.
 	+ Simple label.
@@ -33,9 +33,8 @@ GUI:
 		+ handle ctrl+a.
 	+ Password textfield (characters hidden).
 	- Text box (readonly, multiline). Has a scroll bar, word wrap.
-		- words separated by spaces or tabs, lines are wrapped on spaces
-			or tabs, with no additional indent.
-		- very long words (one word longer whole line) wrapped using dash.
+		- basic word wrap.
+		- if box is too small, wrap by characters.
 		- tab character correctly displayed.
 		- vertical scroll by mouse wheel.
 	? Window - essentialy, floating closable div. Maybe even resizable.
@@ -52,6 +51,7 @@ GUI:
 	+ input focus handling, capturing.
 	+ before\after GuiRender event.
 	+ unicode support for onscreen text.
+	? all elements support dynamic creation, disabling, enabling, deletion.
 
 System and utility:
 	- unicode mutstring support for logging.

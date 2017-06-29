@@ -67,7 +67,7 @@ class Router
 	IWindowEventSubrouter hotkey_router;
 
 	// Focused components. Just assign them to what you need.
-	static __gshared IInputReciever _cursorPointed, _kbFocus, _mouseFocus;
+	private static __gshared IInputReciever _cursorPointed, _kbFocus, _mouseFocus;
 
 	mixin template FocusAccessor(string field_name, string loose_name,
 		string gain_name)
