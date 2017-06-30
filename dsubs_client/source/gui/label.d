@@ -144,12 +144,17 @@ class Label: GuiElement
 		}
 		content_top = to!int(round(y));	// stable
 		content_height = 1.25f * _font_size;	// stable as well
-		sfText_setPosition(text, sfVector2f(to!int(round(x)), content_top));
+		sfText_setPosition(text, sfVector2f(round(x), content_top));
 	}
 
 	override void do_draw(Window wnd)
 	{
-		super.do_draw(wnd);
+		draw_background_rect(wnd);
+		draw_contents(wnd);
+	}
+
+	protected void draw_contents(Window wnd)
+	{
 		// draw actual text
 		sfRenderWindow_drawText(wnd.ptr, text, null);
 	}

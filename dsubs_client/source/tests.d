@@ -11,6 +11,7 @@ import dsubs_client.gui.element;
 import dsubs_client.gui.div;
 import dsubs_client.gui.label;
 import dsubs_client.gui.button;
+import dsubs_client.gui.textbox;
 import dsubs_client.gui.textfield;
 import dsubs_client.gui.passwordfield;
 import dsubs_client.input.router;
@@ -47,6 +48,21 @@ void test_menu_routing()
 	render.gui_render = mgr;
 	router.gui_router = mgr;
 	render.postRender += (s) { router.simulate_mouse_move(); };
+
+	dstring testtext =
+"Says old Harte to his missis
+O what do I see?
+Bold Sophie's commander
+With his fiddle-dee-dee.
+
+James Dillon would		 never have allowed it, but Mr Daiziel had no notion of any of the allusions and the song went on and on until the cable was all below in tiers, smelling disagreeably of Mahon ooze, and the Sophie was hoisting her jibs and bracing her foretopsailyard round. She dropped down abreast of the Amelia, whom she had not seen since the action with the Cacafuego, and all at once Mr Daiziel observed that the frigate's rigging was full of men, all carrying their hats and facing the Sophie.
+
+'Mr Babbington,' he said in a low voice, in case he should be mistaken, for he had only seen this happen once before, 'tell the captain, with my duty, that I believe Amelia is going to cheer us.'
+Jack came blinking on deck as the first cheer roared out, a shattering wave of sound at twenty-five yards' range. Then came the Amelia's bosun's pipe and the next cheer, as precisely timed as her own broadside: and the third. He and his officers stood rigidly with their hats off, and as soon as the last roar had died away over the harbour, echoing back and forth, he called out, 'Three cheers for the Amelia!' and the Sophies, though deep in the working of the sloop, responded like heroes, scarlet with pleasure and the energy needed f or huzzaying proper – huge energy, for they knew what was manners. Then the Amelia, now far astern, called 'One cheer more,' and so piped down.
+It was a handsome compliment, a noble send-off, and it gave great pleasure: but still it did not prevent the Sophies from feeling a strong sense of grievance – it did not prevent them from calling out 'Give us back our thirty-seven days' as a sort of slogan or watchword between decks, and even above hatches when they dared – it did not wholly recall them to their duty, and in the following days and weeks they were more than ordinarily tedious.
+The brief interlude in Port Mahon harbour had been exceptionally bad for discipline. One of the results of their fierce contraction into a single defiant ill-used body was that the hierarchy (in its finer shades) had for a time virtually disappeared; and among other things the ship's corporal had let the wounded men returning to their duty bring in bladders and skins full of Spanish brandy, anisette and a colourless liquid said to be gin. A discreditable number of men had succumbed to its influence, among them the captain of the foretop (paralytic) and both bosun's mates. Jack disrated Morgan, promoting the dumb negro Alfred King, according to his former threat – a dumb bosun's mate would surely be more terrible, more deterrent; particularly one with such a very powerful arm.
+"d;
+
 	Button exitBtn = new Button(mgr).content("Exit").font_size(20).asButton;
 	VDiv menu =
 		new VDiv(mgr,
@@ -61,10 +77,10 @@ void test_menu_routing()
 		new VDiv(mgr,
 			new GuiElement(mgr),
 			new HDiv(mgr,
-				new GuiElement(mgr),
+				new TextBox(mgr).font_size(12).content(testtext),
 				menu,
 				new GuiElement(mgr),
-			).sizeType(SizeType.FIXED).size(vec2f(0, 300)),
+			).sizeType(SizeType.FIXED).size(vec2f(0, 350)),
 			new GuiElement(mgr),
 		).sizeType(SizeType.FIXED).size(vec2f(wnd.width, wnd.height));
 	mgr.addAsPanel(panel);
@@ -74,27 +90,30 @@ void test_menu_routing()
 	foreach (lbl; menu.children)
 	{
 		Label l = lbl.asLabel;
-		log("Registering ", l.content);
-		auto captureEnter(Label l)
+		if (l)
 		{
-			return (GuiElement s)
+			log("Registering ", l.content);
+			auto captureEnter(Label l)
 			{
-				log("Enter ", l.content);
-				l.font_color(sfColor(255, 150, 150, 255));
-				l.font_size(l.font_size + 3);
-			};
-		}
-		auto captureLeave(Label l)
-		{
-			return (GuiElement s)
+				return (GuiElement s)
+				{
+					log("Enter ", l.content);
+					l.font_color(sfColor(255, 150, 150, 255));
+					l.font_size(l.font_size + 3);
+				};
+			}
+			auto captureLeave(Label l)
 			{
-				log("Leave ", l.content);
-				l.font_color(sfWhite);
-				l.font_size(l.font_size - 3);
-			};
+				return (GuiElement s)
+				{
+					log("Leave ", l.content);
+					l.font_color(sfWhite);
+					l.font_size(l.font_size - 3);
+				};
+			}
+			l.onMouseEnter += captureEnter(l);
+			l.onMouseLeave += captureLeave(l);
 		}
-		l.onMouseEnter += captureEnter(l);
-		l.onMouseLeave += captureLeave(l);
 	}
 	exitBtn.onClick += (Button s, sfMouseButton btn)
 		{ log("Clicked ", s.content); };

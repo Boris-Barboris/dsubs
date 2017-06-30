@@ -23,14 +23,14 @@ class PasswordField: TextField
 		super(manager);
 	}
 
-	invariant
-	{
-		assert(_hidden_content.length == _content.length);
-	}
-
 	override const(dmutstring) content() { return _hidden_content; }
 
 	override PasswordField content(dstring val)
+	out (result)
+	{
+		assert(_hidden_content.length == _content.length);
+	}
+	body
 	{
 		str2mut_copy(val, _hidden_content);
 		_content.length = _hidden_content.length;
@@ -42,18 +42,33 @@ class PasswordField: TextField
 	}
 
 	override void insert_at(dchar c, size_t idx)
+	out
+	{
+		assert(_hidden_content.length == _content.length);
+	}
+	body
 	{
 		_hidden_content.insert_at(c, idx);
 		_content.insert_at(PWDOT, idx);
 	}
 
 	override void remove_at(size_t idx)
+	out
+	{
+		assert(_hidden_content.length == _content.length);
+	}
+	body
 	{
 		_hidden_content.remove_at(idx);
 		_content.remove_at(idx);
 	}
 
 	override void remove_interval(size_t start, size_t end)
+	out
+	{
+		assert(_hidden_content.length == _content.length);
+	}
+	body
 	{
 		_hidden_content.remove_interval(start, end);
 		_content.remove_interval(start, end);

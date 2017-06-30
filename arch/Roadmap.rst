@@ -32,11 +32,13 @@ GUI:
 		+ handle end and home keys.
 		+ handle ctrl+a.
 	+ Password textfield (characters hidden).
-	- Text box (readonly, multiline). Has a scroll bar, word wrap.
-		- basic word wrap.
-		- if box is too small, wrap by characters.
-		- tab character correctly displayed.
-		- vertical scroll by mouse wheel.
+	? Text box (readonly, multiline). Has a scroll bar, word wrap.
+		- word wrap.
+		+ symbol wrap - very ugly, but works and easy to write.
+		+ if box is too small, wrap by characters.
+		+ tab character correctly displayed.
+		+ vertical scroll by mouse wheel.
+		- scroll bar.
 	? Window - essentialy, floating closable div. Maybe even resizable.
 	- Image - generic render target to display graphical information.
 		No need for fancy scaling or zooming, just display image, no matter how

@@ -1,7 +1,5 @@
 module dsubs_client.gui.textfield;
 
-import core.time;
-
 import std.algorithm.comparison;
 import std.conv;
 import std.experimental.logger;
@@ -34,7 +32,8 @@ class TextField: Label
 		super(manager);
 		// larger buffer capacity
 		_content.reserve(64);
-		border_width(1.0f);
+		border_width(1);
+		border_color(sfWhite);
 		backgroud_color(sfColor(50, 28, 28, 150));
 		cursor_rect = sfRectangleShape_create();
 		sfRectangleShape_setOutlineThickness(rect, 0.0f);
@@ -182,9 +181,8 @@ class TextField: Label
 	private bool blink_state = true;
 	static uint BLINK_FREQ = 15;
 
-	override void do_draw(Window wnd)
+	override protected void draw_contents(Window wnd)
 	{
-		this.GuiElement.do_draw(wnd);	// draw background rectangle
 		// now we're in local space because of viewport
 		if (kb_focused || mouse_focused)
 		{
@@ -201,7 +199,7 @@ class TextField: Label
 				sfRenderWindow_drawRectangleShape(wnd.ptr, cursor_rect, null);
 		}
 		// text is drawn over cursor
-		sfRenderWindow_drawText(wnd.ptr, text, null);
+		super.draw_contents(wnd);
 	}
 
 	protected void insert_at(dchar c, size_t idx)

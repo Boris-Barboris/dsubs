@@ -87,8 +87,8 @@ class GuiElement: Component!"Gui", IInputReciever
 	{
 		bool _rect_visible = true;
 		sfColor _backgroud_color = sfTransparent;
-		sfColor _border_color = sfWhite;
-		float _border_width = 0.25f;
+		sfColor _border_color = sfColor(255, 255, 255, 30);
+		uint _border_width = 1;
 		bool _visuals_dirty = true;
 	}
 
@@ -98,51 +98,62 @@ class GuiElement: Component!"Gui", IInputReciever
 	mixin ElementAccessor!(GuiElement, sfColor, "border_color",
 		"_visuals_dirty = true;");
 
-	mixin ElementAccessor!(GuiElement, float, "border_width",
+	mixin ElementAccessor!(GuiElement, uint, "border_width",
 		"_visuals_dirty = true;");
 
 	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
 
 	/// Update rendering-related parameters from state
-	void update_visual(Window wnd)
+	protected void update_visual(Window wnd)
 	{
-		// set coordinates of the view
-		sfFloatRect coord;
-		coord.left = 0.0f;
-		coord.top = 0.0f;
-		coord.width = _size.x;
-		coord.height = _size.y;
-		sfView_reset(view, coord);
+		update_view(wnd);
 		//sfRectangleShape_setPosition(rect, tosf(_position));
 		sfRectangleShape_setPosition(rect, sfVector2f(_border_width, _border_width));
 		sfVector2f new_size = tosf(_size - 2.0f * vec2f(_border_width, _border_width));
+		new_size.x = round(new_size.x); new_size.y = round(new_size.y);
 		sfRectangleShape_setSize(rect, new_size);
 		sfRectangleShape_setOutlineThickness(rect, _border_width);
 		sfRectangleShape_setOutlineColor(rect, _border_color);
 		sfRectangleShape_setFillColor(rect, _backgroud_color);
 	}
 
-	void update_viewport(Window wnd)
+	protected void update_view(Window wnd)
+	{
+		// set coordinates of the view
+		sfFloatRect coord;
+		coord.left = 0.0f;
+		coord.top = 0.0f;
+		coord.width = round(_size.x);
+		coord.height = round(_size.y);
+		sfView_reset(view, coord);
+	}
+
+	protected void update_viewport(Window wnd)
 	{
 		sfFloatRect vp;
-		vp.left = _position.x / wnd.width;
-		vp.top = _position.y / wnd.height;
-		vp.width = _size.x / wnd.width;
-		vp.height = _size.y / wnd.height;
+		vp.left = round(_position.x) / wnd.width;
+		vp.top = round(_position.y) / wnd.height;
+		vp.width = round(_size.x) / wnd.width;
+		vp.height = round(_size.y) / wnd.height;
 		sfView_setViewport(view, vp);
 	}
 
-	void set_view(Window wnd)
+	protected void set_view(Window wnd)
 	{
 		sfRenderWindow_setView(wnd.ptr, view);
 	}
 
-	void reset_view(Window wnd)
+	protected void reset_view(Window wnd)
 	{
 		sfRenderWindow_setView(wnd.ptr, wnd.view);
 	}
 
-	void do_draw(Window wnd)
+	protected void do_draw(Window wnd)
+	{
+		draw_background_rect(wnd);
+	}
+
+	protected void draw_background_rect(Window wnd)
 	{
 		if (_rect_visible)
 			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, null);
@@ -153,6 +164,9 @@ class GuiElement: Component!"Gui", IInputReciever
 		if (_visuals_dirty)
 			update_visual(wnd);
 		_visuals_dirty = false;
+		// we call it every frame because we don't yet propagate window resize
+		// event to all guielements. Viewport requires window dimensions.
+		// TODO: optimize it.
 		update_viewport(wnd);
 		set_view(wnd);
 		do_draw(wnd);
