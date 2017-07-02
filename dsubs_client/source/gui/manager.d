@@ -37,6 +37,8 @@ class Panel
 	this(GuiElement root)
 	{
 		this.root = root;
+		root.viewport(
+			vec4f(root.position.x, root.position.y, root.size.x, root.size.y));
 	}
 
 	void draw(Window wnd) { root.draw(wnd); }
@@ -66,7 +68,15 @@ class Panel
 		return res;
 	}
 
-	void handleWindowResize(const sfSizeEvent* evt) {}
+	void handleWindowResize(const sfSizeEvent* evt)
+	{
+		if (root.sizeType == SizeType.GREEDY)	// greedy elements are fullscreen
+		{
+			root.viewport(vec4f(0, 0, evt.width, evt.height));
+			root.size(vec2f(evt.width, evt.height));
+		}
+		root.handleWindowResize(evt);
+	}
 }
 
 // Thing that draws gui components on the window and routes window events

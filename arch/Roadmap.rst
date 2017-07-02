@@ -43,7 +43,7 @@ GUI:
 	- Image - generic render target to display graphical information.
 		No need for fancy scaling or zooming, just display image, no matter how
 		warped.
-	- (nested) dropdown list - may well be just a panel-div, but some sugar would
+	? (nested) dropdown list - may well be just a panel-div, but some sugar would
 		be nice.
 	+ use viewport to force element boundaries and provide guaranteed
 		overlap protection. May be expensive on OpenGL side. Benefits only
@@ -53,7 +53,10 @@ GUI:
 	+ input focus handling, capturing.
 	+ before\after GuiRender event.
 	+ unicode support for onscreen text.
-	? all elements support dynamic creation, disabling, enabling, deletion.
+	? all elements support correct dynamic creation, disabling, enabling, deletion.
+	- hierarchical viewport framework.
+	- element's content size.
+	- proper event and layout architecture description.
 
 System and utility:
 	- unicode mutstring support for logging.

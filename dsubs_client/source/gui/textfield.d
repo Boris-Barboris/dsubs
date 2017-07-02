@@ -36,6 +36,7 @@ class TextField: Label
 		border_color(sfWhite);
 		backgroud_color(sfColor(50, 28, 28, 150));
 		cursor_rect = sfRectangleShape_create();
+		sfRectangleShape_setFillColor(cursor_rect, _cursor_color);
 		sfRectangleShape_setOutlineThickness(rect, 0.0f);
 		horz_align(TextAlign.LEFT);
 		onMouseDown += &handle_mouse_down;
@@ -47,7 +48,7 @@ class TextField: Label
 	}
 
 	mixin ElementAccessor!(TextField, sfColor, "cursor_color",
-		"_visuals_dirty = true;");
+		"sfRectangleShape_setFillColor(cursor_rect, _cursor_color);");
 
 	protected void handle_mouse_down(GuiElement s, int x, int y, sfMouseButton btn)
 	{
@@ -173,7 +174,6 @@ class TextField: Label
 				content_top));
 		sfRectangleShape_setSize(cursor_rect,
 			sfVector2f(cursor_width, content_height));
-		sfRectangleShape_setFillColor(cursor_rect, _cursor_color);
 		blink_state = true;
 	}
 

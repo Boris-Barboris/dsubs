@@ -54,6 +54,9 @@ class Div(uint dim, uint odim): GuiElement
 	mixin SuperAccessor!(Div!(dim, odim), vec2f, "size",
 		"update_children();");
 
+	mixin SuperAccessor!(Div!(dim, odim), vec4f, "viewport",
+		"update_children();");
+
 	// anti-recusrion flag.
 	protected bool _updating_children = true;
 
@@ -110,6 +113,10 @@ class Div(uint dim, uint odim): GuiElement
 		foreach (child; filter!(a => a.active)(children))
 		{
 			child.position(dim_vec(_position[dim] + offset, _position[odim]));
+			child.viewport(
+				clamp_viewport(
+					vec4f(child.position.x, child.position.y,
+						  child.size.x, child.size.y)));
 			offset += child.size[dim];
 		}
 		_updating_children = false;
@@ -130,7 +137,7 @@ class Div(uint dim, uint odim): GuiElement
 
 	override GuiElement get_from_point(vec2f point)
 	{
-		if (this.GuiElement.get_from_point(point))
+		if (super.get_from_point(point))
 		{
 			if (children.length == 0)
 				return this;

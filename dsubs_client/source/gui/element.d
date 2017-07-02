@@ -33,9 +33,12 @@ class GuiElement: Component!"Gui", IInputReciever
 	package GuiElement _parent;
 	protected
 	{
-		vec2f _position = vec2f(0, 0);
-		vec2f _size = vec2f(0, 0);
-		float _fraction = 0.0;
+		vec2f _position = vec2f(0, 0);	// absolute position
+		vec2f _size = vec2f(0, 0);		// size
+		vec2f _content_size = vec2f(0, 0);
+		// rectangle to view this element through: x,y,w,h
+		vec4f _viewport = vec4f(0, 0, 0, 0);
+		float _fraction = 0.0;			// if _sizeType is FRACT, this is the fraction to use
 		SizeType _sizeType = SizeType.GREEDY;
 	}
 
@@ -56,22 +59,44 @@ class GuiElement: Component!"Gui", IInputReciever
 	// When we are disabled or enabled, we need to notify parent
 	override void on_state_change()
 	{
-		if (_parent) _parent.child_changed(this);
+		if (!active)
+		{
+			// return all focuses we hold
+			returnKbFocus();
+			returnMouseFocus();
+		}
+		if (_parent)
+			_parent.child_changed(this);
 	}
 
-	mixin ElementAccessor!(GuiElement, vec2f, "position", "");
+	mixin ElementAccessor!(GuiElement, vec2f, "position",
+		"_view_dirty = true;");
+
+	mixin ElementAccessor!(GuiElement, vec4f, "viewport",
+		"_view_dirty = true;");
 
 	mixin ElementAccessor!(GuiElement, vec2f, "size",
 		"if (_sizeType == SizeType.FIXED && _parent)
 			_parent.child_changed(this);
-		_visuals_dirty = true;");
+		_visuals_dirty = _view_dirty = true;");
 
 	mixin ElementAccessor!(GuiElement, float, "fraction",
 		"if (_sizeType == SizeType.FRACT && _parent)
-			_parent.child_changed(this);
-		_visuals_dirty = true;");
+			_parent.child_changed(this);");
 
-	mixin ElementAccessor!(GuiElement, SizeType, "sizeType", "");
+	mixin ElementAccessor!(GuiElement, SizeType, "sizeType",
+		"if (_parent) { _parent.child_changed(this); }");
+
+	// return size of internal content
+	vec2f content_size()
+	{
+		return get_content_size();
+	}
+
+	protected vec2f get_content_size()
+	{
+		return vec2f(0.0f, 0.0f);
+	}
 
 	//
 	// rendering stuff
@@ -85,29 +110,28 @@ class GuiElement: Component!"Gui", IInputReciever
 
 	protected
 	{
-		bool _rect_visible = true;
+		bool _rect_visible = true;	// is layout rectangle visible?
 		sfColor _backgroud_color = sfTransparent;
 		sfColor _border_color = sfColor(255, 255, 255, 30);
-		uint _border_width = 1;
-		bool _visuals_dirty = true;
+		uint _border_width = 1;		// width of layout rectangle border
+		bool _visuals_dirty = true;	// when true, content must be recalculated
+		bool _view_dirty = true;	// when true, view must be recalcuated
 	}
 
 	mixin ElementAccessor!(GuiElement, sfColor, "backgroud_color",
-		"_visuals_dirty = true;");
+		"sfRectangleShape_setFillColor(rect, _backgroud_color);");
 
 	mixin ElementAccessor!(GuiElement, sfColor, "border_color",
-		"_visuals_dirty = true;");
+		"sfRectangleShape_setOutlineColor(rect, _border_color);");
 
 	mixin ElementAccessor!(GuiElement, uint, "border_width",
-		"_visuals_dirty = true;");
+		"sfRectangleShape_setOutlineThickness(rect, _border_width);");
 
 	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
 
 	/// Update rendering-related parameters from state
-	protected void update_visual(Window wnd)
+	protected void update_visual()
 	{
-		update_view(wnd);
-		//sfRectangleShape_setPosition(rect, tosf(_position));
 		sfRectangleShape_setPosition(rect, sfVector2f(_border_width, _border_width));
 		sfVector2f new_size = tosf(_size - 2.0f * vec2f(_border_width, _border_width));
 		new_size.x = round(new_size.x); new_size.y = round(new_size.y);
@@ -117,24 +141,32 @@ class GuiElement: Component!"Gui", IInputReciever
 		sfRectangleShape_setFillColor(rect, _backgroud_color);
 	}
 
-	protected void update_view(Window wnd)
+	// return rectangle rhs clamped inside this element's viewport
+	vec4f clamp_viewport(vec4f rhs)
 	{
-		// set coordinates of the view
-		sfFloatRect coord;
-		coord.left = 0.0f;
-		coord.top = 0.0f;
-		coord.width = round(_size.x);
-		coord.height = round(_size.y);
-		sfView_reset(view, coord);
+		vec4f res;
+		res[0] = min(max(rhs[0], _viewport[0]), _viewport[0] + _viewport[2]);
+		res[1] = min(max(rhs[1], _viewport[1]), _viewport[1] + _viewport[3]);
+		res[2] = min(rhs[2], max(0.0f, _viewport[0] + _viewport[2] - res[0]));
+		res[3] = min(rhs[3], max(0.0f, _viewport[1] + _viewport[3] - res[1]));
+		return res;
 	}
 
-	protected void update_viewport(Window wnd)
+	protected void update_view(Window wnd)
 	{
+		// set camera coordinates of the view
+		sfFloatRect coord;
+		coord.left = round(_viewport.x - _position.x);
+		coord.top = round(_viewport.y - _position.y);
+		coord.width = round(_viewport[2]);
+		coord.height = round(_viewport[3]);
+		sfView_reset(view, coord);
+		// update viewport
 		sfFloatRect vp;
-		vp.left = round(_position.x) / wnd.width;
-		vp.top = round(_position.y) / wnd.height;
-		vp.width = round(_size.x) / wnd.width;
-		vp.height = round(_size.y) / wnd.height;
+		vp.left = round(_viewport.x) / wnd.width;
+		vp.top = round(_viewport.y) / wnd.height;
+		vp.width = coord.width / wnd.width;
+		vp.height = coord.height / wnd.height;
 		sfView_setViewport(view, vp);
 	}
 
@@ -161,13 +193,12 @@ class GuiElement: Component!"Gui", IInputReciever
 
 	void draw(Window wnd)
 	{
+		if (_view_dirty)
+			update_view(wnd);
+		_view_dirty = false;
 		if (_visuals_dirty)
-			update_visual(wnd);
+			update_visual();
 		_visuals_dirty = false;
-		// we call it every frame because we don't yet propagate window resize
-		// event to all guielements. Viewport requires window dimensions.
-		// TODO: optimize it.
-		update_viewport(wnd);
 		set_view(wnd);
 		do_draw(wnd);
 		reset_view(wnd);
@@ -211,7 +242,7 @@ class GuiElement: Component!"Gui", IInputReciever
 				onTextEntered(this, cast(const sfTextEvent*) evt);
 				break;
 			default:
-				throw new Exception("can't handle non-keyboard event here");
+				assert(0, "can't handle non-keyboard event here");
 		}
 		return HandleResult(false);
 	}
@@ -291,6 +322,11 @@ class GuiElement: Component!"Gui", IInputReciever
 		else if (interceptor)
 			return interceptor.routeMousePos(evt, x, y);
 		return GuiRouteResult(null, true);
+	}
+
+	package void handleWindowResize(const sfSizeEvent* evt)
+	{
+		_view_dirty = true;
 	}
 
 	// events for users to subscribe to

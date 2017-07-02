@@ -1,5 +1,7 @@
 module dsubs_client.core.component;
 
+import core.atomic: atomicOp;
+
 
 enum CompState: ubyte
 {
@@ -46,12 +48,18 @@ class Component(string sysname)
 	bool inactive() { return _component_state == CompState.OFF; }
 	bool deleted() { return _component_state == CompState.DELETED; }
 
+	private static shared ulong id_counter = 0;
+	private ulong _id;
+	ulong id() { return _id; }
+
 	alias ManagerType = ComponentManager!sysname;
 	protected ManagerType _manager;
 
 	this(ManagerType manager)
 	{
 		_manager = manager;
+		_id = id_counter;
+		atomicOp!"+="(id_counter, 1);
 	}
 }
 

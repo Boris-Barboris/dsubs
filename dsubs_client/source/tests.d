@@ -14,6 +14,7 @@ import dsubs_client.gui.button;
 import dsubs_client.gui.textbox;
 import dsubs_client.gui.textfield;
 import dsubs_client.gui.passwordfield;
+import dsubs_client.gui.scrollbar;
 import dsubs_client.input.router;
 
 
@@ -77,15 +78,14 @@ The brief interlude in Port Mahon harbour had been exceptionally bad for discipl
 		new VDiv(mgr,
 			new GuiElement(mgr),
 			new HDiv(mgr,
-				new TextBox(mgr).font_size(12).content(testtext),
+				new ScrollBar(mgr,
+					new TextBox(mgr).font_size(12).content(testtext)),
 				menu,
 				new GuiElement(mgr),
 			).sizeType(SizeType.FIXED).size(vec2f(0, 350)),
 			new GuiElement(mgr),
-		).sizeType(SizeType.FIXED).size(vec2f(wnd.width, wnd.height));
+		).size(vec2f(wnd.width, wnd.height));
 	mgr.addAsPanel(panel);
-	wnd.register_handler(sfEvtResized,
-		(const sfEvent* a) {panel.size(vec2f(a.size.width, a.size.height));});
 	// events
 	foreach (lbl; menu.children)
 	{

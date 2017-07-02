@@ -92,9 +92,9 @@ class Label: GuiElement
 	mixin ElementAccessor!(Label, TextAlign, "vert_align",
 		"_visuals_dirty = true;");
 
-	override void update_visual(Window wnd)
+	override void update_visual()
 	{
-		super.update_visual(wnd);
+		super.update_visual();
 		update_text_position();
 	}
 
@@ -103,11 +103,17 @@ class Label: GuiElement
 		// text content visual parameters they way they look
 		int content_left;
 		int content_top;
-		float content_width;
-		float content_height;
+		float content_width = 0.0f;
+		float content_height = 0.0f;
 		// offset for text x coordinate
 		// may be useful for child classes to move text left and right
 		float _left_offset = 0.0f;
+	}
+
+	override vec2f content_size()
+	{
+		return vec2f(content_width + 2.0f * _padding,
+			content_height + 2.0f * _padding);
 	}
 
 	void update_text_position()

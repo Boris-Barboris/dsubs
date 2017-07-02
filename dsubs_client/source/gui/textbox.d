@@ -22,8 +22,6 @@ import dsubs_client.gui.fonts;
 import dsubs_client.gui.manager;
 
 
-__gshared float SCROLL_SPEED = 10.0f;
-
 /// Multiline readonly scrollable field to show lot's of text on.
 class TextBox: GuiElement
 {
@@ -31,34 +29,18 @@ class TextBox: GuiElement
 	{
 		dstring _content;
 		sfText*[] texts;
-		// Special view to render texts. It's existence simplifies scrolling.
-		sfView* text_view;
 		uint _font_size = 12;
 		string _fontname = "SansMono";
 		sfColor _font_color = sfWhite;
 		float _padding = 3.0f;
-
-		// scrollbar will always be on the right, fuck it.
-		// It will also always take space, but will simply be hidden
-		// when not needed.
-		// Let scrollbar line width be 1.0 for now.
-		/*float _scrollbar_width = 15.0f;
-		sfColor _scrollbar_line_color = sfWhite;
-		sfColor _scrollbar_body_color = sfWhite;
-		bool _scroll_visible = false;
-		sfRectangleShape* scroll_rect_under;	// rails for scroll box
-		sfRectangleShape* scroll_rect_over;		// scroll box itself
-		*/
-		float _scroll_position = 0.0f;
 	}
 
 	this(GuiManager manager)
 	{
 		super(manager);
 		mouse_transparent = false;
-		text_view = sfView_create();
+		//text_view = sfView_create();
 		_content = ""d;
-		onMouseScroll += &handle_mouse_scroll;
 	}
 
 	dstring content() { return _content; }
@@ -87,27 +69,6 @@ class TextBox: GuiElement
 
 	mixin ElementAccessor!(TextBox, float, "padding",
 		"_visuals_dirty = true;");
-
-	//mixin ElementAccessor!(TextBox, float, "scrollbar_width",
-	//	"_visuals_dirty = true;");
-
-	private void handle_mouse_scroll(GuiElement sender, int x, int y, int delta)
-	{
-		update_mouse_scroll(delta);
-		update_text_view();
-	}
-
-	protected void update_mouse_scroll(int delta)
-	{
-		float max_scroll = (text_full_height - _size.y + 2.0f * _border_width);
-		if (max_scroll <= 0.0f)
-			_scroll_position = 0.0f;
-		else
-		{
-			_scroll_position += SCROLL_SPEED * delta;
-			_scroll_position = fmin(0.0f, fmax(_scroll_position, -max_scroll));
-		}
-	}
 
 	// main text creation function
 	protected void layout_text()
@@ -194,14 +155,18 @@ class TextBox: GuiElement
 		}
 		texts.length = txt_idx;
 
-		// update scrolling parameters
 		text_full_height = line_idx * line_spacing;
-		update_mouse_scroll(0);
 	}
 
 	protected
 	{
 		float text_full_height = 0.0f;
+	}
+
+	override vec2f get_content_size()
+	{
+		return vec2f(2.0f * _padding + _size.x,
+			2.0f * _padding + text_full_height);
 	}
 
 	private void create_text_obj()
@@ -217,8 +182,8 @@ class TextBox: GuiElement
 	{
 		sfFloatRect bounds = sfText_getLocalBounds(t);
 		float x, y; // results
-		x = -bounds.left;
-		y = interline * line_number;
+		x = -bounds.left + _padding;
+		y = interline * line_number + _padding;
 		sfText_setPosition(t, sfVector2f(round(x), round(y)));
 	}
 
@@ -232,35 +197,6 @@ class TextBox: GuiElement
 	float get_line_spacing()
 	{
 		return sfFont_getLineSpacing(loadedFonts[_fontname], _font_size);
-	}
-
-	override protected void update_viewport(Window wnd)
-	{
-		super.update_viewport(wnd);
-		// and setup the viewport
-		sfFloatRect vp;
-		vp.left = round(_position.x + _border_width) / wnd.width;
-		vp.top = round(_position.y + _border_width) / wnd.height;
-		vp.width = round(_size.x - 2.0f * _border_width) / wnd.width;
-		vp.height = round(_size.y - 2.0f * _border_width) / wnd.height;
-		sfView_setViewport(text_view, vp);
-	}
-
-	override protected void update_view(Window wnd)
-	{
-		super.update_view(wnd);
-		update_text_view();
-	}
-
-	protected void update_text_view()
-	{
-		// set coordinates of the view
-		sfFloatRect coord;
-		coord.left = round(-_padding);
-		coord.top = round(-_padding - _scroll_position);
-		coord.width = round(_size.x - 2.0f * _border_width);
-		coord.height = round(_size.y - 2.0f * _border_width);
-		sfView_reset(text_view, coord);
 	}
 
 	protected void update_font_size()
@@ -281,16 +217,16 @@ class TextBox: GuiElement
 			sfText_setColor(t, _font_color);
 	}
 
-	override void update_visual(Window wnd)
+	override void update_visual()
 	{
 		layout_text();
-		super.update_visual(wnd);
+		super.update_visual();
 	}
 
 	override protected void do_draw(Window wnd)
 	{
 		super.do_draw(wnd);
-		sfRenderWindow_setView(wnd.ptr, text_view);
+		//sfRenderWindow_setView(wnd.ptr, text_view);
 		// drawn texts line by line
 		foreach (t; texts)
 			sfRenderWindow_drawText(wnd.ptr, t, null);
