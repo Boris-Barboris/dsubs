@@ -24,7 +24,8 @@ enum SizeType
 {
 	FIXED,	// element has fixed size
 	FRACT,	// element takes fraction of free space, left after FIXED elements
-	GREEDY	// element tries to fill all available space in the container.
+	GREEDY,	// element tries to fill all available space in the container.
+	CONTENT,// element controlls it's own size
 }
 
 /// GUI tree element. This is not an abstract class, just an empty rectangle.
@@ -76,7 +77,7 @@ class GuiElement: Component!"Gui", IInputReciever
 		"_view_dirty = true;");
 
 	mixin ElementAccessor!(GuiElement, vec2f, "size",
-		"if (_sizeType == SizeType.FIXED && _parent)
+		"if ((_sizeType == SizeType.FIXED || _sizeType == SizeType.CONTENT) && _parent)
 			_parent.child_changed(this);
 		_visuals_dirty = _view_dirty = true;");
 
@@ -86,17 +87,6 @@ class GuiElement: Component!"Gui", IInputReciever
 
 	mixin ElementAccessor!(GuiElement, SizeType, "sizeType",
 		"if (_parent) { _parent.child_changed(this); }");
-
-	// return size of internal content
-	vec2f content_size()
-	{
-		return get_content_size();
-	}
-
-	protected vec2f get_content_size()
-	{
-		return vec2f(0.0f, 0.0f);
-	}
 
 	//
 	// rendering stuff
@@ -125,7 +115,7 @@ class GuiElement: Component!"Gui", IInputReciever
 		"sfRectangleShape_setOutlineColor(rect, _border_color);");
 
 	mixin ElementAccessor!(GuiElement, uint, "border_width",
-		"sfRectangleShape_setOutlineThickness(rect, _border_width);");
+		"_visuals_dirty = true;");
 
 	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
 

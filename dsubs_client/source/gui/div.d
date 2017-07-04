@@ -89,6 +89,12 @@ class Div(uint dim, uint odim): GuiElement
 			child.size(dim_vec(child.size[dim], _size[odim]));
 			child_count++;
 		}
+		// content-sized kids are not touched.
+		foreach (child; children.filter!(a => a.sizeType == SizeType.CONTENT && a.active))
+		{
+			budget -= child.size[dim];
+			child_count++;
+		}
 		// now fractual kids
 		auto fract_kids = children.filter!(a => a.sizeType == SizeType.FRACT && a.active);
 		float fract_sum = fold!((a, b) => a + b.fraction)(fract_kids, 0.0);

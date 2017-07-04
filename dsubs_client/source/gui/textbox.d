@@ -38,8 +38,8 @@ class TextBox: GuiElement
 	this(GuiManager manager)
 	{
 		super(manager);
+		_sizeType = SizeType.CONTENT;
 		mouse_transparent = false;
-		//text_view = sfView_create();
 		_content = ""d;
 	}
 
@@ -57,6 +57,9 @@ class TextBox: GuiElement
 	{
 		return content(toUTF32(val));
 	}
+
+	mixin SuperAccessor!(TextBox, SizeType, "sizeType",
+		"if (val != SizeType.CONTENT) assert(0, \"TextBox always has CONTENT sizeType\");");
 
 	mixin ElementAccessor!(TextBox, uint, "font_size",
 		"update_font_size(); _visuals_dirty = true;");
@@ -104,7 +107,7 @@ class TextBox: GuiElement
 					sfFloatRect bounds = sfText_getLocalBounds(t);
 					glyph_width = bounds.width / tmp_idx;
 					assert(glyph_width > 0.0f);
-					chars_in_line = max(1, to!int(floor(line_width / glyph_width)));
+					chars_in_line = max(1, to!int(floor(line_width / glyph_width)) - 1);
 					naiive_width = false;
 					// go to start again
 					txt_idx = tmp_idx = content_idx = 0;
@@ -163,12 +166,6 @@ class TextBox: GuiElement
 		float text_full_height = 0.0f;
 	}
 
-	override vec2f get_content_size()
-	{
-		return vec2f(2.0f * _padding + _size.x,
-			2.0f * _padding + text_full_height);
-	}
-
 	private void create_text_obj()
 	{
 		sfText* t = sfText_create();
@@ -182,8 +179,8 @@ class TextBox: GuiElement
 	{
 		sfFloatRect bounds = sfText_getLocalBounds(t);
 		float x, y; // results
-		x = -bounds.left + _padding;
-		y = interline * line_number + _padding;
+		x = -bounds.left + _padding + _border_width;
+		y = interline * line_number + _padding + _border_width;
 		sfText_setPosition(t, sfVector2f(round(x), round(y)));
 	}
 
@@ -220,6 +217,8 @@ class TextBox: GuiElement
 	override void update_visual()
 	{
 		layout_text();
+		// now we set height according to text dimensions
+		size(vec2f(_size.x, 2.0f * _padding + 2.0 * _border_width + text_full_height));
 		super.update_visual();
 	}
 

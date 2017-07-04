@@ -38,7 +38,7 @@ class Label: GuiElement
 		sfColor _font_color = sfWhite;
 		TextAlign _horz_align = TextAlign.CENTER;
 		TextAlign _vert_align = TextAlign.CENTER;	// left is top
-		float _padding = 2.0f;		// used when align is not center
+		float _padding = 3.0f;		// used when align is not center
 	}
 
 	this(GuiManager manager)
@@ -105,15 +105,7 @@ class Label: GuiElement
 		int content_top;
 		float content_width = 0.0f;
 		float content_height = 0.0f;
-		// offset for text x coordinate
-		// may be useful for child classes to move text left and right
 		float _left_offset = 0.0f;
-	}
-
-	override vec2f content_size()
-	{
-		return vec2f(content_width + 2.0f * _padding,
-			content_height + 2.0f * _padding);
 	}
 
 	void update_text_position()
@@ -123,14 +115,14 @@ class Label: GuiElement
 		final switch (_horz_align)
 		{
 			case TextAlign.LEFT:
-				x = _padding - bounds.left + _left_offset;
+				x = _border_width + _padding - bounds.left + _left_offset;
 				break;
 			case TextAlign.RIGHT:
-				x = _size.x - _padding - bounds.left - bounds.width + _left_offset;
+				x = _size.x - _padding - bounds.left - bounds.width -
+					_border_width + _left_offset;
 				break;
 			case TextAlign.CENTER:
-				x = 0.5f * (_size.x - 2.0f * bounds.left - bounds.width) +
-					_left_offset;
+				x = 0.5f * (_size.x - 2.0f * bounds.left - bounds.width) + _left_offset;
 		}
 		content_left = to!int(round(x + bounds.left));
 		content_width = bounds.width;
@@ -138,11 +130,11 @@ class Label: GuiElement
 		{
 			case TextAlign.LEFT:
 				//y = _padding - bounds.top;
-				y = _padding;
+				y = _padding + _border_width;
 				break;
 			case TextAlign.RIGHT:
 				//y = _size.y - _padding - bounds.top - bounds.height;
-				y = _size.y - _padding - _font_size * 1.25f;
+				y = _size.y - _padding - _font_size * 1.25f - _border_width;
 				break;
 			case TextAlign.CENTER:
 				//y = 0.5f * (_size.y - 2.0f * bounds.top - bounds.height);

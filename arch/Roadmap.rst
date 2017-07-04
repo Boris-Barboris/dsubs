@@ -38,7 +38,7 @@ GUI:
 		+ if box is too small, wrap by characters.
 		+ tab character correctly displayed.
 		+ vertical scroll by mouse wheel.
-		- scroll bar.
+		+ scroll bar (implemented as composite).
 	? Window - essentialy, floating closable div. Maybe even resizable.
 	- Image - generic render target to display graphical information.
 		No need for fancy scaling or zooming, just display image, no matter how
@@ -54,8 +54,8 @@ GUI:
 	+ before\after GuiRender event.
 	+ unicode support for onscreen text.
 	? all elements support correct dynamic creation, disabling, enabling, deletion.
-	- hierarchical viewport framework.
-	- element's content size.
+	+ hierarchical viewport framework.
+	? element's content size.
 	- proper event and layout architecture description.
 
 System and utility:

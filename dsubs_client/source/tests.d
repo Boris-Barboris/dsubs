@@ -56,7 +56,7 @@ O what do I see?
 Bold Sophie's commander
 With his fiddle-dee-dee.
 
-James Dillon would		 never have allowed it, but Mr Daiziel had no notion of any of the allusions and the song went on and on until the cable was all below in tiers, smelling disagreeably of Mahon ooze, and the Sophie was hoisting her jibs and bracing her foretopsailyard round. She dropped down abreast of the Amelia, whom she had not seen since the action with the Cacafuego, and all at once Mr Daiziel observed that the frigate's rigging was full of men, all carrying their hats and facing the Sophie.
+James Dillon would never have allowed it, but Mr Daiziel had no notion of any of the allusions and the song went on and on until the cable was all below in tiers, smelling disagreeably of Mahon ooze, and the Sophie was hoisting her jibs and bracing her foretopsailyard round. She dropped down abreast of the Amelia, whom she had not seen since the action with the Cacafuego, and all at once Mr Daiziel observed that the frigate's rigging was full of men, all carrying their hats and facing the Sophie.
 
 'Mr Babbington,' he said in a low voice, in case he should be mistaken, for he had only seen this happen once before, 'tell the captain, with my duty, that I believe Amelia is going to cheer us.'
 Jack came blinking on deck as the first cheer roared out, a shattering wave of sound at twenty-five yards' range. Then came the Amelia's bosun's pipe and the next cheer, as precisely timed as her own broadside: and the third. He and his officers stood rigidly with their hats off, and as soon as the last roar had died away over the harbour, echoing back and forth, he called out, 'Three cheers for the Amelia!' and the Sophies, though deep in the working of the sloop, responded like heroes, scarlet with pleasure and the energy needed f or huzzaying proper – huge energy, for they knew what was manners. Then the Amelia, now far astern, called 'One cheer more,' and so piped down.
@@ -78,7 +78,7 @@ The brief interlude in Port Mahon harbour had been exceptionally bad for discipl
 		new VDiv(mgr,
 			new GuiElement(mgr),
 			new HDiv(mgr,
-				new ScrollBar(mgr,
+				new ScrollBar!TextBox(mgr,
 					new TextBox(mgr).font_size(12).content(testtext)),
 				menu,
 				new GuiElement(mgr),
