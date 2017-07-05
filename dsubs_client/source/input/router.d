@@ -99,6 +99,8 @@ class Router
 		wnd.register_handler(sfEvtMouseWheelMoved, &route_mouse_event);
 		wnd.register_handler(sfEvtMouseButtonPressed, &route_mouse_event);
 		wnd.register_handler(sfEvtMouseButtonReleased, &route_mouse_event);
+		// we don't register MouseMoved handler, because we use artificial
+		// event each frame.
 		//wnd.register_handler(sfEvtMouseMoved, &route_event);
 		// cursor-related special cases:
 		wnd.register_handler(sfEvtMouseEntered, (a) { mouse_inside = true; });

@@ -27,12 +27,12 @@ struct GuiRouteResult
 // One flat element tree instance, structural unit of the Gui manager.
 class Panel
 {
-	GuiElement root;
+	protected GuiElement root;
 	// if true, mouse click will push this panel on top of the stack.
 	// usefull for windows.
-	bool mouse_zboost = true;
+	bool mouse_zboost = false;
 	// last mouse event reciever, that will be tried first
-	package GuiElement mouse_event_cache;
+	protected GuiElement mouse_event_cache;
 
 	this(GuiElement root)
 	{

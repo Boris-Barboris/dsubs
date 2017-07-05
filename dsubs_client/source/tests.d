@@ -48,7 +48,7 @@ void test_menu_routing()
 	GuiManager mgr = new GuiManager();
 	render.gui_render = mgr;
 	router.gui_router = mgr;
-	render.postRender += (s) { router.simulate_mouse_move(); };
+	render.preRender += (s) { router.simulate_mouse_move(); };
 
 	dstring testtext =
 "Says old Harte to his missis

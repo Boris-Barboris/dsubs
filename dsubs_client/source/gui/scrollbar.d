@@ -36,12 +36,12 @@ class ScrollBar(ChildT): GuiElement
 	{
 		assert(child !is null);
 		super(manager);
-		mouse_transparent = false;
 		_child = child;
 		_child._parent = this;
 		_child.border_color(sfTransparent);
 		_child.border_width(0);
-		onMouseScroll += &handle_mouse_scroll;
+		_child.onMouseScroll += &handle_mouse_scroll;
+		// child is responsible for scrolling
 	}
 
 	mixin SuperAccessor!(GuiElement, vec2f, "position",
@@ -111,6 +111,20 @@ class ScrollBar(ChildT): GuiElement
 		super.draw(wnd);
 		if (_child.active)
 			_child.draw(wnd);
+	}
+
+	override GuiElement get_from_point(vec2f point)
+	{
+		if (super.get_from_point(point))
+		{
+
+			auto check = _child.get_from_point(point);
+			if (check)
+				return check;
+			return this;
+		}
+		else
+			return null;
 	}
 }
 

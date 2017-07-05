@@ -39,12 +39,22 @@ GUI:
 		+ tab character correctly displayed.
 		+ vertical scroll by mouse wheel.
 		+ scroll bar (implemented as composite).
+	? ScrollBar composite
+		+ mousewhell scroll
+		? horizontal scroll
+		+ reaction to underlying element size change
+		+ event propagation to underlying element
 	? Window - essentialy, floating closable div. Maybe even resizable.
+		- out-of-screen protection
+		- close button
+		- dragging
 	- Image - generic render target to display graphical information.
 		No need for fancy scaling or zooming, just display image, no matter how
 		warped.
-	? (nested) dropdown list - may well be just a panel-div, but some sugar would
-		be nice.
+	- dropdown list.
+	- context menu (nested) - like those that you see after right-clicking
+		something. Usefull for interactions with overlay elements.
+	- CheckBox
 	+ use viewport to force element boundaries and provide guaranteed
 		overlap protection. May be expensive on OpenGL side. Benefits only
 		labels and buttons, probably not worth it. Obligatory for text box.
@@ -53,10 +63,12 @@ GUI:
 	+ input focus handling, capturing.
 	+ before\after GuiRender event.
 	+ unicode support for onscreen text.
-	? all elements support correct dynamic creation, disabling, enabling, deletion.
+	- all elements support correct dynamic creation, disabling, enabling, deletion.
 	+ hierarchical viewport framework.
 	? element's content size.
+		+ CONTENT size_type was added, such element controls it's own size.
 	- proper event and layout architecture description.
+	- tooltips
 
 System and utility:
 	- unicode mutstring support for logging.
@@ -93,26 +105,29 @@ Input-related stuff:
 	Component moved:
 		may leave static mouse cursor behind, or stumble upon it. OnMouseEnter,
 		OnMouseLeave.
-	Keyboard input: goes either to focused element,
-		or to subrouter cascade.
+	Keyboard input: goes either to focused element, or to subrouter cascade.
 
 Render general:
 	? world-space and screen-space object updates can in theory be parallelized,
 		by means of rendering in two textures: (world + overlay) and (gui),
-		and then merge those two textures on window.
+		and then merge those two textures on window. It can also reduce loads
+		on the GPU, because GUI can be modified to render only when something
+		has changed. I'll not go that far from the start, only if some performance
+		issues will arise.
 	+ Rewrite camera to use inbuilt sfml view, since manually multiplying matrixes
 		on CPU is wasteful. There already is double-matrix gpu schema, no need to
 		ignore it.
+	- FPS counter (can easily by done on UI level) and profiling.
 
 World-space render:
 	+ Simple convex shape rendering.
-	- transform update loop should be paralellized, task may actually become
+	? transform update loop can be paralellized, if task may actually become
 		quite heavy for one thread.
 	- spacial optimization, camera-bound culling, object lookup for picking.
 	+ world-space and overlay-space renders are shared between windows,
-		because they manage the same set of objects - game models. Gui render, on
-		the other hand, is different for each window.
-		hence they should manage window context (camera, optimization structures)
+		because they manage the same set of objects, existing in one space.
+		Gui render, on the other hand, is different for each window.
+		Hence they should manage window context (camera, optimization structures)
 		on their own. Need to aggregate all this stuff to some utility classes.
 
 Overlay-space render:
@@ -125,7 +140,7 @@ Overlay-space render:
 		ends, or some discrete key points, wich means it's easier to implement.
 
 Spacial hashing:
-	We're in 2d space, so let's use quadrtree. Contained element - AABB.
+	We're in 2d space, so let's use quadrtree (sparse). Contained element - AABB.
 	Each renderable entity should expose an interface to get it's bounding box.
 	Camera view frustrum is bounded as well - that's how we get elements to draw.
 	Not only leafs of a tree can contain elements, but even the root:
@@ -153,7 +168,7 @@ Game mechanics:
 				- molten metal, medium inertia, low noise, medium power, low robustness.
 				- supercharged, high inertia, medium noise, highest peak power.
 		Propulsion:
-			Screws, Pump jest, Memes (supersized turbines):
+			Screws, Pump jest, memes (supersized turbines):
 				- Thrust to rpm relation.
 				- Thrust to speed relation.
 				- Noise to rpm relation.
@@ -193,31 +208,75 @@ Game mechanics:
 			Signature alterators
 
 
-Scenarios:
+User interaction scenarios:
 
-	User starts dsubs via executable. It runs.
+	User starts dsubs via executable, if it exists. It opens one window.
 
-	User starts dsubs by using shipped start script, that uses dub to recompile
-		some changed files. Usefull for modders or programmers that don't mind
+	User can start dsubs with shipped shell script, that uses dub to recompile
+		the client. Usefull for modders or programmers that don't mind
 		hacking.
 
-	You can navigate between the elements using arrows, push or focus
-	using enter, return to upper level by escape.
+	Main menu is full of functionality to quckly start playing:
+		Connection section, wich allows to quickly login and play:
+			text box with server status.
+			login text field that holds previous login.
+			password field.
+			checkbox wich allows to save the password.
+			connect button.
+			label to report errors.
+		...
+	Main menu can be "scrolled" left\right to switch to other tabs, such as:
+		Manual:
+			Spoiler-alike list of manual sections with pictures.
+		Settings:
+			Various game settings, key bindings etc...
 
-	dsubs is launched, main menu is opened. It contains:
-		Connect - moves to login screen.
-		Manuals - moves to menu that allows to read some docs, maybe with
-			pictures. Maybe =)
-		Options - moves to tabbed screen with options.
-		Exit - self-explanatory.
+	After successfull connect user sees:
+		text box containing server's
+			welcome string. It may report number of players, active map,
+			weather conditions, anything actually.
+		Button 'OK'
 
-	User clicks Connect and sees new menu:
-		Label containing server status (name of the server,
-			number of players, does it accept connections).
-		Label "Login" and textfield, filled with previously-used login.
-		Label "password" and textfield, empty, password characters displayed as
-			cicles or any other cryptic symbol.
-		Connect button.
-		Back buttom, wich returns to main manu.
+	After clicking OK user is on loadout screen, where he chooses his ship,
+		Sizable section of the screen with actual rendered representation of
+			the submarine.
+		Drop-down list of available submarines.
+		Scrollable list wich contains all slots wich can be occupied, each
+			represented with it's name and drop-down list of names of modules
+			wich can be fitted (and empty element if applicable).
+		Section to choose armament. Consists of scrollable list of all ammunition
+			compatible with current loadout and numeric text fields, dictating
+			number of "siguars".
+		Spawn button.
+		Label to output server's response on spawn request, or to state respawn
+			cooldown countdown.
 
-	User clicks manuals and
+After clicking "Spawn" button and waiting a little user is in main Game mode.
+Let's list all user interaction scenarios:
+
+	set desired course.
+	set desired propulsor rpm [-1, 1].
+	set desired speed (mutually exclusive with previous one).
+	get information about current course\speed.
+	get information about map.
+	toggle map grid reference.
+	create, delete and classify contacts.
+	view passive sonar output (waterfall).
+	assign contact to passive sonar signal.
+	manage binding between contact and signal.
+	manage (create, move, delete) data points.
+	assign inbuild AI to track signals.
+	control active sonar. single ping, continuous ping. directional options.
+	manage data points on active sonar data history.
+	manage tube loadout.
+	view data on contacts in visual and textual form.
+	manual or semi-automatic TMA for contacts.
+	setup loaded munition
+	fire loaded munition
+	view damage report and damage control information
+	manage miscelanous modules:
+		activate\deactivate jammers
+		steer focused jammers
+		retrieve\extend towed sensors
+		control propulsion\energy systems
+		...
