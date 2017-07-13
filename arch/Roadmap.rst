@@ -255,11 +255,32 @@ After clicking "Spawn" button and waiting a little user is in main Game mode.
 Let's list all user interaction scenarios:
 
 	set desired course.
+		- set course with mouse: press hotkey, move cursor in
+			desired direction (line is drawn) and release hotkey to apply course.
+		- set course numerically in text field. Pair of text field and label to
+			display current course.
 	set desired propulsor rpm [-1, 1].
-	set desired speed (mutually exclusive with previous one).
+		- set rpm with mouse: press hotkey and move mouse, while looking at
+			the bar.
+		- set rpm numerically like in a previous case.
 	get information about current course\speed.
+		- overlay elements, small "tails" around icons of ships that give the
+			notion of it's course and speed.
+		- textual representation. Labels with readouts right beside textboxes to
+			set desired values.
 	get information about map.
-	toggle map grid reference.
+		- in all overlays you should see map bounds rectangle.
+	camera control.
+		- limited zoom with moue wheel.
+			Not closer than some value. allows to see whole map.
+		- cursor position moves camera center while zooming.
+		- mouse-only panning by dragging with RMB pressed.
+		- mouse-only camera rotation.
+		- north-south arrow icon in UI to keep track of orientation.
+	map grid.
+		- small icon to toggle map grid.
+		- grid resolution varies with zoom level
+		- small ruler to keep track of the scale
 	create, delete and classify contacts.
 	view passive sonar output (waterfall).
 	assign contact to passive sonar signal.
