@@ -259,7 +259,7 @@ Let's list all user interaction scenarios:
 			desired direction (line is drawn) and release hotkey to apply course.
 		- set course numerically in text field. Pair of text field and label to
 			display current course.
-	set desired propulsor rpm [-1, 1].
+	set desired propulsor power consumption [-1, 1] (relative to max).
 		- set rpm with mouse: press hotkey and move mouse, while looking at
 			the bar.
 		- set rpm numerically like in a previous case.
