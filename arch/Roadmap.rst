@@ -38,12 +38,13 @@ GUI:
 		+ if box is too small, wrap by characters.
 		+ tab character correctly displayed.
 		+ vertical scroll by mouse wheel.
-		+ scroll bar (implemented as composite).
+		- scroll bar (implemented as composite).
 	? ScrollBar composite
 		+ mousewhell scroll
 		? horizontal scroll
 		+ reaction to underlying element size change
 		+ event propagation to underlying element
+		+ scrollbar with mouse control
 	? Window - essentialy, floating closable div. Maybe even resizable.
 		- out-of-screen protection
 		- close button

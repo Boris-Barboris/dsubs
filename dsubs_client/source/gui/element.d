@@ -304,7 +304,7 @@ class GuiElement: Component!"Gui", IInputReciever
 	/// whether the element is transparent for mouse events
 	bool mouse_transparent = true;
 
-	package GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
+	GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
 		GuiElement interceptor = get_from_point(vec2f(x, y));
 		if (interceptor is this)

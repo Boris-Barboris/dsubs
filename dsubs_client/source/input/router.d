@@ -29,7 +29,7 @@ interface IInputReciever
 	void handleMouseFocusLoss();
 	// keyboard handling method.
 	HandleResult handleKeyboard(const sfEvent* evt);
-	// mouse handling method. Mouse event cannot be passed through if recieved
+	// mouse handling method. We forbid to pass mouse events through recievers.
 	void handleMousePos(const sfEvent* evt, int x, int y,
 		sfMouseButton btn, int delta);
 }
@@ -191,7 +191,6 @@ class Router
 		}
 	}
 
-	pragma(inline)
 	private bool handle_mouse(RouteResult rres, const sfEvent* evt, int x, int y,
 		sfMouseButton btn, int delta)
 	{
