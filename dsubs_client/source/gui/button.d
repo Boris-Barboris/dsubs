@@ -46,6 +46,7 @@ class Button: Label
 	mixin OverrideAccessor!(Button, sfColor, "font_color",
 		"released_color(val);");
 
+	// whether user is currently holding the button down
 	bool pressed() { return _pressed; }
 
 	protected void pressed(bool val)

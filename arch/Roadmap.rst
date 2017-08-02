@@ -32,14 +32,14 @@ GUI:
 		+ handle end and home keys.
 		+ handle ctrl+a.
 	+ Password textfield (characters hidden).
-	? Text box (readonly, multiline). Has a scroll bar, word wrap.
+	+ Text box (readonly, multiline). Has a scroll bar, word wrap.
 		- word wrap.
 		+ symbol wrap - very ugly, but works and easy to write.
 		+ if box is too small, wrap by characters.
 		+ tab character correctly displayed.
 		+ vertical scroll by mouse wheel.
-		- scroll bar (implemented as composite).
-	? ScrollBar composite
+		+ scroll bar (implemented as composite).
+	+ ScrollBar composite
 		+ mousewhell scroll
 		? horizontal scroll
 		+ reaction to underlying element size change
@@ -70,6 +70,8 @@ GUI:
 		+ CONTENT size_type was added, such element controls it's own size.
 	- proper event and layout architecture description.
 	- tooltips
+	- synchronization of data between windows:
+		- common synchronized storage of underlying data.
 
 System and utility:
 	- unicode mutstring support for logging.
