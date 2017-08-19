@@ -29,7 +29,7 @@ class Panel
 {
 	protected GuiElement root;
 	// if true, mouse click will push this panel on top of the stack.
-	// usefull for windows.
+	// useful for windows.
 	bool mouse_zboost = false;
 	// last mouse event reciever, that will be tried first
 	protected GuiElement mouse_event_cache;

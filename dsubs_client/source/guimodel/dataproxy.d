@@ -1,19 +1,13 @@
-module dsubs_client.core.syncholder;
-
-import std.algorithm;
-import std.experimental.logger;
+module dsubs_client.guimodel.dataproxy;
 
 import dsubs_client.core.event;
 
-
-alias ViewUpdateSignal = void delegate(Object);
-
-// Class to hold instance of type DataType, wich may be manipulated
+// structure to hold instance of type DataType, wich may be manipulated
 // by multiple controllers and needs to notify all views on every change.
 // Mostly used by UI: multiple controls on different windows that edit one value.
 // Writes are not synchronized, controllers are implied to never write
 // simultaniously. We just need to update other views when data changes.
-struct SyncHolder(DataType)
+struct DataProxy(DataType)
 {
     DataType data;
 
@@ -22,22 +16,22 @@ struct SyncHolder(DataType)
         data = init_value;
     }
 
-    private Event!(ViewUpdateSignal) event;
+    private Event!(void delegate()) event;
 
     // subscribe to data updates
-    void register_reciever(ViewUpdateSignal callback)
+    void register_reciever(void delegate() callback)
     {
         event += callback;
     }
 
     // send signal to subscribers that change_source has updated the data
-    void signal_data_changed(Object change_reporter)
+    void signal()
     {
-        event.raise(change_reporter);
+        event.raise();
     }
 
     // unsubscribe from data updates
-    void unregister_reciever(ViewUpdateSignal callback)
+    void unregister_reciever(void delegate() callback)
     {
         event -= callback;
     }

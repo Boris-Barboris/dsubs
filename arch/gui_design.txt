@@ -1,0 +1,14 @@
+GUI proved to be a tough nut to crack.
+This document list design principles and architectural elements that
+are being implemented in dsubs gui subsystem.
+
+GUI component manager is bound to window (generally, a render target).
+GUI compoennt manager manages panels.
+Panels are flat 2D entities, that represent roots of GUI Element trees.
+Windows are closable movable ?resizable panels.
+GUI Element is a node of gui tree.
+All gui elements are layed out as if they were rectangles (and they are).
+Borders between elements are drawn by the container one level above, elements
+    themselves generaly don't have borders.
+All controls should be capable of synchronized changes. Inter-window synchronized.
+Property update should be efficient, probably lazy.

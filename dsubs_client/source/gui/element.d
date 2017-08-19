@@ -68,6 +68,14 @@ class GuiElement: Component!"Gui", IInputReciever
 		}
 		if (_parent)
 			_parent.child_changed(this);
+		if (deleted)
+			release_resources();
+	}
+
+	protected void release_resources()
+	{
+		sfRectangleShape_destroy(rect);
+		sfView_destroy(view);
 	}
 
 	mixin ElementAccessor!(GuiElement, vec2f, "position",

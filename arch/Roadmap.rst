@@ -15,6 +15,10 @@ Memory management:
 	Thankfully, we're not on embedded platform, and we can use both GC and manual
 	management simultaniously.
 
+Rendering:
+	- All sfml-related code should be wrapped. Dsubs should be capable to
+	switch the rendering library (or implement it's own) with relative ease.
+
 GUI:
 	I need markup-alike elemnet placing scheme, for fast and scalable UI creation.
 	I need basic functionality of:
@@ -68,10 +72,18 @@ GUI:
 	+ hierarchical viewport framework.
 	? element's content size.
 		+ CONTENT size_type was added, such element controls it's own size.
-	- proper event and layout architecture description.
+	- proper event and layout design:
+		- ECS is not very well suited for GUI. Let's keep panel as the component,
+		and all the elements as simple entities. Gui elements are in strict
+		container-alike relation to each-other.
+		- Elements may be hidden, but they are not destroyed until the panel is
+		destroyed. No real need to expose dispose method.
 	- tooltips
-	- synchronization of data between windows:
-		- common synchronized storage of underlying data.
+
+GuiModel:
+	Analogue to viewmodel pattern. Aims to solve inter-window view
+	synchronization. Gui controls don't change underlying model variables,
+	but relay invocations to carefully synchronized model.
 
 System and utility:
 	- unicode mutstring support for logging.

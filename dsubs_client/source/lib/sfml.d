@@ -1,4 +1,4 @@
-module dsubs_client.core.sfml;
+module dsubs_client.lib.sfml;
 
 import std.conv;
 import std.experimental.logger;

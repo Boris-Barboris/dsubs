@@ -7,7 +7,7 @@ enum CompState: ubyte
 {
 	ON,			// component is active
 	OFF,		// component is temporarily deactivated
-	DELETED		// component is disposed
+	DELETED		// component is deactivated and should be disposed
 }
 
 class Component(string sysname)
