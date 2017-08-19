@@ -42,6 +42,8 @@ class Window
 		_view = sfView_create();
 		sfView_reset(_view, sfFloatRect(0.0, 0.0, width, height));
 		sfRenderWindow_setView(wnd, _view);
+		// custom sfml patch enables scissor testing
+		sfRenderWindow_setScissorTest(wnd, true);
 	}
 
 	static const(sfVideoMode)[] getSupportedModes()
