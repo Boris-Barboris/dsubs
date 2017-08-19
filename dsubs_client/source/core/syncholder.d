@@ -13,7 +13,7 @@ alias ViewUpdateSignal = void delegate(Object);
 // Mostly used by UI: multiple controls on different windows that edit one value.
 // Writes are not synchronized, controllers are implied to never write
 // simultaniously. We just need to update other views when data changes.
-class SyncHolder(DataType)
+struct SyncHolder(DataType)
 {
     DataType data;
 
@@ -25,20 +25,20 @@ class SyncHolder(DataType)
     private Event!(ViewUpdateSignal) event;
 
     // subscribe to data updates
-    void register_view(ViewUpdateSignal update_handler)
+    void register_reciever(ViewUpdateSignal callback)
     {
-        event += update_handler;
+        event += callback;
     }
 
     // send signal to subscribers that change_source has updated the data
-    void signal_data_changed(Object change_source)
+    void signal_data_changed(Object change_reporter)
     {
-        event.raise(change_source);
+        event.raise(change_reporter);
     }
 
     // unsubscribe from data updates
-    void unregister_view(ViewUpdateSignal update_handler)
+    void unregister_reciever(ViewUpdateSignal callback)
     {
-        event -= update_handler;
+        event -= callback;
     }
 }
