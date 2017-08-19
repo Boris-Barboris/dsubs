@@ -132,6 +132,7 @@ private:
 		info("Resize event caught, ", width, "x", height);
 		// reset view
 		sfView_reset(_view, sfFloatRect(0.0, 0.0, mode.width, mode.height));
+		sfRenderWindow_setScissor(wnd, sfIntRect(0, 0, mode.width, mode.height));
 		sfRenderWindow_setView(wnd, _view);
 	}
 }
