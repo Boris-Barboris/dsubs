@@ -8,7 +8,7 @@ public import gfm.math.vector;
 public import gfm.math.matrix;
 
 import derelict.sfml2.graphics;
-import dsubs_client.core.sfml;
+import dsubs_client.lib.sfml;
 import dsubs_common.math.transform: clampAngle;
 
 

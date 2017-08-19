@@ -3,7 +3,7 @@ module dsubs_client.tests;
 import std.experimental.logger;
 import std.utf;
 
-import dsubs_client.core.sfml;
+import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
 import dsubs_client.render.render;
 import dsubs_client.gui.manager;
@@ -143,7 +143,7 @@ void test_world_manager_simple()
 
 	import core.time;
 	import dsubs_common.math.transform;
-	import dsubs_client.core.sfml;
+	import dsubs_client.lib.sfml;
 
 	class BoxModel: WorldRenderable
 	{

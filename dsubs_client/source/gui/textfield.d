@@ -10,7 +10,7 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 import derelict.sfml2.window;
 
-import dsubs_client.core.sfml;
+import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
 import dsubs_client.input.router;
 import dsubs_client.gui.label;

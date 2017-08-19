@@ -5,7 +5,7 @@ import std.experimental.logger;
 import derelict.sfml2.window;
 
 public import dsubs_client.core.component;
-import dsubs_client.core.sfml;
+import dsubs_client.lib.sfml;
 public import dsubs_client.core.window;
 
 

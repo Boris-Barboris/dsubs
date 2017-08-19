@@ -4,7 +4,7 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 
 public import dsubs_common.math.transform;
-import dsubs_client.core.sfml;
+import dsubs_client.lib.sfml;
 
 class Transform: Transform2D
 {

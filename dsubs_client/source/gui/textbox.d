@@ -15,7 +15,7 @@ import derelict.sfml2.window;
 
 public import dsubs_common.mutstring;
 
-import dsubs_client.core.sfml;		// for conversions
+import dsubs_client.lib.sfml;		// for conversions
 import dsubs_client.core.window;
 public import dsubs_client.gui.element;
 import dsubs_client.gui.fonts;

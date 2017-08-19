@@ -3,7 +3,7 @@ module dsubs_client.world.convex;
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 
-import dsubs_client.core.sfml;
+import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
 
 

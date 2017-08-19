@@ -11,7 +11,7 @@ import derelict.sfml2.system;
 import derelict.sfml2.window;
 
 import dsubs_client.core.event;
-import dsubs_client.core.sfml;		// for conversions
+import dsubs_client.lib.sfml;		// for conversions
 import dsubs_client.core.window;
 public import dsubs_client.core.utils;
 import dsubs_client.input.router;
