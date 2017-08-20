@@ -57,7 +57,6 @@ class GuiElement: IInputReciever
 	this()
 	{
 		rect = sfRectangleShape_create();
-		view = sfView_create();
 		sfRectangleShape_setOutlineThickness(rect, 0.0f);
 		backgroud_color(sfTransparent);
 	}
@@ -120,11 +119,11 @@ class GuiElement: IInputReciever
 	int fit_content(Dim fix_dim, int fix_dim_size)
 	{
 		assert(_sizeType == SizeType.CONTENT)
-		size_dirty = true;
-		uint content_dim = fix_dim ^ 1;
+		uint content_dim = fix_dim ^ 1;	// xor 1 flips the bit
 		_size[fix_dim] = fix_dim_size;
 		do_fit_content(content_dim);
-		return _size[content_dim];	// xor 1 flips the bit
+		size_dirty = true;
+		return _size[content_dim];
 	}
 
 	protected void do_fit_content(Dim content_dim)
@@ -139,11 +138,6 @@ class GuiElement: IInputReciever
 	protected
 	{
 		sfRectangleShape* rect;
-		sfView* view;
-	}
-
-	protected
-	{
 		bool _rect_visible = true;
 		sfColor _backgroud_color = sfTransparent;
 		bool position_dirty = true;
@@ -156,25 +150,20 @@ class GuiElement: IInputReciever
 
 	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
 
-	protected void update_position(Window wnd)
+	protected void update_position()
 	{
-		// update view, as we use it as translation method
-		sfView_setCenter(view,
-			sfVector2f(
-				_position.x + wnd.width / 2.0f,
-				_position.y + wnd.height / 2.0f));
-		sfView_setSize(view, sfVector2f(wnd.width, wnd.height));
+		sfRectangleShape_setPosition(rect, tosf(_position));
 	}
 
 	protected void update_size()
 	{
-		sfRectangleShape_setSize(rect, sfVector2f(_size.x, _size.y));
+		sfRectangleShape_setSize(rect, tosf(_size));
 	}
 
-	protected void update_viewport(Window wnd)
+	protected void update_viewport()
 	{
-		if (_viewport)
-			viewport = clamp_viewport(_parent_viewport);
+		if (_parent_viewport)
+			viewport = clamp_viewport(*_parent_viewport);
 		else
 			viewport = vec4i(_position.x, _position.y, _size.x, _size.y);
 	}
@@ -193,22 +182,17 @@ class GuiElement: IInputReciever
 	protected void do_draw(Window wnd)
 	{
 		sfRenderWindow_setScissor(wnd.ptr, tosf(viewport));
-		draw_background_rect(wnd);
-	}
-
-	protected void draw_background_rect(Window wnd)
-	{
 		if (_rect_visible)
 			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, null);
 	}
 
-	protected void update_visuals(Window wnd)
+	protected void update_visuals()
 	{
 		if (position_dirty)
 		{
 			position_dirty = false;
 			viewport_dirty = true;
-			update_position(wnd);
+			update_position();
 		}
 		if (size_dirty)
 		{
@@ -219,7 +203,7 @@ class GuiElement: IInputReciever
 		if (viewport_dirty)
 		{
 			viewport_dirty = false;
-			update_viewport(wnd);
+			update_viewport();
 		}
 	}
 
@@ -227,8 +211,8 @@ class GuiElement: IInputReciever
 	{
 		if (!_hidden)
 		{
-			update_visuals(wnd);
-			do_draw(wnd, viewport);
+			update_visuals();
+			do_draw(wnd);
 		}
 	}
 
@@ -240,20 +224,10 @@ class GuiElement: IInputReciever
 	// IInputReciever interface
 	//
 
-	void handleMouseEnter()
-	{
-		onMouseEnter(this);
-	}
-
-	void handleMouseLeave()
-	{
-		onMouseLeave(this);
-	}
-
 	// Example implementation
 	HandleResult handleKeyboard(const sfEvent* evt)
 	{
-		if (!this.active)
+		if (_hidden)
 		{
 			returnKbFocus();
 			return HandleResult(true);
@@ -299,6 +273,16 @@ class GuiElement: IInputReciever
 	void handleMouseFocusGain() { mouse_focused = true; }
 	void handleMouseFocusLoss() { mouse_focused = false; }
 
+	void handleMouseEnter()
+	{
+		onMouseEnter(this);
+	}
+
+	void handleMouseLeave()
+	{
+		onMouseLeave(this);
+	}
+
 	// focus manipulation methods
 
 	void requestKbFocus()
@@ -330,31 +314,28 @@ class GuiElement: IInputReciever
 	/// Return deepest GuiElement that contains the point, null otherwise.
 	GuiElement get_from_point(vec2f point)
 	{
-		if (!this.active)
+		if (_hidden)
 			return null;
 		if ((point.x >= position.x && point.x < position.x + size.x) &&
 			(point.y >= position.y && point.y < position.y + size.y))
 			return this;
-		else
-			return null;
+		return null;
 	}
 
 	/// whether the element is transparent for mouse events
 	bool mouse_transparent = true;
 
+	// gui manager will query panels and seek first non-mouse-transparent
+	// element wich is placed under cursor.
 	GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
 		GuiElement interceptor = get_from_point(vec2f(x, y));
-		if (interceptor is this)
-			return GuiRouteResult(this, mouse_transparent);
-		else if (interceptor)
-			return interceptor.routeMousePos(evt, x, y);
+		if (interceptor)
+			if (mouse_transparent)
+				return interceptor.routeMousePos(evt, x, y);
+			else
+				return GuiRouteResult(this, false);
 		return GuiRouteResult(null, true);
-	}
-
-	package void handleWindowResize(const sfSizeEvent* evt)
-	{
-		position_dirty = true;
 	}
 
 	// events for users to subscribe to
