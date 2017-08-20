@@ -24,9 +24,15 @@ import dsubs_client.gui.manager;
 enum SizeType
 {
 	FIXED,		// element has fixed size
-	FRACT,		// element takes fraction of space, left after FIXED elements
 	CONTENT,	// element size is dictated by it's content (textbox)
+	FRACT,		// element takes fraction of space, left after FIXED elements
 	GREEDY,		// element tries to fill all available space in the container
+}
+
+enum Dim: ubyte
+{
+	X = 0,	// horizontal
+	Y = 1,	// vertical
 }
 
 /// GUI tree element. This is not an abstract class, just an empty rectangle.
@@ -37,14 +43,16 @@ class GuiElement: IInputReciever
 		// layout parameters
 		vec2i _position = vec2i(0, 0);	// absolute position
 		vec2i _size = vec2i(0, 0);		// size
-		vec4i* _viewport = null;		// parent-induced viewport. If null, no
-			// intersection is performed.
+		vec4i* _parent_viewport = null;	// parent-induced viewport.
+			//If null, no intersection is performed.
+		vec4i viewport;					// viewport itself
 		float _fraction = 0.0;	// if _sizeType is FRACT, this is the fraction to use
 		SizeType _sizeType = SizeType.GREEDY;
 		bool _hidden = false;
-		// layout director
-		GuiElement _parent;
 	}
+
+	package GuiElement _parent;		// layout director of this element.
+		// for starters we don't support runtime element tree restructuring
 
 	this()
 	{
@@ -72,10 +80,10 @@ class GuiElement: IInputReciever
 	package void child_changed(GuiElement child) {}
 
 	mixin ElementAccessor!(GuiElement, bool, "hidden",
-		"handle_hidden_set();");
+		"handle_hidden_flag();");
 
 	// When we are disabled or enabled, we need to notify parent
-	protected void handle_hidden_set()
+	protected void handle_hidden_flag()
 	{
 		if (_hidden)
 		{
@@ -95,7 +103,7 @@ class GuiElement: IInputReciever
 			_parent.child_changed(this);
 		size_dirty = true;");
 
-	mixin ElementAccessor!(GuiElement, vec4i*, "viewport",
+	mixin ElementAccessor!(GuiElement, vec4i*, "parent_viewport",
 		"viewport_dirty = true;");
 
 	mixin ElementAccessor!(GuiElement, float, "fraction",
@@ -105,8 +113,27 @@ class GuiElement: IInputReciever
 	mixin ElementAccessor!(GuiElement, SizeType, "sizeType",
 		"if (_parent) { _parent.child_changed(this); }");
 
+	// Called by layout manager when he sets fix_dim to a-priori known
+	// size fix_dim_size, but needs to know the length required to
+	// fir this element's content. This function kills two birds:
+	// applies fixed dimension and content-sized one, reporting the result.
+	int fit_content(Dim fix_dim, int fix_dim_size)
+	{
+		assert(_sizeType == SizeType.CONTENT)
+		size_dirty = true;
+		uint content_dim = fix_dim ^ 1;
+		_size[fix_dim] = fix_dim_size;
+		do_fit_content(content_dim);
+		return _size[content_dim];	// xor 1 flips the bit
+	}
+
+	protected void do_fit_content(Dim content_dim)
+	{
+		_size[content_dim] = 0;
+	}
+
 	//
-	// rendering-related stuff
+	// rendering stuff
 	//
 
 	protected
@@ -146,12 +173,10 @@ class GuiElement: IInputReciever
 
 	protected void update_viewport(Window wnd)
 	{
-		vec4i new_vp;
 		if (_viewport)
-			new_vp = clamp_viewport(_viewport);
+			viewport = clamp_viewport(_parent_viewport);
 		else
-			new_vp = vec4i(_position.x, _position.y, _size.x, _size.y);
-		sfRenderWindow_setScissor(wnd.ptr, tosf(new_vp));
+			viewport = vec4i(_position.x, _position.y, _size.x, _size.y);
 	}
 
 	// return intersection between rhs and this element's rectangle
@@ -167,6 +192,7 @@ class GuiElement: IInputReciever
 
 	protected void do_draw(Window wnd)
 	{
+		sfRenderWindow_setScissor(wnd.ptr, tosf(viewport));
 		draw_background_rect(wnd);
 	}
 

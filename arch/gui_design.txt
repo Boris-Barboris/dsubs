@@ -15,3 +15,5 @@ All controls should be capable of synchronized changes. Inter-window synchronize
 Property update should be efficient, probably lazy.
 Drawing primitives are pixel-aligned.
 No ECS on element level, it's pointless.
+Elements never change their size on their own, only on the invocation from
+    above by layout managers (divs, scrollbars etc.).
