@@ -102,6 +102,21 @@ sfVector2f tosf(const vec2ui v)
 	return sfVector2f(v.x, v.y);
 }
 
+ref sfIntRect tosf(ref vec4i r)
+{
+	return *cast(sfIntRect*)&r;
+}
+
+unittest
+{
+	vec4i v1 = vec4i(0, 1, 2, 3);
+	sfIntRect v2 = tosf(v1);
+	assert(v1.left == 0);
+	assert(v1.top == 1);
+	assert(v1.width == 2);
+	assert(v1.height == 3);
+}
+
 sfVector2f tosf(const vec2d v)
 {
 	return sfVector2f(to!float(v.x), to!float(v.y));

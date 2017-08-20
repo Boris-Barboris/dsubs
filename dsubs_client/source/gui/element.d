@@ -37,6 +37,8 @@ class GuiElement: IInputReciever
 		// layout parameters
 		vec2i _position = vec2i(0, 0);	// absolute position
 		vec2i _size = vec2i(0, 0);		// size
+		vec4i* _viewport = null;		// parent-induced viewport. If null, no
+			// intersection is performed.
 		float _fraction = 0.0;	// if _sizeType is FRACT, this is the fraction to use
 		SizeType _sizeType = SizeType.GREEDY;
 		bool _hidden = false;
@@ -47,6 +49,7 @@ class GuiElement: IInputReciever
 	this()
 	{
 		rect = sfRectangleShape_create();
+		view = sfView_create();
 		sfRectangleShape_setOutlineThickness(rect, 0.0f);
 		backgroud_color(sfTransparent);
 	}
@@ -92,6 +95,9 @@ class GuiElement: IInputReciever
 			_parent.child_changed(this);
 		size_dirty = true;");
 
+	mixin ElementAccessor!(GuiElement, vec4i*, "viewport",
+		"viewport_dirty = true;");
+
 	mixin ElementAccessor!(GuiElement, float, "fraction",
 		"if (_sizeType == SizeType.FRACT && _parent)
 			_parent.child_changed(this);");
@@ -106,6 +112,7 @@ class GuiElement: IInputReciever
 	protected
 	{
 		sfRectangleShape* rect;
+		sfView* view;
 	}
 
 	protected
@@ -114,6 +121,7 @@ class GuiElement: IInputReciever
 		sfColor _backgroud_color = sfTransparent;
 		bool position_dirty = true;
 		bool size_dirty = true;
+		bool viewport_dirty = true;
 	}
 
 	mixin ElementAccessor!(GuiElement, sfColor, "backgroud_color",
@@ -121,14 +129,29 @@ class GuiElement: IInputReciever
 
 	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
 
-	protected void update_position()
+	protected void update_position(Window wnd)
 	{
-		sfRectangleShape_setPosition(rect, sfVector2f(_position.x, _position.y));
+		// update view, as we use it as translation method
+		sfView_setCenter(view,
+			sfVector2f(
+				_position.x + wnd.width / 2.0f,
+				_position.y + wnd.height / 2.0f));
+		sfView_setSize(view, sfVector2f(wnd.width, wnd.height));
 	}
 
 	protected void update_size()
 	{
 		sfRectangleShape_setSize(rect, sfVector2f(_size.x, _size.y));
+	}
+
+	protected void update_viewport(Window wnd)
+	{
+		vec4i new_vp;
+		if (_viewport)
+			new_vp = clamp_viewport(_viewport);
+		else
+			new_vp = vec4i(_position.x, _position.y, _size.x, _size.y);
+		sfRenderWindow_setScissor(wnd.ptr, tosf(new_vp));
 	}
 
 	// return intersection between rhs and this element's rectangle
@@ -142,9 +165,8 @@ class GuiElement: IInputReciever
 		return res;
 	}
 
-	protected void do_draw(Window wnd, const ref vec4i viewport)
+	protected void do_draw(Window wnd)
 	{
-		sfRenderWindow_setScissor(wnd.ptr, clamp_viewport(viewport));
 		draw_background_rect(wnd);
 	}
 
@@ -154,25 +176,32 @@ class GuiElement: IInputReciever
 			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, null);
 	}
 
-	protected void update_visuals()
+	protected void update_visuals(Window wnd)
 	{
 		if (position_dirty)
 		{
 			position_dirty = false;
-			update_position();
+			viewport_dirty = true;
+			update_position(wnd);
 		}
 		if (size_dirty)
 		{
 			size_dirty = false;
+			viewport_dirty = true;
 			update_size();
+		}
+		if (viewport_dirty)
+		{
+			viewport_dirty = false;
+			update_viewport(wnd);
 		}
 	}
 
-	void draw(Window wnd, vec4i viewport)
+	void draw(Window wnd)
 	{
 		if (!_hidden)
 		{
-			update_visuals();
+			update_visuals(wnd);
 			do_draw(wnd, viewport);
 		}
 	}
@@ -299,7 +328,7 @@ class GuiElement: IInputReciever
 
 	package void handleWindowResize(const sfSizeEvent* evt)
 	{
-		_view_dirty = true;
+		position_dirty = true;
 	}
 
 	// events for users to subscribe to
