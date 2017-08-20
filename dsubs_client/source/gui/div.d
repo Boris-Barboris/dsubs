@@ -29,14 +29,24 @@ class Div(uint dim, uint odim): GuiElement
 {
 	GuiElement[] children;
 
-	this(Children...)(GuiManager manager, Children kids)
+	this(Children...)(Children kids)
 		if (allSatisfy!(isGuiElement, Children))
 	{
-		super(manager);
 		children = [kids];
 		foreach (kid; children)
 			kid._parent = this;
 		update_children();
+		// rect stuff
+		sfRectangleShape_setOutlineThickness(rect, _border_width);
+		sfRectangleShape_setOutlineColor(rect, _border_color);
+		// borders between children
+		for (int i = 0; i < children.length - 1; i++)
+		{
+			sfRectangleShape* brd = sfRectangleShape_create();
+			sfRectangleShape_setOutlineThickness(brd, 0);
+			sfRectangleShape_setFillColor(brd, _border_color);
+			cell_borders ~= brd;
+		}
 	}
 
 	static if (dim == 0)
@@ -48,17 +58,32 @@ class Div(uint dim, uint odim): GuiElement
 		immutable DivType divType = DivType.VERT;
 	}
 
-	mixin SuperAccessor!(Div!(dim, odim), vec2f, "position",
-		"update_children();");
+	protected
+	{
+		bool _updating_children = true;		// anti-recusrion flag.
+		uint _border_width = 1;
+		sfColor _border_color = sfColor(100, 100, 100, 20);
+		// array of rectangles that are used to draw inter-child borders
+		sfRectangleShape*[] cell_borders;
+	}
 
-	mixin SuperAccessor!(Div!(dim, odim), vec2f, "size",
-		"update_children();");
+	mixin ElementAccessor!(Div!(dim, odim), uint, "border_width",
+		"update_border_width(); size_dirty = true;");
 
-	mixin SuperAccessor!(Div!(dim, odim), vec4f, "viewport",
-		"update_children();");
+	mixin ElementAccessor!(Div!(dim, odim), sfColor, "border_color",
+		"update_border_color();");
 
-	// anti-recusrion flag.
-	protected bool _updating_children = true;
+	protected void update_border_width()
+	{
+		sfRectangleShape_setOutlineThickness(rect, _border_width);
+	}
+
+	protected void update_border_color()
+	{
+		sfRectangleShape_setOutlineColor(rect, _border_color);
+		foreach (r; cell_borders)
+			sfRectangleShape_setFillColor(r, _border_color);
+	}
 
 	override void child_changed(GuiElement child)
 	{
@@ -75,7 +100,7 @@ class Div(uint dim, uint odim): GuiElement
 		return res;
 	}
 
-	// recalculate child dimensions
+	// recalculate children layout
 	protected void update_children()
 	{
 		_updating_children = true;
