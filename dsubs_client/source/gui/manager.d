@@ -25,7 +25,7 @@ struct GuiRouteResult
 }
 
 // One flat element tree instance, structural unit of the Gui manager.
-class Panel
+class Panel: Component!"Gui"
 {
 	protected GuiElement root;
 	// if true, mouse click will push this panel on top of the stack.
@@ -34,11 +34,13 @@ class Panel
 	// last mouse event reciever, that will be tried first
 	protected GuiElement mouse_event_cache;
 
-	this(GuiElement root)
+	this(GuiManager mgr, GuiElement root)
 	{
+		super(mgr);
 		this.root = root;
 		root.viewport(
 			vec4f(root.position.x, root.position.y, root.size.x, root.size.y));
+		mgr.addAsPanel(this);
 	}
 
 	void draw(Window wnd) { root.draw(wnd); }
@@ -91,12 +93,12 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 
 	auto active_panels()
 	{
-		return filter!(a => a.root.active)(panels[]);
+		return filter!(a => a.active)(panels[]);
 	}
 
 	auto retro_active_panels()
 	{
-		return filter!(a => a.root.active)(retro(panels[]));
+		return filter!(a => a.active)(retro(panels[]));
 	}
 
 	// Z-ordered list of GuiElement tree roots. They may be windows, may be
@@ -117,7 +119,7 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 	{
 		synchronized (this)
 		{
-			panels.removeAll!(a => a.root.deleted);
+			panels.removeAll!(a => a.deleted);
 		}
 	}
 
@@ -127,7 +129,7 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 		// look for reciever from top to bottom of z-ordered panel stack
 		for (auto i = panels.end(); !i.end; i.prev)
 		{
-			if (!i.val.root.active)
+			if (!i.val.active)
 				continue;
 			auto panel = i.val;
 			res = panel.routeMousePos(evt, x, y);

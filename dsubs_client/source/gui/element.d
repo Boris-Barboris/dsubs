@@ -19,48 +19,62 @@ import dsubs_client.gui.manager;
 
 
 // Size types sorted in priority order. Same-type elements are treated
-// equally
+// equally by div. SizeType is used by layouts (for example, Div) when
+// calculating element sizes.
 enum SizeType
 {
-	FIXED,	// element has fixed size
-	FRACT,	// element takes fraction of free space, left after FIXED elements
-	GREEDY,	// element tries to fill all available space in the container.
-	CONTENT,// element controlls it's own size
+	FIXED,		// element has fixed size
+	FRACT,		// element takes fraction of space, left after FIXED elements
+	CONTENT,	// element size is dictated by it's content (textbox)
+	GREEDY,		// element tries to fill all available space in the container
 }
 
 /// GUI tree element. This is not an abstract class, just an empty rectangle.
-class GuiElement: Component!"Gui", IInputReciever
+class GuiElement: IInputReciever
 {
-	package GuiElement _parent;
 	protected
 	{
-		vec2f _position = vec2f(0, 0);	// absolute position
-		vec2f _size = vec2f(0, 0);		// size
-		vec2f _content_size = vec2f(0, 0);
-		// rectangle to view this element through: x,y,w,h
-		vec4f _viewport = vec4f(0, 0, 0, 0);
-		float _fraction = 0.0;			// if _sizeType is FRACT, this is the fraction to use
+		// layout parameters
+		vec2i _position = vec2i(0, 0);	// absolute position
+		vec2i _size = vec2i(0, 0);		// size
+		float _fraction = 0.0;	// if _sizeType is FRACT, this is the fraction to use
 		SizeType _sizeType = SizeType.GREEDY;
+		bool _hidden = false;
+		// layout director
+		GuiElement _parent;
 	}
 
-	this(GuiManager manager)
+	this()
 	{
-		super(manager);
 		rect = sfRectangleShape_create();
-		view = sfView_create();
+		sfRectangleShape_setOutlineThickness(rect, 0.0f);
+		backgroud_color(sfTransparent);
 	}
 
-	GuiManager manager() { return cast(GuiManager) _manager; }
+	~this()
+	{
+		dispose();
+	}
+
+	void dispose()
+	{
+		if (rect)
+			sfRectangleShape_destroy(rect);
+		rect = null;
+	}
 
 	GuiElement parent() { return _parent; }
 
-	// Called by child when it has changed somehow
-	void child_changed(GuiElement child) {}
+	// Called by child when it's layout-related parameters have changed
+	package void child_changed(GuiElement child) {}
+
+	mixin ElementAccessor!(GuiElement, bool, "hidden",
+		"handle_hidden_set();");
 
 	// When we are disabled or enabled, we need to notify parent
-	override void on_state_change()
+	protected void handle_hidden_set()
 	{
-		if (!active)
+		if (_hidden)
 		{
 			// return all focuses we hold
 			returnKbFocus();
@@ -68,26 +82,15 @@ class GuiElement: Component!"Gui", IInputReciever
 		}
 		if (_parent)
 			_parent.child_changed(this);
-		if (deleted)
-			release_resources();
 	}
 
-	protected void release_resources()
-	{
-		sfRectangleShape_destroy(rect);
-		sfView_destroy(view);
-	}
+	mixin ElementAccessor!(GuiElement, vec2i, "position",
+		"position_dirty = true;");
 
-	mixin ElementAccessor!(GuiElement, vec2f, "position",
-		"_view_dirty = true;");
-
-	mixin ElementAccessor!(GuiElement, vec4f, "viewport",
-		"_view_dirty = true;");
-
-	mixin ElementAccessor!(GuiElement, vec2f, "size",
+	mixin ElementAccessor!(GuiElement, vec2i, "size",
 		"if ((_sizeType == SizeType.FIXED || _sizeType == SizeType.CONTENT) && _parent)
 			_parent.child_changed(this);
-		_visuals_dirty = _view_dirty = true;");
+		size_dirty = true;");
 
 	mixin ElementAccessor!(GuiElement, float, "fraction",
 		"if (_sizeType == SizeType.FRACT && _parent)
@@ -97,89 +100,51 @@ class GuiElement: Component!"Gui", IInputReciever
 		"if (_parent) { _parent.child_changed(this); }");
 
 	//
-	// rendering stuff
+	// rendering-related stuff
 	//
 
 	protected
 	{
 		sfRectangleShape* rect;
-		sfView* view;
 	}
 
 	protected
 	{
-		bool _rect_visible = true;	// is layout rectangle visible?
+		bool _rect_visible = true;
 		sfColor _backgroud_color = sfTransparent;
-		sfColor _border_color = sfColor(255, 255, 255, 30);
-		uint _border_width = 1;		// width of layout rectangle border
-		bool _visuals_dirty = true;	// when true, content must be recalculated
-		bool _view_dirty = true;	// when true, view must be recalcuated
+		bool position_dirty = true;
+		bool size_dirty = true;
 	}
 
 	mixin ElementAccessor!(GuiElement, sfColor, "backgroud_color",
 		"sfRectangleShape_setFillColor(rect, _backgroud_color);");
 
-	mixin ElementAccessor!(GuiElement, sfColor, "border_color",
-		"sfRectangleShape_setOutlineColor(rect, _border_color);");
-
-	mixin ElementAccessor!(GuiElement, uint, "border_width",
-		"_visuals_dirty = true;");
-
 	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
 
-	/// Update rendering-related parameters from state
-	protected void update_visual()
+	protected void update_position()
 	{
-		sfRectangleShape_setPosition(rect, sfVector2f(_border_width, _border_width));
-		sfVector2f new_size = tosf(_size - 2.0f * vec2f(_border_width, _border_width));
-		new_size.x = round(new_size.x); new_size.y = round(new_size.y);
-		sfRectangleShape_setSize(rect, new_size);
-		sfRectangleShape_setOutlineThickness(rect, _border_width);
-		sfRectangleShape_setOutlineColor(rect, _border_color);
-		sfRectangleShape_setFillColor(rect, _backgroud_color);
+		sfRectangleShape_setPosition(rect, sfVector2f(_position.x, _position.y));
 	}
 
-	// return rectangle rhs clamped inside this element's viewport
-	vec4f clamp_viewport(vec4f rhs)
+	protected void update_size()
 	{
-		vec4f res;
-		res[0] = min(max(rhs[0], _viewport[0]), _viewport[0] + _viewport[2]);
-		res[1] = min(max(rhs[1], _viewport[1]), _viewport[1] + _viewport[3]);
-		res[2] = min(rhs[2], max(0.0f, _viewport[0] + _viewport[2] - res[0]));
-		res[3] = min(rhs[3], max(0.0f, _viewport[1] + _viewport[3] - res[1]));
+		sfRectangleShape_setSize(rect, sfVector2f(_size.x, _size.y));
+	}
+
+	// return intersection between rhs and this element's rectangle
+	vec4i clamp_viewport(const ref vec4i rhs)
+	{
+		vec4i res;
+		res[0] = min(max(rhs[0], _position.x), _position.x + _size.x);
+		res[1] = min(max(rhs[1], _position.y), _position.y + _size.y);
+		res[2] = min(rhs[2], max(0, _position.x + _size.x - res[0]));
+		res[3] = min(rhs[3], max(0, _position.y + _size.y - res[1]));
 		return res;
 	}
 
-	protected void update_view(Window wnd)
+	protected void do_draw(Window wnd, const ref vec4i viewport)
 	{
-		// set camera coordinates of the view
-		sfFloatRect coord;
-		coord.left = round(_viewport.x - _position.x);
-		coord.top = round(_viewport.y - _position.y);
-		coord.width = round(_viewport[2]);
-		coord.height = round(_viewport[3]);
-		sfView_reset(view, coord);
-		// update viewport
-		sfFloatRect vp;
-		vp.left = round(_viewport.x) / wnd.width;
-		vp.top = round(_viewport.y) / wnd.height;
-		vp.width = coord.width / wnd.width;
-		vp.height = coord.height / wnd.height;
-		sfView_setViewport(view, vp);
-	}
-
-	protected void set_view(Window wnd)
-	{
-		sfRenderWindow_setView(wnd.ptr, view);
-	}
-
-	protected void reset_view(Window wnd)
-	{
-		sfRenderWindow_setView(wnd.ptr, wnd.view);
-	}
-
-	protected void do_draw(Window wnd)
-	{
+		sfRenderWindow_setScissor(wnd.ptr, clamp_viewport(viewport));
 		draw_background_rect(wnd);
 	}
 
@@ -189,17 +154,27 @@ class GuiElement: Component!"Gui", IInputReciever
 			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, null);
 	}
 
-	void draw(Window wnd)
+	protected void update_visuals()
 	{
-		if (_view_dirty)
-			update_view(wnd);
-		_view_dirty = false;
-		if (_visuals_dirty)
-			update_visual();
-		_visuals_dirty = false;
-		set_view(wnd);
-		do_draw(wnd);
-		reset_view(wnd);
+		if (position_dirty)
+		{
+			position_dirty = false;
+			update_position();
+		}
+		if (size_dirty)
+		{
+			size_dirty = false;
+			update_size();
+		}
+	}
+
+	void draw(Window wnd, vec4i viewport)
+	{
+		if (!_hidden)
+		{
+			update_visuals();
+			do_draw(wnd, viewport);
+		}
 	}
 
 	//

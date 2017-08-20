@@ -66,7 +66,9 @@ class Router
 	IWindowEventSubrouter world_router;
 	IWindowEventSubrouter hotkey_router;
 
-	// Focused components. Just assign them to what you need.
+	// Focused components. Just assign them to what you need. Focused
+	// components are global and static. Only one reciever is under cursor.
+	// Only one reciever is focused.
 	private static __gshared IInputReciever _cursorPointed, _kbFocus, _mouseFocus;
 
 	mixin template FocusAccessor(string field_name, string loose_name,
