@@ -2,18 +2,17 @@ GUI proved to be a tough nut to crack.
 This document list design principles and architectural elements that
 are being implemented in dsubs gui subsystem.
 
-GUI component manager is bound to window (generally, a render target).
+GUI component manager is bound to window.
 GUI component manager manages panels.
 Panels are flat 2D entities, that represent roots of GUI Element trees.
 Windows are closable movable ?resizable panels.
 GUI Element is a node of gui tree.
-Div distributes elements without intersections.
-All gui elements are layed out as if they were rectangles (and they are).
+Div is a layout, it distributes elements without intersection.
+All gui elements are rectangular.
 Borders between elements are drawn by the container (div) one level above, elements
     themselves generaly don't have borders.
-All controls should be capable of synchronized changes. Inter-window synchronized.
+Most controls should be capable of representing mutable data. Data bindings.
 Property update should be efficient, probably lazy.
 Drawing primitives are pixel-aligned.
-No ECS on element level, it's pointless.
 Elements never change their size on their own, only on the invocation from
     above by layout managers (divs, scrollbars etc.).

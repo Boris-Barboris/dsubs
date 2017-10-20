@@ -8,7 +8,7 @@ public import dsubs_common.api.utils;
 /// objects known to him.
 struct PhysicalSnapshot
 {
-	ID_TYPE id;             // id of the object (Craft)
+	ID_TYPE id;             // id of the object
 	USECS time;
 	Vector2!double position;
 	Vector2!double velocity;

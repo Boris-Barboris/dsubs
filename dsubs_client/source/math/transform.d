@@ -6,6 +6,8 @@ import derelict.sfml2.system;
 public import dsubs_common.math.transform;
 import dsubs_client.lib.sfml;
 
+// wrapper that converts double-precision dsubs transform to
+// single-precision sfml matrix.
 class Transform: Transform2D
 {
 	protected sfTransform _sfmat;   // sfml-specific matrix

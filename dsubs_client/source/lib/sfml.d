@@ -107,7 +107,7 @@ sfVector2f tosf(const vec2i v)
 	return sfVector2f(v.x, v.y);
 }
 
-ref sfIntRect tosf(ref vec4i r)
+sfIntRect tosf(ref const vec4i r)
 {
 	return *cast(sfIntRect*)&r;
 }

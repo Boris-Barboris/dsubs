@@ -10,14 +10,12 @@ Engine:
 
 Memory management:
 	We'll start with GC-only game.
-	If it proves to bee stuttery, we'll switch to RAII and manual memory
+	If it proves to be stuttery, we'll switch to RAII and manual memory
 	management. Biggest problem by far is Phobos, especially threading classes.
 	Thankfully, we're not on embedded platform, and we can use both GC and manual
 	management simultaniously.
 
 Rendering:
-	- All sfml-related code should be wrapped. Dsubs should be capable to
-	switch the rendering library (or implement it's own) with relative ease.
 
 GUI:
 	I need markup-alike elemnet placing scheme, for fast and scalable UI creation.
@@ -39,7 +37,6 @@ GUI:
 	+ Text box (readonly, multiline). Has a scroll bar, word wrap.
 		- word wrap.
 		+ symbol wrap - very ugly, but works and easy to write.
-		+ if box is too small, wrap by characters.
 		+ tab character correctly displayed.
 		+ vertical scroll by mouse wheel.
 		+ scroll bar (implemented as composite).
@@ -63,6 +60,7 @@ GUI:
 	+ use viewport to force element boundaries and provide guaranteed
 		overlap protection. May be expensive on OpenGL side. Benefits only
 		labels and buttons, probably not worth it. Obligatory for text box.
+		Implemented by patching sfml and using opengl scissors.
 	+ Control content cannot dictate control size, because such scheme always
 		backfires (HTML is a good example).
 	+ input focus handling, capturing.
@@ -72,18 +70,7 @@ GUI:
 	+ hierarchical viewport framework.
 	? element's content size.
 		+ CONTENT size_type was added, such element controls it's own size.
-	- proper event and layout design:
-		- ECS is not very well suited for GUI. Let's keep panel as the component,
-		and all the elements as simple entities. Gui elements are in strict
-		container-alike relation to each-other.
-		- Elements may be hidden, but they are not destroyed until the panel is
-		destroyed. No real need to expose dispose method.
 	- tooltips
-
-GuiModel:
-	Analogue to viewmodel pattern. Aims to solve inter-window view
-	synchronization. Gui controls don't change underlying model variables,
-	but relay invocations to carefully synchronized model.
 
 System and utility:
 	- unicode mutstring support for logging.
@@ -91,7 +78,7 @@ System and utility:
 On mouse input:
 	GUI elements are static, it's reasonable to handle mouse events only when
 	they are generated. World-space objects move themself, they can leave immobile
-	cursor behind. That's why render is expected to generates artificial
+	cursor behind. That's why render is expected to generate artificial
 	mouseMove event on each render cycle for focused window.
 
 Input-related stuff:

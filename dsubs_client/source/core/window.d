@@ -1,5 +1,7 @@
 module dsubs_client.core.window;
 
+import core.sync.mutex;
+
 import std.algorithm;
 import std.array;
 import std.conv;
@@ -13,10 +15,11 @@ import dsubs_client.core.event;
 
 alias sfEventHandler = void delegate(const sfEvent*);
 
-class Window
+final class Window
 {
 	this(dstring window_name = "dsubs"d)
 	{
+		gui_mutex = new Mutex();
 		if (fullscreen)
 			mode = chooseBiggestMode();
 		else
@@ -46,6 +49,7 @@ class Window
 		sfRenderWindow_setScissorTest(wnd, true);
 	}
 
+	// this function is probably generating garbage, but i don't really care
 	static const(sfVideoMode)[] getSupportedModes()
 	{
 		size_t mode_count = 0;
@@ -77,17 +81,25 @@ class Window
 	/// respective handlers, if registered. Blocks until the window is closed.
 	void poll_events()
 	{
+		bool closing = false;
 		sfEvent event;
 		while (sfRenderWindow_waitEvent(wnd, &event))
 		{
-			event_handlers[event.type](&event);
-			// special case: closing
+			// special case: window close event
 			if (event.type == sfEvtClosed)
 			{
+				event_handlers[event.type](&event);
 				// actually close the window
 				info("Standard window close event caught");
 				sfRenderWindow_close(wnd);
 				closing = true;
+			}
+			else
+			{
+				// we do not route events during rendering dispatch
+				input_mutex.lock();
+				scope(exit) imput_mutex.unlock();
+				event_handlers[event.type](&event);
 			}
 			if (closing)
 				break;
@@ -107,7 +119,7 @@ class Window
 	}
 
 	// Raw SFML window pointer
-	sfRenderWindow* ptr() { return wnd; }
+	sfRenderWindow* ptr() const { return wnd; }
 
 	uint width() const { return mode.width; }
 	uint height() const { return mode.height; }
@@ -116,20 +128,22 @@ class Window
 	// default window view will always be here
 	sfView* view() { return _view; }
 
+	// different usefull mutexes
+	Mutex input_mutex;
+
 private:
 	sfRenderWindow* wnd;
 	sfView* _view;
 	sfVideoMode mode;
 	sfContextSettings ctx_settings;
 	bool fullscreen = false;
-	bool closing = false;
-	Event!(sfEventHandler)[sfEvtCount] event_handlers;
+	Event!(const sfEvent*)[sfEvtCount] event_handlers;
 
 	void resized_handler(const sfEvent* evt)
 	{
 		mode.width = evt.size.width;
 		mode.height = evt.size.height;
-		info("Resize event caught, ", width, "x", height);
+		trace("Resize event caught, ", width, "x", height);
 		// reset view
 		sfView_reset(_view, sfFloatRect(0.0, 0.0, mode.width, mode.height));
 		sfRenderWindow_setScissor(wnd, sfIntRect(0, 0, mode.width, mode.height));

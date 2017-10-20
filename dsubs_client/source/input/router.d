@@ -20,14 +20,14 @@ interface IInputReciever
 	void handleMouseEnter();
 	void handleMouseLeave();
 	// By focus we mean keyboard input priority. Keyboard events are
-	// routed in this element.
+	// routed in this element first, then they go through the subrouter cascade.
 	// These two functions are called on keyboard focus gain\loss.
 	void handleKbFocusGain();
 	void handleKbFocusLoss();
 	// Recievers can also request exclusive mouse event focus. Example: dragging
 	void handleMouseFocusGain();
 	void handleMouseFocusLoss();
-	// keyboard handling method.
+	// keyboard handling method. Reciever may permit passthrough.
 	HandleResult handleKeyboard(const sfEvent* evt);
 	// mouse handling method. We forbid to pass mouse events through recievers.
 	void handleMousePos(const sfEvent* evt, int x, int y,
@@ -58,9 +58,9 @@ interface IWindowEventSubrouter
 }
 
 /// Event router, that orderes window event handling by subsystems
-class Router
+final class Router
 {
-	protected Window _window;
+	private Window _window;
 	IWindowEventSubrouter gui_router;
 	IWindowEventSubrouter overlay_router;
 	IWindowEventSubrouter world_router;
@@ -85,15 +85,14 @@ class Router
 	mixin FocusAccessor!("kbFocus", "handleKbFocusLoss", "handleKbFocusGain");
 	mixin FocusAccessor!("mouseFocus", "handleMouseFocusLoss", "handleMouseFocusGain");
 
-	Window window() { return _window; }
+	@property Window window() { return _window; }
 
 	this(Window wnd)
 	{
 		_window = wnd;
+
 		// subscribe to events we may be interested in...
-		// special case:
 		wnd.register_handler(sfEvtLostFocus, &on_window_lost_focus);
-		// one handler to rule them all:
 		wnd.register_handler(sfEvtResized, &route_resize_event);
 		wnd.register_handler(sfEvtTextEntered, &route_keyboard_event);
 		wnd.register_handler(sfEvtKeyPressed, &route_keyboard_event);
@@ -101,16 +100,18 @@ class Router
 		wnd.register_handler(sfEvtMouseWheelMoved, &route_mouse_event);
 		wnd.register_handler(sfEvtMouseButtonPressed, &route_mouse_event);
 		wnd.register_handler(sfEvtMouseButtonReleased, &route_mouse_event);
+
 		// we don't register MouseMoved handler, because we use artificial
 		// event each frame.
 		//wnd.register_handler(sfEvtMouseMoved, &route_event);
+
 		// cursor-related special cases:
 		wnd.register_handler(sfEvtMouseEntered, (a) { mouse_inside = true; });
 		wnd.register_handler(sfEvtMouseLeft, (a)
 			{ cursorPointed(null); mouse_inside = false; });
 	}
 
-	protected bool mouse_inside = true;
+	private bool mouse_inside = true;
 
 	/// In dynamic, moving environment it's simpler to just generate
 	/// mouseMove event every time screen is redrawn in order to get new

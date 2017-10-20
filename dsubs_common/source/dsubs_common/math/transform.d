@@ -115,7 +115,7 @@ class Transform2D
 		assert(child.parent is null);
 	}
 
-	@property Transform2D parent() { return _parent; }
+	@property Transform2D parent() const { return _parent; }
 
 	@property Transform2D parent(Transform2D val)
 	{

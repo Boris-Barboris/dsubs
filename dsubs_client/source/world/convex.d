@@ -14,7 +14,7 @@ class ConvexShape
 		sfConvexShape* shape;
 	}
 
-	protected static sfRenderStates state_template;
+	package static sfRenderStates state_template;
 
 	static this()
 	{

@@ -4,9 +4,10 @@ import std.algorithm.comparison;
 import std.string;
 
 
-/// Alias for simple mutable ASCII string, that we all need so much
+/// Alias for simple mutable string, that we all need so much
 /// in gaming in order to prevent excessive reallocations.
-/// Mutstrings are null-terminated.
+/// Mutstrings are null-terminated, since they are needed by
+/// external libraries written in C.
 alias mutstring = char[];
 alias dmutstring = dchar[];		// 32-bit unicode
 

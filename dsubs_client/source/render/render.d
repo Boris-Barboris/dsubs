@@ -9,6 +9,7 @@ import derelict.sfml2.window;
 
 import dsubs_client.core.event;
 public import dsubs_client.core.window;
+import module dsubs_client.input.router: Router;
 
 
 // Anything that can draw on window
@@ -20,22 +21,26 @@ interface IWindowDrawer
 // TODO: move to config
 sfColor clear_color = sfColor(28, 28, 28, 255);
 
-/// Rendering context, renders one window.
-class Render
+/// Rendering thread wrapper, renders one window and dictates general form
+/// of the rendering pipeline.
+final class Render
 {
-	protected Window _window;
+	private Window _window;
+	private Router _router;
 	IWindowDrawer gui_render;
 	IWindowDrawer overlay_render;
 	IWindowDrawer world_render;
 
-	Window window() { return _window; }
+	@property Window window() const { return _window; }
+	@property Router router() const { return _router; }
 
-	protected Thread worker;    // rendering thread
-	protected bool stop_flag;	// true when stop was requested
+	private Thread worker;    // rendering thread
+	private bool stop_flag;	// true when stop was requested
 
-	this(Window wnd)
+	this(Window wnd, Router router)
 	{
 		_window = wnd;
+		_router = router;
 		wnd.register_handler(sfEvtClosed, (const sfEvent* a) { this.stop(); });
 	}
 
@@ -58,35 +63,37 @@ class Render
 	{
 		stop_flag = true;
 		if (worker)
-			worker.join();
+			worker.join(false);
 	}
 
 	// Thread function
-	protected void render()
+	private void render()
 	{
-		while (!stop_flag)
+		try
 		{
-			preRender(this);
-			sfRenderWindow_clear(_window.ptr, clear_color);
-			if (world_render)
-				world_render.draw(this, _window);
-			if (overlay_render)
-				overlay_render.draw(this, _window);
-			if (gui_render)
+			while (!stop_flag)
 			{
-				preGuiRender(this);
-				gui_render.draw(this, _window);
-				postGuiRender(this);
+				sfRenderWindow_clear(_window.ptr, clear_color);
+				_window.input_mutex.lock();		// take the window lock
+				{
+					scope(exit) _window.input_mutex.unlock();
+					if (world_render)
+						world_render.draw(this, _window);
+					if (overlay_render)
+						overlay_render.draw(this, _window);
+					_router.simulate_mouse_move();
+					if (gui_render)
+						gui_render.draw(this, _window);
+				}	// here window input_mutex is unlocked
+				// present backbuffer, blocks because of vsync.
+				sfRenderWindow_display(_window.ptr);
 			}
-			postRender(this);
-			sfRenderWindow_display(_window.ptr);	// present backbuffer
+		}
+		catch (Error err)
+		{
+			error("Render loop crashed with error: ", err.toString);
+			throw err;
 		}
 		info("Terminating Render, stop_flag is ", stop_flag);
-		worker = null;
 	}
-
-	Event!(void delegate(Render sender)) preRender;
-	Event!(void delegate(Render sender)) postRender;
-	Event!(void delegate(Render sender)) preGuiRender;
-	Event!(void delegate(Render sender)) postGuiRender;
 }

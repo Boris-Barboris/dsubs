@@ -1,7 +1,7 @@
 module dsubs_common.api.constants;
 
 /// API version of this particular dsubs_common.api package.
-/// Must be incremented on each change.
+/// MUST be incremented on each change.
 immutable uint API_VERSION = 1;
 
 /// Type that is used to uniquely identify ingame objects.

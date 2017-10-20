@@ -17,33 +17,41 @@ import dsubs_client.input.router;
 import dsubs_client.render.render;
 
 
-// Gui explicitly handles only mouse events
+// Gui explicitly handles only mouse events.
+// This structure is returned by GuiElements when trying to
+// route the mouse event. Interceptor is a tree leaf, that was placed under
+// the cursor. It may choose to let the event go through however, by setting
+// mouse_transparent to true.
 struct GuiRouteResult
 {
 	GuiElement interceptor;
 	bool mouse_transparent = true;
 }
 
-// One flat element tree instance, structural unit of the Gui manager.
-class Panel: Component!"Gui"
+// One element tree instance, structural unit of the Gui manager.
+class Panel
 {
-	protected GuiElement root;
+	protected GuiElement _root;
+	@property GuiElement root() const { return _root; }
 	// if true, mouse click will push this panel on top of the stack.
 	// useful for windows.
 	bool mouse_zboost = false;
+
+	// active flag to quickly switch panels on and off.
+	bool active = true;
 	// last mouse event reciever, that will be tried first
 	protected GuiElement mouse_event_cache;
 
+	protected GuiManager _manager;
+	@property GuiManager manager() const { return _manager; }
+
 	this(GuiManager mgr, GuiElement root)
 	{
-		super(mgr);
-		this.root = root;
-		root.viewport(
-			vec4f(root.position.x, root.position.y, root.size.x, root.size.y));
-		mgr.addAsPanel(this);
+		_manager = mgr;
+		_root = root;
 	}
 
-	void draw(Window wnd) { root.draw(wnd); }
+	void draw(Window wnd) { _root.draw(wnd); }
 
 	GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
@@ -65,27 +73,33 @@ class Panel: Component!"Gui"
 			}
 		}
 		// no cached handler
-		res = root.routeMousePos(evt, x, y);
+		res = _root.routeMousePos(evt, x, y);
 		mouse_event_cache = res.interceptor;
 		return res;
 	}
 
 	void handleWindowResize(const sfSizeEvent* evt)
 	{
-		if (root.sizeType == SizeType.GREEDY)	// greedy elements are fullscreen
-		{
-			root.viewport(vec4f(0, 0, evt.width, evt.height));
-			root.size(vec2f(evt.width, evt.height));
-		}
-		root.handleWindowResize(evt);
+		if (_root.sizeType == SizeType.GREEDY)	// greedy roots are fullscreen
+			_root.size(vec2i(evt.width, evt.height));
 	}
 }
 
 // Thing that draws gui components on the window and routes window events
-class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
+final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 {
+	private Window _window;
+	@property Window window() const { return _window; }
+
+	this(Window wnd)
+	{
+		_window = wnd;
+	}
+
 	void draw(Render ctx, Window wnd)
 	{
+		// reset window view to default one
+		// sfRenderWindow_setView(wnd.ptr, wnd.view);
 		// deepest panels first
 		foreach (panel; active_panels)
 			panel.draw(wnd);
@@ -101,26 +115,14 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 		return filter!(a => a.active)(retro(panels[]));
 	}
 
-	// Z-ordered list of GuiElement tree roots. They may be windows, may be
-	// full-screen pages. First element is the deepest one.
+	// Z-ordered list of GuiElement trees. First (front) element is the deepest one.
 	DList!Panel panels;
 
 	// In GUI we register only tree roots, and we do it manually,
 	// not in the component's constructor.
 	void addAsPanel(GuiElement root)
 	{
-		synchronized (this)
-		{
-			panels.insertBack(new Panel(root));
-		}
-	}
-
-	override void clear_disposed()
-	{
-		synchronized (this)
-		{
-			panels.removeAll!(a => a.deleted);
-		}
+		panels.insertBack(new Panel(this, root));
 	}
 
 	RouteResult routeMousePos(Router ctx, const sfEvent* evt, int x, int y)
@@ -161,7 +163,7 @@ class GuiManager: ComponentManager!"Gui", IWindowDrawer, IWindowEventSubrouter
 	{
 		// TODO: resize handling for greedy and fraction-sized panels, out-of
 		// window border check etc.
-		foreach (panel; filter!(a => !a.root.deleted)(panels[]))
+		foreach (panel; panels[])
 			panel.handleWindowResize(evt);
 	}
 }

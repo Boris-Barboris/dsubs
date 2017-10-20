@@ -11,7 +11,7 @@ import dsubs_common.objects;
 /// instantly be echoed back. Used for ping estimation.
 mixin SingleValueUnit!("TimeSync", ID_TYPE, "sync_id");
 
-/// Sent by the server to let the client know about the craft.
+/// Sent by the server to let the client know about the craft's existence.
 /// Used at least once to show player's craft to the client.
 mixin IdAndValueUnit!("CraftInfo", Craft, "craft");
 

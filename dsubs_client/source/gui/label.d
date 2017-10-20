@@ -39,6 +39,7 @@ class Label: GuiElement
 		TextAlign _horz_align = TextAlign.CENTER;
 		TextAlign _vert_align = TextAlign.CENTER;	// left is top
 		float _padding = 3.0f;		// used when align is not center
+		bool _label_dirty = true;
 	}
 
 	this(GuiManager manager)
@@ -47,6 +48,12 @@ class Label: GuiElement
 		mouse_transparent = false;
 		_content = _s(""d, 31);
 		initialize_text();
+	}
+
+	override void dispose()
+	{
+		super.dispose();
+		sfText_destroy(text);
 	}
 
 	protected void initialize_text()
@@ -59,13 +66,13 @@ class Label: GuiElement
 		sfText_setColor(text, _font_color);
 	}
 
-	const(dmutstring) content() { return _content; }
+	const(dmutstring) content() const { return _content; }
 
 	Label content(dstring val)
 	{
 		str2mut_copy(val, _content);
 		sfText_setUnicodeString(text, _content.ptr);
-		_visuals_dirty = true;
+		_label_dirty = true;
 		return this;
 	}
 
@@ -75,85 +82,89 @@ class Label: GuiElement
 	}
 
 	mixin ElementAccessor!(Label, uint, "font_size",
-		"sfText_setCharacterSize(text, _font_size); _visuals_dirty = true;");
+		"sfText_setCharacterSize(text, _font_size); _label_dirty = true;");
 
 	mixin ElementAccessor!(Label, string, "fontname",
-		"sfText_setFont(text, loadedFonts[_fontname]); _visuals_dirty = true;");
+		"sfText_setFont(text, loadedFonts[_fontname]); _label_dirty = true;");
 
 	mixin ElementAccessor!(Label, sfColor, "font_color",
 		"sfText_setColor(text, _font_color);");
 
 	mixin ElementAccessor!(Label, float, "padding",
-		"_visuals_dirty = true;");
+		"_label_dirty = true;");
 
 	mixin ElementAccessor!(Label, TextAlign, "horz_align",
-		"_visuals_dirty = true;");
+		"_label_dirty = true;");
 
 	mixin ElementAccessor!(Label, TextAlign, "vert_align",
-		"_visuals_dirty = true;");
+		"_label_dirty = true;");
 
-	override void update_visual()
+
+	protected override void update_visual()
 	{
 		super.update_visual();
-		update_text_position();
+		if (_label_dirty)
+			update_text();
 	}
 
 	protected
 	{
 		// text content visual parameters they way they look
-		int content_left;
+		int content_left;	// relative offsets
 		int content_top;
-		float content_width = 0.0f;
-		float content_height = 0.0f;
-		float _left_offset = 0.0f;
+		//float content_width = 0.0f;
+		//float content_height = 0.0f;
+		int _left_offset = 0.0;
 	}
 
-	void update_text_position()
+	void update_text()
 	{
+		_label_dirty = false;
 		sfFloatRect bounds = sfText_getLocalBounds(text);
 		float x, y; // results
 		final switch (_horz_align)
 		{
 			case TextAlign.LEFT:
-				x = _border_width + _padding - bounds.left + _left_offset;
+				x = _padding - bounds.left + _left_offset;
 				break;
 			case TextAlign.RIGHT:
-				x = _size.x - _padding - bounds.left - bounds.width -
-					_border_width + _left_offset;
+				x = _size.x - _padding - bounds.left - bounds.width + left_offset;
 				break;
 			case TextAlign.CENTER:
 				x = 0.5f * (_size.x - 2.0f * bounds.left - bounds.width) + _left_offset;
 		}
-		content_left = to!int(round(x + bounds.left));
-		content_width = bounds.width;
+		content_left = cast(int)lrint(x + bounds.left);
+		//content_width = cast(int)lrint(bounds.width);
 		final switch (_vert_align)
 		{
 			case TextAlign.LEFT:
 				//y = _padding - bounds.top;
-				y = _padding + _border_width;
+				y = _padding;
 				break;
 			case TextAlign.RIGHT:
 				//y = _size.y - _padding - bounds.top - bounds.height;
-				y = _size.y - _padding - _font_size * 1.25f - _border_width;
+				y = _size.y - _padding - _font_size * 1.25f;
 				break;
 			case TextAlign.CENTER:
 				//y = 0.5f * (_size.y - 2.0f * bounds.top - bounds.height);
 				y = 0.5f * (_size.y - _font_size * 1.25f);
 		}
-		content_top = to!int(round(y));	// stable
-		content_height = 1.25f * _font_size;	// stable as well
-		sfText_setPosition(text, sfVector2f(round(x), content_top));
+		content_top = cast(int)lrint(y);		// stable
+		//content_height = 1.25f * _font_size;	// stable as well
+		sfText_setPosition(text,
+			sfVector2f(_position.x + content_left, _position.y + content_top));
 	}
 
-	override void do_draw(Window wnd)
+	protected override void update_position()
 	{
-		draw_background_rect(wnd);
-		draw_contents(wnd);
+		super.update_position();
+		sfText_setPosition(text,
+			sfVector2f(_position.x + content_left, _position.y + content_top));
 	}
 
-	protected void draw_contents(Window wnd)
+	protected override void do_draw(Window wnd)
 	{
-		// draw actual text
+		super.do_draw(wnd);
 		sfRenderWindow_drawText(wnd.ptr, text, null);
 	}
 }

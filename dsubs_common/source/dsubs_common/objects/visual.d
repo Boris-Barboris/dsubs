@@ -28,5 +28,7 @@ struct Contour
 
 struct VisualModel
 {
-	Contour[] contours;		// z-ordered contours, wich form the model.
+	// z-ordered contours, wich form the model.
+	// first one is the deepest one.
+	Contour[] contours;
 }

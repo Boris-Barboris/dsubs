@@ -4,16 +4,17 @@ import std.traits;
 
 import dsubs_common.containers.array;
 
-
-struct Event(DelegateType : void delegate(ArgTypes), ArgTypes...)
-	if (isDelegate!(DelegateType))
+struct Event(ArgTypes...)
 {
 	alias HandlerType = void delegate(ArgTypes);
 	HandlerType[] handlers;
 
 	void opOpAssign(string op)(HandlerType handler)
 	{
-		static if (op == "+") handlers ~= handler;
+		static if (op == "+")
+		{
+			handlers ~= handler;
+		}
 		else static if (op == "-")
 		{
 			handlers.removeFirst!(a => a is handler);
@@ -36,7 +37,7 @@ struct Event(DelegateType : void delegate(ArgTypes), ArgTypes...)
 
 unittest
 {
-	Event!(void delegate(string)) event;
+	Event!string event;
 	string[] results;
 	auto handler1 = (string s) { results ~= s; };
 	auto handler2 = (string s) { results ~= s; };

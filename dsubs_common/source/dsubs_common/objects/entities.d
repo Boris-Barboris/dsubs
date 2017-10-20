@@ -10,7 +10,7 @@ enum InfoSource: ubyte
 	Player,     // object is player's avatar.
 	Phantom,    // object is a phantom that does not correspond to real object's position,
 				// but is broadcasted for player's convenience. For example,
-				// first seconds of player's torpedo lives.
+				// first seconds of player's torpedo life.
 	TrueSight,  // accurate representation of an entity
 }
 
@@ -89,7 +89,7 @@ struct PropellerModel
 {
 	ID_TYPE id;
 	PropellerType type;
-	ubyte blade_count;		// for screws
+	ubyte blade_count;		// for screws, zero for pumps
 	Contour contour;		// one blade or whole pump contour
 }
 

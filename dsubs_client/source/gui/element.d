@@ -41,18 +41,23 @@ class GuiElement: IInputReciever
 	protected
 	{
 		// layout parameters
-		vec2i _position = vec2i(0, 0);	// absolute position
-		vec2i _size = vec2i(0, 0);		// size
-		vec4i* _parent_viewport = null;	// parent-induced viewport.
-			//If null, no intersection is performed.
-		vec4i viewport;					// viewport itself
-		float _fraction = 0.0;	// if _sizeType is FRACT, this is the fraction to use
+		vec2i _position = vec2i(0, 0);	// absolute position on the window
+		vec2i _size = vec2i(0, 0);		// absolute size
+
+		// parent viewport.
+		// If null, no intersection is performed.
+		// We use it separately instead of simply consulting parent
+		// element's viewport as a means of optimisation. Only
+		// scrollbar is actually setting it atm.
+		vec4i* _parent_viewport = null;
+		vec4i _viewport;	// cached viewport rectangle itself
+
+		// if _sizeType is FRACT, this is the fraction to use
+		float _fraction = 0.0;
 		SizeType _sizeType = SizeType.GREEDY;
-		bool _hidden = false;
 	}
 
 	package GuiElement _parent;		// layout director of this element.
-		// for starters we don't support runtime element tree restructuring
 
 	this()
 	{
@@ -66,7 +71,7 @@ class GuiElement: IInputReciever
 		dispose();
 	}
 
-	void dispose()
+	protected void dispose()
 	{
 		if (rect)
 			sfRectangleShape_destroy(rect);
@@ -77,22 +82,6 @@ class GuiElement: IInputReciever
 
 	// Called by child when it's layout-related parameters have changed
 	package void child_changed(GuiElement child) {}
-
-	mixin ElementAccessor!(GuiElement, bool, "hidden",
-		"handle_hidden_flag();");
-
-	// When we are disabled or enabled, we need to notify parent
-	protected void handle_hidden_flag()
-	{
-		if (_hidden)
-		{
-			// return all focuses we hold
-			returnKbFocus();
-			returnMouseFocus();
-		}
-		if (_parent)
-			_parent.child_changed(this);
-	}
 
 	mixin ElementAccessor!(GuiElement, vec2i, "position",
 		"position_dirty = true;");
@@ -118,7 +107,7 @@ class GuiElement: IInputReciever
 	// applies fixed dimension and content-sized one, reporting the result.
 	int fit_content(Dim fix_dim, int fix_dim_size)
 	{
-		assert(_sizeType == SizeType.CONTENT)
+		assert(_sizeType == SizeType.CONTENT);
 		uint content_dim = fix_dim ^ 1;	// xor 1 flips the bit
 		_size[fix_dim] = fix_dim_size;
 		do_fit_content(content_dim);
@@ -140,6 +129,9 @@ class GuiElement: IInputReciever
 		sfRectangleShape* rect;
 		bool _rect_visible = true;
 		sfColor _backgroud_color = sfTransparent;
+
+		// dirty flags, that force lazy sfml state updates during rendering
+		// run.
 		bool position_dirty = true;
 		bool size_dirty = true;
 		bool viewport_dirty = true;
@@ -149,6 +141,8 @@ class GuiElement: IInputReciever
 		"sfRectangleShape_setFillColor(rect, _backgroud_color);");
 
 	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
+
+	// functions that lazily update sfml state
 
 	protected void update_position()
 	{
@@ -209,11 +203,8 @@ class GuiElement: IInputReciever
 
 	void draw(Window wnd)
 	{
-		if (!_hidden)
-		{
-			update_visuals();
-			do_draw(wnd);
-		}
+		update_visuals();
+		do_draw(wnd);
 	}
 
 	//
@@ -227,11 +218,6 @@ class GuiElement: IInputReciever
 	// Example implementation
 	HandleResult handleKeyboard(const sfEvent* evt)
 	{
-		if (_hidden)
-		{
-			returnKbFocus();
-			return HandleResult(true);
-		}
 		switch (evt.type)
 		{
 			case (sfEvtKeyPressed):
@@ -312,10 +298,8 @@ class GuiElement: IInputReciever
 	//
 
 	/// Return deepest GuiElement that contains the point, null otherwise.
-	GuiElement get_from_point(vec2f point)
+	GuiElement get_from_point(vec2i point)
 	{
-		if (_hidden)
-			return null;
 		if ((point.x >= position.x && point.x < position.x + size.x) &&
 			(point.y >= position.y && point.y < position.y + size.y))
 			return this;
@@ -329,7 +313,7 @@ class GuiElement: IInputReciever
 	// element wich is placed under cursor.
 	GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
-		GuiElement interceptor = get_from_point(vec2f(x, y));
+		GuiElement interceptor = get_from_point(vec2i(x, y));
 		if (interceptor)
 			if (mouse_transparent)
 				return interceptor.routeMousePos(evt, x, y);
@@ -339,15 +323,15 @@ class GuiElement: IInputReciever
 	}
 
 	// events for users to subscribe to
-	Event!(void delegate(GuiElement sender)) onMouseEnter;
-	Event!(void delegate(GuiElement sender)) onMouseLeave;
-	Event!(void delegate(GuiElement sender, int x, int y)) onMouseMove;
-	Event!(void delegate(GuiElement sender, int x, int y, sfMouseButton btn)) onMouseDown;
-	Event!(void delegate(GuiElement sender, int x, int y, sfMouseButton btn)) onMouseUp;
-	Event!(void delegate(GuiElement sender, int x, int y, int delta)) onMouseScroll;
-	Event!(void delegate(GuiElement sender, const sfKeyEvent* evt)) onKeyPressed;
-	Event!(void delegate(GuiElement sender, const sfKeyEvent* evt)) onKeyReleased;
-	Event!(void delegate(GuiElement sender, const sfTextEvent* evt)) onTextEntered;
+	Event!(GuiElement sender) onMouseEnter;
+	Event!(GuiElement sender) onMouseLeave;
+	Event!(GuiElement sender, int x, int y) onMouseMove;
+	Event!(GuiElement sender, int x, int y, sfMouseButton btn) onMouseDown;
+	Event!(GuiElement sender, int x, int y, sfMouseButton btn) onMouseUp;
+	Event!(GuiElement sender, int x, int y, int delta) onMouseScroll;
+	Event!(GuiElement sender, const sfKeyEvent* evt) onKeyPressed;
+	Event!(GuiElement sender, const sfKeyEvent* evt) onKeyReleased;
+	Event!(GuiElement sender, const sfTextEvent* evt) onTextEntered;
 }
 
 template isGuiElement(T)
