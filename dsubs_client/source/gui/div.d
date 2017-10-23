@@ -33,10 +33,10 @@ class Div(uint dim, uint odim): GuiElement
 	this(Children...)(Children kids)
 		if (allSatisfy!(isGuiElement, Children))
 	{
+		super();
 		_children = [kids];
 		foreach (kid; _children)
 			kid._parent = this;
-		update_children();
 		// rect stuff
 		sfRectangleShape_setOutlineThickness(rect, _border_width);
 		sfRectangleShape_setOutlineColor(rect, _border_color);
@@ -60,8 +60,7 @@ class Div(uint dim, uint odim): GuiElement
 	static if (dim == 0)
 	{
 		immutable DivType divType = DivType.HORZ;
-	}
-	static if (dim == 1)
+	} else static if (dim == 1)
 	{
 		immutable DivType divType = DivType.VERT;
 	}
@@ -162,6 +161,7 @@ class Div(uint dim, uint odim): GuiElement
 			offset += child.size[dim] + _border_width;
 		}
 		_updating_children = false;
+		update_border_shapes();
 	}
 
 	protected static float chip(float budget, float desired_val)
@@ -169,19 +169,26 @@ class Div(uint dim, uint odim): GuiElement
 		return fmin(fmax(0.0, budget), fmax(0.0, desired_val));
 	}
 
+	private void update_border_shapes()
+	{
+		foreach (i, border; cell_borders)
+		{
+			vec2f new_bord_pos = _children[i].position +
+				dim_vec(_children[i].size[dim], 1);
+			vec2f new_bord_size = dim_vec(_children[i].size[dim], _border_width);
+			sfRectangleShape_setPosition(border, tosf(new_bord_pos));
+			sfRectangleShape_setSize(rect, tosf(new_bord_size));
+		}
+	}
+
 	override Div!(dim, odim) position(vec2i new_pos)
 	{
 		vec2i diff = new_pos - _position;
 		foreach (child; _children)
 			child.position(diff + child.position);
-		foreach (i, border; cell_borders)
-		{
-			vec2f new_bord_pos = _children[i].position +
-				dim_vec(_children[i].size[dim]);
-			sfRectangleShape_setPosition(border, tosf(new_bord_pos));
-		}
 		_position = new_pos;
 		position_dirty = true;
+		update_border_shapes();
 		return this;
 	}
 

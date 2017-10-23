@@ -5,29 +5,29 @@ import std.string;
 import derelict.sfml2.graphics;
 
 
-__gshared sfFont*[string] loadedFonts;
+__gshared sfFont*[string] g_loadedFonts;
 
-immutable string[string] font_files;
+__gshared immutable string[string] g_font_files;
 
-static this()
+static shared this()
 {
-	font_files = [
+	g_font_files = [
 		"Sans": "fonts/LiberationSans-Regular.ttf",
 		"SansMono": "fonts/LiberationMono-Regular.ttf",
 	];
 }
 
-__gshared bool _fonts_loaded = false;
+private __gshared bool _fonts_loaded = false;
 
 void load_fonts()
 {
 	if (_fonts_loaded)
 		return;
-	foreach (string name, string filename; font_files)
+	foreach (string name, string filename; g_font_files)
 	{
 		auto cstr = toStringz(filename);
 		sfFont* font = sfFont_createFromFile(cstr);
-		loadedFonts[name] = font;
+		g_loadedFonts[name] = font;
 	}
 	_fonts_loaded = true;
 }

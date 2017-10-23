@@ -60,7 +60,7 @@ class Label: GuiElement
 	{
 		text = sfText_create();
 		load_fonts();
-		sfText_setFont(text, loadedFonts[_fontname]);
+		sfText_setFont(text, g_loadedFonts[_fontname]);
 		sfText_setCharacterSize(text, _font_size);
 		sfText_setUnicodeString(text, _content.ptr);
 		sfText_setColor(text, _font_color);
@@ -85,7 +85,7 @@ class Label: GuiElement
 		"sfText_setCharacterSize(text, _font_size); _label_dirty = true;");
 
 	mixin ElementAccessor!(Label, string, "fontname",
-		"sfText_setFont(text, loadedFonts[_fontname]); _label_dirty = true;");
+		"sfText_setFont(text, g_loadedFonts[_fontname]); _label_dirty = true;");
 
 	mixin ElementAccessor!(Label, sfColor, "font_color",
 		"sfText_setColor(text, _font_color);");
@@ -112,8 +112,8 @@ class Label: GuiElement
 		// text content visual parameters they way they look
 		int content_left;	// relative offsets
 		int content_top;
-		//float content_width = 0.0f;
-		//float content_height = 0.0f;
+		float content_width = 0.0f;
+		float content_height = 0.0f;
 		int _left_offset = 0.0;
 	}
 
@@ -134,7 +134,7 @@ class Label: GuiElement
 				x = 0.5f * (_size.x - 2.0f * bounds.left - bounds.width) + _left_offset;
 		}
 		content_left = cast(int)lrint(x + bounds.left);
-		//content_width = cast(int)lrint(bounds.width);
+		content_width = cast(int)lrint(bounds.width);
 		final switch (_vert_align)
 		{
 			case TextAlign.LEFT:
@@ -150,7 +150,7 @@ class Label: GuiElement
 				y = 0.5f * (_size.y - _font_size * 1.25f);
 		}
 		content_top = cast(int)lrint(y);		// stable
-		//content_height = 1.25f * _font_size;	// stable as well
+		content_height = 1.25f * _font_size;	// stable as well
 		sfText_setPosition(text,
 			sfVector2f(_position.x + content_left, _position.y + content_top));
 	}

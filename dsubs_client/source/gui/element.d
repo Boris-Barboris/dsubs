@@ -38,7 +38,7 @@ enum Dim: ubyte
 /// GUI tree element. This is not an abstract class, just an empty rectangle.
 class GuiElement: IInputReciever
 {
-	protected
+	private
 	{
 		// layout parameters
 		vec2i _position = vec2i(0, 0);	// absolute position on the window
@@ -57,42 +57,38 @@ class GuiElement: IInputReciever
 		SizeType _sizeType = SizeType.GREEDY;
 	}
 
-	package GuiElement _parent;		// layout director of this element.
+	package GuiElement _parent;		// layout manager of this element.
 
 	this()
 	{
+		sf_rst.blendMode = sfBlendAlpha;
 		rect = sfRectangleShape_create();
 		sfRectangleShape_setOutlineThickness(rect, 0.0f);
 		backgroud_color(sfTransparent);
 	}
 
+	/* The destructor for the super class automatically gets called when
+	the destructor ends. There is no way to call the super destructor explicitly. */
 	~this()
 	{
-		dispose();
+		sfRectangleShape_destroy(rect);
 	}
 
-	protected void dispose()
-	{
-		if (rect)
-			sfRectangleShape_destroy(rect);
-		rect = null;
-	}
-
-	GuiElement parent() { return _parent; }
+	final GuiElement parent() const { return _parent; }
 
 	// Called by child when it's layout-related parameters have changed
 	package void child_changed(GuiElement child) {}
 
 	mixin ElementAccessor!(GuiElement, vec2i, "position",
-		"position_dirty = true;");
+		"update_position();");
 
 	mixin ElementAccessor!(GuiElement, vec2i, "size",
 		"if ((_sizeType == SizeType.FIXED || _sizeType == SizeType.CONTENT) && _parent)
 			_parent.child_changed(this);
-		size_dirty = true;");
+		update_size();");
 
 	mixin ElementAccessor!(GuiElement, vec4i*, "parent_viewport",
-		"viewport_dirty = true;");
+		"update_viewport();");
 
 	mixin ElementAccessor!(GuiElement, float, "fraction",
 		"if (_sizeType == SizeType.FRACT && _parent)
@@ -105,13 +101,13 @@ class GuiElement: IInputReciever
 	// size fix_dim_size, but needs to know the length required to
 	// fir this element's content. This function kills two birds:
 	// applies fixed dimension and content-sized one, reporting the result.
-	int fit_content(Dim fix_dim, int fix_dim_size)
+	final int fit_content(Dim fix_dim, int fix_dim_size)
 	{
 		assert(_sizeType == SizeType.CONTENT);
 		uint content_dim = fix_dim ^ 1;	// xor 1 flips the bit
 		_size[fix_dim] = fix_dim_size;
 		do_fit_content(content_dim);
-		size_dirty = true;
+		update_size();
 		return _size[content_dim];
 	}
 
@@ -124,46 +120,42 @@ class GuiElement: IInputReciever
 	// rendering stuff
 	//
 
-	protected
-	{
-		sfRectangleShape* rect;
-		bool _rect_visible = true;
-		sfColor _backgroud_color = sfTransparent;
+	protected sfRenderStates sf_rst;	// used for transform
 
-		// dirty flags, that force lazy sfml state updates during rendering
-		// run.
-		bool position_dirty = true;
-		bool size_dirty = true;
-		bool viewport_dirty = true;
+	private
+	{
+		sfRectangleShape* rect;	// background rectangle
+		sfColor _backgroud_color = sfTransparent;
 	}
+
+	bool rect_visible = true;	// true when rect is rendered
 
 	mixin ElementAccessor!(GuiElement, sfColor, "backgroud_color",
 		"sfRectangleShape_setFillColor(rect, _backgroud_color);");
 
-	mixin ElementAccessor!(GuiElement, bool, "rect_visible", "");
-
-	// functions that lazily update sfml state
-
 	protected void update_position()
 	{
-		sfRectangleShape_setPosition(rect, tosf(_position));
+		update_viewport();
+		sf_rst.transform = sfTransform_Identity;
+		sfTransform_translate(&sf_rst.transform, _position.x, _position.y);
 	}
 
 	protected void update_size()
 	{
+		update_viewport();
 		sfRectangleShape_setSize(rect, tosf(_size));
 	}
 
-	protected void update_viewport()
+	private final void update_viewport()
 	{
 		if (_parent_viewport)
-			viewport = clamp_viewport(*_parent_viewport);
+			_viewport = clamp_viewport(*_parent_viewport);
 		else
-			viewport = vec4i(_position.x, _position.y, _size.x, _size.y);
+			_viewport = vec4i(_position.x, _position.y, _size.x, _size.y);
 	}
 
 	// return intersection between rhs and this element's rectangle
-	vec4i clamp_viewport(const ref vec4i rhs)
+	private final vec4i clamp_viewport(const ref vec4i rhs)
 	{
 		vec4i res;
 		res[0] = min(max(rhs[0], _position.x), _position.x + _size.x);
@@ -173,46 +165,15 @@ class GuiElement: IInputReciever
 		return res;
 	}
 
-	protected void do_draw(Window wnd)
-	{
-		sfRenderWindow_setScissor(wnd.ptr, tosf(viewport));
-		if (_rect_visible)
-			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, null);
-	}
-
-	protected void update_visuals()
-	{
-		if (position_dirty)
-		{
-			position_dirty = false;
-			viewport_dirty = true;
-			update_position();
-		}
-		if (size_dirty)
-		{
-			size_dirty = false;
-			viewport_dirty = true;
-			update_size();
-		}
-		if (viewport_dirty)
-		{
-			viewport_dirty = false;
-			update_viewport();
-		}
-	}
-
 	void draw(Window wnd)
 	{
-		update_visuals();
-		do_draw(wnd);
+		sfRenderWindow_setScissor(wnd.ptr, tosf(_viewport));
+		if (rect_visible)
+			sfRenderWindow_drawRectangleShape(wnd.ptr, rect, &sf_rst);
 	}
 
 	//
-	// Event handling
-	//
-
-	//
-	// IInputReciever interface
+	// IInputReciever interface implementation
 	//
 
 	// Example implementation
@@ -251,14 +212,6 @@ class GuiElement: IInputReciever
 			onMouseMove(this, x, y);
 	}
 
-	// focuses
-	protected bool kb_focused = false;
-	void handleKbFocusGain() { kb_focused = true; }
-	void handleKbFocusLoss() { kb_focused = false; }
-	protected bool mouse_focused = false;
-	void handleMouseFocusGain() { mouse_focused = true; }
-	void handleMouseFocusLoss() { mouse_focused = false; }
-
 	void handleMouseEnter()
 	{
 		onMouseEnter(this);
@@ -269,25 +222,33 @@ class GuiElement: IInputReciever
 		onMouseLeave(this);
 	}
 
+	// focuses
+	protected bool kb_focused = false;
+	void handleKbFocusGain() { kb_focused = true; }
+	void handleKbFocusLoss() { kb_focused = false; }
+	protected bool mouse_focused = false;
+	void handleMouseFocusGain() { mouse_focused = true; }
+	void handleMouseFocusLoss() { mouse_focused = false; }
+
 	// focus manipulation methods
 
-	void requestKbFocus()
+	final void requestKbFocus()
 	{
 		Router.kbFocus(this);
 	}
 
-	void returnKbFocus()
+	final void returnKbFocus()
 	{
 		if (kb_focused)
 			Router.kbFocus(null);
 	}
 
-	void requestMouseFocus()
+	final void requestMouseFocus()
 	{
 		Router.mouseFocus(this);
 	}
 
-	void returnMouseFocus()
+	final void returnMouseFocus()
 	{
 		if (mouse_focused)
 			Router.mouseFocus(null);
@@ -300,8 +261,8 @@ class GuiElement: IInputReciever
 	/// Return deepest GuiElement that contains the point, null otherwise.
 	GuiElement get_from_point(vec2i point)
 	{
-		if ((point.x >= position.x && point.x < position.x + size.x) &&
-			(point.y >= position.y && point.y < position.y + size.y))
+		if ((point.x >= _position.x && point.x < _position.x + _size.x) &&
+			(point.y >= _position.y && point.y < _position.y + _size.y))
 			return this;
 		return null;
 	}
@@ -311,7 +272,7 @@ class GuiElement: IInputReciever
 
 	// gui manager will query panels and seek first non-mouse-transparent
 	// element wich is placed under cursor.
-	GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
+	package final GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
 		GuiElement interceptor = get_from_point(vec2i(x, y));
 		if (interceptor)

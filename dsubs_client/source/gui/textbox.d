@@ -33,6 +33,7 @@ class TextBox: GuiElement
 		string _fontname = "SansMono";
 		sfColor _font_color = sfWhite;
 		float _padding = 3.0f;
+		bool _text_dirty = true;
 	}
 
 	this(GuiManager manager)
@@ -43,13 +44,13 @@ class TextBox: GuiElement
 		_content = ""d;
 	}
 
-	dstring content() { return _content; }
+	@property dstring content() const { return _content; }
 
 	// don't call it too often, it's heavy
 	TextBox content(dstring val)
 	{
 		_content = val;
-		_visuals_dirty = true;
+		_text_dirty = true;
 		return this;
 	}
 
@@ -62,16 +63,16 @@ class TextBox: GuiElement
 		"if (val != SizeType.CONTENT) assert(0, \"TextBox always has CONTENT sizeType\");");
 
 	mixin ElementAccessor!(TextBox, uint, "font_size",
-		"update_font_size(); _visuals_dirty = true;");
+		"update_font_size(); _text_dirty = true;");
 
 	mixin ElementAccessor!(TextBox, string, "fontname",
-		"update_fontname(); _visuals_dirty = true;");
+		"update_fontname(); _text_dirty = true;");
 
 	mixin ElementAccessor!(TextBox, sfColor, "font_color",
 		"update_font_color();");
 
 	mixin ElementAccessor!(TextBox, float, "padding",
-		"_visuals_dirty = true;");
+		"_text_dirty = true;");
 
 	// main text creation function
 	protected void layout_text()
@@ -152,10 +153,7 @@ class TextBox: GuiElement
 
 		// we need to detroy unused sfText's:
 		for (size_t i = txt_idx; i < texts.length; i++)
-		{
-			auto t = texts[i];
-			sfText_destroy(t);
-		}
+			sfText_destroy(texts[i]);
 		texts.length = txt_idx;
 
 		text_full_height = line_idx * line_spacing;
@@ -179,9 +177,10 @@ class TextBox: GuiElement
 	{
 		sfFloatRect bounds = sfText_getLocalBounds(t);
 		float x, y; // results
-		x = -bounds.left + _padding + _border_width;
-		y = interline * line_number + _padding + _border_width;
-		sfText_setPosition(t, sfVector2f(round(x), round(y)));
+		x = -bounds.left + _padding;
+		y = interline * line_number + _padding;
+		sfText_setPosition(t,
+			sfVector2f(round(x) + _position.x, round(y) + _position.y));
 	}
 
 	float get_glyph_width()
@@ -214,12 +213,12 @@ class TextBox: GuiElement
 			sfText_setColor(t, _font_color);
 	}
 
-	override void update_visual()
+	override protected void update_visuals()
 	{
 		layout_text();
 		// now we set height according to text dimensions
 		size(vec2f(_size.x, 2.0f * _padding + 2.0 * _border_width + text_full_height));
-		super.update_visual();
+		super.update_visuals();
 	}
 
 	override protected void do_draw(Window wnd)
@@ -227,6 +226,7 @@ class TextBox: GuiElement
 		super.do_draw(wnd);
 		//sfRenderWindow_setView(wnd.ptr, text_view);
 		// drawn texts line by line
+		// todo: optimize, not all lines need to be drawn
 		foreach (t; texts)
 			sfRenderWindow_drawText(wnd.ptr, t, null);
 	}

@@ -32,8 +32,6 @@ class TextField: Label
 		super(manager);
 		// larger buffer capacity
 		_content.reserve(64);
-		border_width(1);
-		border_color(sfWhite);
 		backgroud_color(sfColor(50, 28, 28, 150));
 		cursor_rect = sfRectangleShape_create();
 		sfRectangleShape_setFillColor(cursor_rect, _cursor_color);
@@ -56,8 +54,8 @@ class TextField: Label
 		// first we capture mouse in order to handle text selection
 		requestMouseFocus();
 		// x and y to local space
-		x -= to!int(_position.x);
-		y -= to!int(_position.y);
+		x -= _position.x;
+		y -= _position.y;
 		// set cursor_start
 		set_cursor_from_coords(cursor_start, x, y);
 		cursor_end = cursor_start;
@@ -77,8 +75,8 @@ class TextField: Label
 		if (mouse_focused)
 		{
 			// x and y to local space
-			x -= to!int(_position.x);
-			y -= to!int(_position.y);
+			x -= _position.x;
+			y -= _position.y;
 			// set cursor_start
 			int old_curs_end = cursor_end;
 			set_cursor_from_coords(cursor_end, x, y);
@@ -100,7 +98,7 @@ class TextField: Label
 			char_width = content_width / (_content.length - 1);
 		int index = max(0,
 			min(_content.length - 1,
-				to!int(round((x - content_left) / char_width))));
+				to!int(lrint((x - content_left) / char_width))));
 		cursor = index;
 	}
 
@@ -110,9 +108,9 @@ class TextField: Label
 		cursor_start = cursor_end = 0;
 	}
 
-	override void update_text_position()
+	override void update_text()
 	{
-		super.update_text_position();
+		super.update_text();
 		// safety check for cursors
 		if (_content.length <= cursor_start)
 			cursor_start = _content.length - 1;
@@ -123,7 +121,7 @@ class TextField: Label
 
 	protected bool update_recurs = false;
 
-	void update_cursor_visuals()
+	protected void update_cursor_visuals()
 	{
 		float char_width;
 		if (_content.length <= 1)
@@ -170,16 +168,16 @@ class TextField: Label
 			cursor_width = end_x - start_x;
 		sfRectangleShape_setPosition(cursor_rect,
 			sfVector2f(
-				start_x,
-				content_top));
+				start_x + _position.x,
+				content_top + _position.y));
 		sfRectangleShape_setSize(cursor_rect,
 			sfVector2f(cursor_width, content_height));
 		blink_state = true;
 	}
 
-	private uint counter = 0;
+	private uint blink_counter = 0;
 	private bool blink_state = true;
-	static uint BLINK_FREQ = 15;
+	static int BLINK_FREQ = 15;
 
 	override protected void draw_contents(Window wnd)
 	{
@@ -189,8 +187,8 @@ class TextField: Label
 			if (cursor_start == cursor_end)
 			{
 				// we have no text selected, display blinking caret
-				counter++;	// framerate-dependent, but i don't really care
-				if (counter % BLINK_FREQ == 0)
+				blink_counter++;	// framerate-dependent, but i don't really care
+				if (blink_counter % BLINK_FREQ == 0)
 					blink_state = !blink_state;
 				if (blink_state)
 					sfRenderWindow_drawRectangleShape(wnd.ptr, cursor_rect, null);

@@ -27,7 +27,8 @@ class Button: Label
 		ButtonType _buttonType;
 		sfColor _pressed_color = sfRed;
 		sfColor _released_color = sfWhite;
-		bool _pressed, _state;
+		bool _pressed;    // true when user pressed mouse down but didn't release it
+        bool _state;      // actual internal state of the button in toggle\async mode
 	}
 
 	this(GuiManager manager)
@@ -47,7 +48,7 @@ class Button: Label
 		"released_color(val);");
 
 	// whether user is currently holding the button down
-	bool pressed() { return _pressed; }
+	@propery bool pressed() const { return _pressed; }
 
 	protected void pressed(bool val)
 	{
@@ -57,11 +58,11 @@ class Button: Label
 
 	// internal state, bool. Is true when toggle is activated or
 	// async button is in the process of click handling
-	bool state() { return _state; }
+	@property bool state() const { return _state; }
 
 	protected void update_font_color()
 	{
-		bool visual_state = _state != _pressed;
+		bool visual_state = (_state != _pressed);
 		if (visual_state)
 			sfText_setColor(text, _pressed_color);
 		else
@@ -108,7 +109,7 @@ class Button: Label
 		}
 	}
 
-	Event!(void delegate(Button sender, sfMouseButton btn)) onClick;
+	Event!(Button sender, sfMouseButton btn) onClick;
 }
 
 Button asButton(GuiElement el)
