@@ -5,25 +5,24 @@ import derelict.sfml2.graphics;
 public import dsubs_common.mutstring;
 
 import dsubs_client.gui.textfield;
-import dsubs_client.gui.manager;
 
 
-class PasswordField: TextField
+final class PasswordField: TextField
 {
 	static immutable dchar PWDOT = '•';
 
-	protected
+	private
 	{
 		dmutstring _hidden_content;     // actual password will be here
 	}
 
-	this(GuiManager manager)
+	this()
 	{
-		_hidden_content = _s(""d, 63);
-		super(manager);
+		super();
+		_hidden_content = _s(""d, 31);
 	}
 
-	override const(dmutstring) content() { return _hidden_content; }
+	@property override const(dmutstring) content() const { return _hidden_content; }
 
 	override PasswordField content(dstring val)
 	out (result)
@@ -37,7 +36,7 @@ class PasswordField: TextField
 		_content[0 .. $-1] = PWDOT;
 		_content[$-1] = 0;
 		sfText_setUnicodeString(text, _content.ptr);
-		_visuals_dirty = true;
+		update_text();
 		return this;
 	}
 

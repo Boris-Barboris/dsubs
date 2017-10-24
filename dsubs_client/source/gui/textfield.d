@@ -14,12 +14,11 @@ import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
 import dsubs_client.input.router;
 import dsubs_client.gui.label;
-import dsubs_client.gui.manager;
 
 
 class TextField: Label
 {
-	protected
+	private
 	{
 		sfColor _cursor_color = sfRed;
 		sfRectangleShape* cursor_rect;
@@ -27,11 +26,10 @@ class TextField: Label
 		int cursor_end = 0;		// first character after the selection
 	}
 
-	this(GuiManager manager)
+	this()
 	{
-		super(manager);
-		// larger buffer capacity
-		_content.reserve(64);
+		super();
+		rect_visible = true;
 		backgroud_color(sfColor(50, 28, 28, 150));
 		cursor_rect = sfRectangleShape_create();
 		sfRectangleShape_setFillColor(cursor_rect, _cursor_color);
@@ -45,38 +43,41 @@ class TextField: Label
 		onMouseScroll += &handle_MouseScroll;
 	}
 
+	~this()
+	{
+		sfRectangleShape_destroy(cursor_rect);
+	}
+
 	mixin ElementAccessor!(TextField, sfColor, "cursor_color",
 		"sfRectangleShape_setFillColor(cursor_rect, _cursor_color);");
 
-	protected void handle_mouse_down(GuiElement s, int x, int y, sfMouseButton btn)
+	private final void handle_mouse_down(GuiElement s, int x, int y, sfMouseButton btn)
 	{
 		returnKbFocus();
 		// first we capture mouse in order to handle text selection
 		requestMouseFocus();
 		// x and y to local space
-		x -= _position.x;
-		y -= _position.y;
+		x -= get_position.x;
+		y -= get_position.y;
 		// set cursor_start
 		set_cursor_from_coords(cursor_start, x, y);
 		cursor_end = cursor_start;
 		update_cursor_visuals();
 	}
 
-	protected void handle_mouse_up(GuiElement s, int x, int y, sfMouseButton btn)
+	private final void handle_mouse_up(GuiElement s, int x, int y, sfMouseButton btn)
 	{
-		// give mouse focus back
 		returnMouseFocus();
-		// capture keyboard
 		requestKbFocus();
 	}
 
-	protected void handle_mouse_move(GuiElement s, int x, int y)
+	private final void handle_mouse_move(GuiElement s, int x, int y)
 	{
 		if (mouse_focused)
 		{
 			// x and y to local space
-			x -= _position.x;
-			y -= _position.y;
+			x -= get_position.x;
+			y -= get_position.y;
 			// set cursor_start
 			int old_curs_end = cursor_end;
 			set_cursor_from_coords(cursor_end, x, y);
@@ -86,18 +87,18 @@ class TextField: Label
 	}
 
 	// set cursor to position according to
-	void set_cursor_from_coords(ref int cursor, int x, int y)
+	private final void set_cursor_from_coords(ref int cursor, int x, int y)
 	{
 		float char_width;
-		if (_content.length <= 1)
+		if (content.length <= 1)
 		{
 			cursor = 0;
 			return;
 		}
 		else
-			char_width = content_width / (_content.length - 1);
+			char_width = content_width / (content.length - 1);
 		int index = max(0,
-			min(_content.length - 1,
+			min(content.length - 1,
 				to!int(lrint((x - content_left) / char_width))));
 		cursor = index;
 	}
@@ -108,34 +109,34 @@ class TextField: Label
 		cursor_start = cursor_end = 0;
 	}
 
-	override void update_text()
+	protected override void update_text()
 	{
 		super.update_text();
 		// safety check for cursors
-		if (_content.length <= cursor_start)
-			cursor_start = _content.length - 1;
-		if (_content.length <= cursor_end)
-			cursor_end = _content.length - 1;
+		if (content.length <= cursor_start)
+			cursor_start = content.length - 1;
+		if (content.length <= cursor_end)
+			cursor_end = content.length - 1;
 		update_cursor_visuals();
 	}
 
-	protected bool update_recurs = false;
+	private bool update_recurs = false;
 
-	protected void update_cursor_visuals()
+	private final void update_cursor_visuals()
 	{
 		float char_width;
-		if (_content.length <= 1)
+		if (content.length <= 1)
 		{
 			char_width = 0.0f;
-			_left_offset = 0.0f;
+			left_offset = 0;
 		}
 		else
-			char_width = content_width / (_content.length - 1);
+			char_width = content_width / (content.length - 1);
 		// position of cursor_start
 		float start_x = content_left + char_width * cursor_start;
 		// position of cursor_end
 		float end_x = start_x + char_width * (cursor_end - cursor_start);
-		if (_content.length > 1 && !update_recurs)
+		if (content.length > 1 && !update_recurs)
 		{
 			// make sure cursor_end is always visible and is located inside
 			// element's rectangle
@@ -143,19 +144,19 @@ class TextField: Label
 			if (end_x < _padding)
 			{
 				// we need to move text right
-				_left_offset = min(0.0f, _left_offset - end_x + _padding + 1.0f);
+				left_offset = min(0, lrint(left_offset - end_x + _padding + 1.0f).to!int);
 				reupdate_visuals = true;
 			}
-			else if (end_x > _size.x - _padding)
+			else if (end_x > get_size.x - _padding)
 			{
 				// we need to move text left
-				_left_offset -= (end_x - _size.x + 1.0f + _padding);
+				left_offset -= lrint(end_x - get_size.x + 1.0f + _padding).to!int;
 				reupdate_visuals = true;
 			}
 			if (reupdate_visuals)
 			{
 				// we need to shift the text, let's use recursion
-				super.update_text_position();
+				super.update_text();
 				update_recurs = true;
 				update_cursor_visuals();
 				update_recurs = false;
@@ -167,23 +168,23 @@ class TextField: Label
 		if (cursor_end != cursor_start)
 			cursor_width = end_x - start_x;
 		sfRectangleShape_setPosition(cursor_rect,
-			sfVector2f(
-				start_x + _position.x,
-				content_top + _position.y));
+			sfVector2f(start_x, content_top));
 		sfRectangleShape_setSize(cursor_rect,
 			sfVector2f(cursor_width, content_height));
-		blink_state = true;
+		blink_state = true;	// convenient touch
 	}
 
 	private uint blink_counter = 0;
 	private bool blink_state = true;
+
 	static int BLINK_FREQ = 15;
 
-	override protected void draw_contents(Window wnd)
+	override void draw(Window wnd)
 	{
-		// now we're in local space because of viewport
+		this.Element.draw(wnd);	// transform and background rect
 		if (kb_focused || mouse_focused)
 		{
+			// need to draw cursor\selection
 			if (cursor_start == cursor_end)
 			{
 				// we have no text selected, display blinking caret
@@ -191,35 +192,35 @@ class TextField: Label
 				if (blink_counter % BLINK_FREQ == 0)
 					blink_state = !blink_state;
 				if (blink_state)
-					sfRenderWindow_drawRectangleShape(wnd.ptr, cursor_rect, null);
+					sfRenderWindow_drawRectangleShape(wnd.ptr, cursor_rect, &sf_rst);
 			}
 			else
-				sfRenderWindow_drawRectangleShape(wnd.ptr, cursor_rect, null);
+				sfRenderWindow_drawRectangleShape(wnd.ptr, cursor_rect, &sf_rst);
 		}
 		// text is drawn over cursor
-		super.draw_contents(wnd);
+		sfRenderWindow_drawText(wnd.ptr, text, &sf_rst);
 	}
 
 	protected void insert_at(dchar c, size_t idx)
 	{
-		_content.insert_at(c, idx);
+		content.insert_at(c, idx);
 	}
 
 	protected void remove_at(size_t idx)
 	{
-		_content.remove_at(idx);
+		content.remove_at(idx);
 	}
 
 	protected void remove_interval(size_t start, size_t end)
 	{
-		_content.remove_interval(start, end);
+		content.remove_interval(start, end);
 	}
 
 	// function to filter entered symbols by. Should return true if
 	// symbol is acceptable, otherwise false.
 	bool function(dchar) symbol_filter;
 
-	void do_handle_text(dchar c)
+	protected void do_handle_text(dchar c)
 	{
 		// first we check wether we had range of symbols selected
 		if (cursor_start == cursor_end)
@@ -228,7 +229,7 @@ class TextField: Label
 			switch (c)
 			{
 				case '\b':	// backspace
-					if (_content.length > 1 && cursor_start > 0)
+					if (content.length > 1 && cursor_start > 0)
 					{
 						remove_at(cursor_start - 1);
 						cursor_start = cursor_end = cursor_start - 1;
@@ -271,21 +272,21 @@ class TextField: Label
 			}
 		}
 		// update sfml text
-		sfText_setUnicodeString(text, _content.ptr);
+		sfText_setUnicodeString(text, content.ptr);
 		update_text_position();
 	}
 
-	void handle_MouseScroll(GuiElement sender, int x, int y, int delta)
+	private final void handle_MouseScroll(GuiElement sender, int x, int y, int delta)
 	{
 		if (kb_focused && !mouse_focused)
 		{
-			cursor_start = max(0, min(_content.length - 1, cursor_start + delta));
+			cursor_start = max(0, min(content.length - 1, cursor_start + delta));
 			cursor_end = cursor_start;
 			update_cursor_visuals();
 		}
 	}
 
-	void hande_KeyPressed(GuiElement sender, const sfKeyEvent* kevt)
+	private final void hande_KeyPressed(GuiElement sender, const sfKeyEvent* kevt)
 	{
 		switch (kevt.code)
 		{
@@ -301,10 +302,10 @@ class TextField: Label
 				break;
 			case sfKeyRight:
 				if (kevt.shift)
-					cursor_end = min(_content.length - 1, cursor_end + 1);
+					cursor_end = min(content.length - 1, cursor_end + 1);
 				else
 				{
-					cursor_start = min(_content.length - 1, cursor_start + 1);
+					cursor_start = min(content.length - 1, cursor_start + 1);
 					cursor_end = cursor_start;
 				}
 				update_cursor_visuals();
@@ -318,23 +319,23 @@ class TextField: Label
 				break;
 			case sfKeyEnd:
 				if (kevt.shift)
-					cursor_end = _content.length - 1;
+					cursor_end = content.length - 1;
 				else
-					cursor_start = cursor_end = _content.length - 1;
+					cursor_start = cursor_end = content.length - 1;
 				update_cursor_visuals();
 				break;
 			case sfKeyA:
 				if (kevt.control)
 				{
 					cursor_start = 0;
-					cursor_end = _content.length - 1;
+					cursor_end = content.length - 1;
 					update_cursor_visuals();
 				}
 				break;
 			case sfKeyDelete:
 				if (cursor_start == cursor_end)
 				{
-					if (cursor_start < _content.length - 1)
+					if (cursor_start < content.length - 1)
 						remove_at(cursor_start);
 				}
 				else
@@ -345,7 +346,7 @@ class TextField: Label
 					cursor_start = cursor_end = ordered_start;
 				}
 				// update sfml text
-				sfText_setUnicodeString(text, _content.ptr);
+				sfText_setUnicodeString(text, content.ptr);
 				update_text_position();
 				break;
 			case sfKeyReturn:
@@ -358,7 +359,7 @@ class TextField: Label
 		}
 	}
 
-	void handle_TextEntered(GuiElement sender, const sfTextEvent* evt)
+	private final void handle_TextEntered(GuiElement sender, const sfTextEvent* evt)
 	{
 		dchar c = evt.unicode;
 		switch (c)

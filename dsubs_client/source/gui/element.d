@@ -15,7 +15,6 @@ import dsubs_client.lib.sfml;		// for conversions
 import dsubs_client.core.window;
 public import dsubs_client.core.utils;
 import dsubs_client.input.router;
-import dsubs_client.gui.manager;
 
 
 // Size types sorted in priority order. Same-type elements are treated
@@ -101,7 +100,7 @@ class GuiElement: IInputReciever
 	// size fix_dim_size, but needs to know the length required to
 	// fir this element's content. This function kills two birds:
 	// applies fixed dimension and content-sized one, reporting the result.
-	final int fit_content(Dim fix_dim, int fix_dim_size)
+	package final int fit_content(Dim fix_dim, int fix_dim_size)
 	{
 		assert(_sizeType == SizeType.CONTENT);
 		uint content_dim = fix_dim ^ 1;	// xor 1 flips the bit
@@ -121,14 +120,10 @@ class GuiElement: IInputReciever
 	//
 
 	protected sfRenderStates sf_rst;	// used for transform
+	protected sfRectangleShape* rect;	// background rectangle
+	private sfColor _backgroud_color = sfTransparent;
 
-	private
-	{
-		sfRectangleShape* rect;	// background rectangle
-		sfColor _backgroud_color = sfTransparent;
-	}
-
-	bool rect_visible = true;	// true when rect is rendered
+	bool rect_visible = false;	// true when rect is rendered
 
 	mixin ElementAccessor!(GuiElement, sfColor, "backgroud_color",
 		"sfRectangleShape_setFillColor(rect, _backgroud_color);");
@@ -259,7 +254,7 @@ class GuiElement: IInputReciever
 	//
 
 	/// Return deepest GuiElement that contains the point, null otherwise.
-	GuiElement get_from_point(vec2i point)
+	package GuiElement get_from_point(vec2i point)
 	{
 		if ((point.x >= _position.x && point.x < _position.x + _size.x) &&
 			(point.y >= _position.y && point.y < _position.y + _size.y))

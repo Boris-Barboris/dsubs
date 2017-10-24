@@ -15,19 +15,10 @@ static shared this()
 		"Sans": "fonts/LiberationSans-Regular.ttf",
 		"SansMono": "fonts/LiberationMono-Regular.ttf",
 	];
-}
-
-private __gshared bool _fonts_loaded = false;
-
-void load_fonts()
-{
-	if (_fonts_loaded)
-		return;
 	foreach (string name, string filename; g_font_files)
 	{
 		auto cstr = toStringz(filename);
 		sfFont* font = sfFont_createFromFile(cstr);
 		g_loadedFonts[name] = font;
 	}
-	_fonts_loaded = true;
 }
