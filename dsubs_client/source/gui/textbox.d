@@ -19,29 +19,33 @@ import dsubs_client.lib.sfml;		// for conversions
 import dsubs_client.core.window;
 public import dsubs_client.gui.element;
 import dsubs_client.gui.fonts;
-import dsubs_client.gui.manager;
 
 
 /// Multiline readonly scrollable field to show lot's of text on.
-class TextBox: GuiElement
+final class TextBox: GuiElement
 {
-	protected
+	private
 	{
 		dstring _content;
 		sfText*[] texts;
 		uint _font_size = 12;
 		string _fontname = "SansMono";
 		sfColor _font_color = sfWhite;
-		float _padding = 3.0f;
-		bool _text_dirty = true;
+		int _padding = 3;
 	}
 
-	this(GuiManager manager)
+	this()
 	{
-		super(manager);
-		_sizeType = SizeType.CONTENT;
+		super();
+		sizeType(SizeType.CONTENT);
 		mouse_transparent = false;
 		_content = ""d;
+	}
+
+	~this()
+	{
+		foreach (t; texts)
+			sfText_destroy(t);
 	}
 
 	@property dstring content() const { return _content; }
@@ -50,7 +54,7 @@ class TextBox: GuiElement
 	TextBox content(dstring val)
 	{
 		_content = val;
-		_text_dirty = true;
+		update_text();
 		return this;
 	}
 
@@ -60,29 +64,29 @@ class TextBox: GuiElement
 	}
 
 	mixin SuperAccessor!(TextBox, SizeType, "sizeType",
-		"if (val != SizeType.CONTENT) assert(0, \"TextBox always has CONTENT sizeType\");");
+		`if (val != SizeType.CONTENT) assert(0, "TextBox always has CONTENT sizeType");`);
 
 	mixin ElementAccessor!(TextBox, uint, "font_size",
-		"update_font_size(); _text_dirty = true;");
+		"update_font_size(); update_text();");
 
 	mixin ElementAccessor!(TextBox, string, "fontname",
-		"update_fontname(); _text_dirty = true;");
+		"update_fontname(); update_text();");
 
 	mixin ElementAccessor!(TextBox, sfColor, "font_color",
 		"update_font_color();");
 
-	mixin ElementAccessor!(TextBox, float, "padding",
-		"_text_dirty = true;");
+	mixin ElementAccessor!(TextBox, int, "padding",
+		"update_text();");
 
 	// main text creation function
-	protected void layout_text()
+	private void update_text()
 	{
-		bool naiive_width = true;	// glyph width is initialized naively
+		bool naiive_width = true;	// glyph width is estimated naively
 		float glyph_width = get_glyph_width();
 		float line_spacing = get_line_spacing();
-		float line_width = _size.x - 2.0f * _padding - 2.0f * _border_width;// -_scrollbar_width;
+		float line_width = get_size.x - 2.0f * _padding - 2.0f * _border_width;
 		int chars_in_line = max(1, to!int(floor(line_width / glyph_width)));
-		dchar[512] tmp = 0;		// stack-allocated array to hold processed line
+		dchar[512] tmp = 0;		// stack-allocated array to hold the line being built
 		size_t content_idx = 0;	// cursor to query _content
 		int line_idx = 0;
 		size_t txt_idx = 0;		// cursor to query texts;
@@ -110,9 +114,8 @@ class TextBox: GuiElement
 					assert(glyph_width > 0.0f);
 					chars_in_line = max(1, to!int(floor(line_width / glyph_width)) - 1);
 					naiive_width = false;
-					// go to start again
-					txt_idx = tmp_idx = content_idx = 0;
-					line_idx = 0;
+					// essentially restart update_text:
+					txt_idx = tmp_idx = content_idx = line_idx = 0;
 					return;
 				}
 				setup_text_obj_coords(t, line_idx, line_spacing);
@@ -159,7 +162,7 @@ class TextBox: GuiElement
 		text_full_height = line_idx * line_spacing;
 	}
 
-	protected
+	private
 	{
 		float text_full_height = 0.0f;
 	}
@@ -180,34 +183,34 @@ class TextBox: GuiElement
 		x = -bounds.left + _padding;
 		y = interline * line_number + _padding;
 		sfText_setPosition(t,
-			sfVector2f(round(x) + _position.x, round(y) + _position.y));
+			sfVector2f(round(x), round(y)));
 	}
 
-	float get_glyph_width()
+	private float get_glyph_width()
 	{
 		// glyph of 'A'
 		sfGlyph g = sfFont_getGlyph(loadedFonts[_fontname], 34, _font_size, false);
 		return g.bounds.width;
 	}
 
-	float get_line_spacing()
+	private float get_line_spacing()
 	{
 		return sfFont_getLineSpacing(loadedFonts[_fontname], _font_size);
 	}
 
-	protected void update_font_size()
+	private void update_font_size()
 	{
 		foreach (t; texts)
 			sfText_setCharacterSize(t, _font_size);
 	}
 
-	protected void update_fontname()
+	private void update_fontname()
 	{
 		foreach (t; texts)
 			sfText_setFont(t, loadedFonts[_fontname]);
 	}
 
-	protected void update_font_color()
+	private void update_font_color()
 	{
 		foreach (t; texts)
 			sfText_setColor(t, _font_color);
@@ -221,14 +224,13 @@ class TextBox: GuiElement
 		super.update_visuals();
 	}
 
-	override protected void do_draw(Window wnd)
+	override void draw(Window wnd)
 	{
-		super.do_draw(wnd);
-		//sfRenderWindow_setView(wnd.ptr, text_view);
+		super.draw(wnd);
 		// drawn texts line by line
 		// todo: optimize, not all lines need to be drawn
 		foreach (t; texts)
-			sfRenderWindow_drawText(wnd.ptr, t, null);
+			sfRenderWindow_drawText(wnd.ptr, t, &sf_rst);
 	}
 }
 

@@ -110,10 +110,7 @@ class GuiElement: IInputReciever
 		return _size[content_dim];
 	}
 
-	protected void do_fit_content(Dim content_dim)
-	{
-		_size[content_dim] = 0;
-	}
+	protected void do_fit_content(Dim content_dim) {}
 
 	//
 	// rendering stuff
