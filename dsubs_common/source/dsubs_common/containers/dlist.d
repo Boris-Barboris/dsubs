@@ -1,6 +1,6 @@
 module dsubs_common.containers.dlist;
 
-import std.functional : unaryFun;
+import std.functional: unaryFun;
 
 
 // Double-linked list
@@ -221,7 +221,7 @@ struct DList(T)
 	void destroy_node(DNode* node)
 	{
 		assert(node);
-		delete node;
+		//delete node;
 		/*
 		static if (HoldsAllocator)
 			return this._allocator.dispose(node);

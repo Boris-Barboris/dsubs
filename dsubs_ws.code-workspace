@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"d.projectImportPaths": [
+			"D:\\Coding\\dsubs\\DerelictSFML2\\source",
+			"D:\\Coding\\dsubs\\dsubs_common\\source",
+			"D:\\Coding\\dsubs\\dsubs_client\\source"
+		]
+	}
+}

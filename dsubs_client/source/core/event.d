@@ -9,7 +9,7 @@ struct Event(ArgTypes...)
 
 	private HandlerType[] handlers;
 
-	// append or remove handler
+	/// append or remove handler
 	void opOpAssign(string op)(HandlerType handler)
 	{
 		static if (op == "+")
@@ -23,7 +23,7 @@ struct Event(ArgTypes...)
 		else static assert(0, "Operator " ~ op ~ "= non-applicable to event");
 	}
 
-	// forget all handlers
+	/// forget all handlers
 	void clear()
 	{
 		handlers.length = 0;

@@ -16,7 +16,7 @@ import dsubs_client.core.event;
 
 alias sfEventHandler = void delegate(Window, const sfEvent*);
 
-// wrapper around sfml window
+/// wrapper around sfml window
 final class Window
 {
 	this(dstring windowName = "dsubs"d)
@@ -105,13 +105,18 @@ final class Window
 			sfRenderWindow_close(m_wnd);
 	}
 
-	// Raw SFML window pointer
+	/// Raw SFML window pointer
 	@property sfRenderWindow* wnd() { return m_wnd; }
+
 	@property sfView* view() { return m_view; }
 
+	/// client area width
 	@property uint width() const { return m_mode.width; }
+
+	/// client area height
 	@property uint height() const { return m_mode.height; }
-	@property bool hasFocus() const { return sfRenderWindow_hasFocus(m_wnd) != 0; }
+
+	@property bool hasFocus() const { return sfRenderWindow_hasFocus(m_wnd) == sfTrue; }
 
 	// reset view and scissors to window size
 	void resetView()
@@ -124,6 +129,7 @@ final class Window
 	}
 
 private:
+	// lock to hold, since view is contended by event processing and render threads
 	Mutex m_resizeMut;
 	sfRenderWindow* m_wnd;
 	sfView* m_view;
@@ -133,8 +139,8 @@ private:
 
 	static void resizedHandler(Window sender, const sfEvent* evt)
 	{
-		m_resizeMut.lock();
-		scope(exit) m_resizeMut.unlock();
+		sender.m_resizeMut.lock();
+		scope(exit) sender.m_resizeMut.unlock();
 		sender.m_mode.width = evt.size.width;
 		sender.m_mode.height = evt.size.height;
 		trace("Resize event caught, ", sender.width, "x", sender.height);

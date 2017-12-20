@@ -7,10 +7,10 @@ import std.range;
 
 // Mixins to reduce boilerplate in object hierarchies
 
-// generate final getter and virtual setter properties.
-// postupdateCode in injected right after field value update.
-// member field is expected to be named "m_" ~ fieldName, as in
-// hungarian scope notation.
+/** Generates final getter and virtual setter properties.
+postupdateCode in injected right after field value update.
+member field is expected to be named "m_" ~ fieldName, as in
+hungarian scope notation. */
 mixin template GetSet(T, string fieldName, string postupdateCode)
 {
 	mixin("final @property " ~ T.stringof ~ " " ~ fieldName ~
@@ -19,7 +19,7 @@ mixin template GetSet(T, string fieldName, string postupdateCode)
 		"{ m_" ~ fieldName ~ " = val;" ~ postupdateCode ~ "return m_" ~ fieldName  ~ ";}");
 }
 
-// append additional postupdateCode to setter of the base class
+/// Append additional postupdateCode to setter of the base class
 mixin template OverrideSet(T, string fieldName, string postupdateCode)
 {
 	mixin("alias " ~ fieldName ~ " = super." ~ fieldName ~ ";");
@@ -27,7 +27,7 @@ mixin template OverrideSet(T, string fieldName, string postupdateCode)
 		"{ super." ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName ~ ";}");
 }
 
-// replace postupdateCode in setter of the base class
+/// Replace postupdateCode in setter of the base class
 mixin template RewriteSet(T, string fieldName, string postupdateCode)
 {
 	mixin("alias " ~ fieldName ~ " = super." ~ fieldName ~ ";");

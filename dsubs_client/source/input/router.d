@@ -3,13 +3,13 @@ module dsubs_client.input.router;
 import std.experimental.logger;
 
 import derelict.sfml2.window;
+import derelict.sfml2.graphics;
 
-public import dsubs_client.core.component;
 import dsubs_client.lib.sfml;
 public import dsubs_client.core.window;
 
 
-// Generic input event reciever
+/// Generic input event reciever
 interface IInputReciever
 {
 	// Every frame artificial MouseMove event is generated
@@ -27,10 +27,11 @@ interface IInputReciever
 	// Recievers can also request exclusive mouse event focus. Example: dragging
 	void handleMouseFocusGain();
 	void handleMouseFocusLoss();
-	// keyboard handling method. Reciever may permit passthrough.
-	HandleResult handleKeyboard(const sfEvent* evt);
+	// keyboard handling method. Reciever may state that he is uninterested in
+	// this event.
+	HandleResult handleKeyboard(Window wnd, const sfEvent* evt);
 	// mouse handling method. We forbid to pass mouse events through recievers.
-	void handleMousePos(const sfEvent* evt, int x, int y,
+	void handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
 		sfMouseButton btn, int delta);
 }
 
@@ -49,208 +50,242 @@ struct RouteResult
 	IInputReciever reciever;
 }
 
-/// Anything that can route WindowEvent
+/// Particular subsystem should implement this interface, that allows to
+/// select one particular component from many.
 interface IWindowEventSubrouter
 {
-	RouteResult routeMousePos(Router ctx, const sfEvent* evt, int x, int y);
-	RouteResult routeKeyboard(Router ctx, const sfEvent* evt);
-	void handleWindowResize(Router ctx, Window wnd, const sfSizeEvent* evt);
+	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y);
+	RouteResult routeKeyboard(Window wnd, const sfEvent* evt);
+	void handleWindowResize(Window wnd, const sfSizeEvent* evt);
 }
 
-/// Event router, that orderes window event handling by subsystems
-final class Router
+/// Window event router
+final class InputRouter
 {
-	private Window _window;
-	IWindowEventSubrouter gui_router;
-	IWindowEventSubrouter overlay_router;
-	IWindowEventSubrouter world_router;
-	IWindowEventSubrouter hotkey_router;
+	// subrouters in natural order:
+	IWindowEventSubrouter guiRouter;
+	IWindowEventSubrouter overlayRouter;
+	IWindowEventSubrouter worldRouter;
+	IWindowEventSubrouter hotkeyRouter;
 
 	// Focused components. Just assign them to what you need. Focused
 	// components are global and static. Only one reciever is under cursor.
-	// Only one reciever is focused.
-	private static __gshared IInputReciever _cursorPointed, _kbFocus, _mouseFocus;
+	// Only one reciever is focused. Only one window is actively getting
+	// events.
+	private static __gshared IInputReciever
+		g_underCursor, g_kbFocused, g_mouseFocused;
 
-	mixin template FocusAccessor(string field_name, string loose_name,
-		string gain_name)
+	static @property IInputReciever underCursor() const { return g_underCursor; }
+	static @property IInputReciever underCursor(IInputReciever rhs) 
 	{
-		mixin("static IInputReciever " ~ field_name ~ "() { return _" ~ field_name ~ ";}");
-		mixin("static void " ~ field_name ~ "(IInputReciever val) " ~
-			"{ if (_" ~ field_name ~ " !is val) { if (_" ~ field_name ~ ") _" ~
-			field_name ~ "." ~	loose_name ~ "(); if (val) val." ~ gain_name ~
-			"(); _" ~ field_name ~ " = val;}}");
+		if (g_underCursor != rhs && g_underCursor != null)
+			g_underCursor.handleMouseLeave();
+		return g_underCursor = rhs;
 	}
 
-	mixin FocusAccessor!("cursorPointed", "handleMouseLeave", "handleMouseEnter");
-	mixin FocusAccessor!("kbFocus", "handleKbFocusLoss", "handleKbFocusGain");
-	mixin FocusAccessor!("mouseFocus", "handleMouseFocusLoss", "handleMouseFocusGain");
+	static @property IInputReciever kbFocused() const { return g_kbFocused; }
+	static @property IInputReciever kbFocused(IInputReciever rhs) 
+	{
+		if (g_kbFocused != rhs && g_kbFocused != null)
+			g_kbFocused.handleMouseLeave();
+		return g_kbFocused = rhs;
+	}
 
-	@property Window window() { return _window; }
+	static @property IInputReciever mouseFocused() const { return g_mouseFocused; }
+	static @property IInputReciever mouseFocused(IInputReciever rhs) 
+	{
+		if (g_mouseFocused != rhs && g_mouseFocused != null)
+			g_mouseFocused.handleMouseLeave();
+		return g_mouseFocused = rhs;
+	}
+
+	private Window m_window;
+	@property Window window() { return m_window; }
 
 	this(Window wnd)
 	{
-		_window = wnd;
+		assert(wnd);
+		m_window = wnd;
+		m_wndHasFocus = wnd.hasFocus;
 
-		// subscribe to events we may be interested in...
-		wnd.register_handler(sfEvtLostFocus, &on_window_lost_focus);
-		wnd.register_handler(sfEvtResized, &route_resize_event);
-		wnd.register_handler(sfEvtTextEntered, &route_keyboard_event);
-		wnd.register_handler(sfEvtKeyPressed, &route_keyboard_event);
-		wnd.register_handler(sfEvtKeyReleased, &route_keyboard_event);
-		wnd.register_handler(sfEvtMouseWheelMoved, &route_mouse_event);
-		wnd.register_handler(sfEvtMouseButtonPressed, &route_mouse_event);
-		wnd.register_handler(sfEvtMouseButtonReleased, &route_mouse_event);
-
-		// we don't register MouseMoved handler, because we use artificial
+		// subscribe to events we may be interested in
+		wnd.registerHandler(sfEvtLostFocus, &onWindowLostFocus);
+		wnd.registerHandler(sfEvtGainedFocus, &onWindowGainFocus);
+		wnd.registerHandler(sfEvtMouseEntered, &onMouseEnter);
+		wnd.registerHandler(sfEvtMouseLeft, &onMouseLeave);
+		wnd.registerHandler(sfEvtResized, &routeResizeEvent);
+		wnd.registerHandler(sfEvtTextEntered, &routeKeyboardEvent);
+		wnd.registerHandler(sfEvtKeyPressed, &routeKeyboardEvent);
+		wnd.registerHandler(sfEvtKeyReleased, &routeKeyboardEvent);
+		wnd.registerHandler(sfEvtMouseWheelMoved, &routeMouseEvent);
+		wnd.registerHandler(sfEvtMouseButtonPressed, &routeMouseEvent);
+		wnd.registerHandler(sfEvtMouseButtonReleased, &routeMouseEvent);
+		// we don't register MouseMoved handler, because we create artificial
 		// event each frame.
-		//wnd.register_handler(sfEvtMouseMoved, &route_event);
-
-		// cursor-related special cases:
-		wnd.register_handler(sfEvtMouseEntered, (a) { mouse_inside = true; });
-		wnd.register_handler(sfEvtMouseLeft, (a)
-			{ cursorPointed(null); mouse_inside = false; });
 	}
 
-	private bool mouse_inside = true;
+	private bool m_mouseInside = true;
+	private bool m_wndHasFocus;
 
 	/// In dynamic, moving environment it's simpler to just generate
 	/// mouseMove event every time screen is redrawn in order to get new
 	/// object under the cursor. GUI router should have a good cache anyways.
-	void simulate_mouse_move()
+	void simulateMouseMove()
 	{
-		if (_window.hasFocus && mouse_inside)
+		if (m_wndHasFocus && m_mouseInside)
 		{
-			sfVector2i mp = sfMouse_getPositionRenderWindow(_window.ptr);
-			sfEvent move_event;
-			move_event.type = sfEvtMouseMoved;
-			move_event.mouseMove.x = mp.x;
-			move_event.mouseMove.y = mp.y;
-			route_mouse_event(&move_event);
+			sfVector2i mp = sfMouse_getPositionRenderWindow(m_window.wnd);
+			sfEvent moveEvent;
+			moveEvent.type = sfEvtMouseMoved;
+			moveEvent.mouseMove.x = mp.x;
+			moveEvent.mouseMove.y = mp.y;
+			routeMouseEvent(m_window, &moveEvent);
 		}
 	}
 
-	void clear_focus()
+	void clearFocused()
 	{
-		cursorPointed(null);
-		kbFocus(null);
-		mouseFocus(null);
+		underCursor = null;
+		kbFocused = null;
+		mouseFocused = null;
 	}
 
-	void on_window_lost_focus(const sfEvent* evt)
+private:
+
+	void onWindowLostFocus(Window wnd, const sfEvent* evt)
 	{
+		assert(wnd == m_window);
 		// When window loses focus, we simply clear all internal focuses.
-		clear_focus();
+		clearFocused();
+		m_wndHasFocus = false;
 	}
 
-	void route_resize_event(const sfEvent* evt)
+	void onWindowGainFocus(Window wnd, const sfEvent* evt)
 	{
+		assert(wnd == m_window);
+		m_wndHasFocus = true;
+	}
+
+	void onMouseEnter(Window wnd, const sfEvent* evt)
+	{
+		assert(wnd == m_window);
+		m_mouseInside = true;
+	}
+
+	void onMouseLeave(Window wnd, const sfEvent* evt)
+	{
+		assert(wnd == m_window);
+		underCursor = null;
+		m_mouseInside = false;
+	}
+
+	void routeResizeEvent(Window wnd, const sfEvent* evt)
+	{
+		assert(wnd == m_window);
 		const sfSizeEvent* sevt = cast(const sfSizeEvent*) evt;
-		if (gui_router)
-			gui_router.handleWindowResize(this, _window, sevt);
-		if (overlay_router)
-			overlay_router.handleWindowResize(this, _window, sevt);
-		if (world_router)
-			world_router.handleWindowResize(this, _window, sevt);
+		if (guiRouter)
+			guiRouter.handleWindowResize(wnd, sevt);
+		if (overlayRouter)
+			overlayRouter.handleWindowResize(wnd, sevt);
+		if (worldRouter)
+			worldRouter.handleWindowResize(wnd, sevt);
 	}
 
-	void route_keyboard_event(const sfEvent* evt)
+	void routeKeyboardEvent(Window wnd, const sfEvent* evt)
 	{
+		assert(wnd == m_window);
 		HandleResult res;
-		if (_kbFocus)
+		if (m_kbFocus)
 		{
-			res = _kbFocus.handleKeyboard(evt);
+			res = m_kbFocus.handleKeyboard(wnd, evt);
 			if (!res.passThrough)
 				return;
 		}
 		// routing cascade
 		RouteResult rres;
-		if (gui_router)
+		if (guiRouter)
 		{
-			rres = gui_router.routeKeyboard(this, evt);
+			rres = guiRouter.routeKeyboard(wnd, evt);
 			if (rres.reciever)
-				if (!rres.reciever.handleKeyboard(evt).passThrough)
+				if (!rres.reciever.handleKeyboard(wnd, evt).passThrough)
 					return;
 		}
-		if (overlay_router)
+		if (overlayRouter)
 		{
-			rres = overlay_router.routeKeyboard(this, evt);
+			rres = overlayRouter.routeKeyboard(wnd, evt);
 			if (rres.reciever)
-				if (!rres.reciever.handleKeyboard(evt).passThrough)
+				if (!rres.reciever.handleKeyboard(wnd, evt).passThrough)
 					return;
 		}
-		if (world_router)
+		if (worldRouter)
 		{
-			rres = world_router.routeKeyboard(this, evt);
+			rres = worldRouter.routeKeyboard(wnd, evt);
 			if (rres.reciever)
-				if (!rres.reciever.handleKeyboard(evt).passThrough)
+				if (!rres.reciever.handleKeyboard(wnd, evt).passThrough)
 					return;
 		}
-		if (hotkey_router)
+		if (hotkeyRouter)
 		{
-			rres = hotkey_router.routeKeyboard(this, evt);
+			rres = hotkeyRouter.routeKeyboard(wnd, evt);
 			if (rres.reciever)
-				if (!rres.reciever.handleKeyboard(evt).passThrough)
-					return;
+				rres.reciever.handleKeyboard(wnd, evt);
 		}
 	}
 
-	private bool handle_mouse(RouteResult rres, const sfEvent* evt, int x, int y,
+	static bool handleMouse(Window wnd, RouteResult rres, const sfEvent* evt, int x, int y,
 		sfMouseButton btn, int delta)
 	{
 		if (rres.reciever)
 		{
-			cursorPointed(rres.reciever);
-			// mouse button events may also clear keyboard focus
-			if (evt.type == sfEvtMouseButtonPressed && rres.reciever !is _kbFocus)
-				kbFocus(null);
-			rres.reciever.handleMousePos(evt, x, y, btn, delta);
+			underCursor = rres.reciever;
+			// mouse button events also clear keyboard focus
+			if (evt.type == sfEvtMouseButtonPressed && 
+				rres.reciever != kbFocused)
+			{
+				kbFocused = null;
+			}
+			rres.reciever.handleMousePos(wnd, evt, x, y, btn, delta);
 			return true;
 		}
 		return false;
 	}
 
-	void route_mouse_event(const sfEvent* evt)
+	void routeMouseEvent(Window wnd, const sfEvent* evt)
 	{
+		assert(wnd == m_window);
 		int x, y, delta;
 		sfMouseButton btn;
 		if (!isMousePosEvent(evt, x, y, btn, delta))
-			throw new Exception("Mouse event is not actually a mouse event");
-		HandleResult res;
-		if (_mouseFocus)
+			assert(0, "Mouse event is not actually a mouse event");
+		if (g_underCursor)
 		{
-			_mouseFocus.handleMousePos(evt, x, y, btn, delta);
-			return;
+			g_underCursor.handleMousePos(wnd, evt, x, y, btn, delta);
+			return;	// no passthrough for mouse
 		}
 		// routing cascade
 		RouteResult rres;
-		if (gui_router)
+		if (guiRouter)
 		{
-			rres = gui_router.routeMousePos(this, evt, x, y);
-			if (handle_mouse(rres, evt, x, y, btn, delta))
+			rres = guiRouter.routeMousePos(this, evt, x, y);
+			if (handleMouse(wnd, rres, evt, x, y, btn, delta))
 				return;
 		}
-		if (overlay_router)
+		if (overlayRouter)
 		{
-			rres = overlay_router.routeMousePos(this, evt, x, y);
-			if (handle_mouse(rres, evt, x, y, btn, delta))
+			rres = overlayRouter.routeMousePos(this, evt, x, y);
+			if (handleMouse(wnd, rres, evt, x, y, btn, delta))
 				return;
 		}
-		if (world_router)
+		if (worldRouter)
 		{
-			rres = world_router.routeMousePos(this, evt, x, y);
-			if (handle_mouse(rres, evt, x, y, btn, delta))
-				return;
-		}
-		if (hotkey_router)
-		{
-			rres = hotkey_router.routeMousePos(this, evt, x, y);
-			if (handle_mouse(rres, evt, x, y, btn, delta))
+			rres = worldRouter.routeMousePos(this, evt, x, y);
+			if (handleMouse(wnd, rres, evt, x, y, btn, delta))
 				return;
 		}
 		// mouse event was not captured by anything, nothing is under cursor
-		cursorPointed(null);
+		g_underCursor = null;
 		// click in emptyness clears keyboard focus
 		if (evt.type == sfEvtMouseButtonPressed)
-			kbFocus(null);
+			g_kbFocused = null;
 	}
 }
