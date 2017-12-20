@@ -1,152 +1,142 @@
 module dsubs_client.core.window;
 
 import core.sync.mutex;
+import core.stdc.stdlib: free;
 
 import std.algorithm;
 import std.array;
-import std.conv;
-import std.experimental.logger;
+import std.conv: to;
+import std.experimental.logger: info, trace;
 
-public import derelict.sfml2.graphics;
-public import derelict.sfml2.window;
+import derelict.sfml2.graphics;
+import derelict.sfml2.window;
 
 import dsubs_client.core.event;
 
 
-alias sfEventHandler = void delegate(const sfEvent*);
+alias sfEventHandler = void delegate(Window, const sfEvent*);
 
+// wrapper around sfml window
 final class Window
 {
-	this(dstring window_name = "dsubs"d)
+	this(dstring windowName = "dsubs"d)
 	{
-		gui_mutex = new Mutex();
-		if (fullscreen)
-			mode = chooseBiggestMode();
-		else
-		{
-			mode = sfVideoMode_getDesktopMode();
-			mode.width = to!uint(mode.width / 1.5);
-			mode.height = to!uint(mode.height / 1.5);
-		}
-		ctx_settings.depthBits = 24;
-		ctx_settings.stencilBits = 8;
-		ctx_settings.antialiasingLevel = 4;
-		ctx_settings.majorVersion = 3;
-		ctx_settings.minorVersion = 2;
-		ctx_settings.attributeFlags = sfContextDefault;
-		info("OpenGL context settings: ", ctx_settings);
+		m_resizeMut = new Mutex();
+		m_mode = sfVideoMode_getDesktopMode();
+		m_mode.width = to!uint(m_mode.width / 1.4);
+		m_mode.height = to!uint(m_mode.height / 1.4);
+		m_ctxSettings.depthBits = 24;
+		m_ctxSettings.stencilBits = 8;
+		m_ctxSettings.antialiasingLevel = 4;
+		m_ctxSettings.majorVersion = 3;
+		m_ctxSettings.minorVersion = 2;
+		m_ctxSettings.attributeFlags = sfContextDefault;
+		info("OpenGL context settings: ", m_ctxSettings);
 		info("Creating window...");
-		wnd = sfRenderWindow_createUnicode(mode, window_name.ptr,
-										   sfDefaultStyle, &ctx_settings);
-		sfRenderWindow_setVerticalSyncEnabled(wnd, true);
+		m_wnd = sfRenderWindow_createUnicode(m_mode, windowName.ptr,
+											sfDefaultStyle, &m_ctxSettings);
+		sfRenderWindow_setVerticalSyncEnabled(m_wnd, true);
 		info("OK");
 		// register default handlers
-		register_handler(sfEvtResized, &resized_handler);
-		_view = sfView_create();
-		sfView_reset(_view, sfFloatRect(0.0, 0.0, width, height));
-		sfRenderWindow_setView(wnd, _view);
+		register_handler(sfEvtResized, &resizedHandler);
+		m_view = sfView_create();
 		// custom sfml patch enables scissor testing
-		sfRenderWindow_setScissorTest(wnd, true);
+		sfRenderWindow_setScissorTest(m_wnd, true);
+		resetView();
 	}
 
-	// this function is probably generating garbage, but i don't really care
-	static const(sfVideoMode)[] getSupportedModes()
+	// TODO: descructor
+
+	private static const(sfVideoMode)[] getSupportedModes()
 	{
 		size_t mode_count = 0;
 		auto modes = sfVideoMode_getFullscreenModes(&mode_count);
 		return modes[0 .. mode_count];
 	}
 
-	static sfVideoMode chooseBiggestMode()
+	private static sfVideoMode chooseBiggestMode()
 	{
 		auto modes = getSupportedModes();
 		foreach (m; modes)
 			info("Video mode detected: ", m);
-		info("Selecting ", modes[$-1]);
 		sfVideoMode res = modes[$-1];
+		info("Selecting ", res);
+		free(modes.ptr);	// this may crash
 		return res;
 	}
 
-	void register_handler(sfEventType type, sfEventHandler handler)
+	void registerHandler(sfEventType type, sfEventHandler handler)
 	{
-		event_handlers[type] += handler;
+		m_eventHandlers[type] += handler;
 	}
 
-	void unregister_handler(sfEventType type, sfEventHandler handler)
+	void unregisterHandler(sfEventType type, sfEventHandler handler)
 	{
-		event_handlers[type] -= handler;
+		m_eventHandlers[type] -= handler;
 	}
 
-	/// Function repeatedly polls all events in window buffer and calls
-	/// respective handlers, if registered. Blocks until the window is closed.
-	void poll_events()
+	private bool m_closeRequested = false;
+
+	void requestClose()
 	{
-		bool closing = false;
+		m_closeRequested = true;
+	}
+
+	/// Function repeatedly polls events in window buffer and calls
+	/// respective handlers, if registered. Blocks until the window is closed, or
+	/// waitEvent returns error.
+	void pollEvents()
+	{
 		sfEvent event;
-		while (sfRenderWindow_waitEvent(wnd, &event))
+		while (!m_closeRequested && sfRenderWindow_waitEvent(m_wnd, &event))
 		{
 			// special case: window close event
 			if (event.type == sfEvtClosed)
 			{
-				event_handlers[event.type](&event);
+				m_eventHandlers[event.type](this, &event);
 				// actually close the window
 				info("Standard window close event caught");
-				sfRenderWindow_close(wnd);
-				closing = true;
+				m_closeRequested = true;
 			}
 			else
-			{
-				// we do not route events during rendering dispatch
-				input_mutex.lock();
-				scope(exit) imput_mutex.unlock();
-				event_handlers[event.type](&event);
-			}
-			if (closing)
-				break;
+				event_handlers[event.type](this, &event);
 		}
-	}
-
-	void close_window()
-	{
-		info("Closing window");
-		// Generate artificial close event
-		sfEvent close_event;
-		close_event.type = sfEvtClosed;
-		event_handlers[sfEvtClosed](&close_event);
-		// actually close the window
-		sfRenderWindow_close(wnd);
-		closing = true;
+		if (m_closeRequested)
+			sfRenderWindow_close(m_wnd);
 	}
 
 	// Raw SFML window pointer
-	sfRenderWindow* ptr() const { return wnd; }
+	@property sfRenderWindow* wnd() { return m_wnd; }
+	@property sfView* view() { return m_view; }
 
-	uint width() const { return mode.width; }
-	uint height() const { return mode.height; }
-	int hasFocus() const {	return sfRenderWindow_hasFocus(wnd); }
+	@property uint width() const { return m_mode.width; }
+	@property uint height() const { return m_mode.height; }
+	@property bool hasFocus() const { return sfRenderWindow_hasFocus(m_wnd) != 0; }
 
-	// default window view will always be here
-	sfView* view() { return _view; }
-
-	// different usefull mutexes
-	Mutex input_mutex;
+	// reset view and scissors to window size
+	void resetView()
+	{
+		m_resizeMut.lock();
+		scope(exit) m_resizeMut.unlock();
+		sfView_reset(m_view, sfFloatRect(0.0f, 0.0f, m_mode.width, m_mode.height));
+		sfRenderWindow_setScissor(m_wnd, sfIntRect(0, 0, m_mode.width, m_mode.height));
+		sfRenderWindow_setView(m_wnd, m_view);
+	}
 
 private:
-	sfRenderWindow* wnd;
-	sfView* _view;
-	sfVideoMode mode;
-	sfContextSettings ctx_settings;
-	bool fullscreen = false;
-	Event!(const sfEvent*)[sfEvtCount] event_handlers;
+	Mutex m_resizeMut;
+	sfRenderWindow* m_wnd;
+	sfView* m_view;
+	sfVideoMode m_mode;
+	sfContextSettings m_ctxSettings;
+	Event!(Window, const sfEvent*)[sfEvtCount] m_eventHandlers;
 
-	void resized_handler(const sfEvent* evt)
+	static void resizedHandler(Window sender, const sfEvent* evt)
 	{
-		mode.width = evt.size.width;
-		mode.height = evt.size.height;
-		trace("Resize event caught, ", width, "x", height);
-		// reset view
-		sfView_reset(_view, sfFloatRect(0.0, 0.0, mode.width, mode.height));
-		sfRenderWindow_setScissor(wnd, sfIntRect(0, 0, mode.width, mode.height));
-		sfRenderWindow_setView(wnd, _view);
+		m_resizeMut.lock();
+		scope(exit) m_resizeMut.unlock();
+		sender.m_mode.width = evt.size.width;
+		sender.m_mode.height = evt.size.height;
+		trace("Resize event caught, ", sender.width, "x", sender.height);
 	}
 }

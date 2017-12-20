@@ -1,13 +1,14 @@
 module dsubs_client.lib.sfml;
 
-import std.conv;
-import std.experimental.logger;
+import std.conv: to;
+import std.experimental.logger: info;
+import std.meta: AliasSeq;
 
 import gfm.math.vector;
 import gfm.math.matrix;
 
-public import derelict.sfml2.system;
-public import derelict.sfml2.window;
+import derelict.sfml2.system;
+import derelict.sfml2.window;
 import derelict.sfml2.audio;
 import derelict.sfml2.graphics;
 import derelict.sfml2.network;
@@ -24,17 +25,15 @@ void loadSfmlLibraries()
 	info("OK");
 }
 
-// event stuff
-
-bool isMousePosEvent(const sfEvent* evt, out int x, out int y,
-	out sfMouseButton mbutton, out int wheel_delta)
+bool isMousePosEvent(in sfEvent* evt, out int x, out int y,
+	out sfMouseButton mbutton, out int wheelDelta)
 {
 	if (evt.type == sfEvtMouseMoved)
 	{
 		x = evt.mouseMove.x;
 		y = evt.mouseMove.y;
 		mbutton = -1;
-		wheel_delta = 0;
+		wheelDelta = 0;
 		return true;
 	}
 	if (evt.type == sfEvtMouseButtonPressed)
@@ -42,7 +41,7 @@ bool isMousePosEvent(const sfEvent* evt, out int x, out int y,
 		x = evt.mouseButton.x;
 		y = evt.mouseButton.y;
 		mbutton = evt.mouseButton.button;
-		wheel_delta = 0;
+		wheelDelta = 0;
 		return true;
 	}
 	if (evt.type == sfEvtMouseButtonReleased)
@@ -50,7 +49,7 @@ bool isMousePosEvent(const sfEvent* evt, out int x, out int y,
 		x = evt.mouseButton.x;
 		y = evt.mouseButton.y;
 		mbutton = evt.mouseButton.button;
-		wheel_delta = 0;
+		wheelDelta = 0;
 		return true;
 	}
 	if (evt.type == sfEvtMouseWheelMoved)
@@ -58,13 +57,13 @@ bool isMousePosEvent(const sfEvent* evt, out int x, out int y,
 		x = evt.mouseWheel.x;
 		y = evt.mouseWheel.y;
 		mbutton = -1;
-		wheel_delta = evt.mouseWheel.delta;
+		wheelDelta = evt.mouseWheel.delta;
 		return true;
 	}
 	return false;
 }
 
-bool isMousePosEvent(const sfEvent* evt)
+bool isMousePosEvent(in sfEvent* evt)
 {
 	return (evt.type == sfEvtMouseMoved ||
 			evt.type == sfEvtMouseButtonPressed ||
@@ -72,19 +71,19 @@ bool isMousePosEvent(const sfEvent* evt)
 			evt.type == sfEvtMouseWheelMoved);
 }
 
-bool isMouseEvent(const sfEvent* evt)
+bool isMouseEvent(in sfEvent* evt)
 {
 	return (isMousePosEvent(evt) ||
 			isMouseEnterLeave(evt));
 }
 
-bool isMouseEnterLeave(const sfEvent* evt)
+bool isMouseEnterLeave(in sfEvent* evt)
 {
 	return (evt.type == sfEvtMouseEntered ||
 			evt.type == sfEvtMouseLeft);
 }
 
-bool isKeyboardEvent(const sfEvent* evt)
+bool isKeyboardEvent(in sfEvent* evt)
 {
 	return (evt.type == sfEvtTextEntered ||
 			evt.type == sfEvtKeyPressed ||
@@ -92,24 +91,24 @@ bool isKeyboardEvent(const sfEvent* evt)
 }
 
 // conversions
-sfVector2f tosf(const vec2f v)
+sfVector2f tosf(in vec2f v)
 {
 	return sfVector2f(v.x, v.y);
 }
 
-sfVector2f tosf(const vec2ui v)
+sfVector2f tosf(in vec2ui v)
 {
 	return sfVector2f(v.x, v.y);
 }
 
-sfVector2f tosf(const vec2i v)
+sfVector2f tosf(in vec2i v)
 {
 	return sfVector2f(v.x, v.y);
 }
 
-sfIntRect tosf(ref const vec4i r)
+sfIntRect tosf(in vec4i r)
 {
-	return *cast(sfIntRect*)&r;
+	return sfIntRect(r[0], r[1], r[2], r[3]);
 }
 
 unittest
@@ -122,14 +121,13 @@ unittest
 	assert(v1.height == 3);
 }
 
-sfVector2f tosf(const vec2d v)
+sfVector2f tosf(in vec2d v)
 {
 	return sfVector2f(to!float(v.x), to!float(v.y));
 }
 
-import std.meta;
-
-sfTransform tosf(const ref mat3x3d m)
+// precision downscaling
+sfTransform tosf(in mat3x3d m)
 {
 	sfTransform res;
 	foreach (i; AliasSeq!(0, 1, 2, 6, 7, 8))

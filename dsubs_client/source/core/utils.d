@@ -5,30 +5,34 @@ import std.container.array;
 import std.range;
 
 
-/// Mixins to reduce boilerplate in object hierarchies
+// Mixins to reduce boilerplate in object hierarchies
 
-mixin template ElementAccessor(ElType, T, string field_name, string postupdate_code)
+// generate final getter and virtual setter properties.
+// postupdateCode in injected right after field value update.
+// member field is expected to be named "m_" ~ fieldName, as in
+// hungarian scope notation.
+mixin template GetSet(T, string fieldName, string postupdateCode)
 {
-	mixin("final " ~ T.stringof ~ " get_" ~ field_name ~
-		"() const { return _" ~ field_name ~ ";};");
-	mixin(ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
-		"{ _" ~ field_name ~ "=val;" ~ postupdate_code ~ "return this;}");
+	mixin("final @property " ~ T.stringof ~ " " ~ fieldName ~
+		"() const { return m_" ~ fieldName ~ ";};");
+	mixin("@property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
+		"{ m_" ~ fieldName ~ " = val;" ~ postupdateCode ~ "return m_" ~ fieldName  ~ ";}");
 }
 
-mixin template SuperAccessor(ElType, T, string field_name, string postupdate_code)
+// append additional postupdateCode to setter of the base class
+mixin template OverrideSet(T, string fieldName, string postupdateCode)
 {
-	/*mixin("override " ~ T.stringof ~ " " ~ field_name ~
-		"() const { return _" ~ field_name ~ ";};");*/
-	mixin("override " ~ ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
-		"{ super." ~ field_name ~ "(val);" ~ postupdate_code ~ "return this;}");
+	mixin("alias " ~ fieldName ~ " = super." ~ fieldName ~ ";");
+	mixin("override @property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
+		"{ super." ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName ~ ";}");
 }
 
-mixin template OverrideAccessor(ElType, T, string field_name, string postupdate_code)
+// replace postupdateCode in setter of the base class
+mixin template RewriteSet(T, string fieldName, string postupdateCode)
 {
-	/*mixin("override " ~ T.stringof ~ " " ~ field_name ~
-		"() const { return _" ~ field_name ~ ";};");*/
-	mixin("override " ~ ElType.stringof ~ " " ~ field_name ~ "(" ~ T.stringof ~ " val) " ~
-		"{ _" ~ field_name ~ "=val;" ~ postupdate_code ~ "return this;}");
+	mixin("alias " ~ fieldName ~ " = super." ~ fieldName ~ ";");
+	mixin("override @property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
+		"{ m_" ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName ~ ";}");
 }
 
 

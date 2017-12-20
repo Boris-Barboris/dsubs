@@ -1,14 +1,15 @@
 module dsubs_client.core.event;
 
-import std.traits;
+import dsubs_common.containers.array: removeFirst;
 
-import dsubs_common.containers.array;
 
 struct Event(ArgTypes...)
 {
 	alias HandlerType = void delegate(ArgTypes);
-	HandlerType[] handlers;
 
+	private HandlerType[] handlers;
+
+	// append or remove handler
 	void opOpAssign(string op)(HandlerType handler)
 	{
 		static if (op == "+")
@@ -22,13 +23,19 @@ struct Event(ArgTypes...)
 		else static assert(0, "Operator " ~ op ~ "= non-applicable to event");
 	}
 
-	void raise(ArgTypes args)
+	// forget all handlers
+	void clear()
+	{
+		handlers.length = 0;
+	}
+
+	void raise(ArgTypes args) const
 	{
 		foreach (handler; handlers)
 			handler(args);
 	}
 
-	void opCall(ArgTypes args)
+	void opCall(ArgTypes args) const
 	{
 		raise(args);
 	}

@@ -2,6 +2,7 @@ module dsubs_common.containers.array;
 
 import std.functional : unaryFun;
 
+// returns true if an element was found and removed from the array
 bool removeFirst(alias pred, T)(ref T[] arr)
 {
 	for (size_t i = 0; i < arr.length; i++)
