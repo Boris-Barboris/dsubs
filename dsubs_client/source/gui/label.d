@@ -13,26 +13,28 @@ import derelict.sfml2.window;
 
 public import dsubs_common.mutstring;
 
-import dsubs_client.lib.sfml;		// for conversions
+import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
-public import dsubs_client.gui.element;
+import dsubs_client.gui.element;
 import dsubs_client.gui.fonts;
 
 
-// self-explanatory for horizontal
-// left is top for vertical align
+/// self-explanatory for horizontal, left is top for vertical align
 enum TextAlign: ubyte
 {
-	LEFT,
-	CENTER,
-	RIGHT
+	LEFT = 0,
+	TOP = 0,
+	CENTER = 1,
+	RIGHT = 2,
+	BOTTOM = 2
 }
 
+/// One text line
 class Label: GuiElement
 {
 	private
 	{
-		dmutstring _content;
+		dmutstring m_content;
 		uint _font_size = 12;
 		string _fontname = "SansMono";
 		sfColor _font_color = sfWhite;

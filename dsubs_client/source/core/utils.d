@@ -16,7 +16,7 @@ mixin template GetSet(T, string fieldName, string postupdateCode)
 	mixin("final @property " ~ T.stringof ~ " " ~ fieldName ~
 		"() const { return m_" ~ fieldName ~ ";};");
 	mixin("@property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
-		"{ m_" ~ fieldName ~ " = val;" ~ postupdateCode ~ "return m_" ~ fieldName  ~ ";}");
+		"{ m_" ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName  ~ ";}");
 }
 
 /// Append additional postupdateCode to setter of the base class

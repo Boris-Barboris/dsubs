@@ -4,10 +4,10 @@ import std.algorithm.comparison;
 import std.string;
 
 
-/// Alias for simple mutable string, that we all need so much
-/// in gaming in order to prevent excessive reallocations.
-/// Mutstrings are null-terminated, since they are needed by
-/// external libraries written in C.
+/** Alias for simple mutable string, that we all need so much
+in gaming in order to prevent excessive reallocations.
+Mutstrings are null-terminated, since they are needed for
+external libraries written in C. */
 alias mutstring = char[];
 alias dmutstring = dchar[];		// 32-bit unicode
 
@@ -38,7 +38,7 @@ CharT[] _s(CharT)(immutable(CharT)[] s, size_t size) nothrow pure @safe
 
 /// Copy string contents into mutstring, extending it if
 /// required.
-void str2mut_copy(CharT)(immutable(CharT)[] s, ref CharT[] ms) nothrow @safe
+void str2mutCopy(CharT)(immutable(CharT)[] s, ref CharT[] ms) nothrow @safe
 {
 	ms.length = s.length + 1;
 	for (size_t i = 0; i < s.length; i++)
@@ -49,7 +49,7 @@ void str2mut_copy(CharT)(immutable(CharT)[] s, ref CharT[] ms) nothrow @safe
 /// Replace symbols from index start to end in string s with one character c
 /// String never increases it's size.
 /// end is inclusive
-void replace_interval(CharT)(ref CharT[] s, size_t start, size_t end, CharT c)
+void replaceInterval(CharT)(ref CharT[] s, size_t start, size_t end, CharT c)
 {
 	s[start] = c;
 	size_t shift = end - start;
@@ -64,12 +64,12 @@ void replace_interval(CharT)(ref CharT[] s, size_t start, size_t end, CharT c)
 unittest
 {
 	mutstring s = _s("as");
-	s.replace_interval(0, 1, 'd');
+	s.replaceInterval(0, 1, 'd');
 	assert(equal(s[0..1], "d"));
 }
 
 /// end is inclusive
-void remove_interval(CharT)(ref CharT[] s, size_t start, size_t end)
+void removeInterval(CharT)(ref CharT[] s, size_t start, size_t end)
 {
 	size_t shift = end - start + 1;
 	if (shift > 0)
@@ -83,11 +83,11 @@ void remove_interval(CharT)(ref CharT[] s, size_t start, size_t end)
 unittest
 {
 	mutstring s = _s("asdf");
-	s.remove_interval(1, 2);
+	s.removeInterval(1, 2);
 	assert(equal(s[0..2], "af"));
 }
 
-void insert_at(CharT)(ref CharT[] s, CharT c, size_t at)
+void insertAt(CharT)(ref CharT[] s, CharT c, size_t at)
 {
 	++s.length;
 	for (size_t i = s.length - 1; i > at; i--)
@@ -98,12 +98,12 @@ void insert_at(CharT)(ref CharT[] s, CharT c, size_t at)
 unittest
 {
 	mutstring s = _s("as");
-	s.insert_at('d', 0);
-	s.insert_at('d', 0);
+	s.insertAt('d', 0);
+	s.insertAt('d', 0);
 	assert(equal(s[0..4], "ddas"));
 }
 
-void remove_at(CharT)(ref CharT[] s, size_t at)
+void removeAt(CharT)(ref CharT[] s, size_t at)
 {
 	if (at < s.length - 1 && at >= 0)
 	{
@@ -112,7 +112,7 @@ void remove_at(CharT)(ref CharT[] s, size_t at)
 		--s.length;
 	}
 	else
-		throw new Exception("Out of content bounds");
+		throw new Exception("Out of mutstring content bounds");
 }
 
 nothrow unittest
@@ -142,7 +142,7 @@ nothrow unittest
 nothrow unittest
 {
 	mutstring s = _s("aabb");
-	str2mut_copy("ccddee", s);
+	str2mutCopy("ccddee", s);
 	assert(s.length == 7);
 	assert(s[5] == 'e');
 	assert(s[6] == 0);
