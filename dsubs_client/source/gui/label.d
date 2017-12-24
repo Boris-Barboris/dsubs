@@ -39,11 +39,11 @@ class Label: GuiElement
 {
 	private
 	{
-		uint m_fontSize = 12;
-		string m_fontName = "SansMono";
+		int m_fontSize = 14;
+		string m_fontName = "UbuntuMono";
 		HTextAlign m_htextAlign = HTextAlign.CENTER;
 		VTextAlign m_vtextAlign = VTextAlign.CENTER;
-		int m_padding = 3;
+		int m_padding = 4;
 	}
 
 	protected
@@ -56,7 +56,6 @@ class Label: GuiElement
 	this()
 	{
 		super();
-		backgroundVisible = true;
 		mouseTransparent = false;
 		m_content = _s(""d, 31);
 		initializeText();
@@ -70,7 +69,7 @@ class Label: GuiElement
 	private void initializeText()
 	{
 		m_sfText = sfText_create();
-		sfText_setFont(m_sfText, g_loadedFonts[m_fontName]);
+		sfText_setFont(m_sfText, g_loadedFonts[m_fontName].ptr);
 		sfText_setCharacterSize(m_sfText, m_fontSize);
 		sfText_setUnicodeString(m_sfText, m_content.ptr);
 		sfText_setColor(m_sfText, m_fontColor);
@@ -91,11 +90,16 @@ class Label: GuiElement
 		return content = toUTF32(rhs);
 	}
 
-	mixin GetSet!(uint, "fontSize",
+	invariant
+	{
+		assert(m_fontSize > 0);
+	}
+
+	mixin GetSet!(int, "fontSize",
 		"sfText_setCharacterSize(m_sfText, rhs); updateText();");
 
 	mixin GetSet!(string, "fontName",
-		"sfText_setFont(m_sfText, g_loadedFonts[rhs]); updateText();");
+		"sfText_setFont(m_sfText, g_loadedFonts[rhs].ptr); updateText();");
 
 	mixin GetSet!(sfColor, "fontColor",
 		"sfText_setColor(m_sfText, rhs);");
@@ -115,39 +119,51 @@ class Label: GuiElement
 		int m_leftOffset;		// needed for textfield
 	}
 
+	override void updateSize()
+	{
+		super.updateSize();
+		updateText();
+	}
+
+	protected int getLineSpacing() const
+	{
+		return sfFont_getLineSpacing(g_loadedFonts[m_fontName].ptr, m_fontSize).lrint.to!int;
+	}
+
 	// update text position
 	protected void updateText()
 	{
+		FontGlyphParams glyphParams = g_loadedFonts[m_fontName].glyphParams(m_fontSize);
 		sfFloatRect bounds = sfText_getLocalBounds(m_sfText);
 		float x, y; // resultsing text element position
 		final switch (m_htextAlign)
 		{
 			case HTextAlign.LEFT:
-				x = m_padding - bounds.left + m_leftOffset;
+				x = m_padding - glyphParams.leftOffset + m_leftOffset;
 				break;
 			case HTextAlign.RIGHT:
-				x = size.x - m_padding - bounds.left - bounds.width + m_leftOffset;
+				x = size.x - m_padding - glyphParams.leftOffset - bounds.width + m_leftOffset;
 				break;
 			case HTextAlign.CENTER:
-				x = 0.5f * (size.x - 2.0f * bounds.left - bounds.width) + m_leftOffset;
+				x = 0.5f * (size.x - bounds.width) - glyphParams.leftOffset + m_leftOffset;
 		}
-		m_contentPos.x = lrint(x + bounds.left).to!int;
+		m_textPos.x = lrint(x).to!int;
+		m_contentPos.x = m_textPos.x + glyphParams.leftOffset;
 		m_contentWidth = bounds.width;
 		final switch (m_vtextAlign)
 		{
 			case VTextAlign.TOP:
-				y = m_padding;
+				y = m_padding - glyphParams.topOffset;
 				break;
 			case VTextAlign.BOTTOM:
-				y = size.y - m_padding - m_fontSize * 1.25f;
+				y = size.y - m_padding - m_fontSize - glyphParams.topOffset;
 				break;
 			case VTextAlign.CENTER:
-				y = 0.5f * (size.y - m_fontSize * 1.25f);
+				y = 0.5f * (size.y - m_fontSize) - glyphParams.topOffset;
 		}
-		m_contentPos.y = lrint(y + bounds.top).to!int;
-		m_contentHeight = 1.25f * m_fontSize;
-		m_textPos.x = lrint(x).to!int;
 		m_textPos.y = lrint(y).to!int;
+		m_contentPos.y = m_textPos.y + glyphParams.topOffset;
+		m_contentHeight = glyphParams.actualHeight;
 		sfText_setPosition(m_sfText, m_textPos.tosf);
 	}
 

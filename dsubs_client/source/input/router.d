@@ -78,24 +78,39 @@ final class InputRouter
 	static @property IInputReciever underCursor() { return g_underCursor; }
 	static @property IInputReciever underCursor(IInputReciever rhs) 
 	{
-		if (g_underCursor !is rhs && g_underCursor !is null)
-			g_underCursor.handleMouseLeave();
+		if (g_underCursor != rhs)
+		{
+			if (g_underCursor !is null)
+				g_underCursor.handleMouseLeave();
+			if (rhs !is null)
+				rhs.handleMouseEnter();
+		}
 		return g_underCursor = rhs;
 	}
 
 	static @property IInputReciever kbFocused() { return g_kbFocused; }
 	static @property IInputReciever kbFocused(IInputReciever rhs) 
 	{
-		if (g_kbFocused !is rhs && g_kbFocused !is null)
-			g_kbFocused.handleMouseLeave();
+		if (g_kbFocused != rhs)
+		{
+			if (g_kbFocused !is null)
+				g_kbFocused.handleKbFocusLoss();
+			if (rhs !is null)
+				rhs.handleKbFocusGain();
+		}
 		return g_kbFocused = rhs;
 	}
 
 	static @property IInputReciever mouseFocused() { return g_mouseFocused; }
 	static @property IInputReciever mouseFocused(IInputReciever rhs) 
 	{
-		if (g_mouseFocused !is rhs && g_mouseFocused !is null)
-			g_mouseFocused.handleMouseLeave();
+		if (g_mouseFocused != rhs)
+		{
+			if (g_mouseFocused !is null)
+				g_mouseFocused.handleMouseFocusLoss();
+			if (rhs !is null)
+				rhs.handleMouseFocusGain();
+		}
 		return g_mouseFocused = rhs;
 	}
 
@@ -248,29 +263,28 @@ private:
 		sfMouseButton btn;
 		if (!isMousePosEvent(evt, x, y, btn, delta))
 			assert(0, "Mouse event is not actually a mouse event");
-		if (g_underCursor)
+		if (g_mouseFocused)
 		{
-			g_underCursor.handleMousePos(wnd, evt, x, y, btn, delta);
+			g_mouseFocused.handleMousePos(wnd, evt, x, y, btn, delta);
 			return;	// no passthrough for mouse
 		}
 		// routing cascade
-		RouteResult rres;
 		if (guiRouter)
 		{
-			rres = guiRouter.routeMousePos(wnd, evt, x, y);
+			RouteResult rres = guiRouter.routeMousePos(wnd, evt, x, y);
 			if (handleMouse(wnd, rres, evt, x, y, btn, delta))
 				return;
 		}
 		if (worldRouter)
 		{
-			rres = worldRouter.routeMousePos(wnd, evt, x, y);
+			RouteResult rres = worldRouter.routeMousePos(wnd, evt, x, y);
 			if (handleMouse(wnd, rres, evt, x, y, btn, delta))
 				return;
 		}
 		// mouse event was not captured by anything, nothing is under cursor
-		g_underCursor = null;
+		underCursor = null;
 		// click in emptyness clears keyboard focus
 		if (evt.type == sfEvtMouseButtonPressed)
-			g_kbFocused = null;
+			kbFocused = null;
 	}
 }

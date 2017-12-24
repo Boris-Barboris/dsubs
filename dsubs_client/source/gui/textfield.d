@@ -91,11 +91,11 @@ class TextField: Label
 	{
 		if (content.length <= 1)
 			return 0;
-		float charWidth = m_contentWidth / (content.length - 1);
+		float charWidth = m_contentWidth / (m_content.length - 1);
 		return max(
 			0,
 			min(
-				content.length - 1,
+				m_content.length - 1,
 				lrint((x - m_contentPos.x) / charWidth)
 			)).to!int;
 	}
@@ -119,6 +119,8 @@ class TextField: Label
 
 	private bool m_updateRecurs = false;
 
+	enum float CARET_H = 1.2f;
+
 	private void updateCursorVisuals()
 	{
 		float charWidth;
@@ -130,9 +132,9 @@ class TextField: Label
 		else
 			charWidth = m_contentWidth / (m_content.length - 1);
 		// position of m_cursorStart
-		float x_start = m_contentPos.x + charWidth * m_cursorStart;
+		float x_start = m_contentPos.x + charWidth * m_cursorStart + 1.0f;
 		// position of m_cursorEnd
-		float x_end = x_start + charWidth * (m_cursorEnd - m_cursorEnd);
+		float x_end = x_start + charWidth * (m_cursorEnd - m_cursorStart);
 		if (m_content.length > 1 && !m_updateRecurs)
 		{
 			// make sure m_cursorEnd is always visible and is located inside
@@ -164,17 +166,17 @@ class TextField: Label
 		float cursorWidth = 2.0f;
 		if (m_cursorEnd != m_cursorStart)
 			cursorWidth = x_end - x_start;
+		float yShift = 0.5f * (CARET_H - 1.0f) * m_contentHeight;
 		sfRectangleShape_setPosition(m_cursorRect,
-			sfVector2f(x_start, m_contentPos.y));
+			sfVector2f(x_start, m_contentPos.y - yShift));
 		sfRectangleShape_setSize(m_cursorRect,
-			sfVector2f(cursorWidth, m_contentHeight));
+			sfVector2f(cursorWidth, m_contentHeight * CARET_H));
 		m_blinkState = true;
 	}
 
-	private uint m_blinkCounter = 0;
-	private bool m_blinkState = true;
-
-	enum BLINK_FREQ = 15;
+	private static bool m_blinkState = true;
+	private static uint m_blinkCounter = 0;
+	__gshared uint BLINK_FREQ = 30;
 
 	override void draw(Window wnd)
 	{

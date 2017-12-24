@@ -1,5 +1,7 @@
 module dsubs_client.gui.button;
 
+import std.experimental.logger;
+
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 import derelict.sfml2.window;
@@ -29,7 +31,8 @@ class Button: Label
 	private
 	{
 		ButtonType m_buttonType;
-		sfColor m_textPressedColor = sfRed;
+		sfColor m_textPressedColor = sfColor(255, 25, 25, 255);
+		sfColor m_hoverColor = sfColor(255, 150, 150, 255);
 		alias m_textReleasedColor = m_fontColor;
 
 		/// true when user has pressed the button down, but didn't release it
@@ -40,8 +43,11 @@ class Button: Label
 	this(ButtonType type)
 	{
 		super();
+		backgroundVisible = true;
+		backgroundColor = sfColor(50, 28, 28, 150);
 		m_buttonType = type;
 		updateFontColor();
+		onMouseEnter += &handleMouseEnter;
 		onMouseDown += &handleMouseDown;
 		onMouseUp += &handleMouseUp;
 		onMouseLeave += &handleMouseLeave;
@@ -51,6 +57,9 @@ class Button: Label
 
 	mixin FinalGetSet!(sfColor, "textPressedColor", "updateFontColor();");
 	mixin FinalGetSet!(sfColor, "textReleasedColor", "updateFontColor();");
+
+	/// Intermidiate color between pressed and unpressed, used for hover
+	mixin FinalGetSet!(sfColor, "hoverColor", "updateFontColor();");
 
 	// whether user is currently holding the button down
 	final @property bool pressed() const { return m_pressed; }
@@ -68,6 +77,11 @@ class Button: Label
 
 	private void updateFontColor()
 	{
+		if (!m_pressed && m_underCursor)
+		{
+			sfText_setColor(m_sfText, m_hoverColor);
+			return;
+		}
 		if (m_state != m_pressed)
 			sfText_setColor(m_sfText, m_textPressedColor);
 		else
@@ -79,9 +93,18 @@ class Button: Label
 		pressed = true;
 	}
 
+	private bool m_underCursor = false;
+
 	private void handleMouseLeave()
 	{
+		m_underCursor = false;
 		pressed = false;
+	}
+
+	private void handleMouseEnter()
+	{
+		m_underCursor = true;
+		updateFontColor();
 	}
 
 	private void handleMouseUp(int x, int y, sfMouseButton btn)

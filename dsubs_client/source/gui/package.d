@@ -6,5 +6,6 @@ public import dsubs_client.gui.div;
 public import dsubs_client.gui.label;
 public import dsubs_client.gui.textbox;
 public import dsubs_client.gui.textfield;
+public import dsubs_client.gui.button;
 public import dsubs_client.gui.passwordfield;
 public import dsubs_client.gui.scrollbar;

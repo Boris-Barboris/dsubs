@@ -29,9 +29,9 @@ final class TextBox: GuiElement
 	private
 	{
 		dstring m_content;
-		uint m_fontSize = 12;
-		string m_fontName = "SansMono";
-		int m_padding = 3;
+		int m_fontSize = 14;
+		string m_fontName = "UbuntuMono";
+		int m_padding = 4;
 		sfText*[] m_sfTexts;
 		sfColor m_fontColor = sfWhite;
 	}
@@ -70,7 +70,12 @@ final class TextBox: GuiElement
 	mixin RewriteSet!(LayoutType, "layoutType",
 		`if (rhs != LayoutType.CONTENT) assert(0, "TextBox always has CONTENT layoutType");`);
 
-	mixin GetSet!(uint, "fontSize",
+	invariant
+	{
+		assert(m_fontSize > 0);
+	}
+
+	mixin GetSet!(int, "fontSize",
 		"updateFontSize(); updateText();");
 
 	mixin GetSet!(string, "fontName",
@@ -97,7 +102,7 @@ final class TextBox: GuiElement
 		int lineSpacing = getLineSpacing();
 		assert(lineSpacing > 0);
 		float lineWidth = size.x - 2.0f * m_padding;
-		int charsInLine = max(1, to!int(floor(lineWidth / glyphWidth)));
+		int charsInLine = max(1, floor(lineWidth / glyphWidth).to!int);
 		dchar[512] tmp = 0;		// stack-allocated array to hold the line being built
 		size_t contentIdx = 0;	// cursor to query m_content
 		int lineIdx = 0;
@@ -162,7 +167,7 @@ final class TextBox: GuiElement
 	private void createTextObj()
 	{
 		sfText* t = sfText_create();
-		sfText_setFont(t, g_loadedFonts[m_fontName]);
+		sfText_setFont(t, g_loadedFonts[m_fontName].ptr);
 		sfText_setCharacterSize(t, m_fontSize);
 		sfText_setColor(t, m_fontColor);
 		m_sfTexts ~= t;
@@ -179,13 +184,13 @@ final class TextBox: GuiElement
 	private float getGlyphWidth()
 	{
 		// glyph of 'A'
-		sfGlyph g = sfFont_getGlyph(g_loadedFonts[m_fontName], 34, m_fontSize, false);
+		sfGlyph g = sfFont_getGlyph(g_loadedFonts[m_fontName].ptr, 34, m_fontSize, false);
 		return g.bounds.width;
 	}
 
 	private int getLineSpacing()
 	{
-		return sfFont_getLineSpacing(g_loadedFonts[m_fontName], m_fontSize).lrint.to!int;
+		return sfFont_getLineSpacing(g_loadedFonts[m_fontName].ptr, m_fontSize).lrint.to!int;
 	}
 
 	private void updateFontSize()
@@ -197,7 +202,7 @@ final class TextBox: GuiElement
 	private void updateFontname()
 	{
 		foreach (t; m_sfTexts)
-			sfText_setFont(t, g_loadedFonts[m_fontName]);
+			sfText_setFont(t, g_loadedFonts[m_fontName].ptr);
 	}
 
 	private void updateFontColor()

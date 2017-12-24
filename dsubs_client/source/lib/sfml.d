@@ -2,6 +2,7 @@ module dsubs_client.lib.sfml;
 
 import std.conv: to;
 import std.experimental.logger: info;
+import std.math: lrint;
 import std.meta: AliasSeq;
 
 import gfm.math.vector;
@@ -109,6 +110,16 @@ sfVector2f tosf(in vec2i v)
 sfIntRect tosf(in vec4i r)
 {
 	return sfIntRect(r[0], r[1], r[2], r[3]);
+}
+
+vec4i round(in sfFloatRect r)
+{
+	vec4i res;
+	res[0] = lrint(r.left).to!int;
+	res[1] = lrint(r.top).to!int;
+	res[2] = lrint(r.width).to!int;
+	res[3] = lrint(r.height).to!int;
+	return res;
 }
 
 unittest
