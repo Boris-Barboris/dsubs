@@ -10,7 +10,8 @@ import std.experimental.logger;
 import std.container.array;
 import std.range;
 
-import dsubs_client.core.component;
+import derelict.sfml2.graphics;
+
 import dsubs_client.core.window;
 import dsubs_client.core.utils;
 import dsubs_client.input.router;
@@ -20,27 +21,29 @@ import dsubs_client.world.camera;
 
 
 /// Something that is rendered in world space.
-/// Hierarchies and connections are implemented using transform parenting.
-class WorldRenderable: Component!"world"
+/// Reference frame hierarchies are implemented using transform parenting.
+class WorldRenderable
 {
-	Transform transform;
-	double depth;		// yes, we're actually 2.5D
+	private Transform m_transform;
+	@property Transform transform() { return m_transform; }
 
-	this (WorldManager manager)
+	/// yes, we're actually 2.5D
+	double depth;
+
+	this()
 	{
-		super(manager);
-		transform = new Transform();
+		m_transform = new Transform();
 		depth = 0.0;
 	}
 
-	// Generally, it may well be some texture instead of window
+	/// Generally, it may well be some texture instead of window
 	abstract void render(Window wnd);
 
-	// View is not model. Component transform is not bound to objects real
-	// position and may be inter\extrapolated on different refresh rate.
-	// When the frame is rendered, this method is called by that window's
-	// thread in order to update object's transform.
-	void update_transform() {}
+	/** View is not model. Component transform is not bound to objects real
+	position and may be inter\extrapolated on different refresh rate.
+	When the frame is rendered, this method is called by that window's
+	thread in order to update object's transform. */
+	void updateTransform() {}
 }
 
 class CameraContext
@@ -65,7 +68,7 @@ class CameraContext
 
 /// Manages world-space objects rendering and IO event handling
 /// (selection, picking).
-class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrouter
+class WorldManager: IWindowDrawer, IWindowEventSubrouter
 {
 	// Let's say we always have one camera spanning whole window.
 	CameraContext[Window] cameras;
@@ -111,7 +114,7 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrout
 	// to update object transforms more frequently, that rendering is
 	// requested. There is also no need to update transforms between two
 	// very close rendering calls, issued by different windows.
-	void draw(Render ctx, Window wnd)
+	void draw(Window wnd)
 	{
 		while (transform_sync)
 			Thread.yield();
@@ -134,8 +137,7 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrout
 				// force active components to update their transforms
 				// TODO: spread load on thread pool
 				foreach (WorldRenderable comp; components)
-					if (comp.active)
-						comp.update_transform();
+					comp.updateTransform();
 				// and sort them in Z-order, deepest components first
 				sort!((a, b) => a.depth < b.depth)(components[]);
 				// register update
@@ -149,13 +151,12 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrout
 		// then we select the camera
 		CameraContext camctx = cameras[wnd];
 		camctx.update();
-		sfRenderWindow_setView(wnd.ptr, camctx.camera.view);
+		sfRenderWindow_setView(wnd.wnd, camctx.camera.view);
 		// and render components on the window
 		foreach (WorldRenderable comp; components)
-			if (comp.active)
-				comp.render(wnd);
+			comp.render(wnd);
 		// return default view to the window
-		sfRenderWindow_setView(wnd.ptr, wnd.view);
+		sfRenderWindow_setView(wnd.wnd, wnd.view);
 	}
 
 	Object add_queue_mutex;
@@ -199,11 +200,6 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrout
 		}
 	}
 
-	override void clear_disposed()
-	{
-		throw new Exception("not implemented yet");
-	}
-
 	unittest
 	{
 		int[5] arr = [3, 2, 1, 2, 2];
@@ -215,21 +211,21 @@ class WorldManager: ComponentManager!"world", IWindowDrawer, IWindowEventSubrout
 
 	// Event handling
 
-	RouteResult routeMousePos(Router ctx, const sfEvent* evt, int x, int y)
+	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y)
 	{
 		return RouteResult(null);
 	}
 
-	RouteResult routeKeyboard(Router ctx, const sfEvent* evt)
+	RouteResult routeKeyboard(Window wnd, const sfEvent* evt)
 	{
 		return RouteResult(null);
 	}
 
-	void handleWindowResize(Router ctx, Window wnd, const sfSizeEvent* evt)
+	void handleWindowResize(Window wnd, const sfSizeEvent* evt)
 	{
 		// we need to resize camera
 		CameraContext* camctx = wnd in cameras;
 		if (camctx)
-			camctx.camera.screen_size(vec2ui(evt.width, evt.height));
+			camctx.camera.screenSize = vec2ui(evt.width, evt.height);
 	}
 }

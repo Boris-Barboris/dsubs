@@ -34,13 +34,13 @@ class Transform2D
 	{
 		// Individual components
 		vec2d m_scale = vec2d(1.0, 1.0);
-		double m_rotation;			// radians
-		vec2d m_position;
+		double m_rotation = 0.0;		// radians
+		vec2d m_position = vec2d(0.0, 0.0);
 
 		mat3x3d m_localTransform;
-		bool m_dirty;				// set to true when some of parents changed
+		bool m_dirty = true;		// set to true when some of parents changed
 		mat3x3d m_worldCache;		// cached value of world-coordinates transform
-		bool m_inverseDirty;
+		bool m_inverseDirty = true;
 		mat3x3d m_inverseCache;		// inverted world matrix
 		Transform2D m_parent;
 		Transform2D[] m_children;
@@ -89,23 +89,10 @@ class Transform2D
 	final void removeChild(Transform2D kid)
 	{
 		if (m_children.removeFirst!(a => a is kid))
+		{
 			kid.m_parent = null;
-	}
-
-	unittest
-	{
-		Transform2D parent = new Transform2D;
-		Transform2D child = new Transform2D;
-		parent.addChild(child);
-		parent.addChild(child);
-		assert(walkLength(parent.children[]) == 2);
-		assert(child.parent is parent);
-		parent.removeChild(child);
-		assert(walkLength(parent.children[]) == 1);
-		assert(child.parent is null);
-		parent.removeChild(child);
-		assert(walkLength(parent.children[]) == 0);
-		assert(child.parent is null);
+			kid.propagate();
+		}
 	}
 
 	final @property Transform2D parent() { return m_parent; }
@@ -225,6 +212,22 @@ double transformAngle(in mat3x3d t, double angle)
 
 unittest
 {
+	Transform2D parent = new Transform2D;
+	Transform2D child = new Transform2D;
+	parent.addChild(child);
+	parent.addChild(child);
+	assert(walkLength(parent.children[]) == 2);
+	assert(child.parent is parent);
+	parent.removeChild(child);
+	assert(walkLength(parent.children[]) == 1);
+	assert(child.parent is null);
+	parent.removeChild(child);
+	assert(walkLength(parent.children[]) == 0);
+	assert(child.parent is null);
+}
+
+unittest
+{
 	auto t = new Transform2D;
 	t.rotation = -PI_2;
 	assert(abs(t.world.transformAngle(0.0) + PI_2) < 1e-6);
@@ -232,7 +235,6 @@ unittest
 	assert(abs(t.iworld.transformAngle(-PI_2)) < 1e-6);
 	assert(angleDist(t.world.transformAngle(-PI_2) + PI, 0.0) < 1e-6);
 }
-
 
 unittest
 {

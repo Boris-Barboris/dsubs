@@ -10,10 +10,11 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 import derelict.sfml2.window;
 
-public import dsubs_client.core.utils;
+import dsubs_client.core.utils;
 import dsubs_client.core.event;
 import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
+import dsubs_client.gui.manager;
 import dsubs_client.input.router;
 
 
@@ -48,13 +49,13 @@ class GuiElement: IInputReciever
 		scrollbar is actually setting it atm. */
 		const(vec4i)* m_parentViewport = null;
 
-		/// cached viewport rectangle
-		vec4i m_viewport;
-
 		// if m_layoutType is FRACT, this is the fraction to use
 		float m_fraction = 0.0f;
-		LayoutType m_layoutType = LayoutType.GREEDY;
 	}
+
+	/// cached viewport rectangle
+	protected vec4i m_viewport;
+	protected LayoutType m_layoutType = LayoutType.GREEDY;
 
 	package GuiElement m_parent;	// layout manager of this element.
 
@@ -63,34 +64,27 @@ class GuiElement: IInputReciever
 		m_sfRst.blendMode = sfBlendAlpha;
 		m_sfRect = sfRectangleShape_create();
 		// Most elements don't have borders, and they don't manage them.
-		sfRectangleShape_setOutlineThickness(rect, 0.0f);
-		m_backgroudColor = sfTransparent;
+		sfRectangleShape_setOutlineThickness(m_sfRect, 0.0f);
+		m_backgroundColor = sfTransparent;
 	}
 
 	/* The destructor for the super class automatically gets called when
 	the destructor ends. There is no way to call the super destructor explicitly. */
 	~this()
 	{
-		sfRectangleShape_destroy(rect);
+		sfRectangleShape_destroy(m_sfRect);
 	}
 
 	final @property GuiElement parent() { return m_parent; }
 
 	// Called by child when it's layout-related parameters have changed
-	package void childChanged(GuiElement child) {}
+	protected void childChanged(GuiElement child) {}
 
-	final @property vec2i position() const { return m_position; }
-
-	@property vec2i position(in vec2i rhs)
-	{
-		m_position = rhs;
-		updatePosition();
-		return m_position;
-	}
+	mixin GetSet!(vec2i, "position", "updatePosition();");
 
 	final @property vec2i size() const { return m_size; }
 
-	@property vec2i size(in vec2i rhs)
+	@property vec2i size(vec2i rhs)
 	{
 		assert(rhs.x >= 0 && rhs.y >= 0);
 		m_size = rhs;
@@ -100,18 +94,12 @@ class GuiElement: IInputReciever
 		return m_size;
 	}
 
-	final @property const(vec4i)* parentViewport() const { return m_parentViewport; }
+	mixin FinalGetSet!(const(vec4i)*, "parentViewport", "updateViewport();");
 
-	@property const(vec4i)* parentViewport(const(vec4i)* rhs)
-	{
-		m_parentViewport = rhs;
-		updateViewport();
-		return m_parentViewport;
-	}
-
+	/// when layoutType is FRACT, this is what is used to detrmine element size
 	final @property float fraction() const { return m_fraction; }
 
-	@property float fraction(in float rhs)
+	final @property float fraction(float rhs)
 	{
 		assert(rhs >= 0.0f);
 		m_fraction = rhs;
@@ -122,29 +110,33 @@ class GuiElement: IInputReciever
 
 	final @property LayoutType layoutType() const { return m_layoutType; }
 
-	@property LayoutType layoutType(in LayoutType rhs)
+	@property LayoutType layoutType(LayoutType rhs)
 	{
 		m_layoutType = rhs;
-		if (m_parent) 
+		if (m_parent)
 			m_parent.childChanged(this);
 		return m_layoutType;
 	}
 
 	/** Called by parent when it wants so set fixedDim axis size to fixedDimSize
-	but wants the element to set the other dimention according to content size. 
+	but wants the element to set the other dimention according to it's content size. 
 	Returns content size. */
-	package final int fitContent(Axis fixedDim, int fixedDimSize)
+	package int fitContent(Axis fixedDim, int fixedDimSize)
 	{
+		assert(fixedDimSize >= 0);
 		assert(m_layoutType == LayoutType.CONTENT);
-		byte contentDim = fixDim ^ 1;	// xor 1 flips the bit
+		Axis contentDim = cast(Axis)(fixedDim ^ 1);	// xor 1 flips the bit
 		m_size[fixedDim] = fixedDimSize;
-		doFitContent(fixedDim);
+		m_size[contentDim] = doFitContent(fixedDim, contentDim);
 		updateSize();
 		return m_size[contentDim];
 	}
 
 	/// This function should actually implement scaling by content.
-	protected void doFitContent(Axis fixedDim) {}
+	protected int doFitContent(Axis fixedDim, Axis contentDim)
+	{
+		return m_size[contentDim];
+	}
 
 	//
 	// rendering stuff
@@ -155,14 +147,8 @@ class GuiElement: IInputReciever
 	
 	private sfColor m_backgroundColor;
 
-	final @property sfColor backgroundColor() const { return m_backgroundColor; }
-
-	@property sfColor backgroundColor(in sfColor rhs)
-	{
-		m_backgroundColor = rhs;
-		fRectangleShape_setFillColor(m_sfRect, m_backgroundColor);
-		return m_backgroundColor;
-	}
+	mixin FinalGetSet!(sfColor, "backgroundColor", 
+		"sfRectangleShape_setFillColor(m_sfRect, rhs);");
 
 	/// set to true in order to render background
 	bool backgroundVisible = false;
@@ -180,7 +166,7 @@ class GuiElement: IInputReciever
 		sfRectangleShape_setSize(m_sfRect, m_size.tosf);
 	}
 
-	private final void updateViewport()
+	private void updateViewport()
 	{
 		if (m_parentViewport)
 			m_viewport = clampViewport(m_parentViewport);
@@ -189,13 +175,15 @@ class GuiElement: IInputReciever
 	}
 
 	/// return intersection between rhs and this element's rectangle
-	private final vec4i clampViewport(in vec4i* rhs) const
+	private vec4i clampViewport(in vec4i* rhs) const
 	{
 		vec4i res;
-		res[0] = min(max(rhs[0], m_position.x), m_position.x + m_size.x);
-		res[1] = min(max(rhs[1], m_position.y), m_position.y + m_size.y);
-		res[2] = min(rhs[2], max(0, m_position.x + m_size.x - res[0]));
-		res[3] = min(rhs[3], max(0, m_position.y + m_size.y - res[1]));
+		res[0] = min(max((*rhs)[0], m_position.x), m_position.x + m_size.x);
+		res[1] = min(max((*rhs)[1], m_position.y), m_position.y + m_size.y);
+		int right = (*rhs)[0] + (*rhs)[2];
+		int bottom = (*rhs)[1] + (*rhs)[3];
+		res[2] = max(0, min(right, m_position.x + m_size.x - res[0]));
+		res[3] = max(0, min(bottom, m_position.y + m_size.y - res[1]));
 		return res;
 	}
 
@@ -268,24 +256,24 @@ class GuiElement: IInputReciever
 
 	final void requestKbFocus()
 	{
-		Router.kbFocused = this;
+		InputRouter.kbFocused = this;
 	}
 
 	final void returnKbFocus()
 	{
 		if (m_kbFocused)
-			Router.kbFocused = null;
+			InputRouter.kbFocused = null;
 	}
 
 	final void requestMouseFocus()
 	{
-		Router.mouseFocused = this;
+		InputRouter.mouseFocused = this;
 	}
 
 	final void returnMouseFocus()
 	{
 		if (m_mouseFocused)
-			Router.mouseFocused = null;
+			InputRouter.mouseFocused = null;
 	}
 
 	//
@@ -293,7 +281,7 @@ class GuiElement: IInputReciever
 	//
 
 	/// Return deepest GuiElement that contains the point, null otherwise.
-	protected GuiElement getFromPoint(int x, int y)
+	GuiElement getFromPoint(int x, int y)
 	{
 		if ((x >= m_position.x && x < m_position.x + m_size.x) &&
 			(y >= m_position.y && y < m_position.y + m_size.y))
@@ -318,13 +306,15 @@ class GuiElement: IInputReciever
 	}
 
 	// events for users to subscribe to
-	Event onMouseEnter;
-	Event onMouseLeave;
-	Event!(int x, int y) onMouseMove;
-	Event!(int x, int y, sfMouseButton btn) onMouseDown;
-	Event!(int x, int y, sfMouseButton btn) onMouseUp;
-	Event!(int x, int y, int delta) onMouseScroll;
-	Event!(const sfKeyEvent* evt) onKeyPressed;
-	Event!(const sfKeyEvent* evt) onKeyReleased;
-	Event!(const sfTextEvent* evt) onTextEntered;
+	Event!() onMouseEnter;
+	Event!() onMouseLeave;
+	// x, y
+	Event!(int, int) onMouseMove;
+	Event!(int, int, sfMouseButton) onMouseDown;
+	Event!(int, int, sfMouseButton) onMouseUp;
+	// x, y, delta
+	Event!(int, int, int) onMouseScroll;
+	Event!(const sfKeyEvent*) onKeyPressed;
+	Event!(const sfKeyEvent*) onKeyReleased;
+	Event!(const sfTextEvent*) onTextEntered;
 }

@@ -2,98 +2,101 @@ module dsubs_client.render.render;
 
 import core.time;
 import core.thread;
+import core.sync.mutex;
 import std.experimental.logger;
 
 import derelict.sfml2.graphics;
 import derelict.sfml2.window;
 
-import dsubs_client.core.event;
 public import dsubs_client.core.window;
-import module dsubs_client.input.router: Router;
+public import dsubs_client.input.router: InputRouter;
 
 
-// Anything that can draw on window
+/// Anything that can draw on window
 interface IWindowDrawer
 {
-	void draw(Render ctx, Window wnd);
+	void draw(Window wnd);
 }
-
-// TODO: move to config
-sfColor clear_color = sfColor(28, 28, 28, 255);
 
 /// Rendering thread wrapper, renders one window and dictates general form
 /// of the rendering pipeline.
 final class Render
 {
-	private Window _window;
-	private Router _router;
-	IWindowDrawer gui_render;
-	IWindowDrawer overlay_render;
-	IWindowDrawer world_render;
+	__gshared sfColor g_clearColor = sfColor(28, 28, 28, 255);
 
-	@property Window window() const { return _window; }
-	@property Router router() const { return _router; }
+	private Window m_window;
+	private InputRouter m_router;
+	IWindowDrawer guiRender;
+	IWindowDrawer worldRender;
 
-	private Thread worker;    // rendering thread
-	private bool stop_flag;	// true when stop was requested
+	@property Window window() { return m_window; }
+	@property InputRouter router() { return m_router; }
 
-	this(Window wnd, Router router)
+	private Thread m_worker;	/// rendering thread
+	private bool m_stopFlag;	/// true when stop was requested
+
+	this(Window wnd, InputRouter router)
 	{
-		_window = wnd;
-		_router = router;
-		wnd.register_handler(sfEvtClosed, (const sfEvent* a) { this.stop(); });
+		assert(wnd);
+		m_window = wnd;
+		m_router = router;
+		wnd.registerHandler(sfEvtClosed, (w, e) { this.stop(); });
 	}
 
-	void start()
+	/// start rendering thread
+	void start(Mutex mutex)
 	{
-		if (worker)
+		if (m_worker && m_worker.isRunning)
 			throw new Exception("Render already started");
-		info("Deactivating window GL context in parent thread...");
-		sfRenderWindow_setActive(_window.ptr, false);
-		info("OK");
+		m_stopFlag = false;
+		trace("Deactivating window GL context in parent thread...");
+		sfRenderWindow_setActive(m_window.wnd, false);
+		trace("OK");
 		info("Starting render thread...");
-		worker = new Thread(&render).start();
+		m_worker = new Thread((){ render(mutex); }).start();
 		info("OK");
 	}
 
-	void stop_async() { stop_flag = true; }
+	/// non-blocking stop
+	void stopAsync() { m_stopFlag = true; }
 
-	// blocking stop
+	/// blocking stop
 	void stop()
 	{
-		stop_flag = true;
-		if (worker)
-			worker.join(false);
+		m_stopFlag = true;
+		if (m_worker && m_worker.isRunning)
+			m_worker.join(false);
 	}
 
-	// Thread function
-	private void render()
+	/// Thread function
+	private void render(Mutex mutex)
 	{
 		try
 		{
-			while (!stop_flag)
+			while (!m_stopFlag)
 			{
-				sfRenderWindow_clear(_window.ptr, clear_color);
-				_window.input_mutex.lock();		// take the window lock
+				m_window.resetView();
+				sfRenderWindow_setScissorTest(m_window.wnd, false);
+				sfRenderWindow_clear(m_window.wnd, g_clearColor);
+				sfRenderWindow_setScissorTest(m_window.wnd, true);
 				{
-					scope(exit) _window.input_mutex.unlock();
-					if (world_render)
-						world_render.draw(this, _window);
-					if (overlay_render)
-						overlay_render.draw(this, _window);
-					_router.simulate_mouse_move();
-					if (gui_render)
-						gui_render.draw(this, _window);
-				}	// here window input_mutex is unlocked
-				// present backbuffer, blocks because of vsync.
-				sfRenderWindow_display(_window.ptr);
+					mutex.lock();
+					scope(exit) mutex.unlock();
+					if (m_router)
+						m_router.simulateMouseMove();
+					if (worldRender)
+						worldRender.draw(m_window);
+					if (guiRender)
+						guiRender.draw(m_window);
+				}
+				// present backbuffer, blocks until vsync
+				sfRenderWindow_display(m_window.wnd);
 			}
 		}
-		catch (Error err)
+		catch (Throwable err)
 		{
-			error("Render loop crashed with error: ", err.toString);
-			throw err;
+			error("Render loop crashed: ", err.toString);
 		}
-		info("Terminating Render, stop_flag is ", stop_flag);
+		trace("Exiting render loop, stop_flag is ", m_stopFlag);
 	}
 }

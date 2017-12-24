@@ -167,6 +167,10 @@ struct DList(T)
 			cursor.next();
 		else
 			cursor.prev();
+		if (node.prev)
+			node.prev.next = node.next;
+		if (node.next)
+			node.next.prev = node.prev;
 		destroy_node(node);
 	}
 

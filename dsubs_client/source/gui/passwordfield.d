@@ -11,70 +11,65 @@ final class PasswordField: TextField
 {
 	static immutable dchar PWDOT = '•';
 
-	private
-	{
-		dmutstring _hidden_content;     // actual password will be here
-	}
+	/// actual password will be here
+	private dmutstring m_hiddenContent;
 
 	this()
 	{
 		super();
-		_hidden_content = _s(""d, 31);
+		m_hiddenContent = _s(""d, 31);
 	}
 
-	@property override const(dmutstring) content() const { return _hidden_content; }
+	alias content = super.content;
 
-	override PasswordField content(dstring val)
+	@property override const(dmutstring) content() const { return m_hiddenContent; }
+
+	@property override dmutstring content(dstring rhs)
 	out (result)
 	{
-		assert(_hidden_content.length == _content.length);
+		assert(m_hiddenContent.length == m_content.length);
 	}
 	body
 	{
-		str2mut_copy(val, _hidden_content);
-		_content.length = _hidden_content.length;
-		_content[0 .. $-1] = PWDOT;
-		_content[$-1] = 0;
-		sfText_setUnicodeString(text, _content.ptr);
-		update_text();
-		return this;
+		str2mutCopy(rhs, m_hiddenContent);
+		m_content.length = m_hiddenContent.length;
+		m_content[0 .. $-1] = PWDOT;
+		m_content[$-1] = 0;
+		sfText_setUnicodeString(m_sfText, m_content.ptr);
+		updateText();
+		return m_hiddenContent;
 	}
 
-	override void insert_at(dchar c, size_t idx)
+	override void insertAt(dchar c, size_t idx)
 	out
 	{
-		assert(_hidden_content.length == _content.length);
+		assert(m_hiddenContent.length == m_content.length);
 	}
 	body
 	{
-		_hidden_content.insert_at(c, idx);
-		_content.insert_at(PWDOT, idx);
+		m_hiddenContent.insertAt(c, idx);
+		m_content.insertAt(PWDOT, idx);
 	}
 
-	override void remove_at(size_t idx)
+	override void removeAt(size_t idx)
 	out
 	{
-		assert(_hidden_content.length == _content.length);
+		assert(m_hiddenContent.length == m_content.length);
 	}
 	body
 	{
-		_hidden_content.remove_at(idx);
-		_content.remove_at(idx);
+		m_hiddenContent.removeAt(idx);
+		m_content.removeAt(idx);
 	}
 
-	override void remove_interval(size_t start, size_t end)
+	override void removeInterval(size_t start, size_t end)
 	out
 	{
-		assert(_hidden_content.length == _content.length);
+		assert(m_hiddenContent.length == m_content.length);
 	}
 	body
 	{
-		_hidden_content.remove_interval(start, end);
-		_content.remove_interval(start, end);
+		m_hiddenContent.removeInterval(start, end);
+		m_content.removeInterval(start, end);
 	}
-}
-
-PasswordField asPasswordField(GuiElement el)
-{
-	return cast(PasswordField) el;
 }

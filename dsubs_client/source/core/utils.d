@@ -13,18 +13,27 @@ member field is expected to be named "m_" ~ fieldName, as in
 hungarian scope notation. */
 mixin template GetSet(T, string fieldName, string postupdateCode)
 {
-	mixin("final @property " ~ T.stringof ~ " " ~ fieldName ~
+	mixin("final @property const(" ~ T.stringof ~ ") " ~ fieldName ~
 		"() const { return m_" ~ fieldName ~ ";};");
 	mixin("@property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
 		"{ m_" ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName  ~ ";}");
 }
 
+/// same as GetSet but with final setter
+mixin template FinalGetSet(T, string fieldName, string postupdateCode)
+{
+	mixin("final @property const(" ~ T.stringof ~ ") " ~ fieldName ~
+		"() const { return m_" ~ fieldName ~ ";};");
+	mixin("final @property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
+		"{ m_" ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName  ~ ";}");
+}
+
 /// Append additional postupdateCode to setter of the base class
-mixin template OverrideSet(T, string fieldName, string postupdateCode)
+mixin template AppendSet(T, string fieldName, string postupdateCode)
 {
 	mixin("alias " ~ fieldName ~ " = super." ~ fieldName ~ ";");
 	mixin("override @property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
-		"{ super." ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName ~ ";}");
+		"{ super." ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return super." ~ fieldName ~ ";}");
 }
 
 /// Replace postupdateCode in setter of the base class
@@ -60,4 +69,36 @@ unittest
 	arr.substract([0]);
 	assert(arr[].equal([1, 2, 3]));
 	assert(arr.length == 3);
+}
+
+/// Builder for class types that allows to chain property assignments
+/// in fluent form.
+struct Builder(T)
+	if (is(T == class))
+{
+	private T m_data;
+
+	@disable this();
+
+	this(T data)
+	{
+		m_data = data;
+	}
+
+	T build()
+	{
+		return m_data;
+	}
+
+	Builder!T opDispatch(string name, ArgT)(ArgT rhs)
+	{
+		__traits(getMember, m_data, name) = rhs;
+		return Builder!T(m_data);
+	}
+}
+
+/// returns builder wich is deduced from type of an argument
+auto builder(T)(T base)
+{
+	return Builder!T(base);
 }

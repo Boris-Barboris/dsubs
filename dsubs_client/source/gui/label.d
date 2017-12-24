@@ -14,19 +14,24 @@ import derelict.sfml2.window;
 public import dsubs_common.mutstring;
 
 import dsubs_client.lib.sfml;
+import dsubs_client.lib.fonts;
 import dsubs_client.core.window;
+import dsubs_client.core.utils;
 import dsubs_client.gui.element;
-import dsubs_client.gui.fonts;
 
 
-/// self-explanatory for horizontal, left is top for vertical align
-enum TextAlign: ubyte
+enum HTextAlign: ubyte
 {
 	LEFT = 0,
-	TOP = 0,
 	CENTER = 1,
 	RIGHT = 2,
-	BOTTOM = 2
+}
+
+enum VTextAlign: ubyte
+{
+	TOP = 0,
+	CENTER = 1,
+	BOTTOM = 2,
 }
 
 /// One text line
@@ -34,127 +39,121 @@ class Label: GuiElement
 {
 	private
 	{
-		dmutstring m_content;
-		uint _font_size = 12;
-		string _fontname = "SansMono";
-		sfColor _font_color = sfWhite;
-		TextAlign _horz_align = TextAlign.CENTER;
-		TextAlign _vert_align = TextAlign.CENTER;	// left is top
+		uint m_fontSize = 12;
+		string m_fontName = "SansMono";
+		HTextAlign m_htextAlign = HTextAlign.CENTER;
+		VTextAlign m_vtextAlign = VTextAlign.CENTER;
+		int m_padding = 3;
 	}
 
 	protected
 	{
-		sfText* text;
-		int _padding = 3;		// used when align is not center
+		sfText* m_sfText;
+		dmutstring m_content;
+		sfColor m_fontColor = sfWhite;
 	}
 
 	this()
 	{
 		super();
-		mouse_transparent = false;
-		_content = _s(""d, 31);
-		initialize_text();
+		backgroundVisible = true;
+		mouseTransparent = false;
+		m_content = _s(""d, 31);
+		initializeText();
 	}
 
 	~this()
 	{
-		sfText_destroy(text);
+		sfText_destroy(m_sfText);
 	}
 
-	private final void initialize_text()
+	private void initializeText()
 	{
-		text = sfText_create();
-		sfText_setFont(text, g_loadedFonts[_fontname]);
-		sfText_setCharacterSize(text, _font_size);
-		sfText_setUnicodeString(text, _content.ptr);
-		sfText_setColor(text, _font_color);
+		m_sfText = sfText_create();
+		sfText_setFont(m_sfText, g_loadedFonts[m_fontName]);
+		sfText_setCharacterSize(m_sfText, m_fontSize);
+		sfText_setUnicodeString(m_sfText, m_content.ptr);
+		sfText_setColor(m_sfText, m_fontColor);
 	}
 
-	@property const(dmutstring) content() const { return _content; }
+	@property const(dmutstring) content() const { return m_content; }
 
-	Label content(dstring val)
+	@property dmutstring content(dstring rhs)
 	{
-		str2mut_copy(val, _content);
-		sfText_setUnicodeString(text, _content.ptr);
-		update_text();
-		return this;
+		str2mutCopy(rhs, m_content);
+		sfText_setUnicodeString(m_sfText, m_content.ptr);
+		updateText();
+		return m_content;
 	}
 
-	final Label content(string val)
+	@property dmutstring content(string rhs)
 	{
-		return content(toUTF32(val));
+		return content = toUTF32(rhs);
 	}
 
-	mixin ElementAccessor!(Label, uint, "font_size",
-		"sfText_setCharacterSize(text, _font_size); update_text();");
+	mixin GetSet!(uint, "fontSize",
+		"sfText_setCharacterSize(m_sfText, rhs); updateText();");
 
-	mixin ElementAccessor!(Label, string, "fontname",
-		"sfText_setFont(text, g_loadedFonts[_fontname]); update_text();");
+	mixin GetSet!(string, "fontName",
+		"sfText_setFont(m_sfText, g_loadedFonts[rhs]); updateText();");
 
-	mixin ElementAccessor!(Label, sfColor, "font_color",
-		"sfText_setColor(text, _font_color);");
+	mixin GetSet!(sfColor, "fontColor",
+		"sfText_setColor(m_sfText, rhs);");
 
-	mixin ElementAccessor!(Label, int, "padding", "update_text();");
+	mixin FinalGetSet!(int, "padding", "updateText();");
 
-	mixin ElementAccessor!(Label, TextAlign, "horz_align", "update_text();");
+	mixin FinalGetSet!(HTextAlign, "htextAlign", "updateText();");
 
-	mixin ElementAccessor!(Label, TextAlign, "vert_align", "update_text();");
+	mixin FinalGetSet!(VTextAlign, "vtextAlign", "updateText();");
 
 	protected
 	{
-		// text content visual parameters they way they look
-		int content_left;	// relative offsets
-		int content_top;
-		float content_width = 0.0f;
-		float content_height = 0.0f;
-		int left_offset = 0.0;		// needed for textfield
+		vec2i m_contentPos;	/// Estimated position of text first glyph.
+		vec2i m_textPos;	/// Position of text sfml object
+		float m_contentWidth = 0.0f;
+		float m_contentHeight = 0.0f;
+		int m_leftOffset;		// needed for textfield
 	}
 
-	protected void update_text()
+	// update text position
+	protected void updateText()
 	{
-		sfFloatRect bounds = sfText_getLocalBounds(text);
-		float x, y; // results
-		final switch (_horz_align)
+		sfFloatRect bounds = sfText_getLocalBounds(m_sfText);
+		float x, y; // resultsing text element position
+		final switch (m_htextAlign)
 		{
-			case TextAlign.LEFT:
-				x = _padding - bounds.left + left_offset;
+			case HTextAlign.LEFT:
+				x = m_padding - bounds.left + m_leftOffset;
 				break;
-			case TextAlign.RIGHT:
-				x = get_size.x - _padding - bounds.left - bounds.width + left_offset;
+			case HTextAlign.RIGHT:
+				x = size.x - m_padding - bounds.left - bounds.width + m_leftOffset;
 				break;
-			case TextAlign.CENTER:
-				x = 0.5f * (get_size.x - 2.0f * bounds.left - bounds.width) + left_offset;
+			case HTextAlign.CENTER:
+				x = 0.5f * (size.x - 2.0f * bounds.left - bounds.width) + m_leftOffset;
 		}
-		content_left = cast(int)lrint(x + bounds.left);
-		content_width = bounds.width;
-		final switch (_vert_align)
+		m_contentPos.x = lrint(x + bounds.left).to!int;
+		m_contentWidth = bounds.width;
+		final switch (m_vtextAlign)
 		{
-			case TextAlign.LEFT:
-				//y = _padding - bounds.top;
-				y = _padding;
+			case VTextAlign.TOP:
+				y = m_padding;
 				break;
-			case TextAlign.RIGHT:
-				//y = get_size.y - _padding - bounds.top - bounds.height;
-				y = get_size.y - _padding - _font_size * 1.25f;
+			case VTextAlign.BOTTOM:
+				y = size.y - m_padding - m_fontSize * 1.25f;
 				break;
-			case TextAlign.CENTER:
-				//y = 0.5f * (_size.y - 2.0f * bounds.top - bounds.height);
-				y = 0.5f * (get_size.y - _font_size * 1.25f);
+			case VTextAlign.CENTER:
+				y = 0.5f * (size.y - m_fontSize * 1.25f);
 		}
-		content_top = cast(int)lrint(y);		// just werks
-		content_height = 1.25f * _font_size;	// just werks
-		sfText_setPosition(text,
-			sfVector2f(content_left, content_top));
+		m_contentPos.y = lrint(y + bounds.top).to!int;
+		m_contentHeight = 1.25f * m_fontSize;
+		m_textPos.x = lrint(x).to!int;
+		m_textPos.y = lrint(y).to!int;
+		sfText_setPosition(m_sfText, m_textPos.tosf);
 	}
 
 	override void draw(Window wnd)
 	{
 		super.draw(wnd);
-		sfRenderWindow_drawText(wnd.ptr, text, &sf_rst);
+		sfRenderWindow_drawText(wnd.wnd, m_sfText, &m_sfRst);
 	}
-}
-
-Label asLabel(GuiElement el)
-{
-	return cast(Label) el;
 }

@@ -12,6 +12,7 @@ import derelict.sfml2.window;
 
 import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
+import dsubs_client.core.utils;
 import dsubs_client.input.router;
 import dsubs_client.gui.label;
 
@@ -20,334 +21,330 @@ class TextField: Label
 {
 	private
 	{
-		sfColor _cursor_color = sfRed;
-		sfRectangleShape* cursor_rect;
-		int cursor_start = 0;	// start of selection
-		int cursor_end = 0;		// first character after the selection
+		sfColor m_cursorColor = sfRed;
+		sfRectangleShape* m_cursorRect;
+		int m_cursorStart = 0;	// start of selection
+		int m_cursorEnd = 0;	// first character after the selection
 	}
 
 	this()
 	{
 		super();
-		rect_visible = true;
-		backgroud_color(sfColor(50, 28, 28, 150));
-		cursor_rect = sfRectangleShape_create();
-		sfRectangleShape_setFillColor(cursor_rect, _cursor_color);
-		sfRectangleShape_setOutlineThickness(rect, 0.0f);
-		horz_align(TextAlign.LEFT);
-		onMouseDown += &handle_mouse_down;
-		onMouseUp += &handle_mouse_up;
-		onMouseMove += &handle_mouse_move;
-		onKeyPressed += &hande_KeyPressed;
-		onTextEntered += &handle_TextEntered;
-		onMouseScroll += &handle_MouseScroll;
+		backgroundVisible = true;
+		backgroundColor = sfColor(50, 28, 28, 150);
+		m_cursorRect = sfRectangleShape_create();
+		sfRectangleShape_setFillColor(m_cursorRect, m_cursorColor);
+		sfRectangleShape_setOutlineThickness(m_cursorRect, 0.0f);
+		htextAlign = HTextAlign.LEFT;
+		onMouseDown += &handleMouseDown;
+		onMouseUp += &handleMouseUp;
+		onMouseMove += &handleMouseMove;
+		onKeyPressed += &handeKeyPressed;
+		onTextEntered += &handleTextEntered;
+		onMouseScroll += &handleMouseScroll;
 	}
 
 	~this()
 	{
-		sfRectangleShape_destroy(cursor_rect);
+		sfRectangleShape_destroy(m_cursorRect);
 	}
 
-	mixin ElementAccessor!(TextField, sfColor, "cursor_color",
-		"sfRectangleShape_setFillColor(cursor_rect, _cursor_color);");
+	mixin FinalGetSet!(sfColor, "cursorColor",
+		"sfRectangleShape_setFillColor(m_cursorRect, rhs);");
 
-	private final void handle_mouse_down(GuiElement s, int x, int y, sfMouseButton btn)
+	private void handleMouseDown(int x, int y, sfMouseButton btn)
 	{
 		returnKbFocus();
 		// first we capture mouse in order to handle text selection
 		requestMouseFocus();
 		// x and y to local space
-		x -= get_position.x;
-		y -= get_position.y;
-		// set cursor_start
-		set_cursor_from_coords(cursor_start, x, y);
-		cursor_end = cursor_start;
-		update_cursor_visuals();
+		x -= position.x;
+		y -= position.y;
+		// set m_cursorStart
+		m_cursorStart = getCursorFromLocalCoords(x, y);
+		m_cursorEnd = m_cursorStart;
+		updateCursorVisuals();
 	}
 
-	private final void handle_mouse_up(GuiElement s, int x, int y, sfMouseButton btn)
+	private void handleMouseUp(int x, int y, sfMouseButton btn)
 	{
 		returnMouseFocus();
 		requestKbFocus();
 	}
 
-	private final void handle_mouse_move(GuiElement s, int x, int y)
+	private void handleMouseMove(int x, int y)
 	{
-		if (mouse_focused)
+		if (m_mouseFocused)
 		{
 			// x and y to local space
-			x -= get_position.x;
-			y -= get_position.y;
-			// set cursor_start
-			int old_curs_end = cursor_end;
-			set_cursor_from_coords(cursor_end, x, y);
-			if (old_curs_end != cursor_end)
-				update_cursor_visuals();
+			x -= position.x;
+			y -= position.y;
+			// set m_cursorStart
+			int oldCursorEnd = m_cursorEnd;
+			m_cursorEnd = getCursorFromLocalCoords(x, y);
+			if (oldCursorEnd != m_cursorEnd)
+				updateCursorVisuals();
 		}
 	}
 
-	// set cursor to position according to
-	private final void set_cursor_from_coords(ref int cursor, int x, int y)
+	private int getCursorFromLocalCoords(int x, int y)
 	{
-		float char_width;
 		if (content.length <= 1)
-		{
-			cursor = 0;
-			return;
-		}
-		else
-			char_width = content_width / (content.length - 1);
-		int index = max(0,
-			min(content.length - 1,
-				to!int(lrint((x - content_left) / char_width))));
-		cursor = index;
+			return 0;
+		float charWidth = m_contentWidth / (content.length - 1);
+		return max(
+			0,
+			min(
+				content.length - 1,
+				lrint((x - m_contentPos.x) / charWidth)
+			)).to!int;
 	}
 
 	override void handleKbFocusLoss()
 	{
 		super.handleKbFocusLoss();
-		cursor_start = cursor_end = 0;
+		m_cursorStart = m_cursorEnd = 0;
 	}
 
-	protected override void update_text()
+	protected override void updateText()
 	{
-		super.update_text();
+		super.updateText();
 		// safety check for cursors
-		if (content.length <= cursor_start)
-			cursor_start = content.length - 1;
-		if (content.length <= cursor_end)
-			cursor_end = content.length - 1;
-		update_cursor_visuals();
+		if (content.length <= m_cursorStart)
+			m_cursorStart = max(0, m_content.length - 1).to!int;
+		if (content.length < m_cursorEnd)
+			m_cursorEnd = m_content.length;
+		updateCursorVisuals();
 	}
 
-	private bool update_recurs = false;
+	private bool m_updateRecurs = false;
 
-	private final void update_cursor_visuals()
+	private void updateCursorVisuals()
 	{
-		float char_width;
-		if (content.length <= 1)
+		float charWidth;
+		if (m_content.length <= 1)
 		{
-			char_width = 0.0f;
-			left_offset = 0;
+			charWidth = 0.0f;
+			m_leftOffset = 0;
 		}
 		else
-			char_width = content_width / (content.length - 1);
-		// position of cursor_start
-		float start_x = content_left + char_width * cursor_start;
-		// position of cursor_end
-		float end_x = start_x + char_width * (cursor_end - cursor_start);
-		if (content.length > 1 && !update_recurs)
+			charWidth = m_contentWidth / (m_content.length - 1);
+		// position of m_cursorStart
+		float x_start = m_contentPos.x + charWidth * m_cursorStart;
+		// position of m_cursorEnd
+		float x_end = x_start + charWidth * (m_cursorEnd - m_cursorEnd);
+		if (m_content.length > 1 && !m_updateRecurs)
 		{
-			// make sure cursor_end is always visible and is located inside
+			// make sure m_cursorEnd is always visible and is located inside
 			// element's rectangle
-			bool reupdate_visuals = false;
-			if (end_x < _padding)
+			bool reupdateVisuals = false;
+			if (x_end < padding)
 			{
 				// we need to move text right
-				left_offset = min(0, lrint(left_offset - end_x + _padding + 1.0f).to!int);
-				reupdate_visuals = true;
+				m_leftOffset = min(0, lrint(m_leftOffset - x_end + padding + 1.0f).to!int);
+				reupdateVisuals = true;
 			}
-			else if (end_x > get_size.x - _padding)
+			else if (x_end > size.x - padding)
 			{
 				// we need to move text left
-				left_offset -= lrint(end_x - get_size.x + 1.0f + _padding).to!int;
-				reupdate_visuals = true;
+				m_leftOffset -= lrint(x_end - size.x + 1.0f + padding).to!int;
+				reupdateVisuals = true;
 			}
-			if (reupdate_visuals)
+			if (reupdateVisuals)
 			{
 				// we need to shift the text, let's use recursion
-				super.update_text();
-				update_recurs = true;
-				update_cursor_visuals();
-				update_recurs = false;
+				super.updateText();
+				m_updateRecurs = true;
+				scope(exit) m_updateRecurs = false;
+				updateCursorVisuals();
 				return;
 			}
 		}
-		// cursor_rect width
-		float cursor_width = 2.0f;
-		if (cursor_end != cursor_start)
-			cursor_width = end_x - start_x;
-		sfRectangleShape_setPosition(cursor_rect,
-			sfVector2f(start_x, content_top));
-		sfRectangleShape_setSize(cursor_rect,
-			sfVector2f(cursor_width, content_height));
-		blink_state = true;	// convenient touch
+		// m_cursorRect width
+		float cursorWidth = 2.0f;
+		if (m_cursorEnd != m_cursorStart)
+			cursorWidth = x_end - x_start;
+		sfRectangleShape_setPosition(m_cursorRect,
+			sfVector2f(x_start, m_contentPos.y));
+		sfRectangleShape_setSize(m_cursorRect,
+			sfVector2f(cursorWidth, m_contentHeight));
+		m_blinkState = true;
 	}
 
-	private uint blink_counter = 0;
-	private bool blink_state = true;
+	private uint m_blinkCounter = 0;
+	private bool m_blinkState = true;
 
-	static int BLINK_FREQ = 15;
+	enum BLINK_FREQ = 15;
 
 	override void draw(Window wnd)
 	{
-		this.Element.draw(wnd);	// transform and background rect
-		if (kb_focused || mouse_focused)
+		this.GuiElement.draw(wnd);	// transform and background rect
+		if (m_kbFocused || m_mouseFocused)
 		{
 			// need to draw cursor\selection
-			if (cursor_start == cursor_end)
+			if (m_cursorStart == m_cursorEnd)
 			{
 				// we have no text selected, display blinking caret
-				blink_counter++;	// framerate-dependent, but i don't really care
-				if (blink_counter % BLINK_FREQ == 0)
-					blink_state = !blink_state;
-				if (blink_state)
-					sfRenderWindow_drawRectangleShape(wnd.ptr, cursor_rect, &sf_rst);
+				m_blinkCounter++;	// framerate-dependent, but i don't really care
+				if (m_blinkCounter % BLINK_FREQ == 0)
+					m_blinkState = !m_blinkState;
+				if (m_blinkState)
+					sfRenderWindow_drawRectangleShape(wnd.wnd, m_cursorRect, &m_sfRst);
 			}
 			else
-				sfRenderWindow_drawRectangleShape(wnd.ptr, cursor_rect, &sf_rst);
+				sfRenderWindow_drawRectangleShape(wnd.wnd, m_cursorRect, &m_sfRst);
 		}
-		// text is drawn over cursor
-		sfRenderWindow_drawText(wnd.ptr, text, &sf_rst);
+		// text is drawn over the cursor rectangle
+		sfRenderWindow_drawText(wnd.wnd, m_sfText, &m_sfRst);
 	}
 
-	protected void insert_at(dchar c, size_t idx)
+	protected void insertAt(dchar c, size_t idx)
 	{
-		content.insert_at(c, idx);
+		m_content.insertAt(c, idx);
 	}
 
-	protected void remove_at(size_t idx)
+	protected void removeAt(size_t idx)
 	{
-		content.remove_at(idx);
+		m_content.removeAt(idx);
 	}
 
-	protected void remove_interval(size_t start, size_t end)
+	protected void removeInterval(size_t start, size_t end)
 	{
-		content.remove_interval(start, end);
+		m_content.removeInterval(start, end);
 	}
 
 	// function to filter entered symbols by. Should return true if
-	// symbol is acceptable, otherwise false.
-	bool function(dchar) symbol_filter;
+	// symbol is acceptable, false otherwise.
+	bool function(dchar) symbolFilter;
 
-	protected void do_handle_text(dchar c)
+	protected void doHandleText(dchar c)
 	{
 		// first we check wether we had range of symbols selected
-		if (cursor_start == cursor_end)
+		if (m_cursorStart == m_cursorEnd)
 		{
 			// it's just a caret
 			switch (c)
 			{
 				case '\b':	// backspace
-					if (content.length > 1 && cursor_start > 0)
+					if (m_content.length > 1 && m_cursorStart > 0)
 					{
-						remove_at(cursor_start - 1);
-						cursor_start = cursor_end = cursor_start - 1;
+						removeAt(m_cursorStart - 1);
+						m_cursorStart = m_cursorEnd = m_cursorStart - 1;
 					}
 					break;
 				default:
-					log("captured unicode symbol ", to!uint(c));
-					if (symbol_filter && !symbol_filter(c))
+					trace("captured unicode symbol ", c.to!uint);
+					if (symbolFilter && !symbolFilter(c))
 					{
-						log("ignored by filter");
+						trace("ignored by filter");
 						return;
 					}
-					insert_at(c, cursor_start);
-					cursor_start = cursor_end = cursor_start + 1;
+					insertAt(c, m_cursorStart);
+					m_cursorStart = m_cursorEnd = m_cursorStart + 1;
 					break;
 			}
 		}
 		else
 		{
 			// range is selected
-			int ordered_start = min(cursor_start, cursor_end);
-			int ordered_end = max(cursor_start, cursor_end);
+			int orderedStart = min(m_cursorStart, m_cursorEnd);
+			int orderedEnd = max(m_cursorStart, m_cursorEnd);
 			switch (c)
 			{
 				case '\b':	// backspace
-					remove_interval(ordered_start, ordered_end - 1);
-					cursor_start = cursor_end = ordered_start;
+					removeInterval(orderedStart, orderedEnd - 1);
+					m_cursorStart = m_cursorEnd = orderedStart;
 					break;
 				default:
-					log("captured unicode symbol ", to!uint(c));
-					if (symbol_filter && !symbol_filter(c))
+					trace("captured unicode symbol ", c.to!uint);
+					if (symbolFilter && !symbolFilter(c))
 					{
-						log("ignored by filter");
+						trace("ignored by filter");
 						return;
 					}
-					remove_interval(ordered_start, ordered_end - 1);
-					insert_at(c, ordered_start);
-					cursor_start = cursor_end = ordered_start + 1;
+					removeInterval(orderedStart, orderedEnd - 1);
+					insertAt(c, orderedStart);
+					m_cursorStart = m_cursorEnd = orderedStart + 1;
 					break;
 			}
 		}
 		// update sfml text
-		sfText_setUnicodeString(text, content.ptr);
-		update_text_position();
+		sfText_setUnicodeString(m_sfText, m_content.ptr);
+		updateText();
 	}
 
-	private final void handle_MouseScroll(GuiElement sender, int x, int y, int delta)
+	private void handleMouseScroll(int x, int y, int delta)
 	{
-		if (kb_focused && !mouse_focused)
+		if (m_kbFocused && !m_mouseFocused)
 		{
-			cursor_start = max(0, min(content.length - 1, cursor_start + delta));
-			cursor_end = cursor_start;
-			update_cursor_visuals();
+			m_cursorStart = max(0, min(m_content.length - 1, m_cursorStart + delta));
+			m_cursorEnd = m_cursorStart;
+			updateCursorVisuals();
 		}
 	}
 
-	private final void hande_KeyPressed(GuiElement sender, const sfKeyEvent* kevt)
+	private void handeKeyPressed(const sfKeyEvent* kevt)
 	{
 		switch (kevt.code)
 		{
 			case sfKeyLeft:
 				if (kevt.shift)
-					cursor_end = max(0, cursor_end - 1);
+					m_cursorEnd = max(0, m_cursorEnd - 1);
 				else
 				{
-					cursor_start = max(0, cursor_start - 1);
-					cursor_end = cursor_start;
+					m_cursorStart = max(0, m_cursorStart - 1);
+					m_cursorEnd = m_cursorStart;
 				}
-				update_cursor_visuals();
+				updateCursorVisuals();
 				break;
 			case sfKeyRight:
 				if (kevt.shift)
-					cursor_end = min(content.length - 1, cursor_end + 1);
+					m_cursorEnd = min(m_content.length - 1, m_cursorEnd + 1);
 				else
 				{
-					cursor_start = min(content.length - 1, cursor_start + 1);
-					cursor_end = cursor_start;
+					m_cursorStart = min(m_content.length - 1, m_cursorStart + 1);
+					m_cursorEnd = m_cursorStart;
 				}
-				update_cursor_visuals();
+				updateCursorVisuals();
 				break;
 			case sfKeyHome:
 				if (kevt.shift)
-					cursor_end = 0;
+					m_cursorEnd = 0;
 				else
-					cursor_start = cursor_end = 0;
-				update_cursor_visuals();
+					m_cursorStart = m_cursorEnd = 0;
+				updateCursorVisuals();
 				break;
 			case sfKeyEnd:
 				if (kevt.shift)
-					cursor_end = content.length - 1;
+					m_cursorEnd = m_content.length - 1;
 				else
-					cursor_start = cursor_end = content.length - 1;
-				update_cursor_visuals();
+					m_cursorStart = m_cursorEnd = m_content.length - 1;
+				updateCursorVisuals();
 				break;
 			case sfKeyA:
 				if (kevt.control)
 				{
-					cursor_start = 0;
-					cursor_end = content.length - 1;
-					update_cursor_visuals();
+					m_cursorStart = 0;
+					m_cursorEnd = m_content.length - 1;
+					updateCursorVisuals();
 				}
 				break;
 			case sfKeyDelete:
-				if (cursor_start == cursor_end)
+				if (m_cursorStart == m_cursorEnd)
 				{
-					if (cursor_start < content.length - 1)
-						remove_at(cursor_start);
+					if (m_cursorStart < m_content.length - 1)
+						removeAt(m_cursorStart);
 				}
 				else
 				{
-					int ordered_start = min(cursor_start, cursor_end);
-					int ordered_end = max(cursor_start, cursor_end);
-					remove_interval(ordered_start, ordered_end - 1);
-					cursor_start = cursor_end = ordered_start;
+					int orderedStart = min(m_cursorStart, m_cursorEnd);
+					int orderedEnd = max(m_cursorStart, m_cursorEnd);
+					removeInterval(orderedStart, orderedEnd - 1);
+					m_cursorStart = m_cursorEnd = orderedStart;
 				}
 				// update sfml text
-				sfText_setUnicodeString(text, content.ptr);
-				update_text_position();
+				sfText_setUnicodeString(m_sfText, m_content.ptr);
+				updateText();
 				break;
 			case sfKeyReturn:
 				// we interpret enter as desire to commit changes and return
@@ -359,32 +356,24 @@ class TextField: Label
 		}
 	}
 
-	private final void handle_TextEntered(GuiElement sender, const sfTextEvent* evt)
+	private void handleTextEntered(const sfTextEvent* evt)
 	{
 		dchar c = evt.unicode;
 		switch (c)
 		{
 			case '\r':
-				// do nothing
 				break;
 			case '\n':
-				// do nothing
 				break;
 			case '\t':
-				// do nothing
 				break;
 			case 27:
-				// ESC character
+				// ESC button
 				returnKbFocus();
 				break;
 			default:
 				if (c >= 32 || c == '\b')
-					do_handle_text(c);
+					doHandleText(c);
 		}
 	}
-}
-
-TextField asTextField(GuiElement el)
-{
-	return cast(TextField) el;
 }

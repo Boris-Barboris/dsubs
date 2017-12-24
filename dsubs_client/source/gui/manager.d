@@ -12,7 +12,7 @@ import dsubs_common.containers.dlist;
 import dsubs_client.core.utils;
 import dsubs_client.lib.sfml;
 import dsubs_client.input.router;
-import dsubs_client.render.render;
+import dsubs_client.render.render: IWindowDrawer;
 import dsubs_client.gui.element;
 
 
@@ -75,8 +75,11 @@ class Panel
 	protected void handleWindowResize(const sfSizeEvent* evt)
 	{
 		// greedy roots are fullscreen by convention
-		if (m_root.sizeType == SizeType.GREEDY)
+		if (m_root.layoutType == LayoutType.GREEDY)
+		{
+			m_root.position = vec2i(0, 0);
 			m_root.size = vec2i(evt.width, evt.height);
+		}
 	}
 }
 
@@ -89,10 +92,10 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 
 	this(Window wnd)
 	{
-		m_wnd(wnd);
+		m_wnd = wnd;
 	}
 
-	void draw(Render render, Window wnd)
+	void draw(Window wnd)
 	{
 		// deepest panels first
 		foreach (panel; panels[])
@@ -109,7 +112,7 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 		panels.insertBack(p);
 		// initial shakedown in order to befriend new panel 
 		// with current window size
-		sfSizeEvent fake = sfSizeEvent(sfEvent.size, m_wnd.width, m_wnd.height);
+		sfSizeEvent fake = sfSizeEvent(sfEvtResized, m_wnd.width, m_wnd.height);
 		p.handleWindowResize(&fake);
 	}
 

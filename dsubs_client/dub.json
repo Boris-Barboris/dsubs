@@ -1,17 +1,20 @@
 {
 	"name": "dsubs_client",
-    "targetType": "executable",
-    "version": "0.0.1",
+	"targetType": "executable",
+	"version": "0.0.1",
 	"authors": [
 		"Boris-Barboris"
 	],
-    "dependencies": {
+	"dependencies": {
 		"gfm:math": "~>6.2.7",
 		"derelict-sfml2": { "path": "../DerelictSFML2" },
 		"dsubs_common": { "path": "../dsubs_common" }
 	},
 	"description": "Dsubs client.",
-	"copyright": "Copyright (C) 2017, Alexander Baranin",
+	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
 	"license": "GPL-2.0",
-	"copyFiles-windows": ["libs-win-x86/*.dll"]
+	"copyFiles-windows": ["libs-win-x86/*.dll"],
+	"subConfigurations": {
+		"dsubs_common": "debuglib"
+	}
 }

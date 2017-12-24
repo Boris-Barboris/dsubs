@@ -2,6 +2,7 @@ module dsubs_client.input.router;
 
 import std.experimental.logger;
 
+import derelict.sfml2.system;
 import derelict.sfml2.window;
 import derelict.sfml2.graphics;
 
@@ -38,15 +39,15 @@ interface IInputReciever
 /// Event handling result
 struct HandleResult
 {
-	// reciever may decide to pass some events further down the chain of routers
+	/// reciever may decide to pass some events further down the chain of routers
 	bool passThrough = true;
 }
 
 /// Result of event routing via subrouter.
 struct RouteResult
 {
-	// Entity that should recieve the event. Null sends event further down
-	// the chain.
+	/// Entity that should recieve the event. Null sends event further down
+	/// the chain.
 	IInputReciever reciever;
 }
 
@@ -64,7 +65,6 @@ final class InputRouter
 {
 	// subrouters in natural order:
 	IWindowEventSubrouter guiRouter;
-	IWindowEventSubrouter overlayRouter;
 	IWindowEventSubrouter worldRouter;
 	IWindowEventSubrouter hotkeyRouter;
 
@@ -75,26 +75,26 @@ final class InputRouter
 	private static __gshared IInputReciever
 		g_underCursor, g_kbFocused, g_mouseFocused;
 
-	static @property IInputReciever underCursor() const { return g_underCursor; }
+	static @property IInputReciever underCursor() { return g_underCursor; }
 	static @property IInputReciever underCursor(IInputReciever rhs) 
 	{
-		if (g_underCursor != rhs && g_underCursor != null)
+		if (g_underCursor !is rhs && g_underCursor !is null)
 			g_underCursor.handleMouseLeave();
 		return g_underCursor = rhs;
 	}
 
-	static @property IInputReciever kbFocused() const { return g_kbFocused; }
+	static @property IInputReciever kbFocused() { return g_kbFocused; }
 	static @property IInputReciever kbFocused(IInputReciever rhs) 
 	{
-		if (g_kbFocused != rhs && g_kbFocused != null)
+		if (g_kbFocused !is rhs && g_kbFocused !is null)
 			g_kbFocused.handleMouseLeave();
 		return g_kbFocused = rhs;
 	}
 
-	static @property IInputReciever mouseFocused() const { return g_mouseFocused; }
+	static @property IInputReciever mouseFocused() { return g_mouseFocused; }
 	static @property IInputReciever mouseFocused(IInputReciever rhs) 
 	{
-		if (g_mouseFocused != rhs && g_mouseFocused != null)
+		if (g_mouseFocused !is rhs && g_mouseFocused !is null)
 			g_mouseFocused.handleMouseLeave();
 		return g_mouseFocused = rhs;
 	}
@@ -129,7 +129,7 @@ final class InputRouter
 
 	/// In dynamic, moving environment it's simpler to just generate
 	/// mouseMove event every time screen is redrawn in order to get new
-	/// object under the cursor. GUI router should have a good cache anyways.
+	/// object under the cursor. Rrouters should have a good caching mechanism.
 	void simulateMouseMove()
 	{
 		if (m_wndHasFocus && m_mouseInside)
@@ -185,8 +185,6 @@ private:
 		const sfSizeEvent* sevt = cast(const sfSizeEvent*) evt;
 		if (guiRouter)
 			guiRouter.handleWindowResize(wnd, sevt);
-		if (overlayRouter)
-			overlayRouter.handleWindowResize(wnd, sevt);
 		if (worldRouter)
 			worldRouter.handleWindowResize(wnd, sevt);
 	}
@@ -195,9 +193,9 @@ private:
 	{
 		assert(wnd == m_window);
 		HandleResult res;
-		if (m_kbFocus)
+		if (g_kbFocused)
 		{
-			res = m_kbFocus.handleKeyboard(wnd, evt);
+			res = g_kbFocused.handleKeyboard(wnd, evt);
 			if (!res.passThrough)
 				return;
 		}
@@ -206,13 +204,6 @@ private:
 		if (guiRouter)
 		{
 			rres = guiRouter.routeKeyboard(wnd, evt);
-			if (rres.reciever)
-				if (!rres.reciever.handleKeyboard(wnd, evt).passThrough)
-					return;
-		}
-		if (overlayRouter)
-		{
-			rres = overlayRouter.routeKeyboard(wnd, evt);
 			if (rres.reciever)
 				if (!rres.reciever.handleKeyboard(wnd, evt).passThrough)
 					return;
@@ -266,19 +257,13 @@ private:
 		RouteResult rres;
 		if (guiRouter)
 		{
-			rres = guiRouter.routeMousePos(this, evt, x, y);
-			if (handleMouse(wnd, rres, evt, x, y, btn, delta))
-				return;
-		}
-		if (overlayRouter)
-		{
-			rres = overlayRouter.routeMousePos(this, evt, x, y);
+			rres = guiRouter.routeMousePos(wnd, evt, x, y);
 			if (handleMouse(wnd, rres, evt, x, y, btn, delta))
 				return;
 		}
 		if (worldRouter)
 		{
-			rres = worldRouter.routeMousePos(this, evt, x, y);
+			rres = worldRouter.routeMousePos(wnd, evt, x, y);
 			if (handleMouse(wnd, rres, evt, x, y, btn, delta))
 				return;
 		}

@@ -41,6 +41,6 @@ class ConvexShape
 	void render(Window wnd, const sfTransform trans)
 	{
 		state_template.transform = trans;
-		sfRenderWindow_drawConvexShape(wnd.ptr, shape, &state_template);
+		sfRenderWindow_drawConvexShape(wnd.wnd, shape, &state_template);
 	}
 }

@@ -13,260 +13,232 @@ import derelict.sfml2.system;
 import derelict.sfml2.window;
 
 import dsubs_client.core.window;
-public import dsubs_client.gui.element;
-import dsubs_client.gui.fonts;
-import dsubs_client.gui.manager;
+import dsubs_client.core.utils;
+import dsubs_client.lib.sfml;
+import dsubs_client.gui.element;
 
 
-class ScrollBar(ChildT): GuiElement
-	if (is(ChildT == class) && isAssignable!(GuiElement, ChildT))
+/// Container for a child GuiElement with vertical scrollbar
+final class ScrollBar: GuiElement
 {
-	__gshared float SCROLL_SPEED = 25.0f;
+	__gshared float g_scrollSpeed = 25.0f;
 
-	protected
+	private
 	{
-		float _scroll_position = 0.0f;
-		ChildT _child;
-		bool _child_needs_update = true;
+		float m_scrollPosition = 0.0f;	// always <= 0
+		GuiElement m_child;
 	}
 
-	ChildT child() { return _child; }
+	@property GuiElement child() { return m_child; }
 
-	this(GuiManager manager, ChildT child)
+	this(GuiElement child)
 	{
 		assert(child !is null);
-		super(manager);
-		sb_background = sfRectangleShape_create();
-		sb_handle = sfRectangleShape_create();
-		sfRectangleShape_setOutlineThickness(sb_handle, 0);
-		sfRectangleShape_setOutlineThickness(sb_background, 1);
-		sfRectangleShape_setOutlineColor(sb_background, _sb_background_border_color);
-		sfRectangleShape_setFillColor(sb_background, _sb_background_fill_color);
-		sfRectangleShape_setFillColor(sb_handle, _sb_handle_color);
-		_child = child;
-		_child._parent = this;
-		_child.border_color(sfTransparent);
-		_child.border_width(0);
-		backgroud_color(sfTransparent);
-		mouse_transparent = false;
+		super();
+		m_sbBackgroundRect = sfRectangleShape_create();
+		m_sbHandleRect = sfRectangleShape_create();
+		sfRectangleShape_setOutlineThickness(m_sbHandleRect, 0);
+		sfRectangleShape_setOutlineThickness(m_sbBackgroundRect, 0);
+		sfRectangleShape_setFillColor(m_sbBackgroundRect, m_sbBackFillColor);
+		sfRectangleShape_setFillColor(m_sbHandleRect, m_sbHandleColor);
+		m_child = child;
+		m_child.m_parent = this;
+		m_child.parentViewport = &m_viewport;
+		mouseTransparent = false;
 		// only one of the two will be called during scroll event:
-		_child.onMouseScroll += &handle_mouse_scroll;
-		this.onMouseScroll += &handle_mouse_scroll;
+		m_child.onMouseScroll += &handleMouseScroll;
+		onMouseScroll += &handleMouseScroll;
 		// assign handlers for scrollbar-mouse interactions
-		this.onMouseDown += &handle_mouse_down;
-		this.onMouseUp += &handle_mouse_up;
-		this.onMouseMove += &handle_mouse_move;
+		onMouseDown += &handleMouseDown;
+		onMouseUp += &handleMouseUp;
+		onMouseMove += &handleMouseMove;
 	}
 
-	// visual staff
-	protected
+	private
 	{
-		sfRectangleShape* sb_background;	// scrollbar background rect
-		sfRectangleShape* sb_handle;			// scrollbar handle rect
-		uint _scrollbar_width = 10;
-		uint _min_sb_handle_length = 10;
-		sfColor _sb_background_border_color = sfColor(255, 255, 255, 100);
-		sfColor _sb_background_fill_color = sfTransparent;
-		sfColor _sb_handle_color = sfWhite;
-		bool _sb_visible = true;
+		sfRectangleShape* m_sbBackgroundRect;	/// scrollbar background rect
+		sfRectangleShape* m_sbHandleRect;		/// scrollbar handle rect
+		uint m_scrollbarWidth = 10;
+		uint m_minSbHandleLength = 20;
+		sfColor m_sbBackFillColor = sfColor(255, 255, 255, 50);
+		sfColor m_sbHandleColor = sfWhite;
+		bool m_sbVisible = true;
 	}
 
 	private
 	{
 		// y coordinate and size of the scrollbar handle
-		float handle_length = 0.0f;
-		float sb_handle_y = 0.0f;
+		float m_handleLength = 0.0f;
+		float m_handleY = 0.0f;
 	}
 
-	mixin SuperAccessor!(GuiElement, vec2f, "position",
-		"update_child_viewport(); update_child_position();");
+	mixin AppendSet!(vec2i, "position", "updateChildPosition();");
 
-	mixin SuperAccessor!(GuiElement, vec2f, "size", "_child_needs_update = true;");
+	mixin AppendSet!(vec2i, "size", "updateChild();");
 
-	mixin SuperAccessor!(GuiElement, vec4f, "viewport", "update_child_viewport();");
+	mixin GetSet!(sfColor, "sbBackFillColor",
+		"sfRectangleShape_setFillColor(m_sbBackgroundRect, rhs);");
 
-	mixin ElementAccessor!(GuiElement, sfColor, "sb_background_border_color",
-		"sfRectangleShape_setOutlineColor(sb_background, _sb_background_border_color);");
+	mixin GetSet!(sfColor, "sbHandleColor",
+		"sfRectangleShape_setFillColor(m_sbHandleRect, rhs);");
 
-	mixin ElementAccessor!(GuiElement, sfColor, "sb_background_fill_color",
-		"sfRectangleShape_setFillColor(sb_background, _sb_background_fill_color);");
+	mixin GetSet!(uint, "scrollbarWidth", "updateChild();");
 
-	mixin ElementAccessor!(GuiElement, sfColor, "sb_handle_color",
-		"sfRectangleShape_setFillColor(sb_handle, _sb_handle_color);");
-
-	mixin ElementAccessor!(GuiElement, uint, "scrollbar_width",
-		"_child_needs_update = true;");
-
-	mixin ElementAccessor!(GuiElement, uint, "min_sb_handle_length", "");
+	mixin GetSet!(uint, "minSbHandleLength", "updateSbVisual();");
 
 	// sets up scrollbar visuals
-	protected void update_sb_visual()
+	private void updateSbVisual()
 	{
-		if (_child.size.y > 0.0f)
+		if (m_child.size.y > 0.0f)
 		{
-			float frame_ratio = (_size.y - 2.0f * _border_width) / _child.size.y;
-			if (frame_ratio >= 1.0f)
+			float frameRatio = size.y / m_child.size.y;
+			if (frameRatio >= 1.0f)
 			{
 				// child can be fit inside container and we have no need in
 				// the scrollbar, let's make it transparent
-				_sb_visible = false;
+				m_sbVisible = false;
 			}
 			else
 			{
 				// let's calculate the handle position
-				_sb_visible = true;
-				handle_length = max(_min_sb_handle_length,
-					frame_ratio * (_size.y - 2.0f * _border_width));
-				float x = -_scroll_position / max_scroll;
-				sb_handle_y = _border_width +
-					x * (_size.y - 2.0f * _border_width - handle_length);
-				float sb_handle_x = _size.x - _scrollbar_width - _border_width;
-				sfRectangleShape_setPosition(sb_background,
-					sfVector2f(sb_handle_x, _border_width));
-				sfRectangleShape_setPosition(sb_handle,
-					sfVector2f(sb_handle_x, sb_handle_y));
-				sfRectangleShape_setSize(sb_background,
-					sfVector2f(_scrollbar_width, _size.y - 2.0f * _border_width));
-				sfRectangleShape_setSize(sb_handle,
-					sfVector2f(_scrollbar_width, handle_length));
+				m_sbVisible = true;
+				m_handleLength = max(m_minSbHandleLength, frameRatio * size.y);
+				float x = -m_scrollPosition / m_maxScroll;
+				m_handleY = x * (size.y - m_handleLength);
+				int sbX = size.x - m_scrollbarWidth;
+				sfRectangleShape_setPosition(m_sbBackgroundRect,
+					sfVector2f(sbX, 0.0f));
+				sfRectangleShape_setPosition(m_sbHandleRect,
+					sfVector2f(sbX, m_handleY));
+				sfRectangleShape_setSize(m_sbBackgroundRect,
+					sfVector2f(m_scrollbarWidth, size.y));
+				sfRectangleShape_setSize(m_sbHandleRect,
+					sfVector2f(m_scrollbarWidth, m_handleLength));
 			}
 		}
 		else
-			_sb_visible = false;
+			m_sbVisible = false;
 	}
 
-	protected void update_child()
+	private void updateChild()
 	{
-		_child.size(vec2f(_size.x - _scrollbar_width, _child.size.y));
-		// child size assignment triggers child_changed
-		update_child_viewport();
-		update_child_position();
+		updateChildPosition();
+		int newXSize = max(0, size.x - m_scrollbarWidth);
+		final switch (m_child.layoutType)
+		{
+			case LayoutType.FIXED:
+				m_child.size = vec2i(newXSize, m_child.size.y);
+				break;
+			case LayoutType.CONTENT:
+				m_child.fitContent(Axis.X, newXSize);
+				break;
+			case LayoutType.GREEDY:
+				m_child.size = vec2i(newXSize, size.y);
+				break;
+			case LayoutType.FRACT:
+				assert(0, "FRACT layout unsupported by scrollbar");
+		}
+		updateSbVisual();
 	}
 
-	protected void update_child_viewport()
+	private void updateChildPosition()
 	{
-		_child.viewport(
-			clamp_viewport(
-				vec4f(_position.x, _position.y,
-					  _size.x - _scrollbar_width, _size.y)));
+		m_child.position = vec2i(position.x, 
+			lrint(position.y + m_scrollPosition).to!int);
+		updateSbVisual();
 	}
 
-	protected void update_child_position()
+	override void childChanged(GuiElement child)
 	{
-		vec2f new_child_pos =
-			vec2f(this._position.x, this._position.y + _scroll_position);
-		_child.position(new_child_pos);
-		update_sb_visual();
+		assert(child is m_child);
+		// this ensures that m_scrollPosition is adequate and not out of bounds
+		updateMouseScroll(0);
+		updateChildPosition();
 	}
 
-	override void child_changed(GuiElement child)
+	private void handleMouseScroll(int x, int y, int delta)
 	{
-		// this ensures that _scroll_position is adequate and not out of bounds
-		update_mouse_scroll(0);
-		update_child_position();
+		updateMouseScroll(delta);
+		updateChildPosition();
 	}
 
-	private void handle_mouse_scroll(GuiElement sender, int x, int y, int delta)
-	{
-		update_mouse_scroll(delta);
-		update_child_position();
-	}
+	private float m_maxScroll = 0.0f;
 
-	private float max_scroll;
-
-	protected void update_mouse_scroll(int delta, float speed_gain = ScrollBar.SCROLL_SPEED)
+	private void updateMouseScroll(int delta, float speedGain = g_scrollSpeed)
 	{
-		max_scroll = (_child.size.y - _size.y + 2.0f * _border_width);
-		if (max_scroll <= 0.0f)
-			_scroll_position = 0.0f;
+		m_maxScroll = m_child.size.y - size.y;
+		if (m_maxScroll <= 0.0f)
+			m_scrollPosition = 0.0f;
 		else
 		{
-			_scroll_position += speed_gain * delta;
-			_scroll_position = fmin(0.0f, fmax(_scroll_position, -max_scroll));
+			m_scrollPosition += speedGain * delta;
+			m_scrollPosition = fmin(0.0f, fmax(m_scrollPosition, -m_maxScroll));
 		}
-	}
-
-	override protected void update_visual()
-	{
-		super.update_visual();
-		if (_child_needs_update)
-			update_child();
-		_child_needs_update = false;
 	}
 
 	override void draw(Window wnd)
 	{
 		super.draw(wnd);
-		if (_child.active)
-			_child.draw(wnd);
-	}
-
-	protected override void do_draw(Window wnd)
-	{
-		super.do_draw(wnd);
-		if (_sb_visible)
+		m_child.draw(wnd);
+		// child will set it's own scissors
+		sfRenderWindow_setScissor(wnd.wnd, m_viewport.tosf);
+		if (m_sbVisible)
 		{
-			sfRenderWindow_drawRectangleShape(wnd.ptr, sb_background, null);
-			sfRenderWindow_drawRectangleShape(wnd.ptr, sb_handle, null);
+			sfRenderWindow_drawRectangleShape(wnd.wnd, m_sbBackgroundRect, &m_sfRst);
+			sfRenderWindow_drawRectangleShape(wnd.wnd, m_sbHandleRect, &m_sfRst);
 		}
 	}
 
-	override GuiElement get_from_point(vec2f point)
+	override GuiElement getFromPoint(int x, int y)
 	{
-		if (super.get_from_point(point))
+		if (super.getFromPoint(x, y))
 		{
 			// first we check if we are pointing on the scrollbar
-			if (_sb_visible && point.x >= _size.x - _border_width - _scrollbar_width)
+			if (m_sbVisible && x >= size.x - m_scrollbarWidth)
 				return this;
-			auto check = _child.get_from_point(point);
+			auto check = m_child.getFromPoint(x, y);
 			if (check)
 				return check;
 			return this;
 		}
-		else
-			return null;
+		return null;
 	}
 
-	private bool point_on_scrollbar_body(int x, int y)
+	private bool isOnScrollbarBody(int x, int y)
 	{
-		float lx = x - _position.x;
-		float ly = y - _position.y;
-		return (_sb_visible && lx >= _size.x - _border_width - _scrollbar_width &&
-			ly >= sb_handle_y && ly <= (sb_handle_y + handle_length));
+		int lx = x - position.x;
+		int ly = y - position.y;
+		return (m_sbVisible && lx >= size.x - m_scrollbarWidth &&
+			ly >= m_handleY && ly <= (m_handleY + m_handleLength));
 	}
 
-	private int prev_y = -1;
+	private int m_prevY;
 
-	private void handle_mouse_down(GuiElement sender, int x, int y, sfMouseButton btn)
+	private void handleMouseDown(int x, int y, sfMouseButton btn)
 	{
-		if (btn == sfMouseLeft && point_on_scrollbar_body(x, y))
+		if (btn == sfMouseLeft && isOnScrollbarBody(x, y))
 		{
 			// user clicked on scrollbar, let's capture it
 			requestMouseFocus();
-			prev_y = y;
+			m_prevY = y;
 		}
 	}
 
-	private void handle_mouse_up(GuiElement sender, int x, int y, sfMouseButton btn)
+	private void handleMouseUp(int x, int y, sfMouseButton btn)
 	{
-		if (btn == sfMouseLeft && mouse_focused)
+		if (btn == sfMouseLeft && m_mouseFocused)
 			returnMouseFocus();
 	}
 
-	private void handle_mouse_move(GuiElement sender, int x, int y)
+	private void handleMouseMove(int x, int y)
 	{
-		if (mouse_focused && _sb_visible)
+		if (m_mouseFocused && m_sbVisible)
 		{
-			int delta = y - prev_y;
-			float gain = _child.size.y / _size.y;
-			update_mouse_scroll(-delta, gain);
-			update_child_position();
-			prev_y = y;
+			int delta = y - m_prevY;
+			float gain = m_child.size.y / size.y;
+			updateMouseScroll(-delta, gain);
+			updateChildPosition();
+			m_prevY = y;
 		}
 	}
-}
-
-ScrollBar!T asScrollBar(T)(GuiElement el)
-{
-	return cast(ScrollBar!T) el;
 }

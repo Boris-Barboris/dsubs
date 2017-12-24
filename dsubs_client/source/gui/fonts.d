@@ -1,4 +1,4 @@
-module dsubs_client.gui.fonts;
+module dsubs_client.lib.fonts;
 
 import std.string;
 
@@ -7,18 +7,21 @@ import derelict.sfml2.graphics;
 
 __gshared sfFont*[string] g_loadedFonts;
 
-__gshared immutable string[string] g_font_files;
+__gshared immutable string[string] g_fontFiles;
 
-static shared this()
+shared static this()
 {
-	g_font_files = [
-		"Sans": "fonts/LiberationSans-Regular.ttf",
-		"SansMono": "fonts/LiberationMono-Regular.ttf",
+	g_fontFiles = [
+		"Sans": "fonts\\LiberationSans-Regular.ttf",
+		"SansMono": "fonts\\LiberationMono-Regular.ttf",
 	];
-	foreach (string name, string filename; g_font_files)
+}
+
+void loadGlobalFonts()
+{
+	foreach (string name, string filename; g_fontFiles)
 	{
 		auto cstr = toStringz(filename);
-		sfFont* font = sfFont_createFromFile(cstr);
-		g_loadedFonts[name] = font;
+		g_loadedFonts[name] = sfFont_createFromFile(cstr);
 	}
 }

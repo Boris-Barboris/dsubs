@@ -115,10 +115,10 @@ unittest
 {
 	vec4i v1 = vec4i(0, 1, 2, 3);
 	sfIntRect v2 = tosf(v1);
-	assert(v1.left == 0);
-	assert(v1.top == 1);
-	assert(v1.width == 2);
-	assert(v1.height == 3);
+	assert(v2.left == 0);
+	assert(v2.top == 1);
+	assert(v2.width == 2);
+	assert(v2.height == 3);
 }
 
 sfVector2f tosf(in vec2d v)

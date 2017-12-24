@@ -1,6 +1,7 @@
 module dsubs_client.gui.textbox;
 
 import std.algorithm.comparison: min, max;
+import std.array: replace;
 import std.conv: to;
 import std.experimental.logger;
 import std.string;
@@ -15,226 +16,202 @@ import derelict.sfml2.window;
 
 public import dsubs_common.mutstring;
 
-import dsubs_client.lib.sfml;		// for conversions
+import dsubs_client.lib.sfml;
+import dsubs_client.lib.fonts;
 import dsubs_client.core.window;
-public import dsubs_client.gui.element;
-import dsubs_client.gui.fonts;
+import dsubs_client.core.utils;
+import dsubs_client.gui.element;
 
 
-/// Multiline readonly scrollable field to show lot's of text on.
+/// Multiline readonly text field for big text displaying.
 final class TextBox: GuiElement
 {
 	private
 	{
-		dstring _content;
-		sfText*[] texts;
-		uint _font_size = 12;
-		string _fontname = "SansMono";
-		sfColor _font_color = sfWhite;
-		int _padding = 3;
+		dstring m_content;
+		uint m_fontSize = 12;
+		string m_fontName = "SansMono";
+		int m_padding = 3;
+		sfText*[] m_sfTexts;
+		sfColor m_fontColor = sfWhite;
 	}
 
 	this()
 	{
 		super();
-		sizeType(SizeType.CONTENT);
-		mouse_transparent = false;
-		_content = ""d;
+		layoutType = LayoutType.CONTENT;
+		backgroundVisible = true;
+		mouseTransparent = false;
+		m_content = ""d;
 	}
 
 	~this()
 	{
-		foreach (t; texts)
+		foreach (t; m_sfTexts)
 			sfText_destroy(t);
 	}
 
-	@property dstring content() const { return _content; }
+	@property dstring content() const { return m_content; }
 
 	// don't call it too often, it's heavy
-	TextBox content(dstring val)
+	@property dstring content(dstring rhs)
 	{
-		_content = val;
-		update_text();
-		return this;
+		// let's not deal with tabs and replace them by 4 spaces
+		m_content = rhs.replace("\t"d, "    "d);
+		updateText();
+		return m_content;
 	}
 
-	TextBox content(string val)
+	@property dstring content(string val)
 	{
-		return content(toUTF32(val));
+		return content = toUTF32(val);
 	}
 
-	mixin SuperAccessor!(TextBox, SizeType, "sizeType",
-		`if (val != SizeType.CONTENT) assert(0, "TextBox always has CONTENT sizeType");`);
+	mixin RewriteSet!(LayoutType, "layoutType",
+		`if (rhs != LayoutType.CONTENT) assert(0, "TextBox always has CONTENT layoutType");`);
 
-	mixin ElementAccessor!(TextBox, uint, "font_size",
-		"update_font_size(); update_text();");
+	mixin GetSet!(uint, "fontSize",
+		"updateFontSize(); updateText();");
 
-	mixin ElementAccessor!(TextBox, string, "fontname",
-		"update_fontname(); update_text();");
+	mixin GetSet!(string, "fontName",
+		"updateFontname(); updateText();");
 
-	mixin ElementAccessor!(TextBox, sfColor, "font_color",
-		"update_font_color();");
+	mixin GetSet!(sfColor, "fontColor", "updateFontColor();");
 
-	mixin ElementAccessor!(TextBox, int, "padding",
-		"update_text();");
+	mixin GetSet!(int, "padding", "updateText();");
 
-	// main text creation function
-	private void update_text()
+	override int doFitContent(Axis fixedDim, Axis contentDim)
 	{
-		bool naiive_width = true;	// glyph width is estimated naively
-		float glyph_width = get_glyph_width();
-		float line_spacing = get_line_spacing();
-		float line_width = get_size.x - 2.0f * _padding - 2.0f * _border_width;
-		int chars_in_line = max(1, to!int(floor(line_width / glyph_width)));
+		assert(fixedDim == Axis.X, "Horizontal ContentSize layout is not implemented");
+		updateText();
+		return m_textFullHeight;
+	}
+
+	private int m_textFullHeight = 0;
+
+	// function that splits content to text elements
+	private void updateText()
+	{
+		bool naiiveWidth = true;	// glyph width is estimated naively
+		float glyphWidth = getGlyphWidth();
+		int lineSpacing = getLineSpacing();
+		assert(lineSpacing > 0);
+		float lineWidth = size.x - 2.0f * m_padding;
+		int charsInLine = max(1, to!int(floor(lineWidth / glyphWidth)));
 		dchar[512] tmp = 0;		// stack-allocated array to hold the line being built
-		size_t content_idx = 0;	// cursor to query _content
-		int line_idx = 0;
-		size_t txt_idx = 0;		// cursor to query texts;
-		size_t tmp_idx = 0;		// cursor to fill tmp
+		size_t contentIdx = 0;	// cursor to query m_content
+		int lineIdx = 0;
+		size_t txtIdx = 0;		// cursor to query m_sfTexts;
+		size_t tmpIdx = 0;		// cursor to fill tmp
 
-		void finalize_line()
+		void finalizeLine()
 		{
-			if (tmp_idx == 0)
+			if (tmpIdx != 0)	// nothing to do on empty line
 			{
-				// it's an empty line, there's nothing to do
-			}
-			else
-			{
-				if (texts.length == txt_idx)
-					create_text_obj();
-				sfText* t = texts[txt_idx];
-				txt_idx++;
-				tmp[tmp_idx] = 0;	// zero terminator as if it was C string
+				if (m_sfTexts.length == txtIdx)
+					createTextObj();
+				sfText* t = m_sfTexts[txtIdx];
+				txtIdx++;
+				tmp[tmpIdx] = 0;	// zero terminator as if it was a C string
 				sfText_setUnicodeString(t, tmp.ptr);
-				if (naiive_width)
+				if (naiiveWidth)
 				{
 					// we now get accurate glyph width
 					sfFloatRect bounds = sfText_getLocalBounds(t);
-					glyph_width = bounds.width / tmp_idx;
-					assert(glyph_width > 0.0f);
-					chars_in_line = max(1, to!int(floor(line_width / glyph_width)) - 1);
-					naiive_width = false;
+					glyphWidth = bounds.width / tmpIdx;
+					assert(glyphWidth > 0.0f);
+					charsInLine = max(1, floor(lineWidth / glyphWidth).to!int - 1);
+					naiiveWidth = false;
 					// essentially restart update_text:
-					txt_idx = tmp_idx = content_idx = line_idx = 0;
+					txtIdx = tmpIdx = contentIdx = lineIdx = 0;
 					return;
 				}
-				setup_text_obj_coords(t, line_idx, line_spacing);
+				setupTextObj(t, lineIdx, lineSpacing);
 			}
-			line_idx++;
-			tmp_idx = 0;
+			lineIdx++;
+			tmpIdx = 0;
 		}
 
-		while (content_idx < _content.length)
+		while (contentIdx < m_content.length)
 		{
-			dchar symb = _content[content_idx];
-			content_idx++;
+			dchar symb = m_content[contentIdx];
+			contentIdx++;
 			if (symb == '\n')
 			{
-				finalize_line();
+				finalizeLine();
 				continue;
-			}
-			if (symb == '\t')
-			{
-				// replace tab with 4 spaces
-				for (int i = 0; i < 4; i++)
-				{
-					tmp[tmp_idx] = ' ';
-					tmp_idx++;
-					if (tmp_idx == chars_in_line)
-						finalize_line();
-				}
 			}
 			else
 			{
-				tmp[tmp_idx] = symb;
-				tmp_idx++;
-				if (tmp_idx == chars_in_line)
-					finalize_line();
+				tmp[tmpIdx] = symb;
+				tmpIdx++;
+				if (tmpIdx == charsInLine)
+					finalizeLine();
 			}
 		}
-		finalize_line();	// finalize the last line
+		finalizeLine();	// finalize the last line
 
 		// we need to detroy unused sfText's:
-		for (size_t i = txt_idx; i < texts.length; i++)
-			sfText_destroy(texts[i]);
-		texts.length = txt_idx;
+		for (size_t i = txtIdx; i < m_sfTexts.length; i++)
+			sfText_destroy(m_sfTexts[i]);
+		m_sfTexts.length = txtIdx;
 
-		text_full_height = line_idx * line_spacing;
+		m_textFullHeight = lineIdx * lineSpacing;
 	}
 
-	private
-	{
-		float text_full_height = 0.0f;
-	}
-
-	private void create_text_obj()
+	private void createTextObj()
 	{
 		sfText* t = sfText_create();
-		sfText_setFont(t, loadedFonts[_fontname]);
-		sfText_setCharacterSize(t, _font_size);
-		sfText_setColor(t, _font_color);
-		texts ~= t;
+		sfText_setFont(t, g_loadedFonts[m_fontName]);
+		sfText_setCharacterSize(t, m_fontSize);
+		sfText_setColor(t, m_fontColor);
+		m_sfTexts ~= t;
 	}
 
-	private void setup_text_obj_coords(sfText* t, int line_number, float interline)
+	private void setupTextObj(sfText* t, int lineNumber, int interline)
 	{
 		sfFloatRect bounds = sfText_getLocalBounds(t);
-		float x, y; // results
-		x = -bounds.left + _padding;
-		y = interline * line_number + _padding;
-		sfText_setPosition(t,
-			sfVector2f(round(x), round(y)));
+		float x = -bounds.left + m_padding;
+		int y = interline * lineNumber + m_padding;
+		sfText_setPosition(t, sfVector2f(lrint(x), y));
 	}
 
-	private float get_glyph_width()
+	private float getGlyphWidth()
 	{
 		// glyph of 'A'
-		sfGlyph g = sfFont_getGlyph(loadedFonts[_fontname], 34, _font_size, false);
+		sfGlyph g = sfFont_getGlyph(g_loadedFonts[m_fontName], 34, m_fontSize, false);
 		return g.bounds.width;
 	}
 
-	private float get_line_spacing()
+	private int getLineSpacing()
 	{
-		return sfFont_getLineSpacing(loadedFonts[_fontname], _font_size);
+		return sfFont_getLineSpacing(g_loadedFonts[m_fontName], m_fontSize).lrint.to!int;
 	}
 
-	private void update_font_size()
+	private void updateFontSize()
 	{
-		foreach (t; texts)
-			sfText_setCharacterSize(t, _font_size);
+		foreach (t; m_sfTexts)
+			sfText_setCharacterSize(t, m_fontSize);
 	}
 
-	private void update_fontname()
+	private void updateFontname()
 	{
-		foreach (t; texts)
-			sfText_setFont(t, loadedFonts[_fontname]);
+		foreach (t; m_sfTexts)
+			sfText_setFont(t, g_loadedFonts[m_fontName]);
 	}
 
-	private void update_font_color()
+	private void updateFontColor()
 	{
-		foreach (t; texts)
-			sfText_setColor(t, _font_color);
-	}
-
-	override protected void update_visuals()
-	{
-		layout_text();
-		// now we set height according to text dimensions
-		size(vec2f(_size.x, 2.0f * _padding + 2.0 * _border_width + text_full_height));
-		super.update_visuals();
+		foreach (t; m_sfTexts)
+			sfText_setColor(t, m_fontColor);
 	}
 
 	override void draw(Window wnd)
 	{
 		super.draw(wnd);
-		// drawn texts line by line
-		// todo: optimize, not all lines need to be drawn
-		foreach (t; texts)
-			sfRenderWindow_drawText(wnd.ptr, t, &sf_rst);
+		// drawn m_sfTexts line by line
+		// TODO: optimize, not all lines need to be drawn
+		foreach (t; m_sfTexts)
+			sfRenderWindow_drawText(wnd.wnd, t, &m_sfRst);
 	}
-}
-
-TextBox asTextBox(GuiElement el)
-{
-	return cast(TextBox) el;
 }

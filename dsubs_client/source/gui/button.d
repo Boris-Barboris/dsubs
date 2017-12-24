@@ -1,117 +1,121 @@
 module dsubs_client.gui.button;
 
-public import gfm.math.vector;
-
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 import derelict.sfml2.window;
 
 import dsubs_client.core.event;
 import dsubs_client.core.window;
+import dsubs_client.core.utils;
 import dsubs_client.gui.label;
 
 
 enum ButtonType: ubyte
 {
-	SYNC,		// onclick event is synchronous, instant return to unpressed state
-	ASYNC,		// onclick event is asynchronous, unpressed after
-				// callback was called from the outside
-	TOGGLE		// synchronous toggle
+	SYNC,		/// onclick event is synchronous, instant return to unpressed state
+	ASYNC,		/// onclick event is asynchronous, button must be unpressed from the outside
+	TOGGLE		/// synchronous toggle
 }
 
-final class Button: Label
+/// State wich is relevant for ASYNC and TOGGLE buttons.
+enum ButtonState: bool
+{
+	INACTIVE = false,
+	ACTIVE = true,		/// toggle is active, or asynchronous operation is running
+}
+
+class Button: Label
 {
 	private
 	{
-		ButtonType _buttonType;
-		sfColor _pressed_color = sfRed;
-		sfColor _released_color = sfWhite;
-		bool _pressed;    // true when user pressed mouse down but didn't release it
-        bool _state;      // actual internal state of the button in toggle\async mode
+		ButtonType m_buttonType;
+		sfColor m_textPressedColor = sfRed;
+		alias m_textReleasedColor = m_fontColor;
+
+		/// true when user has pressed the button down, but didn't release it
+		bool m_pressed;
+		ButtonState m_state;	/// actual internal state of the button in toggle\async mode
 	}
 
-	this()
+	this(ButtonType type)
 	{
 		super();
-		update_font_color();
-		onMouseDown += &handle_mouse_down;
-		onMouseUp += &handle_mouse_up;
-		onMouseLeave += &handle_mouse_leave;
+		m_buttonType = type;
+		updateFontColor();
+		onMouseDown += &handleMouseDown;
+		onMouseUp += &handleMouseUp;
+		onMouseLeave += &handleMouseLeave;
 	}
 
-	mixin ElementAccessor!(Button, ButtonType, "buttonType", "");
-	mixin ElementAccessor!(Button, sfColor, "pressed_color", "update_font_color();");
-	mixin ElementAccessor!(Button, sfColor, "released_color", "update_font_color();");
+	final @property ButtonType buttonType() const { return m_buttonType; }
 
-	mixin OverrideAccessor!(Button, sfColor, "font_color",
-		"released_color(val);");
+	mixin FinalGetSet!(sfColor, "textPressedColor", "updateFontColor();");
+	mixin FinalGetSet!(sfColor, "textReleasedColor", "updateFontColor();");
 
 	// whether user is currently holding the button down
-	@propery bool pressed() const { return _pressed; }
+	final @property bool pressed() const { return m_pressed; }
 
-	private void pressed(bool val)
+	private @property bool pressed(bool rhs)
 	{
-		_pressed = val;
-		update_font_color();
+		m_pressed = rhs;
+		updateFontColor();
+		return m_pressed;
 	}
 
 	// internal state, bool. Is true when toggle is activated or
 	// async button is in the process of click handling
-	@property bool state() const { return _state; }
+	final @property ButtonState state() const { return m_state; }
 
-	private void update_font_color()
+	private void updateFontColor()
 	{
-		bool visual_state = (_state != _pressed);
-		if (visual_state)
-			sfText_setColor(text, _pressed_color);
+		if (m_state != m_pressed)
+			sfText_setColor(m_sfText, m_textPressedColor);
 		else
-			sfText_setColor(text, _released_color);
+			sfText_setColor(m_sfText, m_textReleasedColor);
 	}
 
-	private void handle_mouse_down(GuiElement s, int x, int y, sfMouseButton btn)
+	private void handleMouseDown(int x, int y, sfMouseButton btn)
 	{
-		pressed(true);
+		pressed = true;
 	}
 
-	private void handle_mouse_leave(GuiElement s)
+	private void handleMouseLeave()
 	{
-		pressed(false);
+		pressed = false;
 	}
 
-	private void handle_mouse_up(GuiElement s, int x, int y, sfMouseButton btn)
+	private void handleMouseUp(int x, int y, sfMouseButton btn)
 	{
-		if (_pressed)
+		if (m_pressed)
 		{
-			if (_buttonType == ButtonType.TOGGLE)
+			final switch (m_buttonType)
 			{
-				_state = !_state;
-				onClick(this, btn);
+				case ButtonType.TOGGLE:
+					m_state = cast(ButtonState)!m_state;
+					onClick(btn);
+					break;
+				case ButtonType.SYNC:
+					onClick(btn);
+					break;
+				case ButtonType.ASYNC:
+					if (m_state == ButtonState.INACTIVE)
+					{
+						m_state = ButtonState.ACTIVE;
+						onClick(btn);
+					}
 			}
-			else
-			{
-				if (_buttonType == ButtonType.ASYNC)
-					_state = true;
-				onClick(this, btn);
-			}
-			pressed(false);
+			pressed = false;
 		}
 	}
 
 	/// Call this for ASYNC button to finish the click
 	void signalClickEnd()
 	{
-		assert(_buttonType == ButtonType.ASYNC);
-		if (_state)
-		{
-			_state = false;
-			update_font_color();
-		}
+		assert(m_buttonType == ButtonType.ASYNC);
+		assert(m_state == ButtonState.ACTIVE);
+		m_state = ButtonState.INACTIVE;
+		updateFontColor();
 	}
 
-	Event!(Button sender, sfMouseButton btn) onClick;
-}
-
-Button asButton(GuiElement el)
-{
-	return cast(Button) el;
+	Event!(sfMouseButton) onClick;
 }
