@@ -166,7 +166,7 @@ class GuiElement: IInputReciever
 		sfRectangleShape_setSize(m_sfRect, m_size.tosf);
 	}
 
-	final protected void updateViewport()
+	private void updateViewport()
 	{
 		if (m_parentViewport)
 			m_viewport = clampViewport(m_parentViewport);

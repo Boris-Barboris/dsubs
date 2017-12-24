@@ -30,14 +30,28 @@ void testGuiElements()
 	Render render = new Render(wnd, router);
 	render.guiRender = gui;
 	
-	HDiv guiDemo = builder(new HDiv(
+	Div semaphore = builder(hDiv(
 		[
-			builder(new GuiElement()).backgroundVisible(true).backgroundColor(sfColor(255, 0, 0, 255)).build(),
-			builder(new GuiElement()).backgroundVisible(true).backgroundColor(sfColor(0, 255, 0, 255)).build(),
-			builder(new GuiElement()).backgroundVisible(true).backgroundColor(sfColor(0, 0, 255, 255)).build()
+			builder(new Label()).content("RED").fontSize(32).
+				backgroundColor(sfColor(255, 0, 0, 255)).fontColor(sfBlack).
+				htextAlign(HTextAlign.LEFT).vtextAlign(VTextAlign.TOP).build(),
+
+			builder(new Label()).content("GREEN").fontSize(32).
+				backgroundColor(sfColor(0, 255, 0, 255)).fontColor(sfBlack).
+				htextAlign(HTextAlign.CENTER).vtextAlign(VTextAlign.CENTER).build(),
+
+			builder(new Label()).content("BLUE").fontSize(32).
+				backgroundColor(sfColor(0, 0, 255, 255)).fontColor(sfBlack).
+				htextAlign(HTextAlign.RIGHT).vtextAlign(VTextAlign.BOTTOM).build()
 		]
-	)).layoutType(LayoutType.GREEDY).borderWidth(5).build();
-	gui.addPanel(new Panel(guiDemo));
+	)).borderWidth(5).build();
+	Div guiDemoRoot = vDiv(
+		[
+			semaphore,
+			new GuiElement()
+		]);
+	guiDemoRoot.borderWidth = 5;
+	gui.addPanel(new Panel(guiDemoRoot));
 
 	Mutex mutex = new Mutex();
 	render.start(mutex);
