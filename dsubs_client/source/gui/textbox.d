@@ -14,8 +14,6 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 import derelict.sfml2.window;
 
-public import dsubs_common.mutstring;
-
 import dsubs_client.lib.sfml;
 import dsubs_client.lib.fonts;
 import dsubs_client.core.window;
@@ -31,7 +29,7 @@ final class TextBox: GuiElement
 		dstring m_content;
 		int m_fontSize = 14;
 		string m_fontName = "UbuntuMono";
-		int m_padding = 4;
+		int m_padding = 3;
 		sfText*[] m_sfTexts;
 		sfColor m_fontColor = sfWhite;
 	}
@@ -40,7 +38,6 @@ final class TextBox: GuiElement
 	{
 		super();
 		layoutType = LayoutType.CONTENT;
-		backgroundVisible = true;
 		mouseTransparent = false;
 		m_content = ""d;
 	}
@@ -94,19 +91,27 @@ final class TextBox: GuiElement
 
 	private int m_textFullHeight = 0;
 
-	// function that splits content to text elements
+	// function that splits content into text elements
 	private void updateText()
 	{
 		bool naiiveWidth = true;	// glyph width is estimated naively
 		float glyphWidth = getGlyphWidth();
+
+		// we can't fit our text in the textbox this small
+		if (glyphWidth > size.x - 2 * m_padding)
+		{
+			m_textFullHeight = 0;
+			return;
+		}
+
 		int lineSpacing = getLineSpacing();
 		assert(lineSpacing > 0);
 		float lineWidth = size.x - 2.0f * m_padding;
 		int charsInLine = max(1, floor(lineWidth / glyphWidth).to!int);
-		dchar[512] tmp = 0;		// stack-allocated array to hold the line being built
+		dchar[1024] tmp = 0;	// stack-allocated array to hold the line being built
 		size_t contentIdx = 0;	// cursor to query m_content
-		int lineIdx = 0;
-		size_t txtIdx = 0;		// cursor to query m_sfTexts;
+		int lineIdx = 0;		// current line index
+		size_t txtIdx = 0;		// cursor of the m_sfTexts element being filled
 		size_t tmpIdx = 0;		// cursor to fill tmp
 
 		void finalizeLine()
@@ -123,9 +128,9 @@ final class TextBox: GuiElement
 				{
 					// we now get accurate glyph width
 					sfFloatRect bounds = sfText_getLocalBounds(t);
-					glyphWidth = bounds.width / tmpIdx;
+					glyphWidth = bounds.width / tmpIdx.to!float;
 					assert(glyphWidth > 0.0f);
-					charsInLine = max(1, floor(lineWidth / glyphWidth).to!int - 1);
+					charsInLine = max(1, floor(lineWidth / glyphWidth).to!int);
 					naiiveWidth = false;
 					// essentially restart update_text:
 					txtIdx = tmpIdx = contentIdx = lineIdx = 0;
@@ -141,7 +146,7 @@ final class TextBox: GuiElement
 		{
 			dchar symb = m_content[contentIdx];
 			contentIdx++;
-			if (symb == '\n')
+			if (symb == cast(dchar)'\n')
 			{
 				finalizeLine();
 				continue;
@@ -161,7 +166,7 @@ final class TextBox: GuiElement
 			sfText_destroy(m_sfTexts[i]);
 		m_sfTexts.length = txtIdx;
 
-		m_textFullHeight = lineIdx * lineSpacing;
+		m_textFullHeight = (lineIdx + 3) * lineSpacing + m_padding;
 	}
 
 	private void createTextObj()
@@ -181,14 +186,14 @@ final class TextBox: GuiElement
 		sfText_setPosition(t, sfVector2f(lrint(x), y));
 	}
 
-	private float getGlyphWidth()
+	private float getGlyphWidth() const
 	{
 		// glyph of 'A'
 		sfGlyph g = sfFont_getGlyph(g_loadedFonts[m_fontName].ptr, 34, m_fontSize, false);
 		return g.bounds.width;
 	}
 
-	private int getLineSpacing()
+	private int getLineSpacing() const
 	{
 		return sfFont_getLineSpacing(g_loadedFonts[m_fontName].ptr, m_fontSize).lrint.to!int;
 	}
@@ -215,7 +220,7 @@ final class TextBox: GuiElement
 	{
 		super.draw(wnd);
 		// drawn m_sfTexts line by line
-		// TODO: optimize, not all lines need to be drawn
+		// TODO: optimize using viewport, not all lines need to be drawn
 		foreach (t; m_sfTexts)
 			sfRenderWindow_drawText(wnd.wnd, t, &m_sfRst);
 	}

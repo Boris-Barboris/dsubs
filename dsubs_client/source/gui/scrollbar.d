@@ -58,8 +58,8 @@ final class ScrollBar: GuiElement
 	{
 		sfRectangleShape* m_sbBackgroundRect;	/// scrollbar background rect
 		sfRectangleShape* m_sbHandleRect;		/// scrollbar handle rect
-		uint m_scrollbarWidth = 10;
-		uint m_minSbHandleLength = 20;
+		int m_scrollbarWidth = 10;
+		int m_minSbHandleLength = 20;
 		sfColor m_sbBackFillColor = sfColor(255, 255, 255, 50);
 		sfColor m_sbHandleColor = sfWhite;
 		bool m_sbVisible = true;
@@ -82,16 +82,17 @@ final class ScrollBar: GuiElement
 	mixin GetSet!(sfColor, "sbHandleColor",
 		"sfRectangleShape_setFillColor(m_sbHandleRect, rhs);");
 
-	mixin GetSet!(uint, "scrollbarWidth", "updateChild();");
+	mixin GetSet!(int, "scrollbarWidth", "updateChild();");
 
-	mixin GetSet!(uint, "minSbHandleLength", "updateSbVisual();");
+	mixin GetSet!(int, "minSbHandleLength", "updateSbVisual();");
 
 	// sets up scrollbar visuals
 	private void updateSbVisual()
 	{
+		m_maxScroll = m_child.size.y - size.y;
 		if (m_child.size.y > 0.0f)
 		{
-			float frameRatio = size.y / m_child.size.y;
+			float frameRatio = size.y / m_child.size.y.to!float;
 			if (frameRatio >= 1.0f)
 			{
 				// child can be fit inside container and we have no need in
@@ -166,7 +167,6 @@ final class ScrollBar: GuiElement
 
 	private void updateMouseScroll(int delta, float speedGain = g_scrollSpeed)
 	{
-		m_maxScroll = m_child.size.y - size.y;
 		if (m_maxScroll <= 0.0f)
 			m_scrollPosition = 0.0f;
 		else

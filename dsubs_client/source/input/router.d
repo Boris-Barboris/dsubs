@@ -78,7 +78,7 @@ final class InputRouter
 	static @property IInputReciever underCursor() { return g_underCursor; }
 	static @property IInputReciever underCursor(IInputReciever rhs) 
 	{
-		if (g_underCursor != rhs)
+		if (g_underCursor !is rhs)
 		{
 			if (g_underCursor !is null)
 				g_underCursor.handleMouseLeave();
@@ -91,7 +91,7 @@ final class InputRouter
 	static @property IInputReciever kbFocused() { return g_kbFocused; }
 	static @property IInputReciever kbFocused(IInputReciever rhs) 
 	{
-		if (g_kbFocused != rhs)
+		if (g_kbFocused !is rhs)
 		{
 			if (g_kbFocused !is null)
 				g_kbFocused.handleKbFocusLoss();
@@ -104,7 +104,7 @@ final class InputRouter
 	static @property IInputReciever mouseFocused() { return g_mouseFocused; }
 	static @property IInputReciever mouseFocused(IInputReciever rhs) 
 	{
-		if (g_mouseFocused != rhs)
+		if (g_mouseFocused !is rhs)
 		{
 			if (g_mouseFocused !is null)
 				g_mouseFocused.handleMouseFocusLoss();
@@ -147,7 +147,7 @@ final class InputRouter
 	/// object under the cursor. Rrouters should have a good caching mechanism.
 	void simulateMouseMove()
 	{
-		if (m_wndHasFocus && m_mouseInside)
+		if (m_wndHasFocus && (m_mouseInside || g_mouseFocused))
 		{
 			sfVector2i mp = sfMouse_getPositionRenderWindow(m_window.wnd);
 			sfEvent moveEvent;

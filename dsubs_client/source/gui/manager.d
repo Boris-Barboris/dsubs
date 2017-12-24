@@ -62,7 +62,7 @@ class Panel
 			else
 			{
 				// cache miss
-				trace("Panel mouse cache miss");
+				//trace("Panel mouse cache miss");
 				m_mouseCache = null;
 			}
 		}
