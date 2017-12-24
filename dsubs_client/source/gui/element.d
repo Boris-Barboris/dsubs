@@ -78,7 +78,7 @@ class GuiElement: IInputReciever
 	final @property GuiElement parent() { return m_parent; }
 
 	// Called by child when it's layout-related parameters have changed
-	protected void childChanged(GuiElement child) {}
+	void childChanged(GuiElement child) {}
 
 	mixin GetSet!(vec2i, "position", "updatePosition();");
 

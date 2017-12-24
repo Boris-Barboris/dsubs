@@ -89,7 +89,6 @@ final class ScrollBar: GuiElement
 	// sets up scrollbar visuals
 	private void updateSbVisual()
 	{
-		m_maxScroll = m_child.size.y - size.y;
 		if (m_child.size.y > 0.0f)
 		{
 			float frameRatio = size.y / m_child.size.y.to!float;
@@ -139,6 +138,7 @@ final class ScrollBar: GuiElement
 			case LayoutType.FRACT:
 				assert(0, "FRACT layout unsupported by scrollbar");
 		}
+		updateMouseScroll(0);
 		updateSbVisual();
 	}
 
@@ -167,6 +167,7 @@ final class ScrollBar: GuiElement
 
 	private void updateMouseScroll(int delta, float speedGain = g_scrollSpeed)
 	{
+		m_maxScroll = m_child.size.y - size.y;
 		if (m_maxScroll <= 0.0f)
 			m_scrollPosition = 0.0f;
 		else
