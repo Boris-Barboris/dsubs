@@ -166,7 +166,7 @@ class GuiElement: IInputReciever
 		sfRectangleShape_setSize(m_sfRect, m_size.tosf);
 	}
 
-	private void updateViewport()
+	final protected void updateViewport()
 	{
 		if (m_parentViewport)
 			m_viewport = clampViewport(m_parentViewport);
@@ -175,7 +175,7 @@ class GuiElement: IInputReciever
 	}
 
 	/// return intersection between rhs and this element's rectangle
-	private vec4i clampViewport(in vec4i* rhs) const
+	private vec4i clampViewport(const(vec4i)* rhs) const
 	{
 		vec4i res;
 		res[0] = min(max((*rhs)[0], m_position.x), m_position.x + m_size.x);
@@ -306,15 +306,13 @@ class GuiElement: IInputReciever
 	}
 
 	// events for users to subscribe to
-	Event!() onMouseEnter;
-	Event!() onMouseLeave;
-	// x, y
-	Event!(int, int) onMouseMove;
-	Event!(int, int, sfMouseButton) onMouseDown;
-	Event!(int, int, sfMouseButton) onMouseUp;
-	// x, y, delta
-	Event!(int, int, int) onMouseScroll;
-	Event!(const sfKeyEvent*) onKeyPressed;
-	Event!(const sfKeyEvent*) onKeyReleased;
-	Event!(const sfTextEvent*) onTextEntered;
+	Event!(void delegate()) onMouseEnter;
+	Event!(void delegate()) onMouseLeave;
+	Event!(void delegate(int x, int y)) onMouseMove;
+	Event!(void delegate(int x, int y, sfMouseButton btn)) onMouseDown;
+	Event!(void delegate(int x, int y, sfMouseButton btn)) onMouseUp;
+	Event!(void delegate(int x, int y, int delta)) onMouseScroll;
+	Event!(void delegate(const sfKeyEvent* evt)) onKeyPressed;
+	Event!(void delegate(const sfKeyEvent* evt)) onKeyReleased;
+	Event!(void delegate(const sfTextEvent* evt)) onTextEntered;
 }

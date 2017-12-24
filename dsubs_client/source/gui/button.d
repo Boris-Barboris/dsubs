@@ -117,5 +117,5 @@ class Button: Label
 		updateFontColor();
 	}
 
-	Event!(sfMouseButton) onClick;
+	Event!(void delegate(sfMouseButton btn)) onClick;
 }

@@ -32,7 +32,7 @@ final class Div(DivType divType): GuiElement
 		private GuiElement[] m_children;
 		bool m_updatingKids = false;	/// anti-recusrion flag.
 		int m_borderWidth = 1;
-		sfColor m_borderColor = sfColor(150, 150, 150, 150);
+		sfColor m_borderColor = sfColor(150, 150, 150, 255);
 		/// array of rectangles that are used to draw inter-child borders
 		sfRectangleShape*[] m_cellBorders;
 	}
@@ -47,6 +47,11 @@ final class Div(DivType divType): GuiElement
 			kid.m_parent = this;
 			kid.parentViewport = &m_viewport;
 		}
+		// we use our base rectangle from GuiElement as a means to draw external border
+		backgroundVisible = true;
+		sfRectangleShape_setOutlineThickness(m_sfRect, 0);
+		backgroundColor = sfTransparent;
+		sfRectangleShape_setOutlineColor(m_sfRect, m_borderColor);
 		// borders between m_children, kids.length - 1 borders to be exact
 		m_cellBorders.reserve(m_children.length - 1);
 		for (int i = 1; i < m_children.length; i++)
@@ -89,6 +94,8 @@ final class Div(DivType divType): GuiElement
 	private void updateBorderWidth()
 	{
 		sfRectangleShape_setOutlineThickness(m_sfRect, m_borderWidth);
+		sfRectangleShape_setPosition(m_sfRect, 
+			vec2i(position.x + m_borderWidth, position.y + m_borderWidth).tosf);
 		updateChildren();
 	}
 
@@ -203,7 +210,9 @@ final class Div(DivType divType): GuiElement
 
 	override void updateSize()
 	{
-		super.updateSize();
+		updateViewport();
+		vec2i internalSize = vec2i(size.x - 2 * m_borderWidth, size.y - 2 * m_borderWidth);
+		sfRectangleShape_setSize(m_sfRect, internalSize.tosf);
 		updateChildren();
 	}
 

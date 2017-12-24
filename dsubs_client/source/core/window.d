@@ -87,7 +87,7 @@ final class Window
 	/// Function repeatedly polls events in window buffer and calls
 	/// respective handlers, if registered. Blocks until the window is closed, or
 	/// waitEvent returns error.
-	void pollEvents(Mutex mutex)
+	void pollEvents(scope Mutex mutex)
 	{
 		sfEvent event;
 		while (!m_stopFlag && sfRenderWindow_waitEvent(m_wnd, &event))
@@ -111,6 +111,7 @@ final class Window
 	void close()
 	{
 		sfRenderWindow_close(m_wnd);
+		m_wnd = null;
 	}
 
 	/// Raw SFML window pointer
@@ -140,7 +141,7 @@ private:
 	sfView* m_view;
 	sfVideoMode m_mode;
 	sfContextSettings m_ctxSettings;
-	Event!(Window, const sfEvent*)[sfEvtCount] m_eventHandlers;
+	Event!(void delegate(Window wnd, const sfEvent* evt))[sfEvtCount] m_eventHandlers;
 
 	static void resizedHandler(Window sender, const sfEvent* evt)
 	{

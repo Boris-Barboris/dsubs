@@ -1,11 +1,15 @@
 module dsubs_client.core.event;
 
+import std.traits: isDelegate, Parameters, ReturnType;
+
 import dsubs_common.containers.array: removeFirst;
 
 
-struct Event(ArgTypes...)
+struct Event(DlgT)
+	if (isDelegate!DlgT && is(ReturnType!DlgT == void))
 {
-	alias HandlerType = void delegate(ArgTypes);
+	alias HandlerType = DlgT;
+	alias ArgTypes = Parameters!DlgT;
 
 	private HandlerType[] handlers;
 
@@ -44,7 +48,7 @@ struct Event(ArgTypes...)
 
 unittest
 {
-	Event!string event;
+	Event!(void delegate(string)) event;
 	string[] results;
 	auto handler1 = (string s) { results ~= s; };
 	auto handler2 = (string s) { results ~= s; };

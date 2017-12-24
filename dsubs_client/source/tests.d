@@ -32,13 +32,11 @@ void testGuiElements()
 	
 	HDiv guiDemo = builder(new HDiv(
 		[
-			builder(new GuiElement()).backgroundColor(sfColor(255, 0, 0, 255)).build(),
-			builder(new GuiElement()).backgroundColor(sfColor(0, 255, 0, 255)).build(),
-			builder(new GuiElement()).backgroundColor(sfColor(0, 0, 255, 255)).build()
+			builder(new GuiElement()).backgroundVisible(true).backgroundColor(sfColor(255, 0, 0, 255)).build(),
+			builder(new GuiElement()).backgroundVisible(true).backgroundColor(sfColor(0, 255, 0, 255)).build(),
+			builder(new GuiElement()).backgroundVisible(true).backgroundColor(sfColor(0, 0, 255, 255)).build()
 		]
-	)).layoutType(LayoutType.GREEDY).borderWidth(20).build();
-	foreach (child; guiDemo.children)
-		child.backgroundVisible = true;
+	)).layoutType(LayoutType.GREEDY).borderWidth(5).build();
 	gui.addPanel(new Panel(guiDemo));
 
 	Mutex mutex = new Mutex();

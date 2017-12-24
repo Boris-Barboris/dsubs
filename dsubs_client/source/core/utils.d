@@ -71,34 +71,33 @@ unittest
 	assert(arr.length == 3);
 }
 
-/// Builder for class types that allows to chain property assignments
-/// in fluent form.
-struct Builder(T)
-	if (is(T == class))
-{
-	private T m_data;
-
-	@disable this();
-
-	this(T data)
-	{
-		m_data = data;
-	}
-
-	T build()
-	{
-		return m_data;
-	}
-
-	Builder!T opDispatch(string name, ArgT)(ArgT rhs)
-	{
-		__traits(getMember, m_data, name) = rhs;
-		return Builder!T(m_data);
-	}
-}
-
-/// returns builder wich is deduced from type of an argument
+/// Returns builder wich is deduced from type of an argument, and allows to 
+/// chain property assignments in fluent form.
 auto builder(T)(T base)
 {
+	struct Builder(T)
+		if (is(T == class))
+	{
+		private T m_data;
+
+		@disable this();
+
+		this(T data)
+		{
+			m_data = data;
+		}
+
+		T build()
+		{
+			return m_data;
+		}
+
+		Builder!T opDispatch(string name, ArgT)(ArgT rhs)
+		{
+			__traits(getMember, m_data, name) = rhs;
+			return Builder!T(m_data);
+		}
+	}
+
 	return Builder!T(base);
 }

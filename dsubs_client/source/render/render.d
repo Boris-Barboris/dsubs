@@ -22,7 +22,7 @@ interface IWindowDrawer
 /// of the rendering pipeline.
 final class Render
 {
-	__gshared sfColor g_clearColor = sfColor(28, 28, 28, 255);
+	__gshared sfColor g_clearColor = sfColor(30, 30, 30, 255);
 
 	private Window m_window;
 	private InputRouter m_router;
@@ -69,16 +69,14 @@ final class Render
 	}
 
 	/// Thread function
-	private void render(Mutex mutex)
+	private void render(scope Mutex mutex)
 	{
 		try
 		{
 			while (!m_stopFlag)
 			{
 				m_window.resetView();
-				sfRenderWindow_setScissorTest(m_window.wnd, false);
 				sfRenderWindow_clear(m_window.wnd, g_clearColor);
-				sfRenderWindow_setScissorTest(m_window.wnd, true);
 				{
 					mutex.lock();
 					scope(exit) mutex.unlock();
