@@ -1,9 +1,0 @@
-{
-    "d.dcd.imports":[
-        "D:\\Heap\\dmd\\dmd2\\src\\druntime\\import",
-        "D:\\Heap\\dmd\\dmd2\\src\\phobos",
-        "D:\\Coding\\dsubs\\DerelictSFML2\\source",
-        "D:\\Coding\\dsubs\\dsubs_client\\source",
-        "D:\\Coding\\dsubs\\dsubs_common\\source"
-    ],
-}

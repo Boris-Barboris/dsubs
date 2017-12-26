@@ -10,6 +10,7 @@
 *dub.selections.json
 
 .dub/
+.vscode/
 *.dll
 *.exe
 *.sln
