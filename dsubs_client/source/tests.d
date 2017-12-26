@@ -14,7 +14,7 @@ import dsubs_client.input.router;
 import dsubs_client.render.render;
 import dsubs_client.gui;
 
-import dsubs_client.world.camera;
+import dsubs_client.render.camera;
 
 
 void runModuleTests()

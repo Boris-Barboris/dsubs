@@ -8,24 +8,27 @@ import std.experimental.logger;
 import derelict.sfml2.graphics;
 import derelict.sfml2.window;
 
-public import dsubs_client.core.window;
-public import dsubs_client.input.router: InputRouter;
+import dsubs_client.core.event;
+import dsubs_client.core.window;
+import dsubs_client.input.router: InputRouter;
 
 
 /// Anything that can draw on window
 interface IWindowDrawer
 {
-	void draw(Window wnd);
+	void draw(Window wnd, long usecsDelta);
 }
 
 /// Rendering thread wrapper, renders one window and dictates general form
 /// of the rendering pipeline.
 final class Render
 {
-	__gshared sfColor g_clearColor = sfColor(30, 30, 30, 255);
+	/// render clears window with this color at the beginning of each frame
+	sfColor clearColor = sfColor(30, 30, 30, 255);
 
 	private Window m_window;
 	private InputRouter m_router;
+
 	IWindowDrawer guiRender;
 	IWindowDrawer worldRender;
 
@@ -33,7 +36,7 @@ final class Render
 	@property InputRouter router() { return m_router; }
 
 	private Thread m_worker;	/// rendering thread
-	private bool m_stopFlag;	/// true when stop was requested
+	private bool m_stopFlag;	/// true when rendering thread stop was requested
 
 	this(Window wnd, InputRouter router)
 	{
@@ -68,27 +71,60 @@ final class Render
 			m_worker.join(false);
 	}
 
+	// these events are fired while holding render lock
+	Event!(void delegate(long usecsDelta)) onPreRender;
+	Event!(void delegate(long usecsDelta)) onPreGuiRender;
+	Event!(void delegate(long usecsDelta)) onPostRender;
+
+	private float m_avgFps = 0.0f;
+	@property float avgFps() const { return m_avgFps; }
+	enum int FPS_UPDATE_FREQ = 60;
+
 	/// Thread function
 	private void render(scope Mutex mutex)
 	{
 		try
 		{
+			MonoTime lastFpsMark = MonoTime.currTime;
+			MonoTime curTime = lastFpsMark;
+			MonoTime prevTime = curTime;
+			long usecsDelta = 0;
+			int frameCounter = 0;
 			while (!m_stopFlag)
 			{
 				m_window.resetView();
-				sfRenderWindow_clear(m_window.wnd, g_clearColor);
+				sfRenderWindow_clear(m_window.wnd, clearColor);
 				{
 					mutex.lock();
 					scope(exit) mutex.unlock();
+					onPreRender(usecsDelta);
 					if (m_router)
 						m_router.simulateMouseMove();
 					if (worldRender)
-						worldRender.draw(m_window);
+					{
+						worldRender.draw(m_window, usecsDelta);
+						m_window.resetView();
+					}
+					onPreGuiRender(usecsDelta);
 					if (guiRender)
-						guiRender.draw(m_window);
+						guiRender.draw(m_window, usecsDelta);
+					onPostRender(usecsDelta);
 				}
 				// present backbuffer, blocks until vsync
 				sfRenderWindow_display(m_window.wnd);
+				// update timings
+				prevTime = curTime;
+				curTime = MonoTime.currTime;
+				usecsDelta = (curTime - prevTime).total!"usecs";
+				// update fps
+				if (++frameCounter > FPS_UPDATE_FREQ - 1)
+				{
+					// 60 frames were rendered
+					long totalMsecs = (curTime - lastFpsMark).total!"msecs";
+					m_avgFps = FPS_UPDATE_FREQ * 1000.0f / totalMsecs;
+					frameCounter = 0;
+					lastFpsMark = curTime;
+				}
 			}
 		}
 		catch (Throwable err)

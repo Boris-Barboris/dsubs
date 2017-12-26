@@ -95,7 +95,7 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 		m_wnd = wnd;
 	}
 
-	void draw(Window wnd)
+	void draw(Window wnd, long usecsDelta)
 	{
 		// deepest panels first
 		foreach (panel; panels[])

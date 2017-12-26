@@ -1,4 +1,4 @@
-module dsubs_client.world.camera;
+module dsubs_client.render.camera;
 
 import std.conv;
 import std.math;
