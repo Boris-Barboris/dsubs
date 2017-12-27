@@ -6,6 +6,8 @@ import dsubs_client.lib.sfml;
 import dsubs_client.lib.fonts;
 import dsubs_client.tests;
 
+import dsubs_client.game;
+
 
 int main(string[] argv)
 {
@@ -13,6 +15,7 @@ int main(string[] argv)
 	loadSfmlLibraries();
 	loadGlobalFonts();
 	runModuleTests();
-	testGuiElements();
+	//testGuiElements();
+	Game.start();
 	return 0;
 }

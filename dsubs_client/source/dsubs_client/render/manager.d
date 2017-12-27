@@ -1,4 +1,4 @@
-module dsubs_client.render.world;
+module dsubs_client.render.manager;
 
 import core.atomic;
 import core.time;
