@@ -38,8 +38,8 @@ final class Div: GuiElement
 	{
 		private GuiElement[] m_children;
 		bool m_updatingKids = false;	/// anti-recusrion flag.
-		int m_borderWidth = 1;
-		sfColor m_borderColor = sfColor(150, 150, 150, 255);
+		int m_borderWidth = 0;
+		sfColor m_borderColor = sfTransparent;
 		/// array of rectangles representing external border
 		sfRectangleShape*[4] m_divBorders;
 		/// array of rectangles that are used to draw inter-child borders

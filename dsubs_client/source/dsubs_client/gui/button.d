@@ -40,11 +40,9 @@ class Button: Label
 		ButtonState m_state;	/// actual internal state of the button in toggle\async mode
 	}
 
-	this(ButtonType type)
+	this(ButtonType type = ButtonType.SYNC)
 	{
 		super();
-		backgroundVisible = true;
-		backgroundColor = sfColor(50, 28, 28, 150);
 		m_buttonType = type;
 		updateFontColor();
 		onMouseEnter += &handleMouseEnter;
@@ -111,24 +109,31 @@ class Button: Label
 	{
 		if (m_pressed)
 		{
-			final switch (m_buttonType)
-			{
-				case ButtonType.TOGGLE:
-					m_state = cast(ButtonState)!m_state;
-					onClick(btn);
-					break;
-				case ButtonType.SYNC:
-					onClick(btn);
-					break;
-				case ButtonType.ASYNC:
-					if (m_state == ButtonState.INACTIVE)
-					{
-						m_state = ButtonState.ACTIVE;
-						onClick(btn);
-					}
-			}
+			simulateClick(btn);
 			pressed = false;
 		}
+	}
+
+	final void simulateClick(sfMouseButton btn = sfMouseLeft)
+	{
+		pressed = true;
+		final switch (m_buttonType)
+		{
+			case ButtonType.TOGGLE:
+				m_state = cast(ButtonState)!m_state;
+				onClick(btn);
+				break;
+			case ButtonType.SYNC:
+				onClick(btn);
+				break;
+			case ButtonType.ASYNC:
+				if (m_state == ButtonState.INACTIVE)
+				{
+					m_state = ButtonState.ACTIVE;
+					onClick(btn);
+				}
+		}
+		pressed = false;
 	}
 
 	/// Call this for ASYNC button to finish the click

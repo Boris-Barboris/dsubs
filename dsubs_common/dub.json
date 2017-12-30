@@ -5,7 +5,8 @@
 		"Boris-Barboris"
 	],
 	"dependencies": {
-		"gfm:math": "~>6.2.7"
+		"gfm:math": "~>6.2.7",
+		"painlesstraits": "0.3.0"
 	},
 	"description": "Common library for dsubs.",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",

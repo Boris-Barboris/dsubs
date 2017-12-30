@@ -10,6 +10,8 @@ import dsubs_client.gui.manager;
 import dsubs_client.render.render;
 import dsubs_client.render.manager;
 
+import dsubs_client.game.mainmenu;
+
 
 /// Namespace for globals wich represent the game state.
 class Game
@@ -34,11 +36,12 @@ __gshared:
 		guiManager = new GuiManager(window);
 		worldManager = new WorldManager(window);
 		mainMutex = new Mutex();
-
 		render.guiRender = guiManager;
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
 		inputRouter.worldRouter = worldManager;
+
+		setupMainMenu();
 		render.start(mainMutex);
 		window.pollEvents(mainMutex);
 		render.stop();

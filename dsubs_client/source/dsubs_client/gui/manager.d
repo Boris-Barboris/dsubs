@@ -116,6 +116,11 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 		p.handleWindowResize(&fake);
 	}
 
+	void clearPanels()
+	{
+		panels.clear();
+	}
+
 	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y)
 	{
 		GuiRouteResult res;

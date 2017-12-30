@@ -27,7 +27,7 @@ struct Event(DlgT)
 		else static assert(0, "Operator " ~ op ~ "= non-applicable to event");
 	}
 
-	/// forget all handlers
+	/// forget about all handlers
 	void clear()
 	{
 		handlers.length = 0;

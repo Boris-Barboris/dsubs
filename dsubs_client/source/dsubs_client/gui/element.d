@@ -316,3 +316,22 @@ class GuiElement: IInputReciever
 	Event!(void delegate(const sfKeyEvent* evt)) onKeyReleased;
 	Event!(void delegate(const sfTextEvent* evt)) onTextEntered;
 }
+
+
+/// Create a transparent GuiElement of fixed size
+GuiElement filler(int size)
+{
+	GuiElement r = new GuiElement();
+	r.layoutType = LayoutType.FIXED;
+	r.size = vec2i(size, size);
+	return r;
+}
+
+/// Create a transparent GuiElement of fractional size
+GuiElement filler(float fract)
+{
+	GuiElement r = new GuiElement();
+	r.layoutType = LayoutType.FRACT;
+	r.fraction = fract;
+	return r;
+}
