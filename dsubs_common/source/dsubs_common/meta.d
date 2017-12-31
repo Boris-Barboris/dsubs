@@ -114,3 +114,13 @@ template ElementSize(R)
 }
 
 static assert (ElementSize!(int[]) == 4);
+
+template ArrayElementT(R)
+{
+	alias ArrayElementT = typeof(R.init[0]);
+}
+
+template ArrayElementSize(R)
+{
+	enum ArrayElementSize = ArrayElementT!(R).sizeof;
+}
