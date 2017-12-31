@@ -10,7 +10,7 @@ public import gfm.math.vector;
 import dsubs_common.containers.array;
 
 
-// Returns a - b, clamped to [-PI; PI]
+/// Return a - b, clamped to [-PI; PI]
 double angleDist(double a, double b)
 {
 	double val = fmod(a - b, 2 * PI);
@@ -19,9 +19,28 @@ double angleDist(double a, double b)
 	return val;
 }
 
+unittest
+{
+	assert(abs(angleDist(-PI, PI + 0.001)) < 0.01);
+	assert(angleDist(-PI, PI + 0.001) < 0.0);
+	assert(abs(angleDist(PI, -PI - 0.001)) < 0.01);
+	assert(angleDist(PI, -PI - 0.001) > 0.0);
+}
+
+/// Clamp angle into [-2 * PI, 2 * PI] interval
+pragma(inline)
 double clampAngle(double a)
 {
 	return fmod(a, 2 * PI);
+}
+
+/// Clamp angle into [-2 * PI, 0] interval
+double courseAngle(double a)
+{
+	double val = clampAngle(a);
+	if (val > 0)
+		val -= 2 * PI;
+	return val;
 }
 
 /** Hierarchical transform.

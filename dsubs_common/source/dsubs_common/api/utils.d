@@ -5,66 +5,61 @@ import std.traits;
 
 import gfm.math.vector;
 
-import dsubs_common.api.constants;
-import dsubs_common.reflection;
-
-// yes, uint, no 4GB+ arrays over TCP please
-immutable uint DEFAULT_MAX_ARRAY_LENGTH = 1024;
+import dsubs_common.meta;
 
 /// UDA to decorate arrays and specify upper length limit
 struct MaxLenAttr
 {
-	uint max_length = DEFAULT_MAX_ARRAY_LENGTH;
+	int maxLength = 4096;
 }
 
+/// Thrown on marshalling\demarshalling of messages that violate array
+/// length restrictions.
 class MaxLenExceeded: Exception
 {
-	uint actual_length;
-	uint max_length;
-	this(uint actual, uint max)
+	int actualLength;
+	int maxLength;
+
+	private static string getMsg(int actual, int max)
 	{
-		super("max length " ~ to!string(max) ~ " , actual " ~ to!string(actual));
-		this.actual_length = actual;
-		this.max_length = max;
+		return "max length " ~ max.to!string ~ ", actual " ~ actual.to!string;
+	}
+
+	this(int actual, int max, string file = __FILE__, 
+		size_t line = __LINE__, Throwable next = null)
+	{
+		super(getMsg(actual, max), file, line, next);
+		actualLength = actual;
+		maxLength = max;
+	}
+
+	this(int actual, int max, Throwable next, string file = __FILE__, 
+		size_t line = __LINE__)
+	{
+		super(getMsg(actual, max), file, line, next);
+		actualLength = actual;
+		maxLength = max;
 	}
 }
 
-template ArrayElementSize(T) if (isArray!T)
-{
-	enum ArrayElementSize = (ArrayElementType!T).sizeof;
-}
-
-/// mixin to reduce line count for units that simply pass one value
-mixin template SingleValueUnit(string unitname, FieldType, string fieldname)
-{
-	mixin("struct " ~ unitname ~ " { " ~ FieldType.stringof ~
-		" " ~ fieldname ~ ";}");
-}
-
-// same but with id
-mixin template IdAndValueUnit(string unitname, FieldType, string fieldname)
-{
-	mixin("struct " ~ unitname ~ " { ID_TYPE id; " ~ FieldType.stringof ~
-		" " ~ fieldname ~ ";}");
-}
-
-/// Reflection-friendly vector type
+/// Reflection-friendly POD vector type
 struct Vector2(T)
 {
 	T x;
 	T y;
-	static if (is(T == float))
-	{
-		vec2f togfm() const pure
-		{
-			return vec2f(x, y);
-		}
-	}
-	static if (is(T == double))
-	{
-		vec2d togfm() const pure
-		{
-			return vec2d(x, y);
-		}
-	}
+}
+
+vec2f togfm(Vector2!float v)
+{
+	return vec2f(v.x, v.y);
+}
+
+vec2d togfm(Vector2!double v)
+{
+	return vec2d(v.x, v.y);
+}
+
+vec2i togfm(Vector2!int v)
+{
+	return vec2i(v.x, v.y);
 }

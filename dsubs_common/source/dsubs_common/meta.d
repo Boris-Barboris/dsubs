@@ -3,6 +3,7 @@ module dsubs_common.meta;
 public import std.meta: Filter, anySatisfy, staticMap, aliasSeqOf, AliasSeq;
 public import std.traits: FieldNameTuple, Unqual;
 public import painlesstraits: hasAnnotation, getAnnotation;
+public import std.range.primitives: ElementType;
 
 
 /** Data field descriptor. */
@@ -13,16 +14,15 @@ struct FieldMeta(T, string field_name)
 }
 
 
-/** This template allows to qeury field names and types of composites
-(structs or classes). */
-template allFields(T)
+/** Query field names and types a composite (struct or class). */
+template AllFields(T)
 {
 	private template fieldNameToMeta(string field)
 	{
 		alias fieldNameToMeta = FieldMeta!(typeOfMember!(T, field), field);
 	}
-	alias allFields = staticMap!(fieldNameToMeta, fieldNames!T);
-	static assert(allFields.length > 0, "No fields for type " ~ T.stringof);
+	alias AllFields = staticMap!(fieldNameToMeta, fieldNames!T);
+	static assert(AllFields.length > 0, "No fields for type " ~ T.stringof);
 }
 
 
@@ -36,43 +36,43 @@ template HasUdaFilter(T, alias Attr)
 }
 
 
-template hasUda(T, string field, alias Attr)
+template HasUda(T, string field, alias Attr)
 {
-	enum hasUda = hasAnnotation!(__traits(getMember, T, field), Attr);
+	enum HasUda = hasAnnotation!(__traits(getMember, T, field), Attr);
 }
 
 
-template getUda(T, string field, alias Attr)
+template GetUda(T, string field, alias Attr)
 {
-	enum getUda = getAnnotation!(__traits(getMember, T, field), Attr);
+	enum GetUda = getAnnotation!(__traits(getMember, T, field), Attr);
 }
 
 
 /** Returns alias sequence of FieldMeta descriptors that have Attr UDA on them. */
-template allFieldsWithUda(T, alias Attr)
+template AllFieldsWithUda(T, alias Attr)
 {
-	alias allFieldsWithUda = Filter!(HasUdaFilter!(T, Attr).filter, allFields!T);
+	alias AllFieldsWithUda = Filter!(HasUdaFilter!(T, Attr).filter, AllFields!T);
 }
 
 
-alias fieldNames = FieldNameTuple;
+alias FieldNames = FieldNameTuple;
 
 
 /** Returns type tuple of all T fields */
-template fieldTypes(T)
+template FieldTypes(T)
 {
 	private template fieldToType(alias field)
 	{
 		alias fieldToType = typeOfMember!(T, field);
 	}
-	alias fieldTypes = staticMap!(fieldToType, fieldNames!T);
+	alias FieldTypes = staticMap!(fieldToType, FieldNames!T);
 }
 
 
 /** Returns type of the Owner field named member */
-template typeOfMember(Owner, string member)
+template TypeOfMember(Owner, string member)
 {
-	alias typeOfMember = typeof(__traits(getMember, Owner, member));
+	alias TypeOfMember = typeof(__traits(getMember, Owner, member));
 }
 
 
@@ -106,3 +106,11 @@ template Intersect(T1...)
 }
 
 static assert (Intersect!("n1", "n2").With!("n2", "n3") == AliasSeq!("n2"));
+
+/// Size of an alement of InputRange R.
+template ElementSize(R)
+{
+	enum ElementSize = (ElementType!R).sizeof;
+}
+
+static assert (ElementSize!(int[]) == 4);

@@ -8,8 +8,6 @@ version ( unittest )
 	{
 		writeln("This is dsubs_common library");
 		writeln("Unit-tests went ok!");
-		readln();
-
 		return 0;
 	}
 
