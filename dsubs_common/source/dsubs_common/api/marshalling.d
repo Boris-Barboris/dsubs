@@ -43,9 +43,9 @@ immutable(ubyte)[] marshalMessage(MsgT)(immutable(MsgT)* msg)
 	assert(msg);
 	// 4 bytes on message type, 4 on message size. Then recursively descend into the 
 	// structure type and get the size of the byte buffer
-	int byteCount = 8;	
+	int byteCount = 0;
 	getStructMarshLen!MsgT(*msg, byteCount);
-	ubyte[] buf = new ubyte[byteCount];
+	ubyte[] buf = new ubyte[byteCount + 8];
 	*(cast(int*) &buf[0]) = MsgT.g_marshIdx;
 	*(cast(int*) &buf[4]) = byteCount;
 	ubyte[] volatileBuf = buf[8 .. $];

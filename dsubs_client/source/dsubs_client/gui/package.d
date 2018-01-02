@@ -1,5 +1,7 @@
 module dsubs_client.gui;
 
+public import derelict.sfml2.graphics: sfColor;
+
 public import dsubs_client.gui.manager;
 public import dsubs_client.gui.element;
 public import dsubs_client.gui.div;

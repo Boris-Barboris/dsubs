@@ -8,6 +8,7 @@ import std.socket;
 import core.sync.mutex;
 
 import dsubs_common.api;
+import dsubs_common.event;
 
 import dsubs_server.common;
 
@@ -64,6 +65,7 @@ final class PlayerConnection
 	{
 		Socket m_sock;
 		Mutex m_mutex;
+		Address m_remoteAddr;
 		Tid m_readerThread;
 		Tid m_writerThread;
 		bool m_authorized = false;
@@ -76,6 +78,7 @@ final class PlayerConnection
 		m_sock = sock;
 		m_mutex = lockToHold;
 		sock.setKeepAlive(10, 10);
+		m_remoteAddr = sock.remoteAddress();
 
 		// fill handlers
 		m_handlers.length = g_msgDemarshallers.length;
@@ -88,16 +91,17 @@ final class PlayerConnection
 		m_writerThread = spawn(cast(shared void delegate()) &writerProc);
 	}
 
-	void sendMessage(int msgType, immutable(void)* msgPtr)
+	void sendMessage(MsgT)(immutable(MsgT)* msgPtr)
 	{
-		send(m_writerThread, msgType, msgPtr);
+		send!(int, immutable(void)*)(
+			m_writerThread, MsgT.g_marshIdx, cast(immutable(void)*) msgPtr);
 	}
 
 	void close()
 	{
-		trace("Closing connection ", m_sock.remoteAddress);
-		m_sock.close();
-		send(m_writerThread, 0, null);
+		trace("Closing connection ", m_remoteAddr);
+		try { m_sock.close(); } catch (Exception e) { trace(e.msg); }
+		send!(int, immutable(void)*)(m_writerThread, 0, null);
 		removeConnection(this);
 	}
 
@@ -109,9 +113,11 @@ private:
 	{
 		int[2] header;
 		auto received = m_sock.receive(header);
+		enforce(received != Socket.ERROR, "Socket was closed");
 		enforce(received == 8, "Message header is wrong");
 		enforce(header[0] >= 0 && header[0] < g_msgDemarshallers.length, "Unknown message");
 		enforce(header[1] >= 0 && header[1] < MAX_MSG_SIZE, "Message length invalid");
+		trace("recieved header", header);
 		return header;
 	}
 
@@ -119,6 +125,7 @@ private:
 	{
 		ubyte[] res = new ubyte[size];
 		auto received = m_sock.receive(res);
+		enforce(received != Socket.ERROR, "Socket was closed");
 		enforce(received == size, "Could not read requested amount of data");
 		return res;
 	}
@@ -126,6 +133,7 @@ private:
 	void sendBody(immutable(ubyte)[] msgBody)
 	{
 		auto sent = m_sock.send(msgBody);
+		enforce(sent != Socket.ERROR, "Socket was closed");
 		enforce(sent == msgBody.length, "Could not send requested amount of data");
 	}
 
@@ -150,7 +158,7 @@ private:
 		}
 		catch (Exception e)
 		{
-			trace(e.toString);
+			trace(e.msg);
 			close();
 		}
 	}
@@ -173,7 +181,7 @@ private:
 		}
 		catch (Exception e)
 		{
-			trace(e.toString);
+			trace(e.msg);
 			trace("TCP writer thread stopped");
 		}
 	}
@@ -184,6 +192,7 @@ private:
 		demarshalMessage(&msg, msgBody);
 		immutable ServerStatusRes res = ServerStatusRes(API_VERSION,
 			g_authorizedConnections.length);
+		trace("Responding with ", res);
 		sendBody(marshalMessage(&res));
 	}
 
@@ -193,17 +202,27 @@ private:
 			throw new Exception("Cannot authorize twice");
 		LoginReq msg;
 		demarshalMessage(&msg, msgBody);
+		if (msg.username.length < 1)
+		{
+			immutable LoginRes res = LoginRes(false, "Enter nonempty username");
+			trace("Responding with ", res);
+			sendBody(marshalMessage(&res));
+			return;
+		}
 		m_username = msg.username;
 		m_password = msg.password;
+		trace("Authorizing as: ", m_username);
 		if (confirmConnection(this))
 		{
 			m_authorized = true;
 			immutable LoginRes res = LoginRes(true, "Welcome to dsubs server");
+			trace("Responding with ", res);
 			sendBody(marshalMessage(&res));
 		}
 		else
 		{
-			immutable LoginRes res = LoginRes(false);
+			immutable LoginRes res = LoginRes(false, "Invalid password");
+			trace("Responding with ", res);
 			sendBody(marshalMessage(&res));
 		}
 	}

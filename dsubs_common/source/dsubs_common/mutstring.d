@@ -2,6 +2,7 @@ module dsubs_common.mutstring;
 
 import std.algorithm.comparison;
 import std.string;
+import std.utf;
 
 
 /** Alias for simple mutable string, that we all need so much
@@ -59,6 +60,16 @@ void replaceInterval(CharT)(ref CharT[] s, size_t start, size_t end, CharT c)
 			s[i] = s[i+shift];
 		s.length = s.length - shift;
 	}
+}
+
+string str(const dmutstring mut)
+{
+	return mut[0..$-1].toUTF8;
+}
+
+string str(const mutstring mut)
+{
+	return mut[0..$-1].toUTF8;
 }
 
 unittest
