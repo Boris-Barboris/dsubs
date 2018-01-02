@@ -13,12 +13,12 @@ import dsubs_common.api.utils;
 /// Sent by client to check server status when opening main menu
 struct ServerStatusReq
 {
-	static int g_marshIdx;
+	__gshared const int g_marshIdx;
 }
 
 struct ServerStatusRes
 {
-	static int g_marshIdx;
+	__gshared const int g_marshIdx;
 	int apiVersion;
 	int playersOnline;
 }
@@ -28,14 +28,14 @@ After authorization succeeded, you don't need to send any more of those.
 Authorization is done once for TCP connection. */
 struct LoginReq
 {
-	static int g_marshIdx;
+	__gshared const int g_marshIdx;
 	@MaxLenAttr(64) string username;
 	@MaxLenAttr(64) string password;
 }
 
 struct LoginRes
 {
-	static int g_marshIdx;
+	__gshared const int g_marshIdx;
 	bool success;
 	string welcomeMsg;
 }

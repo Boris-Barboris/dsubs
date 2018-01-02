@@ -11,7 +11,7 @@ import dsubs_client.game;
 
 int main(string[] argv)
 {
-	info("Unit tests OK");
+	version ( unittest ) info("Unit tests OK");
 	loadSfmlLibraries();
 	loadGlobalFonts();
 	runModuleTests();
