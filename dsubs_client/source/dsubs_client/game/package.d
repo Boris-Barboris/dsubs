@@ -3,6 +3,7 @@ module dsubs_client.game;
 import core.sync.mutex;
 
 import std.experimental.logger;
+import std.parallelism;
 
 import dsubs_client.core.window;
 import dsubs_client.input.router;

@@ -27,7 +27,7 @@ void setupMainMenu()
 	Game.clearEntities();
 
 	int btnSize = (MENU_BUTTON_FONTSIZE * 1.3).lrint.to!int;
-	Button connectButton = builder(new Button(ButtonType.ASYNC)).content("Connect").
+	Button connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").
 		fontSize(MENU_BUTTON_FONTSIZE).size(vec2i(400, btnSize)).
 		layoutType(LayoutType.FIXED).build();
 	
@@ -78,21 +78,26 @@ void setupMainMenu()
 	}
 
 	if (Game.serverConnection.connected)
-		handleConnectOk(Game.serverConnection.lastServerStatus);	
+		handleConnectOk(Game.serverConnection.lastServerStatus);
 	Game.serverConnection.onConnectionSuccess += &handleConnectOk;
+
+	Game.serverConnection.onConnectionClosed += (string reason)
+	{
+		canLogin = false;
+		infoLabel.content = "Connection closed: " ~ reason;
+		connectButton.signalClickEnd();
+	};
 
 	Game.serverConnection.onLoginRes += (LoginRes res)
 	{
 		if (res.success)
 		{
-			connectButton.content = "Connected";
 			infoLabel.content = res.welcomeMsg;
 			canLogin = false;
 		}
 		else
 		{
-			connectButton.content = "Connect";
-			infoLabel.content = "Unable to authorize: " ~ res.welcomeMsg;
+			infoLabel.content = "Unable to log in: " ~ res.welcomeMsg;
 		}
 		connectButton.signalClickEnd();
 	};
@@ -106,7 +111,7 @@ void setupMainMenu()
 		}
 		Game.serverConnection.sendMessage(
 			new immutable LoginReq(loginField.content.str, pwField.content.str));
-		connectButton.content = "Connecting...";
+		infoLabel.content = "Logging in...";
 	};
 	
 	Button exitButton = builder(new Button()).content("Exit").fontSize(MENU_BUTTON_FONTSIZE).

@@ -6,6 +6,7 @@ import std.concurrency;
 import std.conv: to;
 import std.socket;
 import core.sync.mutex;
+import core.thread;
 
 import dsubs_common.api;
 import dsubs_common.event;
@@ -39,11 +40,15 @@ private bool confirmConnection(PlayerConnection pc)
 	PlayerConnection* existing = pc.username in g_authorizedConnections;
 	if (existing)
 	{
-		if (existing.m_password != pc.m_password)
+		PlayerConnection econ = *existing;
+		if (econ.m_password != pc.m_password)
 			return false;
-		existing.close();
+		info("Closing previous connection of this user");
+		econ.close("Another client authorized");
 	}
+	assert((pc.username in g_authorizedConnections) is null);
 	g_authorizedConnections[pc.username] = pc;
+	trace("Number of authorized connections: ", g_authorizedConnections.length);
 	g_freshConnections = g_freshConnections.remove!(a => a is pc);
 	return true;
 }
@@ -69,6 +74,7 @@ final class PlayerConnection
 		Tid m_readerThread;
 		Tid m_writerThread;
 		bool m_authorized = false;
+		bool m_closed = false;
 		string m_username, m_password;
 		void delegate(ubyte[])[] m_handlers;
 	}
@@ -97,15 +103,29 @@ final class PlayerConnection
 			m_writerThread, MsgT.g_marshIdx, cast(immutable(void)*) msgPtr);
 	}
 
-	void close()
+	// send in calling thread
+	void syncSendMessage(MsgT)(immutable(MsgT)* msgPtr)
 	{
+		auto msgBody = g_msgMarshallers[MsgT.g_marshIdx](msgPtr);
+		sendBody(msgBody);
+	}
+
+	void close(string reason = "")
+	{
+		if (m_closed)
+			return;
+		m_closed = true;
 		trace("Closing connection ", m_remoteAddr);
+		if (reason.length > 0)
+			syncSendMessage(new immutable SessionClosedRes(reason));
+		Thread.sleep(msecs(100));
 		try { m_sock.close(); } catch (Exception e) { trace(e.msg); }
 		send!(int, immutable(void)*)(m_writerThread, 0, null);
 		removeConnection(this);
 	}
 
 	@property string username() const { return m_username; }
+	@property bool closed() const { return m_closed; }
 
 private:
 
@@ -190,10 +210,13 @@ private:
 	{
 		ServerStatusReq msg;
 		demarshalMessage(&msg, msgBody);
-		immutable ServerStatusRes res = ServerStatusRes(API_VERSION,
-			g_authorizedConnections.length);
-		trace("Responding with ", res);
-		sendBody(marshalMessage(&res));
+		trace("g_authorizedConnections.length: ", g_authorizedConnections.length);
+		immutable(ServerStatusRes)* res = 
+			new immutable ServerStatusRes(
+				API_VERSION,
+				g_authorizedConnections.length);
+		trace("Responding with ", *res);
+		sendBody(marshalMessage(res));
 	}
 
 	void h_loginReq(ubyte[] msgBody)

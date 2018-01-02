@@ -141,7 +141,6 @@ class Button: Label
 	void signalClickEnd()
 	{
 		assert(m_buttonType == ButtonType.ASYNC);
-		assert(m_state == ButtonState.ACTIVE);
 		m_state = ButtonState.INACTIVE;
 		updateFontColor();
 	}

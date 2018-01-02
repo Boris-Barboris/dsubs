@@ -7,6 +7,7 @@ import std.exception;
 import std.experimental.logger;
 import std.socket;
 import core.sync.mutex;
+import core.thread;
 
 import dsubs_common.api;
 import dsubs_common.event;
@@ -29,6 +30,8 @@ final class ServerConnection
 		void delegate(ubyte[])[] m_handlers;
 		Mutex m_mutex;
 		bool m_connected;
+		bool m_writerRunning;
+		bool m_closeRequested;
 	}
 
 	this(string serverAddr, Mutex lockToHold)
@@ -43,23 +46,27 @@ final class ServerConnection
 		m_handlers.length = g_msgDemarshallers.length;
 		m_handlers[ServerStatusRes.g_marshIdx] = &h_serverStatus;
 		m_handlers[LoginRes.g_marshIdx] = &h_loginRes;
+		m_handlers[SessionClosedRes.g_marshIdx] = &h_sessionClosed;
 
-		m_sock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
-		m_readerThread = spawn(cast(shared void delegate()) &readProc);
-		m_writerThread = spawn(cast(shared void delegate()) &writerProc);
+		do_connect();
 	}
 
-	void close()
+	void close(string reason = "reason unknown")
 	{
 		trace("Closing connection ", m_serverAddr);
 		m_connected = false;
-		onConnectionClosed();
+		onConnectionClosed(reason);
+		m_closeRequested = true;
 		try { m_sock.close(); } catch (SocketOSException e) { trace(e.msg); }
-		send!(int, immutable(void)*)(m_writerThread, 0, null);
+		if (m_writerRunning)
+			send!(int, immutable(void)*)(m_writerThread, 0, null);
 	}
 
+	/// True when tcp connection is supposedly alive and dsubs server responded
+	/// with ServerStatusRes
 	@property bool connected() const { return m_connected; }
 
+	/// Last value of recieved ServerStatusRes
 	ServerStatusRes lastServerStatus;
 
 	void sendMessage(MsgT)(immutable(MsgT)* msgPtr)
@@ -77,11 +84,17 @@ final class ServerConnection
 	}
 
 	// subscribe to these events
-	Event!(void delegate()) onConnectionClosed;
+	Event!(void delegate(string reason)) onConnectionClosed;
 	Event!(void delegate(ServerStatusRes res)) onConnectionSuccess;
 	Event!(void delegate(LoginRes res)) onLoginRes;
 
 private:
+
+	void do_connect()
+	{
+		m_closeRequested = false;
+		m_readerThread = spawn(cast(shared void delegate()) &readProc);
+	}
 
 	int[2] recvHeader()
 	{
@@ -113,9 +126,27 @@ private:
 
 	void readProc()
 	{
+		m_sock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
+		bool tcpConnected = false;
+		while (!tcpConnected)
+		{
+			try
+			{
+				m_sock.connect(m_serverAddr);
+				tcpConnected = true;
+				m_writerThread = spawn(cast(shared void delegate()) &writerProc);
+				m_writerRunning = true;
+			}
+			catch (Exception e)
+			{
+				error("Error during connect: ", e.msg);
+				if (m_closeRequested)
+					return;
+				Thread.sleep(seconds(10));
+			}
+		}
 		try
 		{
-			m_sock.connect(m_serverAddr);
 			{
 				immutable ServerStatusReq req;
 				sendBody(marshalMessage(&req));
@@ -138,12 +169,26 @@ private:
 		catch (Exception e)
 		{
 			trace(e.toString);
-			close();
+			reset(e.msg);
+		}
+	}
+
+	void reset(string reason)
+	{
+		bool doNotReconnect = m_closeRequested;
+		close(reason);
+		if (!doNotReconnect)
+		{
+			trace("Sleeping for 5 seconds");
+			Thread.sleep(seconds(5));
+			info("Attempting reconnect...");
+			do_connect();
 		}
 	}
 
 	void writerProc()
 	{
+		scope(exit) m_writerRunning = false;
 		try
 		{
 			while (true)
@@ -180,5 +225,12 @@ private:
 		LoginRes res;
 		demarshalMessage(&res, msgBody);
 		onLoginRes(res);
+	}
+
+	void h_sessionClosed(ubyte[] msgBody)
+	{
+		SessionClosedRes res;
+		demarshalMessage(&res, msgBody);
+		throw new Exception(res.reason);
 	}
 }

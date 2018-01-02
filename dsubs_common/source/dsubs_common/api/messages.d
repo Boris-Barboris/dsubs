@@ -37,5 +37,12 @@ struct LoginRes
 {
 	__gshared const int g_marshIdx;
 	bool success;
-	string welcomeMsg;
+	string welcomeMsg;	/// auth failure reason can be here
+}
+
+/// Sent by server when it can offer an explanation on connection being closed
+struct SessionClosedRes
+{
+	__gshared const int g_marshIdx;
+	@MaxLenAttr(64) string reason;
 }

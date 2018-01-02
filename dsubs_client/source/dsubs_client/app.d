@@ -1,6 +1,7 @@
 module dsubs_client.app;
 
 import std.experimental.logger;
+import core.stdc.stdlib;
 
 import dsubs_client.lib.sfml;
 import dsubs_client.lib.fonts;
@@ -9,7 +10,7 @@ import dsubs_client.tests;
 import dsubs_client.game;
 
 
-int main(string[] argv)
+void main(string[] argv)
 {
 	version ( unittest ) info("Unit tests OK");
 	loadSfmlLibraries();
@@ -17,5 +18,5 @@ int main(string[] argv)
 	runModuleTests();
 	//testGuiElements();
 	Game.start();
-	return 0;
+	exit(0);
 }
