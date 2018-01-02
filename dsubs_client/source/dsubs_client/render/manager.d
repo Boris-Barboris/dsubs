@@ -12,7 +12,6 @@ import std.range;
 
 import derelict.sfml2.graphics;
 
-import dsubs_client.core.event;
 import dsubs_client.core.window;
 import dsubs_client.core.utils;
 import dsubs_client.input.router;

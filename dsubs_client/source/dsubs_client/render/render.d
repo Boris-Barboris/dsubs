@@ -8,7 +8,8 @@ import std.experimental.logger;
 import derelict.sfml2.graphics;
 import derelict.sfml2.window;
 
-import dsubs_client.core.event;
+import dsubs_common.event;
+
 import dsubs_client.core.window;
 import dsubs_client.input.router: InputRouter;
 

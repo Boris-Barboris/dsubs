@@ -2,9 +2,9 @@ module dsubs_server.connection;
 
 import std.algorithm;
 import std.exception;
+import std.concurrency;
 import std.conv: to;
 import std.socket;
-import core.thread;
 import core.sync.mutex;
 
 import dsubs_common.api;
@@ -63,26 +63,41 @@ final class PlayerConnection
 	private
 	{
 		Socket m_sock;
-		Thread m_readerThread;
+		Mutex m_mutex;
+		Tid m_readerThread;
+		Tid m_writerThread;
 		bool m_authorized = false;
 		string m_username, m_password;
 		void delegate(ubyte[])[] m_handlers;
 	}
 
-	this(Socket sock)
+	this(Socket sock, Mutex lockToHold)
 	{
 		m_sock = sock;
+		m_mutex = lockToHold;
 		sock.setKeepAlive(10, 10);
-		m_readerThread = new Thread(&readProc).start();
+
+		// fill handlers
 		m_handlers.length = g_msgDemarshallers.length;
 		m_handlers[ServerStatusReq.g_marshIdx] = &h_serverStatus;
 		m_handlers[LoginReq.g_marshIdx] = &h_loginReq;
+
+		// std is not very good with shared, we'll have to cast it hard to 
+		// make it work
+		m_readerThread = spawn(cast(shared void delegate()) &readProc);
+		m_writerThread = spawn(cast(shared void delegate()) &writerProc);
+	}
+
+	void sendMessage(int msgType, immutable(void)* msgPtr)
+	{
+		send(m_writerThread, msgType, msgPtr);
 	}
 
 	void close()
 	{
 		trace("Closing connection ", m_sock.remoteAddress);
 		m_sock.close();
+		send(m_writerThread, 0, null);
 		removeConnection(this);
 	}
 
@@ -108,15 +123,14 @@ private:
 		return res;
 	}
 
-	void sendBody(ubyte[] body)
+	void sendBody(immutable(ubyte)[] msgBody)
 	{
-		auto sent = m_sock.send(body);
-		enforce(sent == body.length, "Could not send requested amount of data");
+		auto sent = m_sock.send(msgBody);
+		enforce(sent == msgBody.length, "Could not send requested amount of data");
 	}
 
 	void readProc()
 	{
-		Thread.sleep(msecs(10));
 		try
 		{
 			while (true)
@@ -126,6 +140,8 @@ private:
 				if (handler)
 				{
 					ubyte[] msgBody = recvBody(header[1]);
+					m_mutex.lock();
+					scope(exit) m_mutex.unlock();
 					handler(msgBody);
 				}
 				else
@@ -139,11 +155,34 @@ private:
 		}
 	}
 
+	void writerProc()
+	{
+		try
+		{
+			while (true)
+			{
+				auto msg = receiveOnly!(int, immutable(void)*)();
+				if (msg[1] == null && msg[0] == 0)
+				{
+					trace("Interpretting null message as stop signal");
+					return;
+				}
+				auto msgBody = g_msgMarshallers[msg[0]](msg[1]);
+				sendBody(msgBody);
+			}
+		}
+		catch (Exception e)
+		{
+			trace(e.toString);
+			trace("TCP writer thread stopped");
+		}
+	}
+
 	void h_serverStatus(ubyte[] msgBody)
 	{
 		ServerStatusReq msg;
 		demarshalMessage(&msg, msgBody);
-		ServerStatusRes res = ServerStatusRes(API_VERSION,
+		immutable ServerStatusRes res = ServerStatusRes(API_VERSION,
 			g_authorizedConnections.length);
 		sendBody(marshalMessage(&res));
 	}
@@ -159,12 +198,12 @@ private:
 		if (confirmConnection(this))
 		{
 			m_authorized = true;
-			LoginRes res = LoginRes(true, "Welcome to dsubs server");
+			immutable LoginRes res = LoginRes(true, "Welcome to dsubs server");
 			sendBody(marshalMessage(&res));
 		}
 		else
 		{
-			LoginRes res = LoginRes(false);
+			immutable LoginRes res = LoginRes(false);
 			sendBody(marshalMessage(&res));
 		}
 	}

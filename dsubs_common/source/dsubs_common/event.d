@@ -1,4 +1,4 @@
-module dsubs_client.core.event;
+module dsubs_common.event;
 
 import std.traits: isDelegate, Parameters, ReturnType;
 

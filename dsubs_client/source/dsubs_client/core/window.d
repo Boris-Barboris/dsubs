@@ -13,7 +13,7 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 public import derelict.sfml2.window;
 
-import dsubs_client.core.event;
+import dsubs_common.event;
 
 
 alias sfEventHandler = void delegate(Window, const sfEvent*);

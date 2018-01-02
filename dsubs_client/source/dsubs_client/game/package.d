@@ -23,7 +23,7 @@ __gshared:
 	GuiManager guiManager;
 	WorldManager worldManager;
 
-	/// global lock, held by window message pump and render
+	/// global lock, held by window message pump and render threads
 	Mutex mainMutex;
 
 	/// start the game

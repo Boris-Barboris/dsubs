@@ -9,7 +9,7 @@ import dsubs_common.api.utils;
 import dsubs_common.meta;
 
 
-alias MsgMarshallerT = ubyte[] function(const void* inMsgPtr);
+alias MsgMarshallerT = immutable(ubyte)[] function(immutable(void)* inMsgPtr);
 alias MsgDemarshallerT = void function(void* outMsgPtr, const(ubyte)[] data);
 
 // Static arrays of generated marshalling functions
@@ -37,7 +37,7 @@ void demarshalMessage(MsgT)(MsgT* outMsgPtr, const(ubyte)[] data)
 	demarshalStruct(*outMsgPtr, data);
 }
 
-ubyte[] marshalMessage(MsgT)(const MsgT* msg)
+immutable(ubyte)[] marshalMessage(MsgT)(immutable(MsgT)* msg)
 	if (is(MsgT == struct))
 {
 	assert(msg);
@@ -50,12 +50,12 @@ ubyte[] marshalMessage(MsgT)(const MsgT* msg)
 	*(cast(int*) &buf[4]) = byteCount;
 	ubyte[] volatileBuf = buf[8 .. $];
 	marshalStruct!MsgT(*msg, volatileBuf);
-	return buf;
+	return cast(immutable(ubyte)[]) buf;
 }
 
 private:
 
-void getStructMarshLen(StructT)(const ref StructT ptr, ref int byteCount)
+void getStructMarshLen(StructT)(immutable ref StructT ptr, ref int byteCount)
 {
 	foreach (field; FieldNames!StructT)
 	{
@@ -92,7 +92,7 @@ void getStructMarshLen(StructT)(const ref StructT ptr, ref int byteCount)
 	}
 }
 
-void marshalStruct(StructT)(const ref StructT ptr, ref ubyte[] outBuf)
+void marshalStruct(StructT)(immutable ref StructT ptr, ref ubyte[] outBuf)
 {
 	foreach (field; FieldNames!StructT)
 	{
@@ -183,7 +183,7 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 
 unittest
 {
-	LoginReq req = LoginReq("uname", "password");
+	immutable LoginReq req = LoginReq("uname", "password");
 	ubyte[] buf = marshalMessage(&req);
 	LoginReq res;
 	demarshalMessage(&res, buf[8 .. $]);
