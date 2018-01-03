@@ -117,8 +117,10 @@ final class PlayerConnection
 		m_closed = true;
 		trace("Closing connection ", m_remoteAddr);
 		if (reason.length > 0)
+		{
 			syncSendMessage(new immutable SessionClosedRes(reason));
-		Thread.sleep(msecs(100));
+			Thread.sleep(msecs(100));
+		}
 		try { m_sock.close(); } catch (Exception e) { trace(e.msg); }
 		send!(int, immutable(void)*)(m_writerThread, 0, null);
 		removeConnection(this);

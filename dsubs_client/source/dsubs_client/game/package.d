@@ -43,7 +43,7 @@ __gshared:
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
 		inputRouter.worldRouter = worldManager;
-		serverConnection = new ServerConnection("localhost", mainMutex);
+		serverConnection = new ServerConnection("127.0.0.1", mainMutex);
 		scope (failure) serverConnection.close();
 
 		setupMainMenu();

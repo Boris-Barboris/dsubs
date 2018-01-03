@@ -19,6 +19,10 @@ __gshared bool canLogin = false;
 void setupMainMenu()
 {
 	canLogin = false;
+
+	Game.mainMutex.lock();
+	scope(exit) Game.mainMutex.unlock();
+
 	int MENU_BUTTON_FONTSIZE = 50;
 	int LOGIN_FONT_SIZE = 22;
 	int INFO_FONT_SIZE = 18;

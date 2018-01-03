@@ -235,10 +235,10 @@ class TextField: Label
 					}
 					break;
 				default:
-					trace("captured unicode symbol ", c.to!uint);
+					//trace("captured unicode symbol ", c.to!uint);
 					if (symbolFilter && !symbolFilter(c))
 					{
-						trace("ignored by filter");
+						//trace("ignored by filter");
 						return;
 					}
 					insertAt(c, m_cursorStart);
@@ -258,10 +258,10 @@ class TextField: Label
 					m_cursorStart = m_cursorEnd = orderedStart;
 					break;
 				default:
-					trace("captured unicode symbol ", c.to!uint);
+					//trace("captured unicode symbol ", c.to!uint);
 					if (symbolFilter && !symbolFilter(c))
 					{
-						trace("ignored by filter");
+						//trace("ignored by filter");
 						return;
 					}
 					removeInterval(orderedStart, orderedEnd - 1);
