@@ -5,6 +5,7 @@ import std.exception;
 import std.concurrency;
 import std.conv: to;
 import std.socket;
+import core.atomic;
 import core.sync.mutex;
 import core.thread;
 
@@ -74,7 +75,7 @@ final class PlayerConnection
 		Tid m_readerThread;
 		Tid m_writerThread;
 		bool m_authorized = false;
-		bool m_closed = false;
+		shared bool m_closed = false;
 		string m_username, m_password;
 		void delegate(ubyte[])[] m_handlers;
 	}
@@ -112,9 +113,8 @@ final class PlayerConnection
 
 	void close(string reason = "")
 	{
-		if (m_closed)
+		if (!cas(&m_closed, false, true))
 			return;
-		m_closed = true;
 		trace("Closing connection ", m_remoteAddr);
 		if (reason.length > 0)
 		{

@@ -6,6 +6,7 @@ import std.concurrency;
 import std.exception;
 import std.experimental.logger;
 import std.socket;
+import core.atomic;
 import core.sync.mutex;
 import core.thread;
 
@@ -31,7 +32,7 @@ final class ServerConnection
 		Mutex m_mutex;
 		bool m_connected;
 		bool m_writerRunning;
-		bool m_closed;
+		shared bool m_closed;
 	}
 
 	this(string serverAddr, Mutex lockToHold)
@@ -53,9 +54,8 @@ final class ServerConnection
 
 	void close(string reason = "reason unknown")
 	{
-		if (m_closed)
+		if (!cas(&m_closed, false, true))
 			return;
-		m_closed = true;
 		trace("Closing connection ", m_serverAddr);
 		m_connected = false;
 		onConnectionClosed(reason);
@@ -94,7 +94,7 @@ private:
 
 	void do_connect()
 	{
-		m_closed = false;
+		atomicStore(m_closed, false);
 		m_readerThread = spawn(cast(shared void delegate()) &readProc);
 	}
 

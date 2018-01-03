@@ -154,7 +154,6 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 			{
 				arrLen = *(cast(int*) from.ptr);
 				from = from[4 .. $];
-				pragma(msg, MemberT, field);
 				__traits(getMember, ptr, field).reserve(arrLen);
 			}
 			else
