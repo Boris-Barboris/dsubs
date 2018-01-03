@@ -74,9 +74,9 @@ unittest
 /// Returns builder wich is deduced from type of an argument, and allows to 
 /// chain property assignments in fluent form.
 auto builder(T)(T base)
+	if (is(T == class))
 {
-	struct Builder(T)
-		if (is(T == class))
+	static struct Builder(T)
 	{
 		private T m_data;
 

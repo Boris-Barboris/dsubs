@@ -1,8 +1,9 @@
-// Authorization API
+// Binary protocol messages
 
 module dsubs_common.api.messages;
 
 import dsubs_common.api.constants;
+import dsubs_common.api.entities;
 import dsubs_common.api.utils;
 
 
@@ -38,6 +39,7 @@ struct LoginRes
 	__gshared const int g_marshIdx;
 	bool success;
 	string welcomeMsg;	/// auth failure reason can be here
+	@MaxLenAttr(32) ubyte[] dbHash;		/// entity database hash (SHA256)
 }
 
 /// Sent by server when it can offer an explanation on connection being closed
@@ -45,4 +47,33 @@ struct SessionClosedRes
 {
 	__gshared const int g_marshIdx;
 	@MaxLenAttr(64) string reason;
+}
+
+struct ClientPing
+{
+	__gshared const int g_marshIdx;
+	usecs_t clientTime;
+}
+
+/// Sent in response to ClientPing
+struct ServerPong
+{
+	__gshared const int g_marshIdx;
+	usecs_t clientTime;		/// clientTime of the offending ClientPing
+	usecs_t serverTime;
+}
+
+/// Sent by client when he wants to download entity database
+struct EntityDbReq
+{
+	__gshared const int g_marshIdx;
+}
+
+/// Entity database, available to the client
+struct EntityDbRes
+{
+	__gshared const int g_marshIdx;
+	PropulsorTemplate[] propulsors;
+	SubmarineTemplate[] controllableSubs;
+	WeaponTemplate[] munition;
 }

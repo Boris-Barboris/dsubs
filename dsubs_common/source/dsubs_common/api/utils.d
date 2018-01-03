@@ -42,24 +42,8 @@ class MaxLenExceeded: Exception
 	}
 }
 
-/// Reflection-friendly POD vector type
-struct Vector2(T)
+/// reflection-friendly POD vector
+struct Vector(T, size_t size)
 {
-	T x;
-	T y;
-}
-
-vec2f togfm(Vector2!float v)
-{
-	return vec2f(v.x, v.y);
-}
-
-vec2d togfm(Vector2!double v)
-{
-	return vec2d(v.x, v.y);
-}
-
-vec2i togfm(Vector2!int v)
-{
-	return vec2i(v.x, v.y);
+	T[size] data;
 }

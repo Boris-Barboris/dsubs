@@ -64,7 +64,8 @@ void getStructMarshLen(StructT)(immutable ref StructT ptr, ref int byteCount)
 			byteCount += MemberT.sizeof;
 		else static if (isArray!MemberT)
 		{
-			byteCount += 4;		// we write element count
+			static if (!isStaticArray!MemberT)
+				byteCount += 4;		// we write element count
 			static if (HasUda!(StructT, field, MaxLenAttr))
 			{
 				// validate length
@@ -104,8 +105,11 @@ void marshalStruct(StructT)(immutable ref StructT ptr, ref ubyte[] outBuf)
 		}
 		else static if (isArray!MemberT)
 		{
-			*(cast(int*) outBuf.ptr) = __traits(getMember, ptr, field).length.to!int;
-			outBuf = outBuf[4 .. $];
+			static if (!isStaticArray!MemberT)
+			{
+				*(cast(int*) outBuf.ptr) = __traits(getMember, ptr, field).length.to!int;
+				outBuf = outBuf[4 .. $];
+			}
 			static if (isBasicType!(ArrayElementT!MemberT))
 			{
 				foreach (el; __traits(getMember, ptr, field))
@@ -119,7 +123,7 @@ void marshalStruct(StructT)(immutable ref StructT ptr, ref ubyte[] outBuf)
 			{
 				// array of structures
 				foreach (el; __traits(getMember, ptr, field))
-					structSizeEstimation!(ArrayElementT!MemberT)(el, outBuf);
+					marshalStruct!(ArrayElementT!MemberT)(el, outBuf);
 			}
 			else
 				static assert(0, "Unable to marshal " ~ MemberT.stringof);
@@ -130,6 +134,8 @@ void marshalStruct(StructT)(immutable ref StructT ptr, ref ubyte[] outBuf)
 			static assert(0, "Unable to marshal " ~ MemberT.stringof);
 	}
 }
+
+static assert (isStaticArray!(float[2]));
 
 void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 {
@@ -143,7 +149,16 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 		}
 		else static if (isArray!MemberT)
 		{
-			int arrLen = *(cast(int*) from.ptr);
+			int arrLen = 0;
+			static if (!isStaticArray!MemberT)
+			{
+				arrLen = *(cast(int*) from.ptr);
+				from = from[4 .. $];
+				pragma(msg, MemberT, field);
+				__traits(getMember, ptr, field).reserve(arrLen);
+			}
+			else
+				arrLen = __traits(getMember, ptr, field).length.to!int;
 			static if (HasUda!(StructT, field, MaxLenAttr))
 			{
 				// validate length
@@ -151,14 +166,20 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 				if (arrLen > maxLen)
 					throw new MaxLenExceeded(arrLen, maxLen);
 			}
-			__traits(getMember, ptr, field).reserve(arrLen);
-			from = from[4 .. $];
 			static if (isBasicType!(ArrayElementT!MemberT))
 			{
 				for (int i = 0; i < arrLen; i++)
 				{
-					__traits(getMember, ptr, field) ~= 
-						*(cast(ArrayElementT!MemberT *) from.ptr);
+					static if (!isStaticArray!MemberT)
+					{
+						__traits(getMember, ptr, field) ~=
+							*(cast(ArrayElementT!MemberT *) from.ptr);
+					}
+					else
+					{
+						__traits(getMember, ptr, field)[i] =
+							*(cast(ArrayElementT!MemberT *) from.ptr);
+					}
 					from = from[ArrayElementSize!MemberT .. $];
 				}
 			}
@@ -168,7 +189,10 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 				{
 					ArrayElementT!MemberT newEl;
 					demarshalStruct!(ArrayElementT!MemberT)(newEl, from);
-					__traits(getMember, ptr, field) ~= newEl;
+					static if (!isStaticArray!MemberT)
+						__traits(getMember, ptr, field) ~= newEl;
+					else
+						__traits(getMember, ptr, field)[i] = newEl;
 				}
 			}
 			else
@@ -184,7 +208,7 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 unittest
 {
 	immutable LoginReq req = LoginReq("uname", "password");
-	ubyte[] buf = marshalMessage(&req);
+	immutable(ubyte)[] buf = marshalMessage(&req);
 	LoginReq res;
 	demarshalMessage(&res, buf[8 .. $]);
 	assert(res.username == req.username);

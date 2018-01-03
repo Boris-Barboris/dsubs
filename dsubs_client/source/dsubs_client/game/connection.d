@@ -31,7 +31,7 @@ final class ServerConnection
 		Mutex m_mutex;
 		bool m_connected;
 		bool m_writerRunning;
-		bool m_closeRequested;
+		bool m_closed;
 	}
 
 	this(string serverAddr, Mutex lockToHold)
@@ -53,10 +53,12 @@ final class ServerConnection
 
 	void close(string reason = "reason unknown")
 	{
+		if (m_closed)
+			return;
+		m_closed = true;
 		trace("Closing connection ", m_serverAddr);
 		m_connected = false;
 		onConnectionClosed(reason);
-		m_closeRequested = true;
 		try { m_sock.close(); } catch (SocketOSException e) { trace(e.msg); }
 		if (m_writerRunning)
 			send!(int, immutable(void)*)(m_writerThread, 0, null);
@@ -92,7 +94,7 @@ private:
 
 	void do_connect()
 	{
-		m_closeRequested = false;
+		m_closed = false;
 		m_readerThread = spawn(cast(shared void delegate()) &readProc);
 	}
 
@@ -140,7 +142,7 @@ private:
 			catch (Exception e)
 			{
 				error("Error during connect: ", e.msg);
-				if (m_closeRequested)
+				if (m_closed)
 					return;
 				Thread.sleep(seconds(10));
 			}
@@ -175,7 +177,7 @@ private:
 
 	void reset(string reason)
 	{
-		bool doNotReconnect = m_closeRequested;
+		bool doNotReconnect = m_closed;
 		close(reason);
 		if (!doNotReconnect)
 		{
