@@ -5,6 +5,7 @@ import core.sync.mutex;
 import std.experimental.logger;
 import std.parallelism;
 
+import dsubs_client.core.delayer;
 import dsubs_client.core.window;
 import dsubs_client.input.router;
 import dsubs_client.gui.manager;
@@ -25,6 +26,7 @@ __gshared:
 	GuiManager guiManager;
 	WorldManager worldManager;
 	ServerConnection serverConnection;
+	Delayer delayer;
 
 	/// global lock, held by window message pump and render threads
 	Mutex mainMutex;
@@ -39,6 +41,8 @@ __gshared:
 		guiManager = new GuiManager(window);
 		worldManager = new WorldManager(window);
 		mainMutex = new Mutex();
+		delayer = new Delayer();
+		scope(failure) delayer.stop();
 		render.guiRender = guiManager;
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
@@ -46,9 +50,12 @@ __gshared:
 		serverConnection = new ServerConnection("127.0.0.1", mainMutex);
 		scope (failure) serverConnection.close();
 
+		// setup main menu, start render thread and serve the windows event pump
 		setupMainMenu();
 		render.start(mainMutex);
 		window.pollEvents(mainMutex);
+
+		delayer.stop();
 		render.stop();
 		serverConnection.close();
 		window.close();

@@ -48,6 +48,7 @@ final class ServerConnection
 		m_handlers[ServerStatusRes.g_marshIdx] = &h_serverStatus;
 		m_handlers[LoginRes.g_marshIdx] = &h_loginRes;
 		m_handlers[SessionClosedRes.g_marshIdx] = &h_sessionClosed;
+		m_handlers[EntityDbRes.g_marshIdx] = &h_entityDbRes;
 
 		do_connect();
 	}
@@ -89,6 +90,7 @@ final class ServerConnection
 	Event!(void delegate(string reason)) onConnectionClosed;
 	Event!(void delegate(ServerStatusRes res)) onConnectionSuccess;
 	Event!(void delegate(LoginRes res)) onLoginRes;
+	Event!(void delegate(EntityDbRes res)) onEntityDbRecieved;
 
 private:
 
@@ -234,5 +236,12 @@ private:
 		SessionClosedRes res;
 		demarshalMessage(&res, msgBody);
 		throw new Exception(res.reason);
+	}
+
+	void h_entityDbRes(ubyte[] msgBody)
+	{
+		EntityDbRes res;
+		demarshalMessage(&res, msgBody);
+		onEntityDbRecieved(res);
 	}
 }

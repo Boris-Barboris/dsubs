@@ -6,14 +6,15 @@ import dsubs_common.api.utils;
 
 struct RgbaColor
 {
-	ubyte r, g, b, a;
+	ubyte r, g, b;
+	ubyte a = 255;
 }
 
 struct ConvexPolygon
 {
-	Vector!(float, 2)[] points;
+	Vector2f[] points;	/// counter-clock wise
 	RgbaColor fillColor;
-	float borderWidth;
+	float borderWidth = 0.0f;
 	RgbaColor borderColor;
 }
 
@@ -33,15 +34,18 @@ struct PropulsorTemplate
 
 	PropulsorType type;
 
+	/// if type is SCREW, this is the number of blades.
+	ubyte bladeCount;
+
 	/// 1 screw blade for screws, whole pump for pumps
 	ConvexPolygon model;
 }
 
 struct MountPoint
 {
-	Vector!(float, 2) mountCenter;
-	float rotation;
-	float scale;
+	Vector2f mountCenter;
+	float rotation = 0.0f;
+	float scale = 0.0f;
 	bool underHull;		// true when this mount point should be drawn before hull
 }
 

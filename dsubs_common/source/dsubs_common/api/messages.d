@@ -39,7 +39,7 @@ struct LoginRes
 	__gshared const int g_marshIdx;
 	bool success;
 	string welcomeMsg;	/// auth failure reason can be here
-	@MaxLenAttr(32) ubyte[] dbHash;		/// entity database hash (SHA256)
+	@MaxLenAttr(32) immutable(ubyte)[] dbHash;		/// entity database hash (SHA256)
 }
 
 /// Sent by server when it can offer an explanation on connection being closed

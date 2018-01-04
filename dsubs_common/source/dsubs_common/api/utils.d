@@ -47,3 +47,5 @@ struct Vector(T, size_t size)
 {
 	T[size] data;
 }
+
+alias Vector2f = Vector!(float, 2);

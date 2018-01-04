@@ -13,6 +13,7 @@ import dsubs_common.api;
 import dsubs_common.event;
 
 import dsubs_server.common;
+import dsubs_server.entitydb;
 
 
 private __gshared
@@ -91,6 +92,7 @@ final class PlayerConnection
 		m_handlers.length = g_msgDemarshallers.length;
 		m_handlers[ServerStatusReq.g_marshIdx] = &h_serverStatus;
 		m_handlers[LoginReq.g_marshIdx] = &h_loginReq;
+		m_handlers[EntityDbReq.g_marshIdx] = &h_entityDbReq;
 
 		// std is not very good with shared, we'll have to cast it hard to 
 		// make it work
@@ -115,7 +117,7 @@ final class PlayerConnection
 	{
 		if (!cas(&m_closed, false, true))
 			return;
-		trace("Closing connection ", m_remoteAddr);
+		info("Closing connection ", m_remoteAddr);
 		if (reason.length > 0)
 		{
 			syncSendMessage(new immutable SessionClosedRes(reason));
@@ -240,7 +242,8 @@ private:
 		if (confirmConnection(this))
 		{
 			m_authorized = true;
-			immutable LoginRes res = LoginRes(true, "Welcome to dsubs server");
+			immutable LoginRes res = LoginRes(true, 
+				"Welcome to dsubs server", g_commonEntityDbHash);
 			trace("Responding with ", res);
 			sendBody(marshalMessage(&res));
 		}
@@ -250,5 +253,12 @@ private:
 			trace("Responding with ", res);
 			sendBody(marshalMessage(&res));
 		}
+	}
+
+	void h_entityDbReq(ubyte[] msgBody)
+	{
+		info("Entity database requested");
+		enforce(m_authorized, "Permission denied");
+		sendBody(g_marshalledCommonEntityDb);
 	}
 }

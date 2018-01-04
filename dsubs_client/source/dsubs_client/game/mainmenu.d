@@ -5,6 +5,8 @@ import std.math;
 import std.utf;
 import std.experimental.logger;
 
+import core.thread;
+
 import derelict.sfml2.window;
 
 import dsubs_common.api;
@@ -73,9 +75,11 @@ void setupMainMenu()
 	{
 		if (res.apiVersion != API_VERSION)
 		{
-			error("Incompatible API versions, local ", API_VERSION, 
-				", remote ", res.apiVersion);
-			infoLabel.content = "Incompatible API, update client";
+			string errorStr = "Incompatible API versions, client " ~
+				API_VERSION.to!string ~ ", server " ~ res.apiVersion.to!string;
+			error(errorStr);
+			infoLabel.content = errorStr;
+			return;
 		}
 		canLogin = true;
 		infoLabel.content = res.playersOnline.to!string ~ " players online";
@@ -97,6 +101,11 @@ void setupMainMenu()
 		if (res.success)
 		{
 			infoLabel.content = res.welcomeMsg;
+			Game.delayer.delay( () {
+				infoLabel.content = "Downloading entity database";
+				Game.serverConnection.sendMessage(
+					new immutable EntityDbReq());
+			}, msecs(500), Game.mainMutex);
 			canLogin = false;
 		}
 		else
@@ -104,6 +113,12 @@ void setupMainMenu()
 			infoLabel.content = "Unable to log in: " ~ res.welcomeMsg;
 		}
 		connectButton.signalClickEnd();
+	};
+
+	Game.serverConnection.onEntityDbRecieved += (EntityDbRes res)
+	{
+		infoLabel.content = "got database with " ~ 
+			res.controllableSubs.length.to!string ~ " submarines";
 	};
 
 	connectButton.onClick += (b)
