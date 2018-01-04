@@ -1,9 +1,12 @@
 module dsubs_client.game;
 
-import core.sync.mutex;
-
 import std.experimental.logger;
 import std.parallelism;
+
+import core.sync.mutex;
+import core.thread;
+
+import dsubs_common.api;
 
 import dsubs_client.core.delayer;
 import dsubs_client.core.window;
@@ -31,6 +34,9 @@ __gshared:
 	/// global lock, held by window message pump and render threads
 	Mutex mainMutex;
 
+	// entity database
+	EntityDbRes entityDb;
+
 	/// start the game
 	static void start()
 	{
@@ -50,8 +56,10 @@ __gshared:
 		serverConnection = new ServerConnection("127.0.0.1", mainMutex);
 		scope (failure) serverConnection.close();
 
-		// setup main menu, start render thread and serve the windows event pump
-		setupMainMenu();
+		// setup main menu
+		synchronized (mainMutex)
+			setupMainMenu();
+		// start render thread and serve the windows event pump
 		render.start(mainMutex);
 		window.pollEvents(mainMutex);
 
@@ -59,11 +67,14 @@ __gshared:
 		render.stop();
 		serverConnection.close();
 		window.close();
+		// give time to all background threads to acknowledge shutdown
+		Thread.sleep(msecs(100));
 	}
 
 	static void clearEntities()
 	{
 		serverConnection.clearHandlers();
+		inputRouter.clearFocused();
 		guiManager.clearPanels();
 		worldManager.components.clear();
 	}

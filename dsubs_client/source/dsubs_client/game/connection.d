@@ -30,11 +30,12 @@ final class ServerConnection
 
 		void delegate(ubyte[])[] m_handlers;
 		Mutex m_mutex;
-		bool m_connected;
+		shared bool m_connected;
 		bool m_writerRunning;
 		shared bool m_closed;
 	}
 
+	/// Create the connection object and spool up worker threads.
 	this(string serverAddr, Mutex lockToHold)
 	{
 		assert(lockToHold);
@@ -53,21 +54,25 @@ final class ServerConnection
 		do_connect();
 	}
 
-	void close(string reason = "reason unknown")
+	/// Close connection and do not reconnect. Returns true when actual
+	/// socket closing was performed by this call.
+	bool close(string reason = "reason unknown")
 	{
 		if (!cas(&m_closed, false, true))
-			return;
+			return false;
 		trace("Closing connection ", m_serverAddr);
-		m_connected = false;
-		onConnectionClosed(reason);
+		atomicStore(m_connected, false);
+		synchronized(m_mutex)
+			onConnectionClosed(reason);
 		try { m_sock.close(); } catch (SocketOSException e) { trace(e.msg); }
 		if (m_writerRunning)
 			send!(int, immutable(void)*)(m_writerThread, 0, null);
+		return true;
 	}
 
 	/// True when tcp connection is supposedly alive and dsubs server responded
 	/// with ServerStatusRes
-	@property bool connected() const { return m_connected; }
+	@property bool connected() const { return atomicLoad(m_connected); }
 
 	/// Last value of recieved ServerStatusRes
 	ServerStatusRes lastServerStatus;
@@ -86,7 +91,7 @@ final class ServerConnection
 		onLoginRes.clear();
 	}
 
-	// subscribe to these events
+	// Subscribe to these events. They all should be fired while holding m_mutex.
 	Event!(void delegate(string reason)) onConnectionClosed;
 	Event!(void delegate(ServerStatusRes res)) onConnectionSuccess;
 	Event!(void delegate(LoginRes res)) onLoginRes;
@@ -144,7 +149,7 @@ private:
 			catch (Exception e)
 			{
 				error("Error during connect: ", e.msg);
-				if (m_closed)
+				if (atomicLoad(m_closed))
 					return;
 				Thread.sleep(seconds(10));
 			}
@@ -162,8 +167,6 @@ private:
 				if (handler)
 				{
 					ubyte[] msgBody = recvBody(header[1]);
-					m_mutex.lock();
-					scope(exit) m_mutex.unlock();
 					handler(msgBody);
 				}
 				else
@@ -172,16 +175,14 @@ private:
 		}
 		catch (Exception e)
 		{
-			trace(e.toString);
+			trace(e.msg);
 			reset(e.msg);
 		}
 	}
 
 	void reset(string reason)
 	{
-		bool doNotReconnect = m_closed;
-		close(reason);
-		if (!doNotReconnect)
+		if (close(reason))
 		{
 			trace("Sleeping for 5 seconds");
 			Thread.sleep(seconds(5));
@@ -209,7 +210,7 @@ private:
 		}
 		catch (Exception e)
 		{
-			trace(e.toString);
+			trace(e.msg);
 			trace("TCP writer thread stopped");
 		}
 	}
@@ -219,16 +220,18 @@ private:
 		ServerStatusRes res;
 		demarshalMessage(&res, msgBody);
 		info("TCP connection to server established");
-		m_connected = true;
+		atomicStore(m_connected, true);
 		lastServerStatus = res;
-		onConnectionSuccess(res);
+		synchronized(m_mutex)
+			onConnectionSuccess(res);
 	}
 
 	void h_loginRes(ubyte[] msgBody)
 	{
 		LoginRes res;
 		demarshalMessage(&res, msgBody);
-		onLoginRes(res);
+		synchronized(m_mutex)
+			onLoginRes(res);
 	}
 
 	void h_sessionClosed(ubyte[] msgBody)
@@ -242,6 +245,7 @@ private:
 	{
 		EntityDbRes res;
 		demarshalMessage(&res, msgBody);
-		onEntityDbRecieved(res);
+		synchronized(m_mutex)
+			onEntityDbRecieved(res);
 	}
 }

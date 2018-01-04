@@ -43,7 +43,6 @@ class Button: Label
 
 	this(ButtonType type = ButtonType.SYNC)
 	{
-		super();
 		m_buttonType = type;
 		updateFontColor();
 		onMouseEnter += &handleMouseEnter;

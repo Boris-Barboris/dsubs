@@ -29,7 +29,6 @@ class TextField: Label
 
 	this()
 	{
-		super();
 		backgroundVisible = true;
 		backgroundColor = sfColor(50, 28, 28, 150);
 		m_cursorRect = sfRectangleShape_create();

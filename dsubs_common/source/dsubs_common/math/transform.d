@@ -191,6 +191,12 @@ class Transform2D
 		m_position = position;
 		propagate();
 	}
+
+	/// Reset local transformation matrix to identity transform
+	final void resetLocal()
+	{
+		fromComponents(vec2d(1.0, 1.0), 0.0, vec2d(0.0, 0.0));
+	}
 }
 
 

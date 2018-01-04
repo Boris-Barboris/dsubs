@@ -14,14 +14,14 @@ class ConvexShape
 		sfConvexShape* m_shape;
 	}
 
-	package static sfRenderStates g_stateTemplate;
+	private static sfRenderStates g_rendStates;
 
 	static this()
 	{
-		g_stateTemplate.blendMode = sfBlendAlpha;
+		g_rendStates.blendMode = sfBlendAlpha;
 	}
 
-	this(sfVector2f[] points, sfColor fillColor,
+	this(const(sfVector2f)[] points, sfColor fillColor,
 		sfColor borderColor, float borderWidth)
 	{
 		m_shape = sfConvexShape_create();
@@ -40,7 +40,7 @@ class ConvexShape
 
 	void render(Window wnd, const ref sfTransform trans)
 	{
-		g_stateTemplate.transform = trans;
-		sfRenderWindow_drawConvexShape(wnd.wnd, m_shape, &g_stateTemplate);
+		g_rendStates.transform = trans;
+		sfRenderWindow_drawConvexShape(wnd.wnd, m_shape, &g_rendStates);
 	}
 }

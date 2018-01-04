@@ -23,7 +23,7 @@ import dsubs_client.input.router;
 enum LayoutType: byte
 {
 	FIXED,		/// element has fixed size
-	CONTENT,	/// element size is dictated by it's content (textbox)
+	CONTENT,	/// element size is dictated by it's content (used in textbox)
 	FRACT,		/// element takes fraction of space, left after FIXED elements
 	GREEDY,		/// element tries to fill all available space in the container
 }
@@ -318,6 +318,12 @@ class GuiElement: IInputReciever
 	Event!(void delegate(const sfTextEvent* evt)) onTextEntered;
 }
 
+
+/// Create a transparent greedy-sized GuiElement
+GuiElement filler()
+{
+	return new GuiElement();
+}
 
 /// Create a transparent GuiElement of fixed size
 GuiElement filler(int size)

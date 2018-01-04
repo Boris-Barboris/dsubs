@@ -5,9 +5,10 @@ module dsubs_common.api.constants;
 enum int API_VERSION = 1;
 
 /// Safety limit on message size
-enum int MAX_MSG_SIZE = 1000000;    // 1 Mb
+enum int MAX_MSG_SIZE = 1000000;	// 1 Mb
 
-/// Type that is used to uniquely identify ingame objects.
+/// Type that is used to uniquely identify ingame objects. Zero id never
+/// exists on the server and can be used for fictional client-side objects
 alias id_t = uint;
 
 /// Time type, microseconds (1e-6 of a second)

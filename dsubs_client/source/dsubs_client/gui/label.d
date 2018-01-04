@@ -55,7 +55,6 @@ class Label: GuiElement
 
 	this()
 	{
-		super();
 		mouseTransparent = false;
 		m_content = _s(""d, 31);
 		initializeText();

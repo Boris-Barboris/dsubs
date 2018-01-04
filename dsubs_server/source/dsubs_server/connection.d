@@ -129,7 +129,7 @@ final class PlayerConnection
 	}
 
 	@property string username() const { return m_username; }
-	@property bool closed() const { return m_closed; }
+	@property bool closed() const { return atomicLoad(m_closed); }
 
 private:
 
@@ -244,7 +244,6 @@ private:
 			m_authorized = true;
 			immutable LoginRes res = LoginRes(true, 
 				"Welcome to dsubs server", g_commonEntityDbHash);
-			trace("Responding with ", res);
 			sendBody(marshalMessage(&res));
 		}
 		else

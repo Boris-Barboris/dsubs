@@ -16,7 +16,6 @@ final class PasswordField: TextField
 
 	this()
 	{
-		super();
 		m_hiddenContent = _s(""d, 31);
 	}
 

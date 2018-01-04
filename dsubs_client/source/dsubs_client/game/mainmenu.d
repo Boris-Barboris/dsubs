@@ -16,19 +16,17 @@ import dsubs_client.game;
 import dsubs_client.gui;
 
 
-__gshared bool canLogin = false;
+private __gshared bool canLogin = false;
+
 
 void setupMainMenu()
 {
 	canLogin = false;
 
-	Game.mainMutex.lock();
-	scope(exit) Game.mainMutex.unlock();
-
-	int MENU_BUTTON_FONTSIZE = 50;
-	int LOGIN_FONT_SIZE = 22;
-	int INFO_FONT_SIZE = 18;
-	float LOGIN_FRACT = 0.3f;
+	enum int MENU_BUTTON_FONTSIZE = 50;
+	enum int LOGIN_FONT_SIZE = 22;
+	enum int INFO_FONT_SIZE = 18;
+	enum float LOGIN_FRACT = 0.3f;
 
 	Game.clearEntities();
 
@@ -52,24 +50,23 @@ void setupMainMenu()
 		layoutType(LayoutType.FRACT).build();
 	PasswordField pwField = builder(new PasswordField()).fontSize(LOGIN_FONT_SIZE).build();
 
+	Div credDiv = builder(vDiv([
+			hDiv([loginLabel, loginField, filler(LOGIN_FRACT)]),
+			hDiv([pwLabel, pwField, filler(LOGIN_FRACT)])
+		])).layoutType(LayoutType.FIXED).size(vec2i(0, loginSize * 2 + 20)).
+		borderWidth(20).build();
+
 	loginField.onKeyPressed += (evt) {
 		if (evt.code == sfKeyTab)
-		{
-			loginField.returnKbFocus();
 			pwField.requestKbFocus();
-		}
+		if (evt.code == sfKeyReturn)
+			connectButton.simulateClick();
 	};
 
 	pwField.onKeyPressed += (evt) {
 		if (evt.code == sfKeyReturn)
 			connectButton.simulateClick();
 	};
-
-	Div credDiv = builder(vDiv([
-		hDiv([loginLabel, loginField, filler(LOGIN_FRACT)]),
-		hDiv([pwLabel, pwField, filler(LOGIN_FRACT)])
-	])).layoutType(LayoutType.FIXED).size(vec2i(0, loginSize * 2 + 20)).
-	borderWidth(20).build();
 
 	void handleConnectOk(ServerStatusRes res)
 	{
@@ -117,8 +114,10 @@ void setupMainMenu()
 
 	Game.serverConnection.onEntityDbRecieved += (EntityDbRes res)
 	{
+		trace("Entity database recieved");
 		infoLabel.content = "got database with " ~ 
 			res.controllableSubs.length.to!string ~ " submarines";
+		Game.entityDb = res;
 	};
 
 	connectButton.onClick += (b)
@@ -138,20 +137,20 @@ void setupMainMenu()
 	exitButton.onClick += (b) { Game.window.stopEventProcessing(); };
 	
 	Div mainMenuDiv = builder(vDiv([
-		new GuiElement(),
+		filler(),
 		credDiv,
 		filler(30),
 		connectButton,
 		infoLabel,
 		filler(50),
 		exitButton,
-		new GuiElement()
+		filler()
 	])).layoutType(LayoutType.FIXED).size(vec2i(600, 10)).build();
 	
 	Div mainMenuLayout = hDiv([
-		new GuiElement(),
+		filler(),
 		mainMenuDiv,
-		new GuiElement()
+		filler()
 	]);
 	
 	Game.guiManager.addPanel(new Panel(mainMenuLayout));

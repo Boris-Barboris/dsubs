@@ -45,7 +45,7 @@ struct MountPoint
 {
 	Vector2f mountCenter;
 	float rotation = 0.0f;
-	float scale = 0.0f;
+	float scale = 1.0f;
 	bool underHull;		// true when this mount point should be drawn before hull
 }
 

@@ -44,6 +44,15 @@ mixin template RewriteSet(T, string fieldName, string postupdateCode)
 		"{ m_" ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName ~ ";}");
 }
 
+/// mixes in private member named m_'fieldName' of type T, and
+/// final getter for it.
+mixin template Readonly(T, string fieldName)
+{
+	mixin("private " ~ T.stringof ~ " m_" ~ fieldName ~ ";");
+	mixin("final @property " ~ T.stringof ~ " " ~ fieldName ~
+		"() { return m_" ~ fieldName ~ ";};");
+}
+
 
 /// Remove elements of range from array
 void substract(T, Range)(ref Array!T arr, Range range)

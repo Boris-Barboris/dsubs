@@ -96,7 +96,7 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 		foreach (comp; components)
 			comp.update(camCtx, usecsDelta);
 		// and sort them in Z-order, deepest components first
-		sort!((a, b) => a.depth < b.depth)(components[]);
+		// sort!((a, b) => a.depth < b.depth)(components[]);
 		// apply camera transformation
 		sfRenderWindow_setView(wnd.wnd, camCtx.camera.view);
 		// render components on the window

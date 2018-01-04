@@ -36,7 +36,6 @@ final class TextBox: GuiElement
 
 	this()
 	{
-		super();
 		layoutType = LayoutType.CONTENT;
 		mouseTransparent = false;
 		m_content = ""d;

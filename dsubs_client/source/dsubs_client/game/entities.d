@@ -1,0 +1,187 @@
+module dsubs_client.game.entities;
+
+import std.algorithm;
+import std.array;
+import std.conv: to;
+import std.math;
+import std.utf;
+import std.experimental.logger;
+
+import derelict.sfml2.graphics;
+import derelict.sfml2.system;
+
+import dsubs_common.api;
+
+import dsubs_client.core.utils;
+import dsubs_client.core.window;
+import dsubs_client.render.convex;
+import dsubs_client.render.manager;
+import dsubs_client.math.transform;
+
+
+class WorldEntity: WorldRenderable
+{
+	mixin Readonly!(id_t, "id");	/// id of the entity
+
+	this(id_t id = 0) { m_id = id; }
+}
+
+
+class Propulsor: WorldRenderable
+{
+	mixin Readonly!(const(PropulsorTemplate*), "templ");
+	
+	protected ConvexShape m_shape;
+
+	this(EntityManager man, string propName)
+	{
+		m_templ = man.m_propTemplates[propName];
+		m_shape = man.m_propulsorShapes[propName];
+	}
+}
+
+
+final class ScrewPropulsor: Propulsor
+{
+	private
+	{
+		ubyte m_bladeCount;
+		double m_rotorAngle = 0.0;
+		double m_angVel = 0.0;
+		Transform m_rotTransform;
+	}
+
+	this(EntityManager man, string propName, ubyte bladeCount)
+	{
+		super(man, propName);
+		m_bladeCount = bladeCount;
+		m_rotTransform = new Transform();
+		transform.addChild(m_rotTransform);
+	}
+
+	override void update(CameraContext camCtx, long usecsDelta)
+	{
+		m_rotorAngle += m_angVel * 1e-6 * usecsDelta;
+	}
+
+	override void render(Window wnd)
+	{
+		// TODO: blades, rotation
+		m_shape.render(wnd, m_rotTransform.sfWorld);
+	}
+}
+
+
+final class PumpPropulsor: Propulsor
+{
+	private double m_angVel = 0.0;
+
+	this(EntityManager man, string propName)
+	{
+		super(man, propName);
+	}
+
+	override void render(Window wnd)
+	{
+		m_shape.render(wnd, transform.sfWorld);
+	}
+}
+
+
+private Propulsor createPropulsor(EntityManager man, string propName)
+{
+	auto tmpl = man.m_propTemplates[propName];
+	if (tmpl.type == PropulsorType.SCREW)
+		return new ScrewPropulsor(man, propName, tmpl.bladeCount);
+	else
+		assert(0);
+}
+
+
+final class Submarine: WorldEntity
+{
+	mixin Readonly!(const(SubmarineTemplate*), "templ");
+	
+	private Propulsor[] m_propulsors;
+	private ConvexShape[] m_shapes;
+
+	this(id_t id, EntityManager man, string hullName, string propName)
+	{
+		super(id);
+		m_templ = man.m_submarineTemplates[hullName];
+		m_shapes = man.m_submarineShapes[hullName];
+		setPropulsor(man, propName);
+	}
+
+	override void render(Window wnd)
+	{
+		foreach (prop; m_propulsors.filter!(a => a.depth < depth))
+			prop.render(wnd);
+		foreach (shape; m_shapes)
+			shape.render(wnd, transform.sfWorld);
+		foreach (prop; m_propulsors.filter!(a => a.depth >= depth))
+			prop.render(wnd);
+	}
+
+	/// Remove existing propulsor and set a new one
+	void setPropulsor(EntityManager man, string propName)
+	{
+		// unset existing propulsors
+		foreach (p; m_propulsors)
+			transform.removeChild(p.transform);
+		m_propulsors.length = 0;
+		// setup propulsors
+		foreach (mount; m_templ.propulsionMounts)
+		{
+			Propulsor p = createPropulsor(man, propName);
+			p.transform.scale = vec2d(mount.scale, mount.scale);
+			p.transform.rotation = mount.rotation;
+			p.transform.position = 
+				vec2d(mount.mountCenter.data[0], mount.mountCenter.data[1]);
+			transform.addChild(p.transform);
+			if (mount.underHull)
+				p.depth = depth - 1.0f;
+			else
+				p.depth = depth + 1.0f;
+		}
+	}
+}
+
+
+/// Collection of shapes and templates, created from entity database
+final class EntityManager
+{
+	private ConvexShape[string] m_propulsorShapes;
+	private ConvexShape[][string] m_submarineShapes;
+	private const(PropulsorTemplate)*[string] m_propTemplates;
+	private const(SubmarineTemplate)*[string] m_submarineTemplates;
+
+	/// construct shape collection from entity database
+	this(const(EntityDbRes) db)
+	{
+		foreach (prop; db.propulsors)
+		{
+			auto ptr = new PropulsorTemplate;
+			*ptr = cast(PropulsorTemplate) prop;
+			m_propTemplates[prop.name] = ptr;
+			m_propulsorShapes[prop.name] = fromPolygon(prop.model);
+		}
+		foreach (sub; db.controllableSubs)
+		{
+			auto ptr = new SubmarineTemplate;
+			*ptr = cast(SubmarineTemplate) sub;
+			m_submarineTemplates[sub.name] = ptr;
+			m_submarineShapes[sub.name] = 
+				sub.hullModel.map!(a => fromPolygon(a)).array;
+		}
+	}
+
+	private ConvexShape fromPolygon(const(ConvexPolygon) p)
+	{
+		return new ConvexShape(
+			cast(const(sfVector2f)[]) p.points,
+			cast(sfColor) p.fillColor,
+			cast(sfColor) p.borderColor,
+			p.borderWidth);
+	}
+}
