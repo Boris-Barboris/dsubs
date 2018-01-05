@@ -89,9 +89,18 @@ class GuiElement: IInputReciever
 	{
 		assert(rhs.x >= 0 && rhs.y >= 0);
 		m_size = rhs;
-		if ((m_layoutType == LayoutType.FIXED || m_layoutType == LayoutType.CONTENT) && m_parent)
+		if ((m_layoutType == LayoutType.FIXED || m_layoutType == LayoutType.CONTENT) &&
+				m_parent)
 			m_parent.childChanged(this);
 		updateSize();
+		return m_size;
+	}
+
+	/// save as size setter, but sets layout to fixed
+	@property vec2i fixedSize(vec2i rhs)
+	{
+		m_layoutType = LayoutType.FIXED;
+		size = rhs;
 		return m_size;
 	}
 
@@ -100,12 +109,12 @@ class GuiElement: IInputReciever
 	/// when layoutType is FRACT, this is what is used to detrmine element size
 	final @property float fraction() const { return m_fraction; }
 
+	/// sets layoutType to fration
 	final @property float fraction(float rhs)
 	{
 		assert(rhs >= 0.0f);
 		m_fraction = rhs;
-		if (m_layoutType == LayoutType.FRACT && m_parent)
-			m_parent.childChanged(this);
+		layoutType = LayoutType.FRACT;
 		return m_fraction;
 	}
 
@@ -282,7 +291,7 @@ class GuiElement: IInputReciever
 	//
 
 	/// Return deepest GuiElement that contains the point, null otherwise.
-	GuiElement getFromPoint(int x, int y)
+	GuiElement getFromPoint(const sfEvent* evt, int x, int y)
 	{
 		if ((x >= m_position.x && x < m_position.x + m_size.x) &&
 			(y >= m_position.y && y < m_position.y + m_size.y))
@@ -299,7 +308,7 @@ class GuiElement: IInputReciever
 	// element wich is placed under cursor.
 	package GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
-		GuiElement interceptor = getFromPoint(x, y);
+		GuiElement interceptor = getFromPoint(evt, x, y);
 		if (interceptor)
 			return GuiRouteResult(interceptor, interceptor.mouseTransparent);
 		else
@@ -329,8 +338,7 @@ GuiElement filler()
 GuiElement filler(int size)
 {
 	GuiElement r = new GuiElement();
-	r.layoutType = LayoutType.FIXED;
-	r.size = vec2i(size, size);
+	r.fixedSize = vec2i(size, size);
 	return r;
 }
 
@@ -338,7 +346,6 @@ GuiElement filler(int size)
 GuiElement filler(float fract)
 {
 	GuiElement r = new GuiElement();
-	r.layoutType = LayoutType.FRACT;
 	r.fraction = fract;
 	return r;
 }

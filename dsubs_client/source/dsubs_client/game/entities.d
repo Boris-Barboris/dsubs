@@ -62,12 +62,17 @@ final class ScrewPropulsor: Propulsor
 	override void update(CameraContext camCtx, long usecsDelta)
 	{
 		m_rotorAngle += m_angVel * 1e-6 * usecsDelta;
+		m_rotorAngle = clampAngle(m_rotorAngle);
 	}
 
 	override void render(Window wnd)
 	{
-		// TODO: blades, rotation
-		m_shape.render(wnd, m_rotTransform.sfWorld);
+		for (int i = 0; i < m_bladeCount; i++)
+		{
+			double x = cos(m_rotorAngle + i * 2.0 * PI / m_bladeCount);
+			m_rotTransform.scale = vec2d(x, 1.0);
+			m_shape.render(wnd, m_rotTransform.sfWorld);
+		}
 	}
 }
 
@@ -143,6 +148,7 @@ final class Submarine: WorldEntity
 				p.depth = depth - 1.0f;
 			else
 				p.depth = depth + 1.0f;
+			m_propulsors ~= p;
 		}
 	}
 }

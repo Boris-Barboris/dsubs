@@ -36,6 +36,7 @@ final class ServerConnection
 	}
 
 	/// Create the connection object and spool up worker threads.
+	/// 'lockToHold' is a mutex guarding event objects.
 	this(string serverAddr, Mutex lockToHold)
 	{
 		assert(lockToHold);
@@ -89,6 +90,7 @@ final class ServerConnection
 		onConnectionClosed.clear();
 		onConnectionSuccess.clear();
 		onLoginRes.clear();
+		onEntityDbRecieved.clear();
 	}
 
 	// Subscribe to these events. They all should be fired while holding m_mutex.

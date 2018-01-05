@@ -116,17 +116,16 @@ final class TextBox: GuiElement
 		size_t txtIdx = 0;		// cursor of the m_sfTexts element being filled
 		size_t tmpIdx = 0;		// cursor to fill tmp
 
-		void finalizeLine()
+		bool finalizeLine()
 		{
-			if (tmpIdx != 0)	// nothing to do on empty line
+			if (tmpIdx > 0)
 			{
 				if (m_sfTexts.length == txtIdx)
 					createTextObj();
 				sfText* t = m_sfTexts[txtIdx];
-				txtIdx++;
 				tmp[tmpIdx] = 0;	// zero terminator as if it was a C string
 				sfText_setUnicodeString(t, tmp.ptr);
-				if (naiiveWidth)
+				if (naiiveWidth && tmpIdx > 1)
 				{
 					// we now get accurate glyph width
 					sfFloatRect bounds = sfText_getLocalBounds(t);
@@ -134,16 +133,20 @@ final class TextBox: GuiElement
 					assert(glyphWidth > 0.0f);
 					charsInLine = max(1, floor(lineWidth / glyphWidth).to!int);
 					naiiveWidth = false;
-					// essentially restart update_text:
-					txtIdx = tmpIdx = contentIdx = lineIdx = 0;
-					return;
+					// essentially restart this line building
+					contentIdx -= tmpIdx;
+					tmpIdx = 0;
+					return false;
 				}
+				txtIdx++;
 				setupTextObj(t, lineIdx, lineSpacing);
 			}
 			lineIdx++;
 			tmpIdx = 0;
+			return true;
 		}
 
+	fillerLoop:
 		while (contentIdx < m_content.length)
 		{
 			dchar symb = m_content[contentIdx];
@@ -161,7 +164,8 @@ final class TextBox: GuiElement
 					finalizeLine();
 			}
 		}
-		finalizeLine();	// finalize the last line
+		if (!finalizeLine())
+			goto fillerLoop;	// fuck off
 
 		// we need to detroy unused sfText's:
 		for (size_t i = txtIdx; i < m_sfTexts.length; i++)

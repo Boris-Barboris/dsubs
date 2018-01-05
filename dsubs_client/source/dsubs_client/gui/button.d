@@ -43,6 +43,7 @@ class Button: Label
 
 	this(ButtonType type = ButtonType.SYNC)
 	{
+		htextAlign = HTextAlign.CENTER;
 		m_buttonType = type;
 		updateFontColor();
 		onMouseEnter += &handleMouseEnter;

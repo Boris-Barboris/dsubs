@@ -32,10 +32,10 @@ PropulsorTemplate standardScrew = PropulsorTemplate(
 	PropulsorType.SCREW,
 	7,
 	ConvexPolygon([
-		Vector2f([0.0f, -1.0f]),
-		Vector2f([5.0f, -0.5f]),
-		Vector2f([0.0f, 1.0f])
-	], RgbaColor(120, 120, 120))
+		Vector2f([0.0f, -2.0f]),
+		Vector2f([10.0f, -3.0f]),
+		Vector2f([0.0f, 2.0f])
+	], RgbaColor(60, 60, 60), 0.5f, RgbaColor(100, 100, 100))
 );
 
 SubmarineTemplate nooberSub = SubmarineTemplate(
@@ -47,8 +47,8 @@ SubmarineTemplate nooberSub = SubmarineTemplate(
 			Vector2f([-20.0f, 50.0f]),
 			Vector2f([-20.0f, -50.0f]),
 			Vector2f([20.0f, -50.0f])
-		], RgbaColor(50, 50, 50), 5.0f, RgbaColor(100, 100, 100))
+		], RgbaColor(50, 50, 50), 3.0f, RgbaColor(100, 100, 100))
 	],
-	[MountPoint(Vector2f([0.0, -52.0f]))],
+	[MountPoint(Vector2f([0.0, -60.0f]))],
 	[]
 );

@@ -41,7 +41,7 @@ class Label: GuiElement
 	{
 		int m_fontSize = 14;
 		string m_fontName = "UbuntuMono";
-		HTextAlign m_htextAlign = HTextAlign.CENTER;
+		HTextAlign m_htextAlign = HTextAlign.LEFT;
 		VTextAlign m_vtextAlign = VTextAlign.CENTER;
 		int m_padding = 4;
 	}
@@ -164,6 +164,14 @@ class Label: GuiElement
 		m_contentPos.y = m_textPos.y + glyphParams.topOffset;
 		m_contentHeight = glyphParams.actualHeight;
 		sfText_setPosition(m_sfText, m_textPos.tosf);
+	}
+
+	override int doFitContent(Axis fixedDim, Axis contentDim)
+	{
+		if (fixedDim == Axis.X)
+			return m_fontSize + 5;
+		else
+			return (m_contentWidth + 10.0).lrint.to!int;
 	}
 
 	override void draw(Window wnd)

@@ -266,9 +266,9 @@ final class Div: GuiElement
 			child.draw(wnd);
 	}
 
-	override GuiElement getFromPoint(int x, int y)
+	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
 	{
-		if (super.getFromPoint(x, y))
+		if (super.getFromPoint(evt, x, y))
 		{
 			if (m_children.length == 0)
 				return this;
@@ -276,14 +276,14 @@ final class Div: GuiElement
 			int cursor = externalBorder;
 			foreach (kid; m_children)
 			{
-				auto check = kid.getFromPoint(x, y);
+				auto check = kid.getFromPoint(evt, x, y);
 				if (check)
 					return check;
 				cursor += kid.size[dim] + m_borderWidth;
 				if (cursor >= offset)
 					return this;
 			}
-			assert(0, "impossible");
+			return this;
 		}
 		else
 			return null;

@@ -16,6 +16,7 @@ import dsubs_client.render.render;
 import dsubs_client.render.manager;
 
 import dsubs_client.game.connection;
+public import dsubs_client.game.entities;
 import dsubs_client.game.mainmenu;
 
 
@@ -31,11 +32,13 @@ __gshared:
 	ServerConnection serverConnection;
 	Delayer delayer;
 
-	/// global lock, held by window message pump and render threads
+	/// Global lock, held by window message pump and render threads.
+	/// When in doubt, lock this one.
 	Mutex mainMutex;
 
-	// entity database
+	// entity databases in different forms
 	EntityDbRes entityDb;
+	EntityManager entityManager;
 
 	/// start the game
 	static void start()

@@ -25,8 +25,13 @@ final class ScrollBar: GuiElement
 
 	private
 	{
-		float m_scrollPosition = 0.0f;	// always <= 0
+		float m_scrollPosition = 0.0f;
 		GuiElement m_child;
+	}
+
+	invariant
+	{
+		assert(m_scrollPosition <= 0.0f);
 	}
 
 	@property GuiElement child() { return m_child; }
@@ -45,10 +50,7 @@ final class ScrollBar: GuiElement
 		m_child.m_parent = this;
 		m_child.parentViewport = &m_viewport;
 		mouseTransparent = false;
-		// only one of the two will be called during scroll event:
-		m_child.onMouseScroll += &handleMouseScroll;
 		onMouseScroll += &handleMouseScroll;
-		// assign handlers for scrollbar-mouse interactions
 		onMouseDown += &handleMouseDown;
 		onMouseUp += &handleMouseUp;
 		onMouseMove += &handleMouseMove;
@@ -190,14 +192,17 @@ final class ScrollBar: GuiElement
 		}
 	}
 
-	override GuiElement getFromPoint(int x, int y)
+	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
 	{
-		if (super.getFromPoint(x, y))
+		if (super.getFromPoint(evt, x, y))
 		{
 			// first we check if we are pointing on the scrollbar
 			if (m_sbVisible && x >= size.x - m_scrollbarWidth)
 				return this;
-			auto check = m_child.getFromPoint(x, y);
+			// we intercept all scrolling
+			if (evt.type == sfEvtMouseWheelScrolled)
+				return this;
+			auto check = m_child.getFromPoint(evt, x, y);
 			if (check)
 				return check;
 			return this;
