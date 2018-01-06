@@ -46,7 +46,7 @@ struct MountPoint
 	Vector2f mountCenter;
 	float rotation = 0.0f;
 	float scale = 1.0f;
-	bool underHull;		// true when this mount point should be drawn before hull
+	bool underHull;		// true when this mount point should be drawn behind hull
 }
 
 /// Playable submarine template
@@ -63,6 +63,9 @@ struct SubmarineTemplate
 
 	/// mount points for screws.
 	MountPoint[] propulsionMounts;
+
+	/// index of the first polygon in hullModel that is drawn on top of all propulsors
+	int elevatedHullShapeIdx = 1;
 
 	/// torpedo tube mounts
 	MountPoint[] tubeMounts;

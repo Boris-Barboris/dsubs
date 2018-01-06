@@ -62,7 +62,7 @@ final class ScrollBar: GuiElement
 		sfRectangleShape* m_sbHandleRect;		/// scrollbar handle rect
 		int m_scrollbarWidth = 10;
 		int m_minSbHandleLength = 20;
-		sfColor m_sbBackFillColor = sfColor(255, 255, 255, 50);
+		sfColor m_sbBackFillColor = sfColor(15, 15, 15, 50);
 		sfColor m_sbHandleColor = sfWhite;
 		bool m_sbVisible = true;
 	}

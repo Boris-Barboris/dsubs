@@ -19,25 +19,26 @@ import dsubs_client.render.manager;
 import dsubs_client.math.transform;
 
 
-class WorldEntity: WorldRenderable
+class Propulsor
 {
-	mixin Readonly!(id_t, "id");	/// id of the entity
-
-	this(id_t id = 0) { m_id = id; }
-}
-
-
-class Propulsor: WorldRenderable
-{
+	mixin Readonly!(Transform, "transform");
 	mixin Readonly!(const(PropulsorTemplate*), "templ");
 	
 	protected ConvexShape m_shape;
+	protected double m_targetThrottle;
+
+	@property double targetThrottle(double target) { return m_targetThrottle = target; }
 
 	this(EntityManager man, string propName)
 	{
+		m_transform = new Transform();
 		m_templ = man.m_propTemplates[propName];
 		m_shape = man.m_propulsorShapes[propName];
 	}
+
+	void update(CameraContext camCtx, long usecsDelta) {}
+	abstract void renderBack(Window wnd);
+	abstract void renderFront(Window wnd);
 }
 
 
@@ -57,20 +58,59 @@ final class ScrewPropulsor: Propulsor
 		m_bladeCount = bladeCount;
 		m_rotTransform = new Transform();
 		transform.addChild(m_rotTransform);
+
+		m_blades.length = m_bladeCount;
+		double step = 2.0 * PI / m_bladeCount;
+		double angle = m_rotorAngle;
+		for (int i = 0; i < m_bladeCount; i++)
+		{
+			m_blades[i] = Blade(angle, cos(angle), sin(angle));
+			angle += step;
+		}
 	}
+
+	private struct Blade
+	{
+		double angle;
+		double bladeCos;
+		double bladeSin;
+	}
+
+	private Blade[] m_blades;
 
 	override void update(CameraContext camCtx, long usecsDelta)
 	{
-		m_rotorAngle += m_angVel * 1e-6 * usecsDelta;
+		m_angVel = m_targetThrottle;	// TODO
+		double delta = m_angVel * 1e-6 * usecsDelta;
+		m_rotorAngle += delta;
 		m_rotorAngle = clampAngle(m_rotorAngle);
+		foreach (ref blade; m_blades)
+		{
+			double newAngle = clampAngle(blade.angle + delta);
+			blade = Blade(newAngle, cos(newAngle), sin(newAngle));
+		}
+		// we need to start from the blade wich is the deepest one
+		sort!((a, b) => a.bladeSin < b.bladeSin)(m_blades);
 	}
 
-	override void render(Window wnd)
+	override void renderBack(Window wnd)
 	{
-		for (int i = 0; i < m_bladeCount; i++)
+		foreach (ref blade; m_blades)
 		{
-			double x = cos(m_rotorAngle + i * 2.0 * PI / m_bladeCount);
-			m_rotTransform.scale = vec2d(x, 1.0);
+			if (blade.bladeSin >= 0.0)
+				break;
+			m_rotTransform.scale = vec2d(blade.bladeCos, 1.0);
+			m_shape.render(wnd, m_rotTransform.sfWorld);
+		}
+	}
+
+	override void renderFront(Window wnd)
+	{
+		foreach (ref blade; m_blades)
+		{
+			if (blade.bladeSin < 0.0)
+				continue;
+			m_rotTransform.scale = vec2d(blade.bladeCos, 1.0);
 			m_shape.render(wnd, m_rotTransform.sfWorld);
 		}
 	}
@@ -86,7 +126,9 @@ final class PumpPropulsor: Propulsor
 		super(man, propName);
 	}
 
-	override void render(Window wnd)
+	override void renderBack(Window wnd) {}
+
+	override void renderFront(Window wnd)
 	{
 		m_shape.render(wnd, transform.sfWorld);
 	}
@@ -99,12 +141,13 @@ private Propulsor createPropulsor(EntityManager man, string propName)
 	if (tmpl.type == PropulsorType.SCREW)
 		return new ScrewPropulsor(man, propName, tmpl.bladeCount);
 	else
-		assert(0);
+		return new PumpPropulsor(man, propName);
 }
 
 
-final class Submarine: WorldEntity
+final class Submarine: WorldRenderable
 {
+	mixin Readonly!(id_t, "id");
 	mixin Readonly!(const(SubmarineTemplate*), "templ");
 	
 	private Propulsor[] m_propulsors;
@@ -112,20 +155,28 @@ final class Submarine: WorldEntity
 
 	this(id_t id, EntityManager man, string hullName, string propName)
 	{
-		super(id);
+		m_id = id;
 		m_templ = man.m_submarineTemplates[hullName];
 		m_shapes = man.m_submarineShapes[hullName];
 		setPropulsor(man, propName);
 	}
 
+	override void update(CameraContext camCtx, long usecsDelta)
+	{
+		foreach (prop; m_propulsors)
+			prop.update(camCtx, usecsDelta);
+	}
+
 	override void render(Window wnd)
 	{
-		foreach (prop; m_propulsors.filter!(a => a.depth < depth))
-			prop.render(wnd);
-		foreach (shape; m_shapes)
-			shape.render(wnd, transform.sfWorld);
-		foreach (prop; m_propulsors.filter!(a => a.depth >= depth))
-			prop.render(wnd);
+		foreach (prop; m_propulsors)
+			prop.renderBack(wnd);
+		for (int i = 0; i < m_templ.elevatedHullShapeIdx; i++)
+			m_shapes[i].render(wnd, transform.sfWorld);
+		foreach (prop; m_propulsors)
+			prop.renderFront(wnd);
+		for (int i = m_templ.elevatedHullShapeIdx; i < m_shapes.length; i++)
+			m_shapes[i].render(wnd, transform.sfWorld);
 	}
 
 	/// Remove existing propulsor and set a new one
@@ -144,10 +195,7 @@ final class Submarine: WorldEntity
 			p.transform.position = 
 				vec2d(mount.mountCenter.data[0], mount.mountCenter.data[1]);
 			transform.addChild(p.transform);
-			if (mount.underHull)
-				p.depth = depth - 1.0f;
-			else
-				p.depth = depth + 1.0f;
+			p.targetThrottle = 1.0;
 			m_propulsors ~= p;
 		}
 	}
@@ -159,8 +207,9 @@ final class EntityManager
 {
 	private ConvexShape[string] m_propulsorShapes;
 	private ConvexShape[][string] m_submarineShapes;
-	private const(PropulsorTemplate)*[string] m_propTemplates;
-	private const(SubmarineTemplate)*[string] m_submarineTemplates;
+
+	mixin Readonly!(const(PropulsorTemplate)*[string], "propTemplates");
+	mixin Readonly!(const(SubmarineTemplate)*[string], "submarineTemplates");
 
 	/// construct shape collection from entity database
 	this(const(EntityDbRes) db)

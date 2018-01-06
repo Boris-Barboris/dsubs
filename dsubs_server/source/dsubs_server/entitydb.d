@@ -26,29 +26,62 @@ shared static this()
 
 private:
 
+Vector2f[] xSymmetry(float[] coords)
+{
+	assert(coords.length % 2 == 0);
+	int len = coords.length / 2;
+	Vector2f[] res;
+	for (int i = 0; i < len; i++)
+		res ~= Vector2f(coords[i*2], coords[i*2 + 1]);
+	for (int i = len - 2; i > 0; i--)
+		res ~= Vector2f(-coords[i*2], coords[i*2 + 1]);
+	return res;
+}
+
 PropulsorTemplate standardScrew = PropulsorTemplate(
 	"Standard screw",
-	"Flexible, balanced solution for a propulsion problem.",
+	"Five-bladed screw with no outstanding traits, " ~
+	"but comparatively good high-speed performance.",
 	PropulsorType.SCREW,
-	7,
+	5,
 	ConvexPolygon([
-		Vector2f([0.0f, -2.0f]),
-		Vector2f([10.0f, -3.0f]),
-		Vector2f([0.0f, 2.0f])
-	], RgbaColor(60, 60, 60), 0.5f, RgbaColor(100, 100, 100))
+		Vector2f(1.1f, 0.6f),
+		Vector2f(0.6f, -0.6f),
+		Vector2f(4.2f, -0.9f)
+	], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 );
 
 SubmarineTemplate nooberSub = SubmarineTemplate(
-	"Noober",
-	"Go swim",
+	"Aspirant",
+	"Light attack submarine 'Aspirant' can offers great balance of stealth, " ~
+	"offensive power and survivability to rookie captains.",
 	[
-		ConvexPolygon([
-			Vector2f([20.0f, 50.0f]),
-			Vector2f([-20.0f, 50.0f]),
-			Vector2f([-20.0f, -50.0f]),
-			Vector2f([20.0f, -50.0f])
-		], RgbaColor(50, 50, 50), 3.0f, RgbaColor(100, 100, 100))
+		ConvexPolygon(xSymmetry([
+				0.0, 35.0,
+				-1.5, 34.8,
+				-2.8, 34,
+				-3.5, 33.0,
+				-4, 32.2,
+				-4.7, 30.0,
+				-5.0, 28.0,
+				-5.0, -18.0,
+				-4.5, -23.0,
+				-3.0, -28.0,
+				-2.0, -31.0,
+				0.0, -35.0
+			]), RgbaColor(70, 70, 70), 0.4f, RgbaColor(100, 100, 100)),
+		ConvexPolygon(xSymmetry([
+				0.0, 15.0,
+				-1.0, 14.7,
+				-1.7, 14.0,
+				-2.0, 13.0,
+				-2.0, 4.0,
+				-1.7, 2.0,
+				-1.0, 0.5,
+				0.0, -1.0
+			]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50))
 	],
-	[MountPoint(Vector2f([0.0, -60.0f]))],
+	[MountPoint(Vector2f(0.0, -34.0f))],
+	1,
 	[]
 );

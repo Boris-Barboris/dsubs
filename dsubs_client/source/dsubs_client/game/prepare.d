@@ -22,6 +22,7 @@ void setupPrepareScreen()
 {
 	enum int BTN_SIZE = 26;
 	enum int BTN_FONT = 20;
+	enum sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
 
 	Game.clearEntities();
 
@@ -35,11 +36,11 @@ void setupPrepareScreen()
 		  |	Description	|Play
 	*/
 
-	string curSelectedHull;
 	string curSelectedPropulsor = propulsors[0];
+	Submarine curSelectedSub;
 
-	TextBox descriptionBox = new TextBox();
-	descriptionBox.fontSize = 16;
+	TextBox hullDescriptionBox = new TextBox();
+	hullDescriptionBox.fontSize = 16;
 
 	// scrollist of hulls
 	GuiElement[] hullButtons;
@@ -51,35 +52,81 @@ void setupPrepareScreen()
 		hullButtons ~= hullSelector;
 		hullSelector.onClick += (btn)
 			{
-				if (curSelectedHull != hullname)
+				if (curSelectedSub is null || curSelectedSub.templ.name != hullname)
 				{
 					Game.worldManager.components.clear();
-					curSelectedHull = hullname;
-					Submarine stub = new Submarine(0, Game.entityManager, hullname,
+					curSelectedSub = new Submarine(0, Game.entityManager, hullname,
 						curSelectedPropulsor);
-					stub.transform.rotation = -PI_2;
-					Game.worldManager.components ~= stub;
-					descriptionBox.content = stub.templ.description;
+					curSelectedSub.transform.rotation = -PI_2;
+					Game.worldManager.components ~= curSelectedSub;
 				}
+			};
+		hullSelector.onMouseEnter += ()
+			{
+				hullDescriptionBox.content = 
+					Game.entityManager.submarineTemplates[hullname].description;
 			};
 	}
 
-	Div hullDiv = builder(vDiv(hullButtons)).
-		fixedSize(vec2i(200, BTN_SIZE * hulls.length + hulls.length)).borderWidth(1).
-		borderColor(sfColor(255, 255, 255, 30)).build;
+	Div hullDiv = builder(vDiv(hullButtons)).layoutType(LayoutType.CONTENT).
+		size(vec2i(200, BTN_SIZE * hulls.length + hulls.length)).build;
 	ScrollBar hullsScrollbar = new ScrollBar(hullDiv);
+
+	TextBox moduleDescriptionBox = new TextBox();
+	moduleDescriptionBox.fontSize = 16;
+
+	// scrollist of propulsors
+	GuiElement[] propButtons;
+	foreach (propName; propulsors)
+	{
+		Button propSelector = builder(new Button()).content(propName).
+			fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
+			htextAlign(HTextAlign.LEFT).build();
+		propButtons ~= propSelector;
+		propSelector.onClick += (btn)
+			{
+				curSelectedPropulsor = propName;
+				if (curSelectedSub)
+					curSelectedSub.setPropulsor(Game.entityManager, propName);
+			};
+		propSelector.onMouseEnter += ()
+			{
+				moduleDescriptionBox.content = 
+					Game.entityManager.propTemplates[propName].description;
+			};
+	}
+
+	Div propsDiv = builder(vDiv(propButtons)).layoutType(LayoutType.CONTENT).
+		size(vec2i(200, BTN_SIZE * hulls.length + hulls.length)).build;
+	ScrollBar propsScrollbar = new ScrollBar(propsDiv);
 
 	auto prepareGui = hDiv([
 		builder(vDiv([
 					builder(new Label()).content("Available submarines:").
-						fontSize(BTN_FONT).fontColor(sfColor(150, 150, 150, 255)).
+						fontSize(BTN_FONT).fontColor(HINT_COLOR).
 						fixedSize(vec2i(1, 30)).build,
 					hullsScrollbar
 				])
 			).fraction(0.25f).build(),
-		vDiv([filler(0.9f), new ScrollBar(descriptionBox)])
+		vDiv([
+			new ScrollBar(moduleDescriptionBox),
+			filler(0.5f),
+			builder(new Label()).fontSize(BTN_FONT).
+				fixedSize(vec2i(1, BTN_SIZE)).fontColor(HINT_COLOR).
+				content("Hull description").build,
+			new ScrollBar(hullDescriptionBox)
+		]),
+		builder(vDiv([
+					builder(new Label()).content("Available propulsors:").
+						fontSize(BTN_FONT).fontColor(HINT_COLOR).
+						fixedSize(vec2i(1, 30)).build,
+					propsScrollbar
+				])
+			).fraction(0.25f).build(),
 	]);
+	prepareGui.borderColor = sfColor(50, 50, 50, 100);
+	prepareGui.borderWidth = 1;
 
 	Game.guiManager.addPanel(new Panel(prepareGui));
-	Game.worldManager.camCtx.camera.zoom = 3.0;
+	Game.worldManager.camCtx.camera.zoom = 10.0;
 }

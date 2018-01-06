@@ -66,9 +66,6 @@ final class TextBox: GuiElement
 		return content = toUTF32(val);
 	}
 
-	mixin RewriteSet!(LayoutType, "layoutType",
-		`if (rhs != LayoutType.CONTENT) assert(0, "TextBox always has CONTENT layoutType");`);
-
 	invariant
 	{
 		assert(m_fontSize > 0);
@@ -172,7 +169,7 @@ final class TextBox: GuiElement
 			sfText_destroy(m_sfTexts[i]);
 		m_sfTexts.length = txtIdx;
 
-		m_textFullHeight = (lineIdx + 3) * lineSpacing + m_padding;
+		m_textFullHeight = (lineIdx + 1) * lineSpacing + m_padding;
 	}
 
 	private void createTextObj()

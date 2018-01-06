@@ -46,6 +46,13 @@ class MaxLenExceeded: Exception
 struct Vector(T, size_t size)
 {
 	T[size] data;
+
+	this(T...)(T args)
+		if (T.length == size)
+	{
+		foreach (i, arg; args)
+			data[i] = arg;
+	}
 }
 
 alias Vector2f = Vector!(float, 2);
