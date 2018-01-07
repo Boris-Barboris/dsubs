@@ -53,7 +53,7 @@ PropulsorTemplate standardScrew = PropulsorTemplate(
 
 SubmarineTemplate nooberSub = SubmarineTemplate(
 	"Aspirant",
-	"Light attack submarine 'Aspirant' can offers great balance of stealth, " ~
+	`Light attack submarine "Aspirant" offers good balance of stealth, ` ~
 	"offensive power and survivability to rookie captains.",
 	[
 		ConvexPolygon(xSymmetry([
