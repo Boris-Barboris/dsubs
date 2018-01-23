@@ -43,7 +43,9 @@ struct Kinematics
 	double AoA;
 	double velLength;
 	double velSquaredLength;
+	double velRotation;
 	vec2d velNormalized;
+	vec2d velLeft;
 	vec2d forward;
 	vec2d left;
 
@@ -53,8 +55,12 @@ struct Kinematics
 		velSquaredLength = vel.squaredLength;
 		velLength = sqrt(velSquaredLength);
 		velNormalized = vel.normalized;
+		velRotation = courseAngle(velNormalized);
+		double velLeftRotation = velRotation + PI_2;
+		velLeft = vec2d(-sin(velLeftRotation), cos(velLeftRotation));
 		forward = vec2d(-sin(rotation), cos(rotation));
-		left = vec2d(-sin(rotation + PI_2), cos(rotation + PI_2));
+		double leftRotation = rotation + PI_2;
+		left = vec2d(-sin(leftRotation), cos(leftRotation));
 	}
 }
 
@@ -107,7 +113,7 @@ final class SubmergedRigidBody
 		foreach (force; forces)
 			resultForce += force.getForce(this, c);
 		resultForce -= hydroModel.drag(c.velSquaredLength, c.AoA) * c.velNormalized;
-		resultForce += hydroModel.lift(c.velSquaredLength, c.AoA) * c.left;
+		resultForce += hydroModel.lift(c.velSquaredLength, c.AoA) * c.velLeft;
 		assert(mass > 0.0);
 		return resultForce / mass;
 	}
