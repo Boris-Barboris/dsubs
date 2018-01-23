@@ -34,7 +34,7 @@ void setupMainMenu()
 	int btnSize = (MENU_BUTTON_FONTSIZE * 1.3).lrint.to!int;
 	Button connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").
 		fontSize(MENU_BUTTON_FONTSIZE).fixedSize(vec2i(400, btnSize)).build();
-	
+
 	Label infoLabel = builder(new Label()).content("Connecting to server").
 		fontSize(INFO_FONT_SIZE).fixedSize(vec2i(400, INFO_FONT_SIZE + 10)).
 		fontColor(sfColor(255, 255, 0, 255)).htextAlign(HTextAlign.CENTER).build();
@@ -96,11 +96,11 @@ void setupMainMenu()
 		{
 			infoLabel.content = res.welcomeMsg;
 			canLogin = false;
-			Game.delayer.delay( () {
+			Game.delay( () {
 					infoLabel.content = "Downloading entity database";
 					Game.serverConnection.sendMessage(
 						new immutable EntityDbReq());
-				}, msecs(200), Game.mainMutex);
+				}, msecs(200));
 		}
 		else
 		{
@@ -112,7 +112,7 @@ void setupMainMenu()
 	Game.serverConnection.onEntityDbRecieved += (EntityDbRes res)
 	{
 		trace("Entity database recieved");
-		infoLabel.content = "got database with " ~ 
+		infoLabel.content = "got database with " ~
 			res.controllableSubs.length.to!string ~ " submarines";
 		Game.entityDb = res;
 		trace("Building entity manager");
@@ -133,11 +133,11 @@ void setupMainMenu()
 			new immutable LoginReq(loginField.content.str, pwField.content.str));
 		infoLabel.content = "Logging in...";
 	};
-	
+
 	Button exitButton = builder(new Button()).content("Exit").fontSize(MENU_BUTTON_FONTSIZE).
 		fixedSize(vec2i(400, btnSize)).build();
 	exitButton.onClick += (b) { Game.window.stopEventProcessing(); };
-	
+
 	Div mainMenuDiv = builder(vDiv([
 		filler(),
 		credDiv,
@@ -148,13 +148,13 @@ void setupMainMenu()
 		exitButton,
 		filler()
 	])).fixedSize(vec2i(600, 10)).build();
-	
+
 	Div mainMenuLayout = hDiv([
 		filler(),
 		mainMenuDiv,
 		filler()
 	]);
-	
+
 	Game.guiManager.addPanel(new Panel(mainMenuLayout));
 	loginField.requestKbFocus();
 }

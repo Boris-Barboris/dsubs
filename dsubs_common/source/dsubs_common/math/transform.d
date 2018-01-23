@@ -43,6 +43,21 @@ double courseAngle(double a)
 	return val;
 }
 
+/// Get the angle between dir and (0, 1.0) vector
+double courseAngle(vec2d dir)
+{
+	return atan2(-dir.x, dir.y);
+}
+
+unittest
+{
+	assert(courseAngle(vec2d(0.0, 1.0)) == 0.0);
+	assert(abs(angleDist(courseAngle(vec2d(-1.0, 0.0)), PI_2)) < 0.01);
+	assert(abs(angleDist(courseAngle(vec2d(3.0, 0.0)), -PI_2)) < 0.01);
+	assert(abs(angleDist(courseAngle(vec2d(-0.01, -1.0)), PI)) < 0.01);
+	assert(abs(angleDist(courseAngle(vec2d(0.01, -1.0)), -PI)) < 0.01);
+}
+
 /** Hierarchical transform.
 Dsubs world is a 2D space. World X axis is directed to
 the right, Y axis - up. Positive angle is counter-clockwise. Zero rotation
@@ -141,7 +156,7 @@ class Transform2D
 	/// inverse world transformation
 	final @property ref const(mat3x3d) iworld()
 	{
-		// Inverse is rarely needed, so we don't recalculate for all transforms, 
+		// Inverse is rarely needed, so we don't recalculate for all transforms,
 		// only for those that use it.
 		if (m_inverseDirty)
 			calculateInverse();

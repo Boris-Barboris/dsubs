@@ -24,7 +24,7 @@ final class Delayer
 	{
 		Thread m_thread;
 		Condition m_cond;
-		
+
 		alias RecordCollection = RedBlackTree!(DelayRecord, "a.when < b.when", true);
 		RecordCollection m_records;
 		DelayRecord[] m_addQueue;
@@ -67,11 +67,14 @@ final class Delayer
 		Duration tillWakeup;
 		while (true)
 		{
-			bool timeout = false;
+			bool frontReached = false;
 			if (tillWakeup == Duration.zero)
 				m_cond.wait();
 			else
-				timeout = !m_cond.wait(tillWakeup);
+				if (tillWakeup > Duration.zero)
+					frontReached = !m_cond.wait(tillWakeup);
+				else
+					frontReached = true;
 			if (atomicLoad(m_stop))
 				break;
 			synchronized (m_recordsLock)
@@ -85,7 +88,7 @@ final class Delayer
 				tillWakeup = Duration.zero;
 				continue;
 			}
-			if (timeout)
+			if (frontReached)
 			{
 				DelayRecord firstRecord = m_records.front;
 				// actually run the code

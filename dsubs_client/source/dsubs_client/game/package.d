@@ -81,4 +81,13 @@ __gshared:
 		guiManager.clearPanels();
 		worldManager.components.clear();
 	}
+
+	/// execute delegate 'what' after 'after' time interval, while holding
+	/// 'mutToHold' lock.
+	static void delay(void delegate() what, Duration after,
+		Mutex mutToHold = Game.mainMutex)
+	{
+		assert(Game.delayer !is null);
+		Game.delayer.delay(what, after, mutToHold);
+	}
 }
