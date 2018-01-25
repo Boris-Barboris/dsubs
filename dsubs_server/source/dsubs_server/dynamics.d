@@ -77,7 +77,7 @@ interface IForce
 	double getTorque(const SubmergedRigidBody b, const ref Kinematics c);
 
 	/// if there is some timing logic inside IForce, move forward in time on dt.
-	void timeStep(double dt);
+	void propagateInTime(double dt);
 }
 
 
@@ -102,7 +102,7 @@ final class SubmergedRigidBody
 		nextKinet.vel += dt * linAcc1;
 		nextKinet.angVel += dt * rotAcc1;
 		foreach (force; forces)
-			force.timeStep(dt);
+			force.propagateInTime(dt);
 		kinet = nextKinet;
 		kinet.updateCache();
 	}
