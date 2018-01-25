@@ -91,7 +91,7 @@ final class SubmergedRigidBody
 
 	IForce[] forces;
 
-	/// physics update step
+	/// physics update step, Eulers method
 	void integrate(double dt)
 	{
 		Kinematics nextKinet = kinet;
