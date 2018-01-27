@@ -2,6 +2,7 @@ module dsubs_server.rng;
 
 import std.math;
 import std.random;
+import std.traits;
 
 
 /// sample standard normal distribution using Box-Muller transform
@@ -34,21 +35,22 @@ double rngNormal(double mean = 0.0, double stddev = 1.0, double dlimit = 3.0,
 	return ret;
 }
 
-/// Normally-distributed random double that gets rolled during runtime
-struct NormalDouble
+/// Normally-distributed random floating point that gets rolled the first time 
+/// it's used
+struct Diced(T) if (isFloatingPoint!T)
 {
-	const double mean = 0.0;
-	const double stddev = 1.0;
-	private bool rolled;
-	private double val;
+	T mean = 0.0;
+	T stddev = 1.0;
+	bool rolled;
+	private T val;
 
-	this(double mean, double stddev)
+	this(T mean, T stddev)
 	{
 		this.mean = mean;
 		this.stddev = stddev;
 	}
 
-	@property double get()
+	@property T get()
 	{
 		if (rolled)
 			return val;
@@ -59,3 +61,6 @@ struct NormalDouble
 
 	alias get this;
 }
+
+alias DicedF = Diced!float;
+alias DicedD = Diced!double;

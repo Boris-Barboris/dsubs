@@ -2,7 +2,7 @@ module dsubs_server.dynamics;
 
 import std.math;
 
-import dsubs_common.math.transform;
+import dsubs_common.math;
 
 
 struct HydroForceModel

@@ -3,9 +3,21 @@ module dsubs_server.sound;
 import dsubs_server.rng;
 
 
-struct Discrete
+struct NoiseDiscrete
+{
+	float freq;
+	float width;
+	float strength;
+}
+
 
 interface NoiseSource
 {
-	double
+	const(NoiseDiscrete)[] getNoise();
+}
+
+
+final class NoiseEmitter
+{
+
 }
