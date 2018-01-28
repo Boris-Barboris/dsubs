@@ -91,7 +91,7 @@ class Transform2D
 		return m_parent;
 	}
 
-	/// transformation from global(world) to local reference frame
+	/// transformation from local to parent (or world if no parent) reference frame
 	final @property ref const(mat3x3d) local()
 	{
 		if (m_dirty)
@@ -140,6 +140,14 @@ class Transform2D
 		return m_rotation;
 	}
 
+	/// returns world-frame rotation
+	final @property double wrotation()
+	{
+		if (m_parent is null)
+			return m_rotation;
+		return world.transformAngle(m_rotation);
+	}
+
 	/// returns local translation
 	final @property vec2d position() const { return m_position; }
 
@@ -151,14 +159,22 @@ class Transform2D
 		return m_position;
 	}
 
+	/// returns world-frame rotation
+	final @property vec2d wposition()
+	{
+		if (m_parent is null)
+			return m_position;
+		return world.transformPoint(m_position);
+	}
+
 	/// world-space unit forward vector
-	final @property vec2d forward()
+	final @property vec2d wforward()
 	{
 		return world.transformDirection(vec2d(0.0, 1.0));
 	}
 
 	/// world-space unit left vector
-	final @property vec2d left()
+	final @property vec2d wleft()
 	{
 		return world.transformDirection(vec2d(-1.0, 0.0));
 	}

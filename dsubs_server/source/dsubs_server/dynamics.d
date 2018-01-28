@@ -84,12 +84,19 @@ interface IForce
 /// Rigid body for 2d dsubs world
 final class SubmergedRigidBody
 {
+	Transform2D transform;	/// transform wich is updated on each integration step
 	Kinematics kinet;
 	double moi;
 	double mass;
 	HydroForceModel hydroModel;
 
 	IForce[] forces;
+
+	this(Transform2D t)
+	{
+		kinet.pos = transform.position;
+		kinet.rotation = transform.rotation;
+	}
 
 	/// physics update step, Eulers method
 	void integrate(double dt)
@@ -105,6 +112,9 @@ final class SubmergedRigidBody
 			force.propagateInTime(dt);
 		kinet = nextKinet;
 		kinet.updateCache();
+		// update transform
+		transform.position = kinet.pos;
+		transform.rotation = kinet.rotation;
 	}
 
 	private vec2d linAcc(const ref Kinematics c)
