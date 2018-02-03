@@ -24,6 +24,7 @@ class BasicPropulsor: IForce
 
 	double getTorque(const SubmergedRigidBody b, const ref Kinematics c)
 	{
+		// TODO? actual torque if transform is not on symmetry axis
 		return 0.0;
 	}
 

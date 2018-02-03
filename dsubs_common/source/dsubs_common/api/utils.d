@@ -25,7 +25,7 @@ class MaxLenExceeded: Exception
 		return "max length " ~ max.to!string ~ ", actual " ~ actual.to!string;
 	}
 
-	this(int actual, int max, string file = __FILE__, 
+	this(int actual, int max, string file = __FILE__,
 		size_t line = __LINE__, Throwable next = null)
 	{
 		super(getMsg(actual, max), file, line, next);
@@ -33,7 +33,7 @@ class MaxLenExceeded: Exception
 		maxLength = max;
 	}
 
-	this(int actual, int max, Throwable next, string file = __FILE__, 
+	this(int actual, int max, Throwable next, string file = __FILE__,
 		size_t line = __LINE__)
 	{
 		super(getMsg(actual, max), file, line, next);

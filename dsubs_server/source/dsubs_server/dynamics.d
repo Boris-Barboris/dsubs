@@ -1,5 +1,6 @@
 module dsubs_server.dynamics;
 
+import std.algorithm;
 import std.math;
 
 import dsubs_common.math;
@@ -82,9 +83,8 @@ interface IForce
 
 
 /// Rigid body for 2d dsubs world
-final class SubmergedRigidBody
+final class SubmergedRigidBody: Entity
 {
-	Transform2D transform;	/// transform wich is updated on each integration step
 	Kinematics kinet;
 	double moi;
 	double mass;
@@ -137,4 +137,36 @@ final class SubmergedRigidBody
 		assert(moi > 0.0);
 		return resultTorque / moi;
 	}
+}
+
+
+abstract class Entity
+{
+	/// transform wich is updated on each integration step
+	Transform2D transform;
+
+	/// egde of a square to use in quadtree
+	float boundingBoxSide = 0.0f;
+
+	void integrate(double dt);
+}
+
+
+// change collection to spacially-
+private __gshared SubmergedRigidBody[] g_allRigidBodies;
+
+shared static this()
+{
+	g_allRigidBodies.reserve(512);
+}
+
+registerSRigidBody(SubmergedRigidBody rb)
+{
+	g_allRigidBodies ~= rb;
+}
+
+unregisterSRigidBody(SubmergedRigidBody rb)
+{
+	g_allRigidBodies =
+		remove!(a => a is rb, SwapStrategy.unstable)(g_allRigidBodies);
 }
