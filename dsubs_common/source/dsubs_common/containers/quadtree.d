@@ -1,11 +1,12 @@
 module dsubs_common.containers.quadtree;
 
+import std.algorithm: countUntil, remove, SwapStrategy;
 import std.math;
 
 public import gfm.math.vector;
 
 
-// each cell node spans a square
+// each cell node spans it's own square
 private struct Square
 {
 	private
@@ -55,6 +56,7 @@ private struct Square
 	@property float top() const { return m_top; }
 	@property float bottom() const { return m_bottom; }
 
+	/// Get a square wich is this square's quarter inquadrant q
 	Square getQuarter(Quadrant q) const
 	{
 		final switch (q)
@@ -72,6 +74,7 @@ private struct Square
 		}
 	}
 
+	/// Get a quadrant of point
 	Quadrant getQuadrant(vec2f point) const
 	{
 		if (point.x < m_center.x)
@@ -85,6 +88,8 @@ private struct Square
 		return Quadrant.rd;
 	}
 
+	/// Get a square, for wich this square is a quarter. Center of the parent
+	/// square is in quadrant q relative to this square's center.
 	Square getParent(Quadrant q) const
 	{
 		final switch (q)
@@ -117,7 +122,8 @@ struct Rectangle
 		float m_bottom;
 	}
 
-	@property bool isNaN() const
+	/// true when at least one of it's coordinates\dimensions is NaN
+	bool anyNaN() const
 	{
 		return isNaN(center.x) || isNaN(center.y) || isNaN(size.x) || isNaN(size.y);
 	}
@@ -158,6 +164,7 @@ struct Rectangle
 	@property float top() const { return m_top; }
 	@property float bottom() const { return m_bottom; }
 
+	/// check this rectange against square on intersection\composition
 	private Relation relate(ref const Square sqr) const
 	{
 		if (right < sqr.left || left >= sqr.right)
@@ -178,7 +185,7 @@ private enum Relation: byte
 	outside
 }
 
-enum Quadrant: byte
+private enum Quadrant: byte
 {
 	many = -1,
 	lu = 0,		/// left up
@@ -189,28 +196,16 @@ enum Quadrant: byte
 
 private enum NodeType: byte
 {
-	cell,	// cell node is a square wich holds leafs and may nest another 4 cells
-	leaf	// leaf node is an actual rectangle
+	cell,	/// cell node is a square wich holds leafs and may nest another 4 cells
+	leaf	/// leaf node is the stored rectangle
 }
 
 
-/// Tree that holds rectangles an their associated metadata and supports
-/// efficient spacial lookup
+/// Tree that holds rectangles and associated metadata of type T and supports
+/// efficient spacial lookup.
 final class QuadTree(T)
 {
-	private struct CellNode
-	{
-		Square area;
-		int leafCount = 0;		/// reference counter
-		Node*[4] cellChildren;
-
-		alias lu = cellChildren[0];
-		alias ld = cellChildren[1];
-		alias rd = cellChildren[2];
-		alias ru = cellChildren[3];
-
-		Node*[] leafChildren;
-	}
+public:
 
 	/// tree node that holds client's rectangle
 	struct LeafNode
@@ -219,54 +214,36 @@ final class QuadTree(T)
 		T payload;
 	}
 
-	private union NodeU
-	{
-		CellNode cell;
-		LeafNode leaf;
-	}
-
+	/// node of quadrtree, wich is a rectangle + metadata pair.
 	struct Node
 	{
-		private NodeType type = NodeType.internal;
+		private NodeType type = NodeType.cell;
 		private Node* parent = null;
-		private NodeU data;
+		private NodeU data = { cell: CellNode.init };
 
-		private ref inout(CellNode) asCell() inout
-		{
-			assert(type == NodeType.cell);
-			return data.cell;
-		}
-
-		private alias cell = data.cell;
-
-		ref inout(LeafNode) asLeaf() inout
-		{
-			assert(type == NodeType.leaf);
-			return data.leaf;
-		}
+		private alias data this;
 
 		@property ref inout(T) payload() inout
 		{
 			assert(type == NodeType.leaf);
-			return data.leaf.payload;
+			return leaf.payload;
 		}
 
-		@property ref const Rectangle rect() const
+		@property ref const(Rectangle) rect() const
 		{
-			return asLeaf.rect;
+			return leaf.rect;
 		}
 
-		@property ref const Rectangle rect(Rectangle newRect)
+		@property ref const(Rectangle) rect(Rectangle newRect)
 		{
 			assert(type == NodeType.leaf);
-			assert(!newRect.isNaN);
-			data.leaf.rect = newRect;
-			return data.leaf.rect;
+			assert(!newRect.anyNaN);
+			// remove this node
+			leaf.rect = newRect;
+			// readd this node with a hint
+			return leaf.rect;
 		}
 	}
-
-	private Node* m_root;
-	private const float m_minSquareSize;
 
 	/**
 	Initializes quadrtree with root internal node spanning the square, centered
@@ -278,44 +255,79 @@ final class QuadTree(T)
 	{
 		assert(minSquareSize <= rootSquareSize);
 		this.m_minSquareSize = minSquareSize;
-		root = new Node(Square(rootCenter, rootSquareSize), null, CellNode.init);
+		m_root = new Node();
+		m_root.cell.area = Square(rootCenter, rootSquareSize);
 	}
 
-	/// Create new leaf and return a handle to it
+	/// create new leaf and return a handle to it
 	Node* addLeaf(Rectangle rect, T payload)
 	{
-		assert(!rect.isNaN);
+		assert(!rect.anyNaN());
+		Node* holder = getToSmallestSpanning(m_root, rect);
+		Node* leaf = new Node(NodeType.leaf, holder);
+		leaf.leaf = LeafNode(rect, payload);
+		holder.cell.leafChildren ~= leaf;
+		incLeafCount(holder);
+		return leaf;
 	}
 
-	// get existing or create the smallest cell node that spans the rect
-	private static Node* getToSmallestSpanning(Node* start, ref const Rectangle rect)
+	/// remove node from the tree
+	void removeLeaf(Node* leaf)
 	{
-		Relation rel = rect.relate(start.asCell.area);
-		final switch (rel)
-		{
-			case Relation.inside:
-				// rectangle is inside
-				return walkDown(start, rect);
-			case Relation.outside:
-			case Relation.intersect:
-				Node* newPivot = walkUp(start, rect);
-				// walkUp may walk well past root and create the new root
-				// effectively
-				if (m_root.parent !is null)
-					m_root = newPivot;
-				return walkDown(newPivot, rect);
-		}
+		Node* p = leaf.parent;
+		p.cell.leafChildren = remove!(SwapStrategy.unstable)(
+			p.cell.leafChildren, countUntil(p.cell.leafChildren, leaf));
+		leaf.parent = null;
+		decLeafCount(p);
 	}
 
-	/// get or create cubsell, placed in quadrant q
-	private static Node* ensureQuadrantSubcell(Node* parent, Quadrant q)
+	void findInCircle(vec2f center, float searchRadius, ref Node*[] result);
+
+	void findInRectangle(ref const Rectangle searchArea, ref Node*[] result);
+
+	void findUnderPoint(vec2f point, ref Node*[] result);
+
+	void findCollisions(Node* suspect, ref Node*[] collidersFound);
+
+
+private:
+
+	struct CellNode
+	{
+		Square area;
+		int leafCount = 0;		/// reference counter
+		Node*[4] cellChildren;
+		Node*[] leafChildren;
+	}
+
+	union NodeU
+	{
+		CellNode cell;
+		LeafNode leaf;
+	}
+
+	Node* m_root;
+	const float m_minSquareSize;
+
+	/// get existing or create the smallest cell node that spans the rect
+	Node* getToSmallestSpanning(Node* start, ref const Rectangle rect)
+	{
+		assert(start.type == NodeType.cell);
+		Node* newPivot = walkUp(start, rect);
+		// walkUp may walk well past root and create a new root
+		if (m_root.parent !is null)
+			m_root = newPivot;
+		return walkDown(newPivot, rect);
+	}
+
+	/// get or create subsell, placed in quadrant q
+	static Node* ensureQuadrantSubcell(Node* parent, Quadrant q)
 	{
 		assert(q >= 0);
-		assert(parent !is null);
 		if (parent.cell.cellChildren[q] is null)
 		{
 			// create new subcell
-			Node* newChild = new Node(NodeType.cell, parent, CellNode.init);
+			Node* newChild = new Node(NodeType.cell, parent);
 			newChild.cell.area = parent.cell.area.getQuarter(q);
 			parent.cell.cellChildren[q] = newChild;
 			return newChild;
@@ -323,26 +335,25 @@ final class QuadTree(T)
 		return parent.cell.cellChildren[q];
 	}
 
-	// make sure child has a parent with center in quadrant q relative to child
-	private static Node* ensureParentSupercell(Node* child, Quadrant q)
+	/// make sure child has a parent with center in quadrant q relative to child
+	static Node* ensureParentSupercell(Node* child, Quadrant q)
 	{
-		assert(child !is null);
+		assert(q >= 0);
 		if (child.parent !is null)
 			return child.parent;
-		Node* parent = new Node(NodeType.cell, parent, CellNode.init);
+		// new node must be created
+		Node* parent = new Node(NodeType.cell);
 		child.parent = parent;
-		parent.cell.cellChildren[q + 2 % 4] = child;
-		// new parent inherits his child's leafCount
 		parent.cell.leafCount = child.cell.leafCount;
+		parent.cell.cellChildren[(q + 2) % 4] = child;
+		parent.cell.area = child.cell.area.getParent(q);
 		return parent;
 	}
 
-	// recursively descend down the cell (and create new cells if needed)
-	// chain and return the deepest cell wich spans rect
-	private static Node* walkDown(Node* cur, ref const Rectangle rect)
+	/// recursively descend down the cell (and create new cells if needed)
+	/// chain and return the deepest cell wich spans rect
+	Node* walkDown(Node* cur, ref const Rectangle rect)
 	{
-		assert(cur !is null);
-		assert(cur.type == NodeType.cell);
 		Quadrant q = relateRectToCell(rect, cur.cell.area.center);
 		if (q == Quadrant.many)
 			return cur;
@@ -353,18 +364,20 @@ final class QuadTree(T)
 		return walkDown(quadrantSubcell, rect);
 	}
 
-	private static Node* walkUp(Node* cur, ref const Rectangle rect)
+	/// recursively ascend up (and create new cells if needed) and return the
+	/// first cell wich spans rect completely
+	static Node* walkUp(Node* cur, ref const Rectangle rect)
 	{
-		assert(cur !is null);
-		assert(cur.type == NodeType.cell);
 		Relation rel = rect.relate(cur.cell.area);
 		if (rel == Relation.inside)
 			return cur;
 		Quadrant q = cur.cell.area.getQuadrant(rect.center);
-
+		Node* quadrantSupercell = ensureParentSupercell(cur, q);
+		return walkUp(quadrantSupercell, rect);
 	}
 
-	private static Quadrant relateRectToCell(ref const Rectangle rect, vec2f center)
+	/// return quadrant of rect relative to center
+	static Quadrant relateRectToCell(ref const Rectangle rect, vec2f center)
 	{
 		if (rect.right < center.x)	// left half-plane
 		{
@@ -383,13 +396,51 @@ final class QuadTree(T)
 		return Quadrant.many;
 	}
 
-	void removeLeaf(Node* leaf);
+	/// recursively increment leaf count for cell node
+	static void incLeafCount(Node* node)
+	{
+		do
+		{
+			node.cell.leafCount++;
+			node = node.parent;
+		} while (node !is null);
+	}
 
-	void findInCircle(vec2f center, float searchRadius, ref Node*[] result);
+	/// recursively decrement leaf count for cell node, and destroy nodes
+	/// that are no longer needed
+	void decLeafCount(Node* node)
+	{
+		do
+		{
+			if (--node.cell.leafCount <= 0)
+			{
+				if (node is m_root)
+					return;
+				// leafCount is zero, this cell can be freed
+				auto idx = countUntil(node.parent.cell.cellChildren[], node);
+				node.parent.cell.cellChildren[idx] = null;
+			}
+			node = node.parent;
+		} while (node !is null);
+	}
+}
 
-	void findInRectangle(ref const Rectangle searchArea, ref Node*[] result);
 
-	void findUnderPoint(vec2f point, ref Node*[] result);
-
-	void findCollisions(Node* suspect, ref Node*[] collidersFound);
+unittest
+{
+	auto tree = new QuadTree!bool(1000.0f, 10.0f);
+	auto node = tree.addLeaf(
+		Rectangle(vec2f(514.0f, -133.0f), vec2f(23.0f, 2.0f)), false);
+	assert(node.rect.center == vec2f(514.0f, -133.0f));
+	assert(node.rect.size == vec2f(23.0f, 2.0f));
+	assert(!node.payload);
+	node = tree.addLeaf(
+		Rectangle(vec2f(1514.0f, -2133.0f), vec2f(100.0f, 25.0f)), true);
+	assert(tree.m_root.cell.leafCount == 2);
+	assert(node.rect.center == vec2f(1514.0f, -2133.0f));
+	assert(node.rect.size == vec2f(100.0f, 25.0f));
+	assert(node.payload);
+	tree.removeLeaf(node);
+	assert(node.parent is null);
+	assert(tree.m_root.cell.leafCount == 1);
 }
