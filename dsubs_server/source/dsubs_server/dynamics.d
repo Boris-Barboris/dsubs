@@ -3,7 +3,10 @@ module dsubs_server.dynamics;
 import std.algorithm;
 import std.math;
 
+import dsubs_common.containers.array;
 import dsubs_common.math;
+
+import dsubs_server.threading;
 
 
 struct HydroForceModel
@@ -83,7 +86,7 @@ interface IForce
 
 
 /// Rigid body for 2d dsubs world
-final class SubmergedRigidBody: Entity
+final class SubmergedRigidBody: PhysicalEntity
 {
 	Kinematics kinet;
 	double moi;
@@ -99,7 +102,7 @@ final class SubmergedRigidBody: Entity
 	}
 
 	/// physics update step, Eulers method
-	void integrate(double dt)
+	override void integrate(double dt)
 	{
 		Kinematics nextKinet = kinet;
 		vec2d linAcc1 = linAcc(kinet);
@@ -140,33 +143,45 @@ final class SubmergedRigidBody: Entity
 }
 
 
-abstract class Entity
+abstract class PhysicalEntity
 {
 	/// transform wich is updated on each integration step
 	Transform2D transform;
 
-	/// egde of a square to use in quadtree
-	float boundingBoxSide = 0.0f;
-
+	/// integrate this entity. Implies, that the problem is embarassingly-parallel.
 	void integrate(double dt);
 }
 
 
-// change collection to spacially-
-private __gshared SubmergedRigidBody[] g_allRigidBodies;
+/// list of all physical objects
+private __gshared PhysicalEntity[] g_allBodies;
 
 shared static this()
 {
-	g_allRigidBodies.reserve(512);
+	g_allBodies.reserve(512);
 }
 
-registerSRigidBody(SubmergedRigidBody rb)
+/// add new PhysicalEntity to global list
+void registerPEntity(PhysicalEntity e)
 {
-	g_allRigidBodies ~= rb;
+	g_allBodies ~= e;
 }
 
-unregisterSRigidBody(SubmergedRigidBody rb)
+/// remove PhysicalEntity from global list
+void unregisterPEntity(PhysicalEntity e)
 {
-	g_allRigidBodies =
-		remove!(a => a is rb, SwapStrategy.unstable)(g_allRigidBodies);
+	g_allBodies.removeFirstUnstable(e);
+}
+
+/// perform physics update for all pgysical bodies
+void integratePBodies(double fwd = 1.0, double maxDt = 0.25)
+{
+	long stepCount = lrint(fwd / maxDt);
+	assert(stepCount > 0);
+	double dt = fwd / stepCount;
+	for (int i = 0; i < stepCount; i++)
+	{
+		foreach (i, ref entity; g_taskPool.parallel(g_allBodies, 8))
+			entity.integrate(dt);
+	}
 }

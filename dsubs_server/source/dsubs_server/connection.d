@@ -94,7 +94,7 @@ final class PlayerConnection
 		m_handlers[LoginReq.g_marshIdx] = &h_loginReq;
 		m_handlers[EntityDbReq.g_marshIdx] = &h_entityDbReq;
 
-		// std is not very good with shared, we'll have to cast it hard to 
+		// std is not very good with shared, we'll have to cast it hard to
 		// make it work
 		m_readerThread = spawn(cast(shared void delegate()) &readProc);
 		m_writerThread = spawn(cast(shared void delegate()) &writerProc);
@@ -117,16 +117,16 @@ final class PlayerConnection
 	{
 		if (!cas(&m_closed, false, true))
 			return;
-		info("Closing connection ", m_remoteAddr);
+		info("Closing connection to ", m_remoteAddr, ", user: ", m_username);
 		if (reason.length > 0)
 		{
 			syncSendMessage(new immutable SessionClosedRes(reason));
 			Thread.sleep(msecs(100));
 		}
-		m_authorized = false;
 		try { m_sock.close(); } catch (Exception e) { trace(e.msg); }
 		send!(int, immutable(void)*)(m_writerThread, 0, null);
 		removeConnection(this);
+		m_authorized = false;
 	}
 
 	@property string username() const { return m_username; }
@@ -142,7 +142,7 @@ private:
 		enforce(received == 8, "Message header is wrong");
 		enforce(header[0] >= 0 && header[0] < g_msgDemarshallers.length, "Unknown message");
 		enforce(header[1] >= 0 && header[1] < MAX_MSG_SIZE, "Message length invalid");
-		trace("recieved header", header);
+		trace("received header", header);
 		return header;
 	}
 
@@ -216,7 +216,7 @@ private:
 		ServerStatusReq msg;
 		demarshalMessage(&msg, msgBody);
 		trace("g_authorizedConnections.length: ", g_authorizedConnections.length);
-		immutable(ServerStatusRes)* res = 
+		immutable(ServerStatusRes)* res =
 			new immutable ServerStatusRes(
 				API_VERSION,
 				g_authorizedConnections.length);
@@ -243,7 +243,7 @@ private:
 		if (confirmConnection(this))
 		{
 			m_authorized = true;
-			immutable LoginRes res = LoginRes(true, 
+			immutable LoginRes res = LoginRes(true,
 				"Welcome to dsubs server", g_commonEntityDbHash);
 			sendBody(marshalMessage(&res));
 		}

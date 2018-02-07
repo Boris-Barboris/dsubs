@@ -7,9 +7,9 @@ import dsubs_common.api;
 import dsubs_server.common;
 
 
-__gshared immutable EntityDbRes g_commonEntityDb;
-__gshared immutable(ubyte)[] g_marshalledCommonEntityDb;
-__gshared immutable(ubyte)[] g_commonEntityDbHash;
+immutable EntityDbRes g_commonEntityDb;
+immutable(ubyte[]) g_marshalledCommonEntityDb;
+immutable(ubyte[]) g_commonEntityDbHash;
 
 shared static this()
 {
@@ -20,7 +20,7 @@ shared static this()
 	g_marshalledCommonEntityDb = marshalMessage(&g_commonEntityDb);
 	auto sha256 = new SHA256Digest();
 	sha256.put(g_marshalledCommonEntityDb);
-	g_commonEntityDbHash = cast(immutable(ubyte)[]) sha256.finish();
+	g_commonEntityDbHash = cast(immutable(ubyte[])) sha256.finish();
 	assert(g_commonEntityDbHash.length == 32);
 }
 

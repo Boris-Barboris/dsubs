@@ -15,6 +15,7 @@ import dsubs_common.api;
 
 import dsubs_client.core.utils;
 import dsubs_client.game;
+import dsubs_client.game.mainmenu;
 import dsubs_client.gui;
 
 
@@ -25,6 +26,20 @@ void setupPrepareScreen()
 	enum sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
 
 	Game.clearEntities();
+
+	if (!Game.serverConnection.connected)
+	{
+		error("Connection was lost, falling back to main menu");
+		setupMainMenu();
+		return;
+	}
+
+	Game.serverConnection.onConnectionClosed += (string reason)
+	{
+		error("Connection was closed, reason: ", reason);
+		// TRANSITION TO MAIN MENU
+		setupMainMenu();
+	};
 
 	string[] hulls = Game.entityDb.controllableSubs.map!(a => a.name).array;
 	string[] propulsors = Game.entityDb.propulsors.map!(a => a.name).array;
@@ -63,7 +78,7 @@ void setupPrepareScreen()
 			};
 		hullSelector.onMouseEnter += ()
 			{
-				hullDescriptionBox.content = 
+				hullDescriptionBox.content =
 					Game.entityManager.submarineTemplates[hullname].description;
 			};
 	}
@@ -91,7 +106,7 @@ void setupPrepareScreen()
 			};
 		propSelector.onMouseEnter += ()
 			{
-				moduleDescriptionBox.content = 
+				moduleDescriptionBox.content =
 					Game.entityManager.propTemplates[propName].description;
 			};
 	}

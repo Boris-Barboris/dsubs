@@ -16,13 +16,13 @@ class BasicPropulsor: IForce
 	float posThrustK = 0.0f;
 	float negThrustK = 0.0f;
 
-	vec2d getForce(const SubmergedRigidBody b, const ref Kinematics c)
+	vec2d getForce(const SubmergedRigidBody b, ref const Kinematics c)
 	{
 		double absThrust = rotSpd * (rotSpd >= 0.0f ? posThrustK : negThrustK);
-		return transform.forward * absThrust;
+		return transform.wforward * absThrust;
 	}
 
-	double getTorque(const SubmergedRigidBody b, const ref Kinematics c)
+	double getTorque(const SubmergedRigidBody b, ref const Kinematics c)
 	{
 		// TODO? actual torque if transform is not on symmetry axis
 		return 0.0;

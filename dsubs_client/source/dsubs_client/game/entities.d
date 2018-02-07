@@ -23,7 +23,7 @@ class Propulsor
 {
 	mixin Readonly!(Transform, "transform");
 	mixin Readonly!(const(PropulsorTemplate*), "templ");
-	
+
 	protected ConvexShape m_shape;
 	protected double m_targetThrottle;
 
@@ -149,7 +149,7 @@ final class Submarine: WorldRenderable
 {
 	mixin Readonly!(id_t, "id");
 	mixin Readonly!(const(SubmarineTemplate*), "templ");
-	
+
 	private Propulsor[] m_propulsors;
 	private ConvexShape[] m_shapes;
 
@@ -192,7 +192,7 @@ final class Submarine: WorldRenderable
 			Propulsor p = createPropulsor(man, propName);
 			p.transform.scale = vec2d(mount.scale, mount.scale);
 			p.transform.rotation = mount.rotation;
-			p.transform.position = 
+			p.transform.position =
 				vec2d(mount.mountCenter.data[0], mount.mountCenter.data[1]);
 			transform.addChild(p.transform);
 			p.targetThrottle = 1.0;
@@ -226,7 +226,7 @@ final class EntityManager
 			auto ptr = new SubmarineTemplate;
 			*ptr = cast(SubmarineTemplate) sub;
 			m_submarineTemplates[sub.name] = ptr;
-			m_submarineShapes[sub.name] = 
+			m_submarineShapes[sub.name] =
 				sub.hullModel.map!(a => fromPolygon(a)).array;
 		}
 	}

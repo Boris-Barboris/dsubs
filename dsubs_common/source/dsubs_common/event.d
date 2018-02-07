@@ -22,7 +22,7 @@ struct Event(DlgT)
 		}
 		else static if (op == "-")
 		{
-			handlers.removeFirst!(a => a is handler);
+			handlers.removeFirst(handler);
 		}
 		else static assert(0, "Operator " ~ op ~ "= non-applicable to event");
 	}

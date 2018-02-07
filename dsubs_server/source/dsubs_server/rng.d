@@ -1,8 +1,9 @@
 module dsubs_server.rng;
 
 import std.math;
-import std.random;
 import std.traits;
+
+public import std.random: uniform01, uniform;
 
 
 /// sample standard normal distribution using Box-Muller transform
@@ -35,7 +36,7 @@ double rngNormal(double mean = 0.0, double stddev = 1.0, double dlimit = 3.0,
 	return ret;
 }
 
-/// Normally-distributed random floating point that gets rolled the first time 
+/// Normally-distributed random floating point that gets rolled the first time
 /// it's used
 struct Diced(T) if (isFloatingPoint!T)
 {

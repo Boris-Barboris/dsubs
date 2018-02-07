@@ -4,7 +4,7 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 
 import dsubs_client.lib.sfml: tosf;
-public import dsubs_common.math.transform;
+public import dsubs_common.math;
 
 /** Wrapper that converts double-precision dsubs transform to
 single-precision sfml matrix. */

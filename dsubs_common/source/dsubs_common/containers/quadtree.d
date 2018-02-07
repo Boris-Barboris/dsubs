@@ -5,6 +5,8 @@ import std.math;
 
 public import gfm.math.vector;
 
+import dsubs_common.containers.array;
+
 
 // each cell node spans it's own square
 private struct Square
@@ -45,10 +47,10 @@ private struct Square
 
 	private void updateLrtb()
 	{
-		m_left = m_center.x - m_side;
-		m_right = m_center.x + m_side;
-		m_top = m_center.y + m_side;
-		m_bottom = m_center.y - m_side;
+		m_left = m_center.x - 0.5f * m_side;
+		m_right = m_center.x + 0.5f * m_side;
+		m_top = m_center.y + 0.5f * m_side;
+		m_bottom = m_center.y - 0.5f * m_side;
 	}
 
 	@property float left() const { return m_left; }
@@ -86,6 +88,13 @@ private struct Square
 		if (point.y >= m_center.y)
 			return Quadrant.ru;
 		return Quadrant.rd;
+	}
+
+	bool contains(vec2f point) const
+	{
+		if (point.x < left || point.x >= right || point.y < bottom || point.y >= top)
+			return false;
+		return true;
 	}
 
 	/// Get a square, for wich this square is a quarter. Center of the parent
@@ -153,10 +162,10 @@ struct Rectangle
 
 	private void updateLrtb()
 	{
-		m_left = m_center.x - m_size.x;
-		m_right = m_center.x + m_size.x;
-		m_top = m_center.y + m_size.y;
-		m_bottom = m_center.y - m_size.y;
+		m_left = m_center.x - 0.5f * m_size.x;
+		m_right = m_center.x + 0.5f * m_size.x;
+		m_top = m_center.y + 0.5f * m_size.y;
+		m_bottom = m_center.y - 0.5f * m_size.y;
 	}
 
 	@property float left() const { return m_left; }
@@ -176,7 +185,15 @@ struct Rectangle
 			return Relation.inside;
 		return Relation.intersect;
 	}
+
+	bool contains(vec2f point) const
+	{
+		if (point.x < left || point.x >= right || point.y < bottom || point.y >= top)
+			return false;
+		return true;
+	}
 }
+
 
 private enum Relation: byte
 {
@@ -201,7 +218,7 @@ final class QuadTree(T)
 {
 public:
 
-	/// tree node that holds client's rectangle and payload
+	/// tree node that holds rectangle and user-defined payload
 	struct LeafNode
 	{
 		private QuadTree!T m_tree;
@@ -212,14 +229,13 @@ public:
 		/// the tree this leaf belongs to
 		@property QuadTree!T tree() { return m_tree; }
 
-		@property ref const(Rectangle) rect() const
-		{
-			return m_rect;
-		}
+		/// rectangle, wich this leaf represents
+		@property ref const(Rectangle) rect() const { return m_rect; }
 
+		/// update the recnagle and reindex this leaf in the tree
 		@property ref const(Rectangle) rect(Rectangle newRect)
 		{
-			assert(parent !is null && m_tree !is null, "Leaf is orphaned");
+			assert(parent !is null && m_tree !is null, "Leaf is an orphan");
 			assert(!newRect.anyNaN);
 			m_rect = newRect;
 			m_tree.reindexLeaf(&this);
@@ -255,23 +271,60 @@ public:
 		return leaf;
 	}
 
-	/// remove node from the tree
+	/// remove leaf from the tree
 	void removeLeaf(LeafNode* leaf)
 	{
+		assert(leaf !is null);
 		CellNode* p = leaf.parent;
-		p.leafChildren = remove!(SwapStrategy.unstable)(
-			p.leafChildren, countUntil(p.leafChildren, leaf));
+		p.leafChildren.removeFirstUnstable(leaf);
 		leaf.parent = null;
 		decLeafCount(p);
 	}
 
-	void findInCircle(vec2f center, float searchRadius, ref LeafNode*[] result);
+	/** append all leafs that have their center inside the circle to 'result'.
+	if 'searchUp' is false, cells larger that the smallest cell spanning circle
+	will not be checked */
+	void findCentersInCircle(vec2f center, float searchRadius,
+		ref LeafNode*[] result, bool searchUp = true) const
+	{
+		Rectangle searchRect = Rectangle(center, 2.0f * vec2f(searchRadius, searchRadius));
+		const(CellNode)* start = walkDownConst(m_root, searchRect);
+		float sqrSr = searchRadius * searchRadius;
+
+		scope void delegate(const(CellNode*) cell) filterDlg = (cell) {
+			foreach (const(LeafNode)* l; cell.leafChildren)
+			{
+				if ((l.rect.center - center).squaredLength <= sqrSr)
+					result ~= cast(LeafNode*) l;
+			}
+		};
+
+		// start itself and all of it's children are suspects
+		applyRecursDownConst(start, filterDlg);
+		// as well as all of it's parents
+		if (searchUp && start.parent !is null)
+			applyRecursUpConst(start.parent, filterDlg);
+	}
 
 	void findInRectangle(ref const Rectangle searchArea, ref LeafNode*[] result);
 
-	void findUnderPoint(vec2f point, ref LeafNode*[] result);
+	/// append all leafs that contain 'point' in their rectangles to 'result'
+	void findUnderPoint(vec2f point, ref LeafNode*[] result) const
+	{
+		const(CellNode)* node = m_root;
+		while (node !is null && node.area.contains(point))
+		{
+			foreach (const(LeafNode)* l; node.leafChildren)
+			{
+				if (l.rect.contains(point))
+					result ~= cast(LeafNode*) l;
+			}
+			Quadrant q = node.area.getQuadrant(point);
+			node = node.cellChildren[q];
+		}
+	}
 
-	void findCollisions(LeafNode* suspect, ref LeafNode*[] collidersFound);
+	void findCollisions(LeafNode* collider, ref LeafNode*[] result);
 
 
 private:
@@ -296,8 +349,7 @@ private:
 		if (newHolder !is oldHolder)
 		{
 			leaf.parent = newHolder;
-			oldHolder.leafChildren = remove!(SwapStrategy.unstable)(
-				oldHolder.leafChildren, countUntil(oldHolder.leafChildren, leaf));
+			oldHolder.leafChildren.removeFirstUnstable(leaf);
 			newHolder.leafChildren ~= leaf;
 			incLeafCount(newHolder);
 			decLeafCount(oldHolder);
@@ -344,7 +396,7 @@ private:
 	}
 
 	/// recursively descend down the cell (and create new cells if needed)
-	/// chain and return the deepest cell wich spans rect
+	/// tree and return the deepest cell wich spans rect
 	CellNode* walkDown(CellNode* cur, ref const Rectangle rect)
 	{
 		Quadrant q = relateRectToCell(rect, cur.area.center);
@@ -355,6 +407,39 @@ private:
 		// we can subdivide
 		CellNode* quadrantSubcell = ensureQuadrantSubcell(cur, q);
 		return walkDown(quadrantSubcell, rect);
+	}
+
+	/// recursively descend down the cell tree
+	/// and return the deepest cell wich spans rect
+	static const(CellNode)* walkDownConst(const(CellNode)* cur, ref const Rectangle rect)
+	{
+		Quadrant q = relateRectToCell(rect, cur.area.center);
+		if (q == Quadrant.many)
+			return cur;
+		if (cur.cellChildren[q] is null)
+			return cur;
+		return walkDownConst(cur.cellChildren[q], rect);
+	}
+
+	/// apply delegate to 'node' and all of it's subcells recursively
+	static void applyRecursDownConst(
+		const(CellNode)* node, scope void delegate(const(CellNode)*) dlg)
+	{
+		dlg(node);
+		for (int i = 0; i < 4; i++)
+		{
+			if (node.cellChildren[i] !is null)
+				applyRecursDownConst(node.cellChildren[i], dlg);
+		}
+	}
+
+	/// apply delegate to 'node' and all of it's parents recursively
+	static void applyRecursUpConst(
+		const(CellNode)* node, scope void delegate(const(CellNode)*) dlg)
+	{
+		dlg(node);
+		if (node.parent !is null)
+			applyRecursUpConst(node.parent, dlg);
 	}
 
 	/// recursively ascend up (and create new cells if needed) and return the
@@ -442,4 +527,74 @@ unittest
 	tree.removeLeaf(node);
 	assert(node.parent is null);
 	assert(tree.m_root.leafCount == 1);
+}
+
+unittest
+{
+	auto tree = new QuadTree!bool(1000.0f, 10.0f);
+	auto node1 = tree.addLeaf(
+		Rectangle(vec2f(0.0f, 0.0f), vec2f(20.0f, 20.0f)), false);
+	auto node2 = tree.addLeaf(
+		Rectangle(vec2f(0.0f, 0.0f), vec2f(500.0f, 500.0f)), false);
+	auto node3 = tree.addLeaf(
+		Rectangle(vec2f(-300.0f, 0.0f), vec2f(1000.0f, 1.0f)), false);
+	typeof(node1)[] res;
+	res.reserve(3);
+	tree.findUnderPoint(vec2f(0.0f, 0.0f), res);
+	assert(res.length == 3);
+	assert(res.countUntil(node1) >= 0);
+	assert(res.countUntil(node2) >= 0);
+	assert(res.countUntil(node3) >= 0);
+	res.length = 0;
+	tree.removeLeaf(node3);
+	tree.findUnderPoint(vec2f(0.0f, 0.0f), res);
+	assert(res.length == 2);
+	assert(res.countUntil(node1) >= 0);
+	assert(res.countUntil(node2) >= 0);
+	assert(res.countUntil(node3) < 0);
+}
+
+unittest
+{
+	auto tree = new QuadTree!bool(2.0f, 0.999f);
+	auto node1 = tree.addLeaf(
+		Rectangle(vec2f(0.5f, 0.5f), vec2f(0.4f, 0.4f)), false);
+	typeof(node1)[] res;
+	res.reserve(3);
+	tree.findCentersInCircle(vec2f(0.0f, 0.0f), 0.5f, res);
+	assert(res.length == 0);
+	tree.findCentersInCircle(vec2f(0.0f, 0.0f), 1.0f, res);
+	assert(res.length == 1);
+	assert(res.countUntil(node1) >= 0);
+	res.length = 0;
+	tree.findCentersInCircle(vec2f(0.5f, 0.5f), 0.1f, res);
+	assert(res.length == 1);
+	assert(res.countUntil(node1) >= 0);
+	res.length = 0;
+	auto node2 = tree.addLeaf(
+		Rectangle(vec2f(0.4f, 0.5f), vec2f(1.0f, 0.2f)), false);
+	tree.findCentersInCircle(vec2f(0.0f, 0.0f), 1.0f, res);
+	assert(res.length == 2);
+	assert(res.countUntil(node1) >= 0);
+	assert(res.countUntil(node2) >= 0);
+	res.length = 0;
+	tree.findCentersInCircle(vec2f(0.5f, 0.5f), 0.2f, res, false);
+	assert(res.length == 1);
+	assert(res.countUntil(node1) >= 0);
+	assert(res.countUntil(node2) < 0);
+	res.length = 0;
+	auto node3 = tree.addLeaf(
+		Rectangle(vec2f(-100.0f, 0.0f), vec2f(20.0f, 20.0f)), false);
+	tree.findCentersInCircle(vec2f(0.0f, 0.0f), 1.0f, res);
+	assert(res.length == 2);
+	assert(res.countUntil(node1) >= 0);
+	assert(res.countUntil(node2) >= 0);
+	assert(res.countUntil(node3) < 0);
+	res.length = 0;
+	tree.findCentersInCircle(vec2f(0.0f, 0.0f), 100.1f, res);
+	assert(res.length == 3);
+	assert(res.countUntil(node1) >= 0);
+	assert(res.countUntil(node2) >= 0);
+	assert(res.countUntil(node3) >= 0);
+	res.length = 0;
 }

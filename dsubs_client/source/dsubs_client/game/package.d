@@ -74,6 +74,8 @@ __gshared:
 		Thread.sleep(msecs(100));
 	}
 
+	/// clear various callbacks and objects in order to transition to another
+	/// game state.
 	static void clearEntities()
 	{
 		serverConnection.clearHandlers();
