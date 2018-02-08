@@ -41,7 +41,7 @@ Vector2f[] xSymmetry(float[] coords)
 PropulsorTemplate standardScrew = PropulsorTemplate(
 	"Standard screw",
 	"Five-bladed screw with no outstanding traits, " ~
-	"but comparatively good high-speed performance.",
+	"but relatively good high-speed performance.",
 	PropulsorType.SCREW,
 	5,
 	ConvexPolygon([
@@ -52,9 +52,9 @@ PropulsorTemplate standardScrew = PropulsorTemplate(
 );
 
 SubmarineTemplate nooberSub = SubmarineTemplate(
-	"Aspirant",
-	`Light attack submarine "Aspirant" offers good balance of stealth, ` ~
-	"offensive power and survivability to rookie captains.",
+	"Bobby",
+	`Light attack submarine "Bobby" offers good balance of stealth, ` ~
+	"offensive power and survivability.",
 	[
 		ConvexPolygon(xSymmetry([
 				0.0, 35.0,

@@ -148,7 +148,7 @@ abstract class PhysicalEntity
 	/// transform wich is updated on each integration step
 	Transform2D transform;
 
-	/// integrate this entity. Implies, that the problem is embarassingly-parallel.
+	/// integrate this entity. Implies that the problem is embarassingly-parallel.
 	void integrate(double dt);
 }
 

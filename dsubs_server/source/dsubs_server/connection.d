@@ -11,6 +11,7 @@ import core.thread;
 
 import dsubs_common.api;
 import dsubs_common.event;
+import dsubs_common.containers.array;
 
 import dsubs_server.common;
 import dsubs_server.entitydb;
@@ -18,7 +19,7 @@ import dsubs_server.entitydb;
 
 private __gshared
 {
-	Mutex g_conMut;
+	Mutex g_conMut;		/// mutex that guards connection containers
 	PlayerConnection[] g_freshConnections;
 	PlayerConnection[string] g_authorizedConnections;
 }
@@ -51,7 +52,7 @@ private bool confirmConnection(PlayerConnection pc)
 	assert((pc.username in g_authorizedConnections) is null);
 	g_authorizedConnections[pc.username] = pc;
 	trace("Number of authorized connections: ", g_authorizedConnections.length);
-	g_freshConnections = g_freshConnections.remove!(a => a is pc);
+	g_freshConnections.removeFirstUnstable(pc);
 	return true;
 }
 
@@ -62,10 +63,11 @@ private void removeConnection(PlayerConnection pc)
 	if (pc.m_authorized)
 		g_authorizedConnections.remove(pc.username);
 	else
-		g_freshConnections = g_freshConnections.remove!(a => a is pc);
+		g_freshConnections.removeFirstUnstable(pc);
 }
 
 
+/// TCP connection to some peer
 final class PlayerConnection
 {
 	private
@@ -183,8 +185,8 @@ private:
 		}
 		catch (Exception e)
 		{
-			trace(e.msg);
-			close();
+			trace("Exception in reader: ", e.msg);
+			close(e.msg);
 		}
 	}
 
@@ -197,7 +199,7 @@ private:
 				auto msg = receiveOnly!(int, immutable(void)*)();
 				if (msg[1] == null && msg[0] == 0)
 				{
-					trace("Interpretting null message as stop signal");
+					trace("Interpretting null message as stop signal to writer thread");
 					return;
 				}
 				auto msgBody = g_msgMarshallers[msg[0]](msg[1]);
@@ -216,12 +218,12 @@ private:
 		ServerStatusReq msg;
 		demarshalMessage(&msg, msgBody);
 		trace("g_authorizedConnections.length: ", g_authorizedConnections.length);
-		immutable(ServerStatusRes)* res =
-			new immutable ServerStatusRes(
+		immutable ServerStatusRes res =
+			ServerStatusRes(
 				API_VERSION,
 				g_authorizedConnections.length);
-		trace("Responding with ", *res);
-		sendBody(marshalMessage(res));
+		trace("Responding with ", res);
+		sendBody(marshalMessage(&res));
 	}
 
 	void h_loginReq(ubyte[] msgBody)
@@ -257,8 +259,8 @@ private:
 
 	void h_entityDbReq(ubyte[] msgBody)
 	{
-		info("Entity database requested");
 		enforce(m_authorized, "Permission denied");
+		info("Entity database requested by ", m_username);
 		sendBody(g_marshalledCommonEntityDb);
 	}
 }

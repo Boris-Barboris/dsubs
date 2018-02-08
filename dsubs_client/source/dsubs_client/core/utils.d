@@ -80,7 +80,7 @@ unittest
 	assert(arr.length == 3);
 }
 
-/// Returns builder wich is deduced from type of an argument, and allows to 
+/// Returns builder wich is deduced from type of an argument, and allows to
 /// chain property assignments in fluent form.
 auto builder(T)(T base)
 	if (is(T == class))
