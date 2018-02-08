@@ -1,4 +1,4 @@
-module dsubs_client.game.prepare;
+module dsubs_client.game.loadout;
 
 import std.algorithm;
 import std.array;
@@ -19,7 +19,8 @@ import dsubs_client.game.mainmenu;
 import dsubs_client.gui;
 
 
-void setupPrepareScreen()
+/// setup game state to present loadout screen
+void setupLoadoutScreen()
 {
 	enum int BTN_SIZE = 26;
 	enum int BTN_FONT = 20;
@@ -30,6 +31,7 @@ void setupPrepareScreen()
 	if (!Game.serverConnection.connected)
 	{
 		error("Connection was lost, falling back to main menu");
+		// TRANSITION TO MAIN MENU
 		setupMainMenu();
 		return;
 	}

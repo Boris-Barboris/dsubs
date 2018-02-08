@@ -6,12 +6,17 @@ import dsubs_server.damage;
 import dsubs_server.dynamics;
 
 
-class BasicPropulsor: IForce
+abstract class Propulsor: IForce
 {
 	Transform2D transform;
 
 	float rotSpd = 0.0f;		// [-1.0, 1.0]
 	float targetRotSpd = 0.0f;	// [-1.0, 1.0]
+}
+
+/// Simple propulsor class that pushes forward\backwards
+class BasicPropulsor: Propulsor
+{
 	float rotAcceleration = 0.34f;	/// how fast rotSpd can change
 	float posThrustK = 0.0f;
 	float negThrustK = 0.0f;
@@ -24,30 +29,31 @@ class BasicPropulsor: IForce
 
 	double getTorque(const SubmergedRigidBody b, ref const Kinematics c)
 	{
-		// TODO? actual torque if transform is not on symmetry axis
 		return 0.0;
 	}
 
-	void propagateInTime(double dt)
+	void propagateInTime(float dt)
 	{
 		rotSpd = cmove(rotSpd, targetRotSpd, rotAcceleration, dt);
 	}
 }
 
-
-class Rudder: IForce
+/// PD-controlled rudder
+class BasicRudder: IForce
 {
-	double targetCourse = 0.0;
+	float targetCourse = 0.0;
 	float rudderPos = 0.0f;
 	float posChangeSpeed = 0.5f;
+
+	/// actual torque power
 	float steeringK = 0.0f;
 
 	// PD controller gains
-	double Kp = 1.0;
-	double Kd = -0.1;
+	float Kp = 1.0;
+	float Kd = -0.1;
 
-	private double error = 0.0;
-	private double errorDeriv = 0.0;
+	private float error = 0.0;
+	private float errorDeriv = 0.0;
 
 	vec2d getForce(const SubmergedRigidBody b, const ref Kinematics c)
 	{
@@ -61,7 +67,7 @@ class Rudder: IForce
 		return steeringK * rudderPos * c.velSquaredLength;
 	}
 
-	void propagateInTime(double dt)
+	void propagateInTime(float dt)
 	{
 		float targetRudderPos = Kp * error + Kd * errorDeriv;
 		rudderPos = cmove(rudderPos, targetRudderPos, posChangeSpeed, dt);

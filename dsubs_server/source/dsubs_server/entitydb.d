@@ -1,33 +1,100 @@
 module dsubs_server.entitydb;
 
+import std.array: array;
+import std.algorithm: map;
 import std.digest.sha;
 
 import dsubs_common.api;
 
 import dsubs_server.common;
+import dsubs_server.propulsion;
+import dsubs_server.rng;
 
 
-immutable EntityDbRes g_commonEntityDb;
+/// pre-marshalled entity database, ready to be send to user
 immutable(ubyte[]) g_marshalledCommonEntityDb;
+
+/// hash (SHA-256) of g_marshalledCommonEntityDb
 immutable(ubyte[]) g_commonEntityDbHash;
+
+
+enum SpawnPermission: byte
+{
+	player,		// entity can be spawned for player
+	npc			// entity is NPC-only
+}
+
+//
+// Propulsors
+//
+
+interface PropulsorPrototype
+{
+	Propulsor build() const;
+	const(PropulsorTemplate)* getTemplate() const;
+	SpawnPermission getPermission() const;
+}
+
+/// global map of all existing propulsors
+immutable(PropulsorPrototype[string]) g_propulsors;
+
+class BasicPropulsorPrototype: PropulsorPrototype
+{
+	PropulsorTemplate tmpl;
+	RolledF posThrustK;
+	RolledF negThrustK;
+	SpawnPermission permission = SpawnPermission.player;
+
+	BasicPropulsor build() const
+	{
+		BasicPropulsor res = new BasicPropulsor();
+		res.posThrustK = posThrustK;
+		res.negThrustK = negThrustK;
+		return res;
+	}
+
+	const(PropulsorTemplate)* getTemplate() const
+	{
+		return &tmpl;
+	}
+
+	SpawnPermission getPermission() const
+	{
+		return permission;
+	}
+}
 
 shared static this()
 {
-	g_commonEntityDb = cast(immutable EntityDbRes) EntityDbRes(
-		[standardScrew],
-		[nooberSub]
-	);
-	g_marshalledCommonEntityDb = marshalMessage(&g_commonEntityDb);
-	auto sha256 = new SHA256Digest();
-	sha256.put(g_marshalledCommonEntityDb);
-	g_commonEntityDbHash = cast(immutable(ubyte[])) sha256.finish();
-	assert(g_commonEntityDbHash.length == 32);
+	BasicPropulsorPrototype bp = new BasicPropulsorPrototype();
+	bp.tmpl =
+		PropulsorTemplate(
+			"Standard screw",
+			"Five-bladed screw with no outstanding traits, " ~
+			"but relatively good high-speed performance.",
+			PropulsorType.SCREW,
+			5,
+			ConvexPolygon([
+				Vector2f(1.1f, 0.6f),
+				Vector2f(0.6f, -0.6f),
+				Vector2f(4.2f, -0.9f)
+			], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
+		);
+	bp.posThrustK = RolledF(100.0f, 2.0f);
+	bp.negThrustK = RolledF(40.0f, 1.0f);
+	g_propulsors["Standard screw"] = cast(immutable PropulsorPrototype) bp;
 }
 
-private:
 
+//
+// Submarines
+//
+
+/// build axially-symmetric mesh from it's own half. 'coords' array should be in form
+/// [ x1, y1, x2, y2 ... ]
 Vector2f[] xSymmetry(float[] coords)
 {
+	assert(coords.length >= 4);
 	assert(coords.length % 2 == 0);
 	int len = coords.length / 2;
 	Vector2f[] res;
@@ -37,19 +104,6 @@ Vector2f[] xSymmetry(float[] coords)
 		res ~= Vector2f(-coords[i*2], coords[i*2 + 1]);
 	return res;
 }
-
-PropulsorTemplate standardScrew = PropulsorTemplate(
-	"Standard screw",
-	"Five-bladed screw with no outstanding traits, " ~
-	"but relatively good high-speed performance.",
-	PropulsorType.SCREW,
-	5,
-	ConvexPolygon([
-		Vector2f(1.1f, 0.6f),
-		Vector2f(0.6f, -0.6f),
-		Vector2f(4.2f, -0.9f)
-	], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
-);
 
 SubmarineTemplate nooberSub = SubmarineTemplate(
 	"Bobby",
@@ -85,3 +139,18 @@ SubmarineTemplate nooberSub = SubmarineTemplate(
 	1,
 	[]
 );
+
+
+
+shared static this()
+{
+	const EntityDbRes enititydb = const EntityDbRes(
+		g_propulsors.values.map!(a => *a.getTemplate()).array,
+		[nooberSub]
+	);
+	g_marshalledCommonEntityDb = marshalMessage(cast(immutable(EntityDbRes)*) &enititydb);
+	auto sha256 = new SHA256Digest();
+	sha256.put(g_marshalledCommonEntityDb);
+	g_commonEntityDbHash = cast(immutable(ubyte[])) sha256.finish();
+	assert(g_commonEntityDbHash.length == 32);
+}

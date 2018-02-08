@@ -2,6 +2,7 @@ module dsubs_server.dynamics;
 
 import std.algorithm;
 import std.math;
+import core.sync.mutex;
 
 import dsubs_common.containers.array;
 import dsubs_common.math;
@@ -81,7 +82,7 @@ interface IForce
 	double getTorque(const SubmergedRigidBody b, const ref Kinematics c);
 
 	/// if there is some timing logic inside IForce, move forward in time on dt.
-	void propagateInTime(double dt);
+	void propagateInTime(float dt);
 }
 
 
@@ -102,7 +103,7 @@ final class SubmergedRigidBody: PhysicalEntity
 	}
 
 	/// physics update step, Eulers method
-	override void integrate(double dt)
+	override void integrate(float dt)
 	{
 		Kinematics nextKinet = kinet;
 		vec2d linAcc1 = linAcc(kinet);
@@ -149,36 +150,43 @@ abstract class PhysicalEntity
 	Transform2D transform;
 
 	/// integrate this entity. Implies that the problem is embarassingly-parallel.
-	void integrate(double dt);
+	void integrate(float dt);
 }
 
 
 /// list of all physical objects
 private __gshared PhysicalEntity[] g_allBodies;
+/// mutex that guards g_allBodies
+private shared Mutex g_pbMut;
 
 shared static this()
 {
 	g_allBodies.reserve(512);
+	g_pbMut = new shared Mutex();
 }
 
 /// add new PhysicalEntity to global list
 void registerPEntity(PhysicalEntity e)
 {
+	g_pbMut.lock();
+	scope(exit) g_pbMut.unlock();
 	g_allBodies ~= e;
 }
 
 /// remove PhysicalEntity from global list
 void unregisterPEntity(PhysicalEntity e)
 {
+	g_pbMut.lock();
+	scope(exit) g_pbMut.unlock();
 	g_allBodies.removeFirstUnstable(e);
 }
 
-/// perform physics update for all pgysical bodies
-void integratePBodies(double fwd = 1.0, double maxDt = 0.25)
+/// perform physics update for all pgysical bodies.
+void integratePBodies(float fwd = 1.0f, float maxDt = 0.25f)
 {
 	long stepCount = lrint(fwd / maxDt);
 	assert(stepCount > 0);
-	double dt = fwd / stepCount;
+	float dt = fwd / stepCount;
 	for (int i = 0; i < stepCount; i++)
 	{
 		foreach (i, ref entity; g_taskPool.parallel(g_allBodies, 8))

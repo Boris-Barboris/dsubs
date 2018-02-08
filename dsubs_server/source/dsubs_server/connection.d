@@ -6,7 +6,6 @@ import std.concurrency;
 import std.conv: to;
 import std.socket;
 import core.atomic;
-import core.sync.mutex;
 import core.thread;
 
 import dsubs_common.api;
@@ -15,56 +14,8 @@ import dsubs_common.containers.array;
 
 import dsubs_server.common;
 import dsubs_server.entitydb;
-
-
-private __gshared
-{
-	Mutex g_conMut;		/// mutex that guards connection containers
-	PlayerConnection[] g_freshConnections;
-	PlayerConnection[string] g_authorizedConnections;
-}
-
-shared static this()
-{
-	g_conMut = new Mutex();
-}
-
-void addNewConnection(PlayerConnection pc)
-{
-	g_conMut.lock();
-	scope(exit) g_conMut.unlock();
-	g_freshConnections ~= pc;
-}
-
-private bool confirmConnection(PlayerConnection pc)
-{
-	g_conMut.lock();
-	scope(exit) g_conMut.unlock();
-	PlayerConnection* existing = pc.username in g_authorizedConnections;
-	if (existing)
-	{
-		PlayerConnection econ = *existing;
-		if (econ.m_password != pc.m_password)
-			return false;
-		info("Closing previous connection of this user");
-		econ.close("Another client authorized");
-	}
-	assert((pc.username in g_authorizedConnections) is null);
-	g_authorizedConnections[pc.username] = pc;
-	trace("Number of authorized connections: ", g_authorizedConnections.length);
-	g_freshConnections.removeFirstUnstable(pc);
-	return true;
-}
-
-private void removeConnection(PlayerConnection pc)
-{
-	g_conMut.lock();
-	scope(exit) g_conMut.unlock();
-	if (pc.m_authorized)
-		g_authorizedConnections.remove(pc.username);
-	else
-		g_freshConnections.removeFirstUnstable(pc);
-}
+import dsubs_server.simulator;
+public import dsubs_server.player;
 
 
 /// TCP connection to some peer
@@ -73,7 +24,6 @@ final class PlayerConnection
 	private
 	{
 		Socket m_sock;
-		Mutex m_mutex;
 		Address m_remoteAddr;
 		Tid m_readerThread;
 		Tid m_writerThread;
@@ -83,10 +33,12 @@ final class PlayerConnection
 		void delegate(ubyte[])[] m_handlers;
 	}
 
-	this(Socket sock, Mutex lockToHold)
+	/// not null then connection is authorized
+	PlayerContext playerCtx;
+
+	this(Socket sock)
 	{
 		m_sock = sock;
-		m_mutex = lockToHold;
 		sock.setKeepAlive(10, 10);
 		m_remoteAddr = sock.remoteAddress();
 
@@ -95,55 +47,77 @@ final class PlayerConnection
 		m_handlers[ServerStatusReq.g_marshIdx] = &h_serverStatus;
 		m_handlers[LoginReq.g_marshIdx] = &h_loginReq;
 		m_handlers[EntityDbReq.g_marshIdx] = &h_entityDbReq;
+		m_handlers[ClientPing.g_marshIdx] = &h_clientPing;
 
-		// std is not very good with shared, we'll have to cast it hard to
-		// make it work
+		// std is not very nice with it's shared obsession,
+		// we'll have to cast to it a lot
 		m_readerThread = spawn(cast(shared void delegate()) &readProc);
 		m_writerThread = spawn(cast(shared void delegate()) &writerProc);
 	}
 
+	/// send asynchroniously (writer thread will do it)
 	void sendMessage(MsgT)(immutable(MsgT)* msgPtr)
 	{
 		send!(int, immutable(void)*)(
 			m_writerThread, MsgT.g_marshIdx, cast(immutable(void)*) msgPtr);
 	}
 
-	// send in calling thread
+	/// send in caller thread (may block)
 	void syncSendMessage(MsgT)(immutable(MsgT)* msgPtr)
 	{
 		auto msgBody = g_msgMarshallers[MsgT.g_marshIdx](msgPtr);
 		sendBody(msgBody);
 	}
 
-	void close(string reason = "")
+	/// if already closed\closing, does nothing. Otherwise, asynchroniously
+	/// sends SessionClosed message, sleeps a little, closes the socket and
+	/// unregisters the connection.
+	void close(string reason = null)
 	{
 		if (!cas(&m_closed, false, true))
 			return;
 		info("Closing connection to ", m_remoteAddr, ", user: ", m_username);
-		if (reason.length > 0)
-		{
-			syncSendMessage(new immutable SessionClosedRes(reason));
-			Thread.sleep(msecs(100));
-		}
-		try { m_sock.close(); } catch (Exception e) { trace(e.msg); }
-		send!(int, immutable(void)*)(m_writerThread, 0, null);
-		removeConnection(this);
-		m_authorized = false;
+		send!string(m_writerThread, reason);
+	}
+
+	/// synchronous version of close()
+	void closeSync(string reason = null)
+	{
+		if (!cas(&m_closed, false, true))
+			return;
+		info("Closing connection to ", m_remoteAddr, ", user: ", m_username);
+		send!bool(m_writerThread, true);
+		doClose(reason);
 	}
 
 	@property string username() const { return m_username; }
-	@property bool closed() const { return atomicLoad(m_closed); }
+	@property string password() const { return m_password; }
+	@property bool closed() const { return m_closed; }
 
 private:
+
+	void doClose(string reason)
+	{
+		scope(exit) m_sock.close();
+		if (reason.length > 0)
+		{
+			syncSendMessage(new immutable SessionClosedRes(reason));
+			m_sock.shutdown(SocketShutdown.BOTH);
+			Thread.sleep(msecs(100));
+		}
+		else
+			m_sock.shutdown(SocketShutdown.BOTH);
+		removeConnection(this);
+		m_authorized = false;
+	}
 
 	int[2] recvHeader()
 	{
 		int[2] header;
 		auto received = m_sock.receive(header);
-		enforce(received != Socket.ERROR, "Socket was closed");
-		enforce(received == 8, "Message header is wrong");
+		enforce(received == 8, "Error during receive");
 		enforce(header[0] >= 0 && header[0] < g_msgDemarshallers.length, "Unknown message");
-		enforce(header[1] >= 0 && header[1] < MAX_MSG_SIZE, "Message length invalid");
+		enforce(header[1] >= 0 && header[1] <= MAX_MSG_SIZE, "Message length invalid");
 		trace("received header", header);
 		return header;
 	}
@@ -152,16 +126,14 @@ private:
 	{
 		ubyte[] res = new ubyte[size];
 		auto received = m_sock.receive(res);
-		enforce(received != Socket.ERROR, "Socket was closed");
-		enforce(received == size, "Could not read requested amount of data");
+		enforce(received == size, "Error during receive");
 		return res;
 	}
 
 	void sendBody(immutable(ubyte)[] msgBody)
 	{
 		auto sent = m_sock.send(msgBody);
-		enforce(sent != Socket.ERROR, "Socket was closed");
-		enforce(sent == msgBody.length, "Could not send requested amount of data");
+		enforce(sent == msgBody.length, "Error during send");
 	}
 
 	void readProc()
@@ -175,8 +147,6 @@ private:
 				if (handler)
 				{
 					ubyte[] msgBody = recvBody(header[1]);
-					m_mutex.lock();
-					scope(exit) m_mutex.unlock();
 					handler(msgBody);
 				}
 				else
@@ -194,35 +164,56 @@ private:
 	{
 		try
 		{
-			while (true)
+			bool closeServed = false;
+			while (!closeServed)
 			{
-				auto msg = receiveOnly!(int, immutable(void)*)();
-				if (msg[1] == null && msg[0] == 0)
-				{
-					trace("Interpretting null message as stop signal to writer thread");
-					return;
-				}
-				auto msgBody = g_msgMarshallers[msg[0]](msg[1]);
-				sendBody(msgBody);
+				receive(
+					(int msgId, immutable(void)* msgPtr)
+					{
+						auto msgBody = g_msgMarshallers[msgId](msgPtr);
+						sendBody(msgBody);
+					},
+					(string reason)
+					{
+						closeServed = true;
+						doClose(reason);
+					},
+					(bool dummy)
+					{
+						closeServed = true;
+					}
+				);
 			}
 		}
 		catch (Exception e)
 		{
-			trace(e.msg);
-			trace("TCP writer thread stopped");
+			error("TCP writer thread throwed: ", e.msg);
+			doClose(e.msg);
 		}
 	}
+
+
+	//
+	//	handlers
+	//
 
 	void h_serverStatus(ubyte[] msgBody)
 	{
 		ServerStatusReq msg;
 		demarshalMessage(&msg, msgBody);
-		trace("g_authorizedConnections.length: ", g_authorizedConnections.length);
-		immutable ServerStatusRes res =
-			ServerStatusRes(
-				API_VERSION,
-				g_authorizedConnections.length);
+		int playersOnline = getPlayerCount();
+		trace("g_authorizedConnections.length: ", playersOnline);
+		immutable ServerStatusRes res = ServerStatusRes(API_VERSION, playersOnline);
 		trace("Responding with ", res);
+		sendBody(marshalMessage(&res));
+	}
+
+	void h_clientPing(ubyte[] msgBody)
+	{
+		ClientPing msg;
+		demarshalMessage(&msg, msgBody);
+		trace("ping for ", m_username);
+		immutable ServerPong res = ServerPong(msg.clientTime, getCurTime());
 		sendBody(marshalMessage(&res));
 	}
 

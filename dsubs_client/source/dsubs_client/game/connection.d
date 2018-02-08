@@ -24,7 +24,7 @@ final class ServerConnection
 
 		Tid m_readerThread;	/// this thread reads messages in infinite loop
 
-		/// This one writes in infinite loop. It's needed in order to not block main
+		/// This thread writes in infinite loop. It's needed in order to not block main
 		/// threads on disconnects.
 		Tid m_writerThread;
 
@@ -65,7 +65,8 @@ final class ServerConnection
 		atomicStore(m_connected, false);
 		synchronized(m_mutex)
 			onConnectionClosed(reason);
-		try { m_sock.close(); } catch (SocketOSException e) { trace(e.msg); }
+		m_sock.shutdown(SocketShutdown.BOTH);
+		m_sock.close();
 		if (m_writerRunning)
 			send!(int, immutable(void)*)(m_writerThread, 0, null);
 		return true;
@@ -75,16 +76,17 @@ final class ServerConnection
 	/// with ServerStatusRes
 	@property bool connected() const { return atomicLoad(m_connected); }
 
-	/// Last value of recieved ServerStatusRes
+	/// Last value of received ServerStatusRes
 	ServerStatusRes lastServerStatus;
 
+	/// asynchronously send protocol message to the server
 	void sendMessage(MsgT)(immutable(MsgT)* msgPtr)
 	{
 		send!(int, immutable(void)*)(
 			m_writerThread, MsgT.g_marshIdx, cast(immutable(void)*) msgPtr);
 	}
 
-	// clear all events from handlers
+	// clear all handlers from events
 	void clearHandlers()
 	{
 		onConnectionClosed.clear();
@@ -93,7 +95,7 @@ final class ServerConnection
 		onEntityDbRecieved.clear();
 	}
 
-	// Subscribe to these events. They all should be fired while holding m_mutex.
+	// Subscribe to these events. They all are fired while holding m_mutex.
 	Event!(void delegate(string reason)) onConnectionClosed;
 	Event!(void delegate(ServerStatusRes res)) onConnectionSuccess;
 	Event!(void delegate(LoginRes res)) onLoginRes;
@@ -111,11 +113,10 @@ private:
 	{
 		int[2] header;
 		auto received = m_sock.receive(header);
-		enforce(received != Socket.ERROR, "Socket was closed");
-		enforce(received == 8, "Could not recieve message header");
+		enforce(received == 8, "Error during receive");
 		enforce(header[0] >= 0 && header[0] < g_msgDemarshallers.length, "Unknown message");
-		enforce(header[1] >= 0 && header[1] < MAX_MSG_SIZE, "Message length invalid");
-		trace("recieved header", header);
+		enforce(header[1] >= 0 && header[1] <= MAX_MSG_SIZE, "Message length invalid");
+		trace("received header ", header);
 		return header;
 	}
 
@@ -123,16 +124,14 @@ private:
 	{
 		ubyte[] res = new ubyte[size];
 		auto received = m_sock.receive(res);
-		enforce(received != Socket.ERROR, "Socket was closed");
-		enforce(received == size, "Could not read requested amount of data");
+		enforce(received == size, "Error during receive");
 		return res;
 	}
 
 	void sendBody(immutable(ubyte)[] msgBody)
 	{
 		auto sent = m_sock.send(msgBody);
-		enforce(sent != Socket.ERROR, "Socket was closed");
-		enforce(sent == msgBody.length, "Could not send requested amount of data");
+		enforce(sent == msgBody.length, "Error during send");
 	}
 
 	void readProc()
@@ -165,6 +164,8 @@ private:
 			while (true)
 			{
 				int[2] header = recvHeader();
+				if (header[0] < 0 || header[0] >= m_handlers.length)
+					throw new Exception("Invalid message header");
 				void delegate(ubyte[]) handler = m_handlers[header[0]];
 				if (handler)
 				{
@@ -172,12 +173,12 @@ private:
 					handler(msgBody);
 				}
 				else
-					throw new Exception("Unacceptable message header");
+					throw new Exception("Unexpected message header");
 			}
 		}
 		catch (Exception e)
 		{
-			trace(e.msg);
+			error(e.msg);
 			reset(e.msg);
 		}
 	}
@@ -203,7 +204,7 @@ private:
 				auto msg = receiveOnly!(int, immutable(void)*)();
 				if (msg[1] == null && msg[0] == 0)
 				{
-					trace("Interpretting null message as stop signal");
+					trace("Interpretting null message as writer stop signal");
 					return;
 				}
 				auto msgBody = g_msgMarshallers[msg[0]](msg[1]);
@@ -212,8 +213,7 @@ private:
 		}
 		catch (Exception e)
 		{
-			trace(e.msg);
-			trace("TCP writer thread stopped");
+			error("TCP writer thread crashed: ", e.msg);
 		}
 	}
 

@@ -13,7 +13,7 @@ import dsubs_common.api;
 
 import dsubs_client.core.utils;
 import dsubs_client.game;
-import dsubs_client.game.prepare;
+import dsubs_client.game.loadout;
 import dsubs_client.gui;
 
 
@@ -118,8 +118,8 @@ void setupMainMenu()
 		trace("Building entity manager");
 		Game.entityManager = new EntityManager(Game.entityDb);
 
-		// TRANSITION TO PREPARE SCREEN
-		setupPrepareScreen();
+		// TRANSITION TO LOADOUT SCREEN
+		setupLoadoutScreen();
 	};
 
 	connectButton.onClick += (b)

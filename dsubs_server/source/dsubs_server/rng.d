@@ -36,13 +36,11 @@ double rngNormal(double mean = 0.0, double stddev = 1.0, double dlimit = 3.0,
 	return ret;
 }
 
-/// Normally-distributed random floating point that gets rolled the first time
-/// it's used
-struct Diced(T) if (isFloatingPoint!T)
+/// Normally-distributed random floating point that gets rolled
+struct Rolled(T) if (isFloatingPoint!T)
 {
 	T mean = 0.0;
 	T stddev = 1.0;
-	bool rolled;
 	private T val;
 
 	this(T mean, T stddev)
@@ -51,17 +49,13 @@ struct Diced(T) if (isFloatingPoint!T)
 		this.stddev = stddev;
 	}
 
-	@property T get()
+	@property T roll() const
 	{
-		if (rolled)
-			return val;
-		val = rngNormal(mean, stddev);
-		rolled = true;
-		return val;
+		return rngNormal(mean, stddev);
 	}
 
-	alias get this;
+	alias roll this;
 }
 
-alias DicedF = Diced!float;
-alias DicedD = Diced!double;
+alias RolledF = Rolled!float;
+alias RolledD = Rolled!double;

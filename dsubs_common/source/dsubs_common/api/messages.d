@@ -26,7 +26,7 @@ struct ServerStatusRes
 
 /** This unit requests authorization from the server.
 After authorization succeeded, you don't need to send any more of those.
-Authorization is done once for TCP connection. */
+Authorization is done only once for TCP connection. */
 struct LoginReq
 {
 	__gshared const int g_marshIdx;
@@ -39,10 +39,11 @@ struct LoginRes
 	__gshared const int g_marshIdx;
 	bool success;
 	string welcomeMsg;	/// auth failure reason can be here
-	@MaxLenAttr(32) immutable(ubyte)[] dbHash;		/// entity database hash (SHA256)
+	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
 }
 
-/// Sent by server when it can offer an explanation on connection being closed
+/// Sent by server when it can offer an explanation on why the connection is
+/// being closed.
 struct SessionClosedRes
 {
 	__gshared const int g_marshIdx;
