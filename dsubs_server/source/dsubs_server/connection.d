@@ -48,6 +48,7 @@ final class PlayerConnection
 		m_handlers[LoginReq.g_marshIdx] = &h_loginReq;
 		m_handlers[EntityDbReq.g_marshIdx] = &h_entityDbReq;
 		m_handlers[ClientPing.g_marshIdx] = &h_clientPing;
+		m_handlers[SpawnReq.g_marshIdx] = &h_spawnReq;
 
 		// std is not very nice with it's shared obsession,
 		// we'll have to cast to it a lot
@@ -66,7 +67,7 @@ final class PlayerConnection
 	void syncSendMessage(MsgT)(immutable(MsgT)* msgPtr)
 	{
 		auto msgBody = g_msgMarshallers[MsgT.g_marshIdx](msgPtr);
-		sendBody(msgBody);
+		sendBytes(msgBody);
 	}
 
 	/// if already closed\closing, does nothing. Otherwise, asynchroniously
@@ -130,7 +131,7 @@ private:
 		return res;
 	}
 
-	void sendBody(immutable(ubyte)[] msgBody)
+	void sendBytes(immutable(ubyte)[] msgBody)
 	{
 		auto sent = m_sock.send(msgBody);
 		enforce(sent == msgBody.length, "Error during send");
@@ -171,7 +172,7 @@ private:
 					(int msgId, immutable(void)* msgPtr)
 					{
 						auto msgBody = g_msgMarshallers[msgId](msgPtr);
-						sendBody(msgBody);
+						sendBytes(msgBody);
 					},
 					(string reason)
 					{
@@ -205,7 +206,7 @@ private:
 		trace("g_authorizedConnections.length: ", playersOnline);
 		immutable ServerStatusRes res = ServerStatusRes(API_VERSION, playersOnline);
 		trace("Responding with ", res);
-		sendBody(marshalMessage(&res));
+		sendBytes(marshalMessage(&res));
 	}
 
 	void h_clientPing(ubyte[] msgBody)
@@ -213,8 +214,8 @@ private:
 		ClientPing msg;
 		demarshalMessage(&msg, msgBody);
 		trace("ping for ", m_username);
-		immutable ServerPong res = ServerPong(msg.clientTime, getCurTime());
-		sendBody(marshalMessage(&res));
+		immutable ServerPong res = ServerPong(msg.clientTime);
+		sendBytes(marshalMessage(&res));
 	}
 
 	void h_loginReq(ubyte[] msgBody)
@@ -227,7 +228,7 @@ private:
 		{
 			immutable LoginRes res = LoginRes(false, "Enter nonempty username");
 			trace("Responding with ", res);
-			sendBody(marshalMessage(&res));
+			sendBytes(marshalMessage(&res));
 			return;
 		}
 		m_username = msg.username;
@@ -236,15 +237,16 @@ private:
 		if (confirmConnection(this))
 		{
 			m_authorized = true;
-			immutable LoginRes res = LoginRes(true,
-				"Welcome to dsubs server", g_commonEntityDbHash);
-			sendBody(marshalMessage(&res));
+			bool alreadySpawned = playerCtx.submarine !is null;
+			immutable LoginRes res = LoginRes(true, "Welcome to dsubs server",
+				g_commonEntityDbHash, alreadySpawned);
+			sendBytes(marshalMessage(&res));
 		}
 		else
 		{
 			immutable LoginRes res = LoginRes(false, "Invalid password");
 			trace("Responding with ", res);
-			sendBody(marshalMessage(&res));
+			sendBytes(marshalMessage(&res));
 		}
 	}
 
@@ -252,6 +254,29 @@ private:
 	{
 		enforce(m_authorized, "Permission denied");
 		info("Entity database requested by ", m_username);
-		sendBody(g_marshalledCommonEntityDb);
+		sendBytes(g_marshalledCommonEntityDb);
+	}
+
+	void h_spawnReq(ubyte[] msgBody)
+	{
+		enforce(m_authorized, "Permission denied");
+		enforce(playerCtx.submarine is null, "Player already has a submarine spawned");
+		SpawnReq req;
+		demarshalMessage(&req, msgBody);
+
+		// try to build a submarine
+		Submarine sub = buildSubFromLoadout(req, playerCtx);
+		randomizePosition(sub);
+
+		// send response
+		immutable SpawnRes res = SpawnRes(true, -1);
+		sendBytes(marshalMessage(&res));
+
+		synchronized(g_simMut.reader)
+		{
+			// finalize submarine and register it in a simulator
+			sub.bootstrap();
+			playerCtx.submarine = sub;
+		}
 	}
 }

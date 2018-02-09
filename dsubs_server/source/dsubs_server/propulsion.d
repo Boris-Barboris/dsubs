@@ -6,15 +6,17 @@ import dsubs_server.damage;
 import dsubs_server.dynamics;
 
 
+/// module that is responsible for forward\backwards thrust
 abstract class Propulsor: IForce
 {
 	Transform2D transform;
+	string prototypeName;
 
 	float rotSpd = 0.0f;		// [-1.0, 1.0]
 	float targetRotSpd = 0.0f;	// [-1.0, 1.0]
 }
 
-/// Simple propulsor class that pushes forward\backwards
+/// simple propulsor with linear thrust law
 class BasicPropulsor: Propulsor
 {
 	float rotAcceleration = 0.34f;	/// how fast rotSpd can change
@@ -38,12 +40,20 @@ class BasicPropulsor: Propulsor
 	}
 }
 
-/// PD-controlled rudder
-class BasicRudder: IForce
+
+abstract class Rudder: IForce
 {
+	Transform2D transform;
+
+	/// target course
 	float targetCourse = 0.0;
 	float rudderPos = 0.0f;
-	float posChangeSpeed = 0.5f;
+}
+
+/// PD-controlled rudder
+class BasicRudder: Rudder
+{
+	float posChangeSpeed = 1.0f;
 
 	/// actual torque power
 	float steeringK = 0.0f;
@@ -55,14 +65,15 @@ class BasicRudder: IForce
 	private float error = 0.0;
 	private float errorDeriv = 0.0;
 
-	vec2d getForce(const SubmergedRigidBody b, const ref Kinematics c)
+	vec2d getForce(const SubmergedRigidBody b, ref const Kinematics c)
 	{
+		// TODO: there should be small lift here but fuck it
 		return vec2d(0.0, 0.0);
 	}
 
-	double getTorque(const SubmergedRigidBody b, const ref Kinematics c)
+	double getTorque(const SubmergedRigidBody b, ref const Kinematics c)
 	{
-		error = targetCourse - c.rotation;
+		error = targetCourse - transform.wrotation;
 		errorDeriv = c.angVel;
 		return steeringK * rudderPos * c.velSquaredLength;
 	}

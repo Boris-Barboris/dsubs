@@ -3,11 +3,14 @@ module dsubs_server.entitydb;
 import std.array: array;
 import std.algorithm: map;
 import std.digest.sha;
+import std.exception;
 
 import dsubs_common.api;
 
 import dsubs_server.common;
 import dsubs_server.propulsion;
+import dsubs_server.player: PlayerContext;
+public import dsubs_server.submarine;
 import dsubs_server.rng;
 
 
@@ -18,10 +21,45 @@ immutable(ubyte[]) g_marshalledCommonEntityDb;
 immutable(ubyte[]) g_commonEntityDbHash;
 
 
+/// build entity database, should be called from shared module constructor
+void s_buildEntityDatabase()
+{
+	info("Building entity database");
+	buildPropulsorTemplates();
+	buildSubmarineTemplates();
+	const EntityDbRes enititydb = const EntityDbRes(
+		g_propulsors.values.map!(a => *a.getTemplate()).array,
+		g_submarines.values.map!(a => *a.getTemplate()).array,
+	);
+	// ugly hacks around immutable
+	*(cast(immutable(ubyte)[]*) &g_marshalledCommonEntityDb) =
+		marshalMessage(cast(immutable(EntityDbRes)*) &enititydb);
+	auto sha256 = new SHA256Digest();
+	sha256.put(g_marshalledCommonEntityDb);
+	*(cast(ubyte[]*) &g_commonEntityDbHash) = sha256.finish();
+	assert(g_commonEntityDbHash.length == 32);
+}
+
+
+Submarine buildSubFromLoadout(const SpawnReq req, PlayerContext ctx)
+{
+	SubmarinePrototype* sp = req.submarineName in g_submarines;
+	enforce(sp !is null, "Unknown submarine");
+	PropulsorPrototype* pp = req.propulsorName in g_propulsors;
+	enforce(pp !is null, "Unknown propulsor");
+	Submarine sub = sp.build(ctx);
+	sub.propulsor = pp.build();
+	return sub;
+}
+
+
+private:
+
+
 enum SpawnPermission: byte
 {
-	player,		// entity can be spawned for player
-	npc			// entity is NPC-only
+	player,		/// entity can be spawned for player
+	npc			/// entity is NPC-only
 }
 
 //
@@ -35,8 +73,8 @@ interface PropulsorPrototype
 	SpawnPermission getPermission() const;
 }
 
-/// global map of all existing propulsors
-immutable(PropulsorPrototype[string]) g_propulsors;
+/// global map of all existing propulsor prototypes
+PropulsorPrototype[string] g_propulsors;
 
 class BasicPropulsorPrototype: PropulsorPrototype
 {
@@ -64,9 +102,12 @@ class BasicPropulsorPrototype: PropulsorPrototype
 	}
 }
 
-shared static this()
+void buildPropulsorTemplates()
 {
-	BasicPropulsorPrototype bp = new BasicPropulsorPrototype();
+	BasicPropulsorPrototype bp;
+
+	// Standard screw
+	bp = new BasicPropulsorPrototype();
 	bp.tmpl =
 		PropulsorTemplate(
 			"Standard screw",
@@ -82,7 +123,7 @@ shared static this()
 		);
 	bp.posThrustK = RolledF(100.0f, 2.0f);
 	bp.negThrustK = RolledF(40.0f, 1.0f);
-	g_propulsors["Standard screw"] = cast(immutable PropulsorPrototype) bp;
+	g_propulsors["Standard screw"] = bp;
 }
 
 
@@ -90,7 +131,7 @@ shared static this()
 // Submarines
 //
 
-/// build axially-symmetric mesh from it's own half. 'coords' array should be in form
+/// build axially-symmetric mesh from it's half. 'coords' array should be in form
 /// [ x1, y1, x2, y2 ... ]
 Vector2f[] xSymmetry(float[] coords)
 {
@@ -105,52 +146,101 @@ Vector2f[] xSymmetry(float[] coords)
 	return res;
 }
 
-SubmarineTemplate nooberSub = SubmarineTemplate(
-	"Bobby",
-	`Light attack submarine "Bobby" offers good balance of stealth, ` ~
-	"offensive power and survivability.",
-	[
-		ConvexPolygon(xSymmetry([
-				0.0, 35.0,
-				-1.5, 34.8,
-				-2.8, 34,
-				-3.5, 33.0,
-				-4, 32.2,
-				-4.7, 30.0,
-				-5.0, 28.0,
-				-5.0, -18.0,
-				-4.5, -23.0,
-				-3.0, -28.0,
-				-2.0, -31.0,
-				0.0, -35.0
-			]), RgbaColor(70, 70, 70), 0.4f, RgbaColor(100, 100, 100)),
-		ConvexPolygon(xSymmetry([
-				0.0, 15.0,
-				-1.0, 14.7,
-				-1.7, 14.0,
-				-2.0, 13.0,
-				-2.0, 4.0,
-				-1.7, 2.0,
-				-1.0, 0.5,
-				0.0, -1.0
-			]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50))
-	],
-	[MountPoint(Vector2f(0.0, -34.0f))],
-	1,
-	[]
-);
-
-
-
-shared static this()
+interface SubmarinePrototype
 {
-	const EntityDbRes enititydb = const EntityDbRes(
-		g_propulsors.values.map!(a => *a.getTemplate()).array,
-		[nooberSub]
-	);
-	g_marshalledCommonEntityDb = marshalMessage(cast(immutable(EntityDbRes)*) &enititydb);
-	auto sha256 = new SHA256Digest();
-	sha256.put(g_marshalledCommonEntityDb);
-	g_commonEntityDbHash = cast(immutable(ubyte[])) sha256.finish();
-	assert(g_commonEntityDbHash.length == 32);
+	Submarine build(PlayerContext pc) const;
+	const(SubmarineTemplate)* getTemplate() const;
+	SpawnPermission getPermission() const;
+}
+
+/// global map of all existing submarine prototypes
+SubmarinePrototype[string] g_submarines;
+
+class BasicSubmarinePrototype: SubmarinePrototype
+{
+	SubmarineTemplate tmpl;
+	// physical characteristics
+	RolledF moi, mass, Cd0, Cd1, Cr, Cl;
+
+	/// rudder gain, wich is multiplied on the sub moi when it's built
+	float rudderSteerK;
+	SpawnPermission permission = SpawnPermission.player;
+
+	Submarine build(PlayerContext pc) const
+	{
+		Submarine res = new Submarine(pc);
+		res.rigidBody.moi = moi;
+		res.rigidBody.mass = mass;
+		res.rigidBody.hydroModel.Cd0 = Cd0;
+		res.rigidBody.hydroModel.Cd1 = Cd1;
+		res.rigidBody.hydroModel.Cr = Cr;
+		res.rigidBody.hydroModel.Cl = Cl;
+		// FIXME: for now we simply bake rudder into the submarine
+		auto brudder = new BasicRudder();
+		brudder.steeringK = rudderSteerK * res.rigidBody.moi;
+		res.rudder = brudder;
+		return res;
+	}
+
+	const(SubmarineTemplate)* getTemplate() const
+	{
+		return &tmpl;
+	}
+
+	SpawnPermission getPermission() const
+	{
+		return permission;
+	}
+}
+
+
+void buildSubmarineTemplates()
+{
+	BasicSubmarinePrototype sp;
+
+	// Standard screw
+	sp = new BasicSubmarinePrototype();
+	sp.tmpl =
+		SubmarineTemplate(
+			"Bobby",
+			`Light attack submarine "Bobby" offers good balance of stealth, ` ~
+			"offensive power and survivability.",
+			[
+				ConvexPolygon(xSymmetry([
+						0.0, 35.0,
+						-1.5, 34.8,
+						-2.8, 34,
+						-3.5, 33.0,
+						-4, 32.2,
+						-4.7, 30.0,
+						-5.0, 28.0,
+						-5.0, -18.0,
+						-4.5, -23.0,
+						-3.0, -28.0,
+						-2.0, -31.0,
+						0.0, -35.0
+					]), RgbaColor(70, 70, 70), 0.4f, RgbaColor(100, 100, 100)),
+				ConvexPolygon(xSymmetry([
+						0.0, 15.0,
+						-1.0, 14.7,
+						-1.7, 14.0,
+						-2.0, 13.0,
+						-2.0, 4.0,
+						-1.7, 2.0,
+						-1.0, 0.5,
+						0.0, -1.0
+					]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50))
+			],
+			[MountPoint(Vector2f(0.0, -34.0f))],
+			1,
+			[]
+		);
+	sp.moi = RolledF(1000.0f, 5.0f);
+	sp.mass = RolledF(2000.0f, 10.0f);
+	sp.Cd0 = RolledF(1.0, 0.01f);
+	sp.Cd1 = RolledF(3.0, 0.02f);
+	sp.Cl = RolledF(500.0, 0.5f);
+	sp.Cr = RolledF(100.0, 0.5f);
+	sp.rudderSteerK = 1.0f;
+	g_submarines["Bobby"] = sp;
 }

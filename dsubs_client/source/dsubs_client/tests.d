@@ -31,7 +31,7 @@ void testGuiElements()
 	router.guiRouter = gui;
 	Render render = new Render(wnd, router);
 	render.guiRender = gui;
-	
+
 	Div row1 = builder(hDiv(
 		[
 			builder(new Label()).content("RED").fontSize(32).backgroundVisible(true).
@@ -67,7 +67,7 @@ void testGuiElements()
 			btn1Counter += shiftDir;
 		if (btn == sfMouseRight)
 			btn1Counter -= shiftDir;
-		label1.content = btn1Counter.to!string; 
+		label1.content = btn1Counter.to!string;
 	};
 	auto button2 = builder(new Button(ButtonType.TOGGLE)).fontSize(32).
 		content("Positive").build();
@@ -87,7 +87,7 @@ void testGuiElements()
 		content("Activate x10").build();
 	auto button4 = builder(new Button(ButtonType.SYNC)).fontSize(24).
 		content("Deactivate x10").build();
-	button3.onClick += (btn) 
+	button3.onClick += (btn)
 	{
 		shiftDir *= 10;
 	};

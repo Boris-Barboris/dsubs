@@ -40,6 +40,11 @@ struct LoginRes
 	bool success;
 	string welcomeMsg;	/// auth failure reason can be here
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
+
+	/// true when the player already has a submarine to reconnect to. In that case
+	/// the server will start streaming kinematic and acoustic data immediately
+	/// after sending this message.
+	bool alreadySpawned;
 }
 
 /// Sent by server when it can offer an explanation on why the connection is
@@ -61,7 +66,6 @@ struct ServerPong
 {
 	__gshared const int g_marshIdx;
 	usecs_t clientTime;		/// clientTime of the offending ClientPing
-	usecs_t serverTime;
 }
 
 /// Sent by client when he wants to download entity database
@@ -77,4 +81,46 @@ struct EntityDbRes
 	PropulsorTemplate[] propulsors;
 	SubmarineTemplate[] controllableSubs;
 	WeaponTemplate[] munition;
+}
+
+/// request to spawn with chosen loadout
+struct SpawnReq
+{
+	__gshared const int g_marshIdx;
+	@MaxLenAttr(64) string submarineName;
+	@MaxLenAttr(64) string propulsorName;
+}
+
+/// server will send it to client right after authorization if the spawn
+/// is still on cooldown.
+struct SpawnRes
+{
+	__gshared const int g_marshIdx;
+
+	/// true when the server has accepted your spawn request
+	bool spawnAllowed;
+
+	/// if spawn was rejected because the player has died recently, this will
+	/// be the time in seconds left until the spawn is allowed again.
+	int secsLeft;
+}
+
+/// When reconnecting to existing submarine, server flushes the submarine
+/// configuration and state to the client.
+struct ReconnectStateRes
+{
+	__gshared const int g_marshIdx;
+	@MaxLenAttr(64) string submarineName;
+	@MaxLenAttr(64) string propulsorName;
+}
+
+/// Server periodically sends the player updates with his submarine position
+struct SubKinematicRes
+{
+	__gshared const int g_marshIdx;
+	/// game world time, at wich this kinematic snapshot was taken
+	usecs_t atTime;
+	Vector2d position;
+	double speed;
+	double rotation;
 }

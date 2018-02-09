@@ -37,6 +37,7 @@ struct HydroForceModel
 }
 
 
+/// snapshot of kinematic parameters of a rigid body
 struct Kinematics
 {
 	vec2d pos = vec2d(0.0, 0.0);
@@ -98,6 +99,13 @@ final class SubmergedRigidBody: PhysicalEntity
 
 	this(Transform2D t)
 	{
+		transform = t;
+		updateFromTransform();
+	}
+
+	/// update kinematics position and rotation from transform
+	void updateFromTransform()
+	{
 		kinet.pos = transform.position;
 		kinet.rotation = transform.rotation;
 	}
@@ -109,7 +117,7 @@ final class SubmergedRigidBody: PhysicalEntity
 		vec2d linAcc1 = linAcc(kinet);
 		double rotAcc1 = rotAcc(kinet);
 		nextKinet.pos += dt * kinet.vel;
-		nextKinet.rotation += dt * kinet.angVel;
+		nextKinet.rotation = clampAngle(nextKinet.rotation + dt * kinet.angVel);
 		nextKinet.vel += dt * linAcc1;
 		nextKinet.angVel += dt * rotAcc1;
 		foreach (force; forces)

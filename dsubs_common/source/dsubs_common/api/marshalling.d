@@ -18,7 +18,7 @@ __gshared immutable MsgDemarshallerT[] g_msgDemarshallers;
 
 shared static this()
 {
-	foreach (int idx, member; Erase!("object", Erase!("dsubs_common", 
+	foreach (int idx, member; Erase!("object", Erase!("dsubs_common",
 		__traits(allMembers, dsubs_common.api.messages))))
 	{
 		mixin("alias symbol = dsubs_common.api.messages." ~ member ~ ";");
@@ -41,7 +41,7 @@ immutable(ubyte)[] marshalMessage(MsgT)(immutable(MsgT)* msg)
 	if (is(MsgT == struct))
 {
 	assert(msg);
-	// 4 bytes on message type, 4 on message size. Then recursively descend into the 
+	// 4 bytes on message type, 4 on message size. Then recursively descend into the
 	// structure type and get the size of the byte buffer
 	int byteCount = 0;
 	getStructMarshLen!MsgT(*msg, byteCount);
@@ -75,7 +75,7 @@ void getStructMarshLen(StructT)(immutable ref StructT ptr, ref int byteCount)
 					throw new MaxLenExceeded(actualLength, maxLen);
 			}
 			static if (isBasicType!(ArrayElementT!MemberT))
-				byteCount += (__traits(getMember, ptr, field).length * 
+				byteCount += (__traits(getMember, ptr, field).length *
 					ArrayElementSize!MemberT).to!int;
 			else static if (is(ArrayElementT!MemberT == struct))
 			{

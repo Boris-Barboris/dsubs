@@ -1,11 +1,17 @@
 module dsubs_server.player;
 
+import std.math;
+
 import core.sync.mutex;
 
+import dsubs_common.api;
 import dsubs_common.containers.array;
+import gfm.math.vector;
 
 import dsubs_server.common;
 import dsubs_server.connection: PlayerConnection;
+import dsubs_server.submarine;
+import dsubs_server.rng;
 
 
 /// This structure hold player information. It is expected to always be
@@ -15,26 +21,79 @@ final class PlayerContext
 	this(string uname)
 	{
 		username = uname;
+		coordShift = vec2d(uniform(-30000.0, 30000.0), uniform(-30000.0, 30000.0));
+		coordRot = uniform(-PI, PI);
+		timeShift = uniform(-200_000_000L, 200_000_000L);
 	}
 
 	const string username;
 	string password;
 	bool isBot = false;
+	bool isAdmin = false;
+
+	// maybe not needed
 	int playerKillCount;
 	int botKillCount;
 	int deathCount;
 
-	/// Instance of PlayerConnection class
+	/// obfuscating reference frame origin shift
+	vec2d coordShift;
+	/// obfuscating reference frame rotation
+	double coordRot;
+	/// obfuscating world time shift
+	usecs_t timeShift;
+
+	/// current active connection to this player, null if none
 	PlayerConnection connection;
+
+	/// player's submarine (null if he doesn't have one yet)
+	Submarine submarine;
+
+	/// send the player kinematic information of his submarine
+	void sendKinematicsUpdate(usecs_t curTime)
+	{
+		if (connection is null || submarine is null)
+			return;
+		vec2d shiftedPos = submarine.transform.position + coordShift;
+		double shiftedRot = submarine.transform.rotation + coordRot;
+		immutable SubKinematicRes msg = SubKinematicRes(
+			curTime + timeShift,
+			Vector2d(shiftedPos.x, shiftedPos.y),
+			submarine.rigidBody.kinet.velLength,
+			shiftedRot);
+		connection.sendMessage(&msg);
+	}
+}
+
+
+/// randomizes position and rotation of a submarine
+void randomizePosition(Submarine sub)
+{
+	double px = uniform(-100.0, 100);
+	double py = uniform(-100.0, 100);
+	double rot = uniform(-PI, PI);
+	sub.transform.position = vec2d(px, py);
+	sub.transform.rotation = rot;
+	sub.rigidBody.updateFromTransform();
 }
 
 
 private __gshared PlayerContext[string] g_players;
+/// mutex that guards g_players
 private shared Mutex g_playerMut;
 
-shared static this()
+/// all unauthorized connections
+private __gshared PlayerConnection[] g_freshConnections;
+/// mutex that guards g_freshConnections
+private shared Mutex g_conMut;
+
+/// initialize all globals, responsible for connection and player context
+/// managment
+void s_initializePlayersCtx()
 {
+	info("Initializing player context mutexts");
 	g_playerMut = new shared Mutex();
+	g_conMut = new shared Mutex();
 }
 
 PlayerContext getOrCreatePlayerCtx(string username)
@@ -55,17 +114,6 @@ PlayerContext getOrCreatePlayerCtx(string username)
 int getPlayerCount()
 {
 	return g_players.length;
-}
-
-private shared Mutex g_conMut;		/// mutex that guards connection containers
-private __gshared
-{
-	PlayerConnection[] g_freshConnections;	/// all unauthorized connections
-}
-
-shared static this()
-{
-	g_conMut = new shared Mutex();
 }
 
 /// add new connection to g_greshConnections array
@@ -110,5 +158,15 @@ void removeConnection(PlayerConnection pc)
 	{
 		synchronized (g_conMut)
 			g_freshConnections.removeFirstUnstable(pc);
+	}
+}
+
+/// apply delegate dlg to each player context
+void forEachPlayer(scope void delegate(PlayerContext) dlg)
+{
+	synchronized (g_playerMut)
+	{
+		foreach (PlayerContext pc; g_players.values)
+			dlg(pc);
 	}
 }

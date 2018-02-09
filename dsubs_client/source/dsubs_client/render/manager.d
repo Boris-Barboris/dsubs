@@ -7,7 +7,6 @@ import core.sync.mutex;
 
 import std.algorithm;
 import std.experimental.logger;
-import std.container.array;
 import std.range;
 
 import derelict.sfml2.graphics;
@@ -38,10 +37,10 @@ class WorldRenderable
 	/// Generally, it may well be some texture instead of window
 	abstract void render(Window wnd);
 
-	/** View is not a model. Component transform is not bound to objects real 
+	/** View is not a model. Component transform is not bound to objects real
 	(server-side) position and may be inter\extrapolated on arbitrary refresh rate.
 	To create an illusion of smoothness, game objects will update their transforms
-	every frame. After update, all renderables will be rendered by all interested 
+	every frame. After update, all renderables will be rendered by all interested
 	cameras. */
 	void update(CameraContext camCtx, long usecsDelta) {}
 }
@@ -50,7 +49,7 @@ class WorldRenderable
 final class CameraContext
 {
 	Camera2D camera;
-	// cached transformations, valid throughout frame
+	// cached transformations, valid throughout whole frame render cycle
 	mat3x3d world2screen;
 	mat3x3d screen2world;
 
@@ -64,6 +63,7 @@ final class CameraContext
 		update();
 	}
 
+	/// update matrix cache, wich is constant throughout rendering update
 	void update()
 	{
 		world2screen = camera.world2screen;
@@ -79,15 +79,13 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 	CameraContext camCtx;
 
 	// z-sorted array of component references
-	Array!WorldRenderable components;
+	WorldRenderable[] components;
 
-	this(scope Window wnd)
+	this(Window wnd)
 	{
 		camCtx = new CameraContext(wnd);
 		components.reserve(512);
 	}
-
-	private MonoTime m_prevDraw;
 
 	void draw(Window wnd, long usecsDelta)
 	{

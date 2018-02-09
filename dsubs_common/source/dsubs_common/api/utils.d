@@ -56,3 +56,4 @@ struct Vector(T, size_t size)
 }
 
 alias Vector2f = Vector!(float, 2);
+alias Vector2d = Vector!(double, 2);

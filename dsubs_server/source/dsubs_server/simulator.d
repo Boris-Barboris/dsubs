@@ -9,7 +9,10 @@ import core.thread;
 import core.sync.mutex;
 import core.sync.rwmutex;
 
+import dsubs_common.api.constants;
+
 import dsubs_server.common;
+import dsubs_server.player;
 import dsubs_server.dynamics;
 
 
@@ -48,6 +51,7 @@ private void simulationLoop()
 {
 	try
 	{
+		usecs_t worldTime = 0;
 		while (!stopRequested)
 		{
 			lastLoopStart = MonoTime.currTime();
@@ -55,6 +59,9 @@ private void simulationLoop()
 			{
 				// physics integration. All rigid bodies are moved.
 				integratePBodies(1.0f, 0.25f);
+				worldTime += 1_000_000;
+				// need to send updated submarine coordinates to players
+				forEachPlayer((pctx) {pctx.sendKinematicsUpdate(worldTime); });
 			}
 			auto now = MonoTime.currTime();
 			Duration toSleep = seconds(1) - (now - lastLoopStart);
