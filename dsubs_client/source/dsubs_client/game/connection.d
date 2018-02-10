@@ -48,16 +48,18 @@ final class ServerConnection
 		// setup handlers
 		m_handlers.length = g_msgDemarshallers.length;
 		m_handlers[ServerStatusRes.g_marshIdx] = &h_serverStatus;
-		m_handlers[LoginRes.g_marshIdx] = &h_loginRes;
+		m_handlers[LoginRes.g_marshIdx] = &h_generic!(LoginRes, "onLoginRes");
 		m_handlers[SessionClosedRes.g_marshIdx] = &h_sessionClosed;
-		m_handlers[EntityDbRes.g_marshIdx] = &h_entityDbRes;
+		m_handlers[EntityDbRes.g_marshIdx] = &h_generic!(EntityDbRes, "onEntityDbRecieved");
+		m_handlers[SpawnRes.g_marshIdx] = &h_generic!(SpawnRes, "onSpawnRes");
+		m_handlers[SubKinematicRes.g_marshIdx] = &h_generic!(SubKinematicRes, "onSubKinematicRes");
 
 		do_connect();
 	}
 
 	/// Close connection and do not reconnect. Returns true when actual
 	/// socket closing was performed by this call.
-	bool close(string reason = "reason unknown")
+	bool close(string reason = "unspecified")
 	{
 		if (!cas(&m_closed, false, true))
 			return false;
@@ -93,13 +95,17 @@ final class ServerConnection
 		onConnectionSuccess.clear();
 		onLoginRes.clear();
 		onEntityDbRecieved.clear();
+		onSpawnRes.clear();
+		onSubKinematicRes.clear();
 	}
 
-	// Subscribe to these events. They all are fired while holding m_mutex.
+	// Subscribe to these events. They are all fired while holding m_mutex.
 	Event!(void delegate(string reason)) onConnectionClosed;
 	Event!(void delegate(ServerStatusRes res)) onConnectionSuccess;
 	Event!(void delegate(LoginRes res)) onLoginRes;
 	Event!(void delegate(EntityDbRes res)) onEntityDbRecieved;
+	Event!(void delegate(SpawnRes res)) onSpawnRes;
+	Event!(void delegate(SubKinematicRes res)) onSubKinematicRes;
 
 private:
 
@@ -178,7 +184,7 @@ private:
 		}
 		catch (Exception e)
 		{
-			error(e.msg);
+			error(e.toString());
 			reset(e.msg);
 		}
 	}
@@ -213,7 +219,7 @@ private:
 		}
 		catch (Exception e)
 		{
-			error("TCP writer thread crashed: ", e.msg);
+			error("TCP writer thread crashed: ", e.toString());
 		}
 	}
 
@@ -228,12 +234,12 @@ private:
 			onConnectionSuccess(res);
 	}
 
-	void h_loginRes(ubyte[] msgBody)
+	void h_generic(MsgT, string eventName)(ubyte[] msgBody)
 	{
-		LoginRes res;
+		MsgT res;
 		demarshalMessage(&res, msgBody);
 		synchronized(m_mutex)
-			onLoginRes(res);
+			__traits(getMember, this, eventName)(res);
 	}
 
 	void h_sessionClosed(ubyte[] msgBody)
@@ -241,13 +247,5 @@ private:
 		SessionClosedRes res;
 		demarshalMessage(&res, msgBody);
 		throw new Exception(res.reason);
-	}
-
-	void h_entityDbRes(ubyte[] msgBody)
-	{
-		EntityDbRes res;
-		demarshalMessage(&res, msgBody);
-		synchronized(m_mutex)
-			onEntityDbRecieved(res);
 	}
 }

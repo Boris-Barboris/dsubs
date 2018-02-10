@@ -15,7 +15,6 @@ import dsubs_common.api;
 
 import dsubs_client.core.utils;
 import dsubs_client.game;
-import dsubs_client.game.mainmenu;
 import dsubs_client.gui;
 
 
@@ -69,10 +68,10 @@ void setupLoadoutScreen()
 		hullButtons ~= hullSelector;
 		hullSelector.onClick += (btn)
 			{
-				if (curSelectedSub is null || curSelectedSub.templ.name != hullname)
+				if (curSelectedSub is null || curSelectedSub.tmpl.name != hullname)
 				{
-					Game.worldManager.components.clear();
-					curSelectedSub = new Submarine(0, Game.entityManager, hullname,
+					Game.worldManager.components.length = 0;
+					curSelectedSub = new Submarine(Game.entityManager, hullname,
 						curSelectedPropulsor);
 					curSelectedSub.transform.rotation = -PI_2;
 					Game.worldManager.components ~= curSelectedSub;
@@ -117,6 +116,44 @@ void setupLoadoutScreen()
 		size(vec2i(200, BTN_SIZE * hulls.length + hulls.length)).build;
 	ScrollBar propsScrollbar = new ScrollBar(propsDiv);
 
+
+	Button startButton = builder(new Button(ButtonType.ASYNC)).fontSize(45).
+		htextAlign(HTextAlign.CENTER).content("Start").fixedSize(vec2i(1, 70)).
+		build();
+	startButton.onClick += (btn)
+		{
+			if (curSelectedSub is null)
+			{
+				hullDescriptionBox.content = "You must select a submarine!";
+				startButton.signalClickEnd();
+				return;
+			}
+			// we can send spawn request to the server
+			immutable(SpawnReq)* req = new SpawnReq(
+				curSelectedSub.tmpl.name, curSelectedPropulsor);
+			trace("Requesting spawn: ", *req);
+			Game.serverConnection.sendMessage(req);
+		};
+	Game.serverConnection.onSpawnRes += (SpawnRes res)
+		{
+			if (res.spawnAllowed)
+			{
+				startButton.signalClickEnd();
+				/// TRANSITION TO SIMULATION GAME STATE
+
+				return;
+			}
+			if (res.secsLeft >= 0)
+			{
+				hullDescriptionBox.content = "Respawn available in " ~
+					res.secsLeft.to!string ~ " seconds";
+				Game.delay(() { startButton.signalClickEnd(); },
+					seconds(res.secsLeft + 1));
+			}
+			else
+				startButton.signalClickEnd();
+		};
+
 	auto prepareGui = hDiv([
 		builder(vDiv([
 					builder(new Label()).content("Available submarines:").
@@ -137,7 +174,8 @@ void setupLoadoutScreen()
 					builder(new Label()).content("Available propulsors:").
 						fontSize(BTN_FONT).fontColor(HINT_COLOR).
 						fixedSize(vec2i(1, 30)).build,
-					propsScrollbar
+					propsScrollbar,
+					startButton
 				])
 			).fraction(0.25f).build(),
 	]);

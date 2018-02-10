@@ -74,7 +74,7 @@ interface PropulsorPrototype
 }
 
 /// global map of all existing propulsor prototypes
-PropulsorPrototype[string] g_propulsors;
+__gshared PropulsorPrototype[string] g_propulsors;
 
 class BasicPropulsorPrototype: PropulsorPrototype
 {
@@ -154,7 +154,7 @@ interface SubmarinePrototype
 }
 
 /// global map of all existing submarine prototypes
-SubmarinePrototype[string] g_submarines;
+__gshared SubmarinePrototype[string] g_submarines;
 
 class BasicSubmarinePrototype: SubmarinePrototype
 {

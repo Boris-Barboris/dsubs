@@ -129,7 +129,7 @@ class GuiElement: IInputReciever
 	}
 
 	/** Called by parent when it wants so set fixedDim axis size to fixedDimSize
-	but wants the element to set the other dimention according to it's content size. 
+	but wants the element to set the other dimention according to it's content size.
 	Returns content size. */
 	package int fitContent(Axis fixedDim, int fixedDimSize)
 	{
@@ -154,10 +154,10 @@ class GuiElement: IInputReciever
 
 	protected sfRenderStates m_sfRst;		// stores transform
 	protected sfRectangleShape* m_sfRect;	// background rectangle
-	
+
 	private sfColor m_backgroundColor;
 
-	mixin FinalGetSet!(sfColor, "backgroundColor", 
+	mixin FinalGetSet!(sfColor, "backgroundColor",
 		"sfRectangleShape_setFillColor(m_sfRect, rhs);");
 
 	/// set to true in order to render background

@@ -17,7 +17,7 @@ import dsubs_client.render.manager;
 
 import dsubs_client.game.connection;
 public import dsubs_client.game.entities;
-import dsubs_client.game.mainmenu;
+public import dsubs_client.game.mainmenu;
 
 
 /// Namespace for globals wich represent the game state.
@@ -81,7 +81,7 @@ __gshared:
 		serverConnection.clearHandlers();
 		inputRouter.clearFocused();
 		guiManager.clearPanels();
-		worldManager.components.clear();
+		worldManager.components.length = 0;
 	}
 
 	/// execute delegate 'what' after 'after' time interval, while holding

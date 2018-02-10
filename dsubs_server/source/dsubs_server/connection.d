@@ -33,7 +33,7 @@ final class PlayerConnection
 		void delegate(ubyte[])[] m_handlers;
 	}
 
-	/// not null then connection is authorized
+	/// not null if connection is authorized
 	PlayerContext playerCtx;
 
 	this(Socket sock)
@@ -156,7 +156,7 @@ private:
 		}
 		catch (Exception e)
 		{
-			trace("Exception in reader: ", e.msg);
+			trace("Exception in reader: ", e.toString());
 			close(e.msg);
 		}
 	}
@@ -188,7 +188,7 @@ private:
 		}
 		catch (Exception e)
 		{
-			error("TCP writer thread throwed: ", e.msg);
+			error("TCP writer thread throwed: ", e.toString());
 			doClose(e.msg);
 		}
 	}
@@ -263,6 +263,7 @@ private:
 		enforce(playerCtx.submarine is null, "Player already has a submarine spawned");
 		SpawnReq req;
 		demarshalMessage(&req, msgBody);
+		trace(req);
 
 		// try to build a submarine
 		Submarine sub = buildSubFromLoadout(req, playerCtx);
@@ -275,6 +276,7 @@ private:
 		synchronized(g_simMut.reader)
 		{
 			// finalize submarine and register it in a simulator
+			info("Bootstrapping new submarine for ", username, req);
 			sub.bootstrap();
 			playerCtx.submarine = sub;
 		}

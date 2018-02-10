@@ -22,7 +22,7 @@ import dsubs_client.math.transform;
 class Propulsor
 {
 	mixin Readonly!(Transform, "transform");
-	mixin Readonly!(const(PropulsorTemplate*), "templ");
+	mixin Readonly!(const(PropulsorTemplate*), "tmpl");
 
 	protected ConvexShape m_shape;
 	protected double m_targetThrottle;
@@ -32,7 +32,7 @@ class Propulsor
 	this(EntityManager man, string propName)
 	{
 		m_transform = new Transform();
-		m_templ = man.m_propTemplates[propName];
+		m_tmpl = man.m_propTemplates[propName];
 		m_shape = man.m_propulsorShapes[propName];
 	}
 
@@ -147,16 +147,14 @@ private Propulsor createPropulsor(EntityManager man, string propName)
 
 final class Submarine: WorldRenderable
 {
-	mixin Readonly!(id_t, "id");
-	mixin Readonly!(const(SubmarineTemplate*), "templ");
+	mixin Readonly!(const(SubmarineTemplate*), "tmpl");
 
 	private Propulsor[] m_propulsors;
 	private ConvexShape[] m_shapes;
 
-	this(id_t id, EntityManager man, string hullName, string propName)
+	this(EntityManager man, string hullName, string propName)
 	{
-		m_id = id;
-		m_templ = man.m_submarineTemplates[hullName];
+		m_tmpl = man.m_submarineTemplates[hullName];
 		m_shapes = man.m_submarineShapes[hullName];
 		setPropulsor(man, propName);
 	}
@@ -171,11 +169,11 @@ final class Submarine: WorldRenderable
 	{
 		foreach (prop; m_propulsors)
 			prop.renderBack(wnd);
-		for (int i = 0; i < m_templ.elevatedHullShapeIdx; i++)
+		for (int i = 0; i < m_tmpl.elevatedHullShapeIdx; i++)
 			m_shapes[i].render(wnd, transform.sfWorld);
 		foreach (prop; m_propulsors)
 			prop.renderFront(wnd);
-		for (int i = m_templ.elevatedHullShapeIdx; i < m_shapes.length; i++)
+		for (int i = m_tmpl.elevatedHullShapeIdx; i < m_shapes.length; i++)
 			m_shapes[i].render(wnd, transform.sfWorld);
 	}
 
@@ -187,7 +185,7 @@ final class Submarine: WorldRenderable
 			transform.removeChild(p.transform);
 		m_propulsors.length = 0;
 		// setup propulsors
-		foreach (mount; m_templ.propulsionMounts)
+		foreach (mount; m_tmpl.propulsionMounts)
 		{
 			Propulsor p = createPropulsor(man, propName);
 			p.transform.scale = vec2d(mount.scale, mount.scale);
@@ -202,7 +200,7 @@ final class Submarine: WorldRenderable
 }
 
 
-/// Collection of shapes and templates, created from entity database
+/// Collection of shapes and templates, created from the entity database
 final class EntityManager
 {
 	private ConvexShape[string] m_propulsorShapes;
