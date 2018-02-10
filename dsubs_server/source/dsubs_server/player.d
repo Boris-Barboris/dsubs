@@ -56,12 +56,12 @@ final class PlayerContext
 			return;
 		vec2d shiftedPos = submarine.transform.position + coordShift;
 		double shiftedRot = submarine.transform.rotation + coordRot;
-		immutable SubKinematicRes msg = SubKinematicRes(
+		immutable(SubKinematicRes)* msg = new SubKinematicRes(KinematicSnapshot(
 			curTime + timeShift,
 			Vector2d(shiftedPos.x, shiftedPos.y),
 			submarine.rigidBody.kinet.velLength,
-			shiftedRot);
-		connection.sendMessage(&msg);
+			shiftedRot));
+		connection.sendMessage(msg);
 	}
 }
 

@@ -23,8 +23,7 @@ import dsubs_client.render.camera;
 /// Reference frame hierarchies are implemented using transform parenting.
 class WorldRenderable
 {
-	private Transform m_transform;
-	@property Transform transform() { return m_transform; }
+	mixin Readonly!(Transform, "transform");
 
 	/// yes, we're actually 2.5D
 	float depth = 0.0f;
@@ -78,7 +77,7 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 	// Let's say we always have one camera spanning whole window.
 	CameraContext camCtx;
 
-	// z-sorted array of component references
+	/// everything that will be rendered in draw call
 	WorldRenderable[] components;
 
 	this(Window wnd)
@@ -90,7 +89,7 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 	void draw(Window wnd, long usecsDelta)
 	{
 		camCtx.update();
-		// TODO: maybe spread load on thread pool
+		// TODO: maybe spread load on a thread pool
 		foreach (comp; components)
 			comp.update(camCtx, usecsDelta);
 		// and sort them in Z-order, deepest components first

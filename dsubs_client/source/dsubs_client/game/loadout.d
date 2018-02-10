@@ -15,16 +15,21 @@ import dsubs_common.api;
 
 import dsubs_client.core.utils;
 import dsubs_client.game;
+import dsubs_client.game.simulation;
 import dsubs_client.gui;
+
+
+private
+{
+	immutable int BTN_SIZE = 26;
+	immutable int BTN_FONT = 20;
+	immutable sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
+}
 
 
 /// setup game state to present loadout screen
 void setupLoadoutScreen()
 {
-	enum int BTN_SIZE = 26;
-	enum int BTN_FONT = 20;
-	enum sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
-
 	Game.clearEntities();
 
 	if (!Game.serverConnection.connected)
@@ -140,7 +145,7 @@ void setupLoadoutScreen()
 			{
 				startButton.signalClickEnd();
 				/// TRANSITION TO SIMULATION GAME STATE
-
+				setupSimulationState(curSelectedSub);
 				return;
 			}
 			if (res.secsLeft >= 0)

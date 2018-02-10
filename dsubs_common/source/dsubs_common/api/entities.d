@@ -83,3 +83,12 @@ struct WeaponTemplate
 	/// hull model. First elements are drawn first.
 	ConvexPolygon[] hullModel;
 }
+
+/// Some rigid body kinematics at specific time
+struct KinematicSnapshot
+{
+	usecs_t atTime;
+	Vector2d position;
+	double speed;
+	double rotation;
+}

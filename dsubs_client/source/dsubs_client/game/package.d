@@ -81,6 +81,7 @@ __gshared:
 		serverConnection.clearHandlers();
 		inputRouter.clearFocused();
 		guiManager.clearPanels();
+		render.clearHandlers();
 		worldManager.components.length = 0;
 	}
 

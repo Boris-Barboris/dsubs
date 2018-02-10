@@ -77,6 +77,14 @@ final class Render
 	Event!(void delegate(long usecsDelta)) onPreGuiRender;
 	Event!(void delegate(long usecsDelta)) onPostRender;
 
+	/// clear handlers from on..Render events
+	void clearHandlers()
+	{
+		onPreRender.clear();
+		onPreGuiRender.clear();
+		onPostRender.clear();
+	}
+
 	private float m_avgFps = 0.0f;
 	@property float avgFps() const { return m_avgFps; }
 	enum int FPS_UPDATE_FREQ = 60;

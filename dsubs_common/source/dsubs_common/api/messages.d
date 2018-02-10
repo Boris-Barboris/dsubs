@@ -118,9 +118,5 @@ struct ReconnectStateRes
 struct SubKinematicRes
 {
 	__gshared const int g_marshIdx;
-	/// game world time, at wich this kinematic snapshot was taken
-	usecs_t atTime;
-	Vector2d position;
-	double speed;
-	double rotation;
+	KinematicSnapshot snap;
 }
