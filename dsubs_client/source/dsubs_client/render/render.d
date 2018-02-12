@@ -103,9 +103,8 @@ final class Render
 			{
 				m_window.resetView();
 				sfRenderWindow_clear(m_window.wnd, clearColor);
+				synchronized(mutex)
 				{
-					mutex.lock();
-					scope(exit) mutex.unlock();
 					onPreRender(usecsDelta);
 					if (m_router)
 						m_router.simulateMouseMove();
