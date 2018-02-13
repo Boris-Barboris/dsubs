@@ -2,6 +2,7 @@ module dsubs_common.api.utils;
 
 import std.conv;
 import std.traits;
+import std.meta;
 
 import gfm.math.vector;
 
@@ -42,8 +43,9 @@ class MaxLenExceeded: Exception
 	}
 }
 
-/// reflection-friendly POD vector
-struct Vector(T, size_t size)
+/// Reflection-friendly POD vector. Needed because gfm vector uses anonymous union
+/// wich i don't even want to bother to reflect correctly
+struct PODVector(T, size_t size)
 {
 	T[size] data;
 
@@ -55,5 +57,5 @@ struct Vector(T, size_t size)
 	}
 }
 
-alias Vector2f = Vector!(float, 2);
-alias Vector2d = Vector!(double, 2);
+alias Vector2f = PODVector!(float, 2);
+alias Vector2d = PODVector!(double, 2);
