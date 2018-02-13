@@ -55,6 +55,12 @@ struct PODVector(T, size_t size)
 		foreach (i, arg; args)
 			data[i] = arg;
 	}
+
+	/// reinterpret cast to gfm vector
+	Vector!(T, size) toGfm() const
+	{
+		return *cast(Vector!(T, size)*) &this;
+	}
 }
 
 alias Vector2f = PODVector!(float, 2);

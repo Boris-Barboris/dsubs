@@ -48,9 +48,6 @@ class WorldRenderable
 final class CameraContext
 {
 	Camera2D camera;
-	// cached transformations, valid throughout whole frame render cycle
-	mat3x3d world2screen;
-	mat3x3d screen2world;
 
 	// TODO: here is the place for some spacial optimization structures that are
 	// related to the camera itself
@@ -59,14 +56,6 @@ final class CameraContext
 	this(scope Window wnd)
 	{
 		camera = new Camera2D(vec2ui(wnd.width, wnd.height));
-		update();
-	}
-
-	/// update matrix cache, wich is constant throughout rendering update
-	void update()
-	{
-		world2screen = camera.world2screen;
-		screen2world = camera.screen2world;
 	}
 }
 
@@ -88,7 +77,6 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 
 	void draw(Window wnd, long usecsDelta)
 	{
-		camCtx.update();
 		// TODO: maybe spread load on a thread pool
 		foreach (comp; components)
 			comp.update(camCtx, usecsDelta);

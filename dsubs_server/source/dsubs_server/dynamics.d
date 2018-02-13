@@ -7,6 +7,7 @@ import core.sync.mutex;
 import dsubs_common.containers.array;
 import dsubs_common.math;
 
+import dsubs_server.common;
 import dsubs_server.threading;
 
 
@@ -60,7 +61,10 @@ struct Kinematics
 		AoA = angleDist(rotation, courseAngle(vel));
 		velSquaredLength = vel.squaredLength;
 		velLength = sqrt(velSquaredLength);
-		velNormalized = vel.normalized;
+		if (velLength > 0.0)
+			velNormalized = vel.normalized;
+		else
+			velNormalized = vec2d(0.0, 0.0);
 		velRotation = courseAngle(velNormalized);
 		double velLeftRotation = velRotation + PI_2;
 		velLeft = vec2d(-sin(velLeftRotation), cos(velLeftRotation));
@@ -108,6 +112,8 @@ final class SubmergedRigidBody: PhysicalEntity
 	{
 		kinet.pos = transform.position;
 		kinet.rotation = transform.rotation;
+		kinet.updateCache();
+		//trace(kinet);
 	}
 
 	/// physics update step, Eulers method
@@ -124,6 +130,7 @@ final class SubmergedRigidBody: PhysicalEntity
 			force.propagateInTime(dt);
 		kinet = nextKinet;
 		kinet.updateCache();
+		//trace(kinet);
 		// update transform
 		transform.position = kinet.pos;
 		transform.rotation = kinet.rotation;

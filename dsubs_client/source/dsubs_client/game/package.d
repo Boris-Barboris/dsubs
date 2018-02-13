@@ -5,6 +5,7 @@ import std.parallelism;
 
 import core.sync.mutex;
 import core.thread;
+import core.memory: GC;
 
 import dsubs_common.api;
 
@@ -16,6 +17,7 @@ import dsubs_client.render.render;
 import dsubs_client.render.manager;
 
 import dsubs_client.game.connection;
+import dsubs_client.game.simulation;
 public import dsubs_client.game.entities;
 public import dsubs_client.game.mainmenu;
 
@@ -39,6 +41,9 @@ __gshared:
 	// entity databases in different forms
 	EntityDbRes entityDb;
 	EntityManager entityManager;
+
+	/// simulator state
+	SimulatorState simState;
 
 	/// start the game
 	static void start()
@@ -83,6 +88,9 @@ __gshared:
 		guiManager.clearPanels();
 		render.clearHandlers();
 		worldManager.components.length = 0;
+		Game.simState = null;
+		// let's free some unneeded resources
+		GC.collect();
 	}
 
 	/// execute delegate 'what' after 'after' time interval, while holding

@@ -12,9 +12,12 @@ struct BodySnapshot
 {
 	usecs_t atTime;
 	vec2d position;
+	vec2d velocity;
 	double rotation;
-	double speed;
+	double angVel;
 }
+
+static assert (KinematicSnapshot.sizeof == BodySnapshot.sizeof);
 
 
 /// Trace of rigid body kinematics that is updated periodically from the server
@@ -41,19 +44,23 @@ struct KinematicTrace
 
 	/// Append new snapshot to the trace. If the internal buffer overflows,
 	/// current state jumps forward.
-	void appendSnapshot(KinematicSnapshot snapshot)
+	void appendSnapshot(ref const KinematicSnapshot snapshot)
 	{
 		if (len == maxLen)
 		{
+			// render loop is too slow, we need to push this body forward in time
+			// to keep up with the stream of updates coming from the server
 			int newOldest = (oldest + 1) % maxLen;
 			curState = trace[newOldest];
 			curTime = curState.atTime;
-			trace[oldest] = cast(BodySnapshot) snapshot;
+			trace[oldest] = *cast(BodySnapshot*) &snapshot;
 			oldest = newOldest;
 		}
 		else
 		{
-			trace[(oldest + len) % maxLen] = cast(BodySnapshot) snapshot;
+			if (len == 0)
+				curTime = snapshot.atTime;
+			trace[(oldest + len) % maxLen] = *cast(BodySnapshot*) &snapshot;
 			len++;
 		}
 	}
@@ -98,11 +105,27 @@ struct KinematicTrace
 	private void updateResult(int i1, int i2)
 	{
 		double t = (curTime - trace[i1].atTime) /
-			cast(double)(curTime[i2].atTime - curTime[i1].atTime);
+			cast(double) (trace[i2].atTime - trace[i1].atTime);
 		double t_2 = t * t;
 		double t_3 = t_2 * t;
-		curState.position = (2 * t_3 - 3 * t_2 + 1) * curTime[i1].position +
-			(t_3 - 2 * t_2 + t) * curTime[i1].speed
+
+		auto chspline(T)(T p0, T p1, T m0, T m1)
+		{
+			return (2 * t_3 - 3 * t_2 + 1) * p0 +
+			(t_3 - 2 * t_2 + t) * m0 +
+			(-2 * t_3 + 3 * t_2) * p1 +
+			(t_3 - t_2) * m1;
+		}
+
+		curState.position = chspline(trace[i1].position, trace[i2].position,
+			trace[i1].velocity, trace[i2].velocity);
+		curState.rotation = chspline(trace[i1].rotation, trace[i2].rotation,
+			trace[i1].angVel, trace[i2].angVel);
+		// simple linear interpolation for velocities
+		curState.velocity = trace[i1].velocity +
+			t * (trace[i2].velocity - trace[i1].velocity);
+		curState.angVel = trace[i1].angVel +
+			t * (trace[i2].angVel - trace[i1].angVel);
 	}
 
 }

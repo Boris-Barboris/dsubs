@@ -26,7 +26,13 @@ private
 }
 
 
-/// start game
+class SimulatorState
+{
+	Submarine playerSub;
+}
+
+
+/// setup the state of the game itself
 void setupSimulationState(Submarine playerSub)
 {
 	Game.clearEntities();
@@ -39,10 +45,20 @@ void setupSimulationState(Submarine playerSub)
 		return;
 	}
 
+	Game.simState = new SimulatorState();
+	Game.simState.playerSub = playerSub;
+	Game.worldManager.components ~= playerSub;
+
 	Game.serverConnection.onConnectionClosed += (string reason)
 	{
 		error("Connection was closed, reason: ", reason);
 		// TRANSITION TO MAIN MENU
 		setupMainMenu();
+	};
+
+	Game.serverConnection.onSubKinematicRes += (SubKinematicRes res)
+	{
+		Game.simState.playerSub.updateKinematics(res.snap);
+		Game.worldManager.camCtx.camera.center = res.snap.position.toGfm;
 	};
 }

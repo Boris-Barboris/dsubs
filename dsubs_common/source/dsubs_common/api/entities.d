@@ -89,6 +89,7 @@ struct KinematicSnapshot
 {
 	usecs_t atTime;
 	Vector2d position;
-	double speed;
+	Vector2d velocity;
 	double rotation;
+	double angVel;
 }

@@ -58,13 +58,15 @@ private void simulationLoop()
 			synchronized (g_simMut.writer)
 			{
 				// physics integration. All rigid bodies are moved.
-				integratePBodies(1.0f, 0.25f);
-				worldTime += 1_000_000;
+				integratePBodies(0.25f, 0.25f);
+				worldTime += 250_000;
 				// need to send updated submarine coordinates to players
 				forEachPlayer((pctx) { pctx.sendKinematicsUpdate(worldTime); });
 			}
 			auto now = MonoTime.currTime();
-			Duration toSleep = seconds(1) - (now - lastLoopStart);
+			Duration toSleep = msecs(249) - (now - lastLoopStart);
+			if (toSleep < Duration.zero)
+				toSleep = Duration.zero;
 			Thread.sleep(toSleep);
 		}
 		info("Exiting simulation loop, stopRequested flag is set");

@@ -18,6 +18,8 @@ import dsubs_client.render.convex;
 import dsubs_client.render.manager;
 import dsubs_client.math.transform;
 
+import dsubs_client.game.kinetic;
+
 
 class Propulsor
 {
@@ -151,6 +153,7 @@ final class Submarine: WorldRenderable
 
 	private Propulsor[] m_propulsors;
 	private ConvexShape[] m_shapes;
+	private KinematicTrace trace;
 
 	this(EntityManager man, string hullName, string propName)
 	{
@@ -159,8 +162,21 @@ final class Submarine: WorldRenderable
 		setPropulsor(man, propName);
 	}
 
+	void updateKinematics(ref const KinematicSnapshot snap)
+	{
+		trace.appendSnapshot(snap);
+	}
+
 	override void update(CameraContext camCtx, long usecsDelta)
 	{
+		if (trace.canInterpolate)
+		{
+			trace.moveForward(usecsDelta);
+			// update transform from the trace
+			auto snapshot = trace.result;
+			transform.position = snapshot.position;
+			transform.rotation = snapshot.rotation;
+		}
 		foreach (prop; m_propulsors)
 			prop.update(camCtx, usecsDelta);
 	}
