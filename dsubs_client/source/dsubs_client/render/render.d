@@ -138,6 +138,7 @@ final class Render
 		catch (Throwable err)
 		{
 			error("Render loop crashed: ", err.toString);
+			assert(0);
 		}
 		trace("Exiting render loop, stop_flag is ", m_stopFlag);
 	}

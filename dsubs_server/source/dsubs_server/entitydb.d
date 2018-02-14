@@ -88,6 +88,7 @@ class BasicPropulsorPrototype: PropulsorPrototype
 		BasicPropulsor res = new BasicPropulsor();
 		res.posThrustK = posThrustK;
 		res.negThrustK = negThrustK;
+		res.prototypeName = tmpl.name;
 		return res;
 	}
 
@@ -168,7 +169,7 @@ class BasicSubmarinePrototype: SubmarinePrototype
 
 	Submarine build(PlayerContext pc) const
 	{
-		Submarine res = new Submarine(pc);
+		Submarine res = new Submarine(pc, tmpl.name);
 		res.rigidBody.moi = moi;
 		res.rigidBody.mass = mass;
 		res.rigidBody.hydroModel.Cd0 = Cd0;

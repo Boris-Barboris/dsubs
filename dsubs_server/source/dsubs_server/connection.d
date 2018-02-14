@@ -237,13 +237,18 @@ private:
 		if (confirmConnection(this))
 		{
 			m_authorized = true;
-			bool alreadySpawned = playerCtx.submarine !is null;
+			Submarine sub = playerCtx.submarine;
+			bool alreadySpawned = sub !is null;
 			immutable LoginRes res = LoginRes(true, "Welcome to dsubs server",
 				g_commonEntityDbHash, alreadySpawned);
 			sendBytes(marshalMessage(&res));
 			if (alreadySpawned)
 			{
-				// TODO: send state
+				immutable ReconnectStateRes rcres = ReconnectStateRes(
+					sub.prototypeName,
+					sub.propulsor.prototypeName);
+				trace("User already spawned, sending reconnect state: ", rcres);
+				sendBytes(marshalMessage(&rcres));
 			}
 		}
 		else

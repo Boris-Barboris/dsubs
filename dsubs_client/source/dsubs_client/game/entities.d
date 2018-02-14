@@ -15,7 +15,7 @@ import dsubs_common.api;
 import dsubs_client.core.utils;
 import dsubs_client.core.window;
 import dsubs_client.render.convex;
-import dsubs_client.render.manager;
+import dsubs_client.render.worldmanager;
 import dsubs_client.math.transform;
 
 import dsubs_client.game.kinetic;

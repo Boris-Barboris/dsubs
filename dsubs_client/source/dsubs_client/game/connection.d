@@ -53,6 +53,7 @@ final class ServerConnection
 		m_handlers[EntityDbRes.g_marshIdx] = &h_generic!(EntityDbRes, "onEntityDbRecieved");
 		m_handlers[SpawnRes.g_marshIdx] = &h_generic!(SpawnRes, "onSpawnRes");
 		m_handlers[SubKinematicRes.g_marshIdx] = &h_generic!(SubKinematicRes, "onSubKinematicRes");
+		m_handlers[ReconnectStateRes.g_marshIdx] = &h_generic!(ReconnectStateRes, "onReconnectStateRes");
 
 		do_connect();
 	}
@@ -97,6 +98,7 @@ final class ServerConnection
 		onEntityDbRecieved.clear();
 		onSpawnRes.clear();
 		onSubKinematicRes.clear();
+		onReconnectStateRes.clear();
 	}
 
 	// Subscribe to these events. They are all fired while holding m_mutex.
@@ -106,6 +108,7 @@ final class ServerConnection
 	Event!(void delegate(EntityDbRes res)) onEntityDbRecieved;
 	Event!(void delegate(SpawnRes res)) onSpawnRes;
 	Event!(void delegate(SubKinematicRes res)) onSubKinematicRes;
+	Event!(void delegate(ReconnectStateRes res)) onReconnectStateRes;
 
 private:
 

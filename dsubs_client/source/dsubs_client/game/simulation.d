@@ -4,7 +4,6 @@ import std.algorithm;
 import std.array;
 import std.conv: to;
 import std.math;
-import std.utf;
 import std.experimental.logger;
 
 import core.thread;
@@ -16,14 +15,7 @@ import dsubs_common.api;
 import dsubs_client.core.utils;
 import dsubs_client.game;
 import dsubs_client.gui;
-
-
-private
-{
-	immutable int BTN_SIZE = 26;
-	immutable int BTN_FONT = 20;
-	immutable sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
-}
+import dsubs_client.game.cameracontroller;
 
 
 class SimulatorState
@@ -48,6 +40,7 @@ void setupSimulationState(Submarine playerSub)
 	Game.simState = new SimulatorState();
 	Game.simState.playerSub = playerSub;
 	Game.worldManager.components ~= playerSub;
+	Game.worldManager.camCtx.camera.zoom = 10.0;
 
 	Game.serverConnection.onConnectionClosed += (string reason)
 	{
@@ -57,7 +50,6 @@ void setupSimulationState(Submarine playerSub)
 	};
 
 	// set up submarine coordinate update
-
 	bool camSetOnSub = false;
 	Game.serverConnection.onSubKinematicRes += (SubKinematicRes res)
 	{
@@ -68,4 +60,7 @@ void setupSimulationState(Submarine playerSub)
 			camSetOnSub = true;
 		}
 	};
+
+	// set up camera
+	Game.worldManager.mouseReceivers ~= new CameraController();
 }

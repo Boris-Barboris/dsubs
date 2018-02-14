@@ -87,7 +87,7 @@ __gshared:
 		inputRouter.clearFocused();
 		guiManager.clearPanels();
 		render.clearHandlers();
-		worldManager.components.length = 0;
+		worldManager.clear();
 		Game.simState = null;
 		// let's free some unneeded resources
 		GC.collect();

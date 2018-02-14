@@ -20,11 +20,15 @@ final class Submarine
 
 	PlayerContext owner;
 
+	/// name of the submarine type
+	string prototypeName;
+
 	/// creates transform and rigid body
-	this(PlayerContext owner)
+	this(PlayerContext owner, string prototypeName)
 	{
 		assert(owner !is null);
 		this.owner = owner;
+		this.prototypeName = prototypeName;
 		transform = new Transform2D();
 		rigidBody = new SubmergedRigidBody(transform);
 	}

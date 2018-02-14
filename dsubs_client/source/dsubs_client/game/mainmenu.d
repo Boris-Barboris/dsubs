@@ -14,15 +14,15 @@ import dsubs_common.api;
 import dsubs_client.core.utils;
 import dsubs_client.game;
 import dsubs_client.game.loadout;
+import dsubs_client.game.simulation;
 import dsubs_client.gui;
-
-
-private __gshared bool canLogin = false;
 
 
 void setupMainMenu()
 {
-	canLogin = false;
+	bool canLogin = false;
+	bool alreadySpawned = false;
+	ReconnectStateRes recState;
 
 	enum int MENU_BUTTON_FONTSIZE = 50;
 	enum int LOGIN_FONT_SIZE = 22;
@@ -85,9 +85,15 @@ void setupMainMenu()
 
 	Game.serverConnection.onConnectionClosed += (string reason)
 	{
-		canLogin = false;
+		canLogin = alreadySpawned = false;
 		infoLabel.content = "Connection closed: " ~ reason;
 		connectButton.signalClickEnd();
+	};
+
+	Game.serverConnection.onReconnectStateRes += (ReconnectStateRes res)
+	{
+		trace("Reconnect state message: ", res);
+		recState = res;
 	};
 
 	Game.serverConnection.onLoginRes += (LoginRes res)
@@ -96,11 +102,15 @@ void setupMainMenu()
 		{
 			infoLabel.content = res.welcomeMsg;
 			canLogin = false;
-			Game.delay( () {
-					infoLabel.content = "Downloading entity database";
-					Game.serverConnection.sendMessage(
-						new immutable EntityDbReq());
-				}, msecs(200));
+			infoLabel.content = "Requesting entity database";
+			Game.serverConnection.sendMessage(
+				new immutable EntityDbReq());
+			// check if we are already swimming out there on the server
+			if (res.alreadySpawned)
+			{
+				info("Player is already spawned");
+				alreadySpawned = true;
+			}
 		}
 		else
 		{
@@ -117,6 +127,14 @@ void setupMainMenu()
 		Game.entityDb = res;
 		trace("Building entity manager");
 		Game.entityManager = new EntityManager(Game.entityDb);
+
+		if (alreadySpawned)
+		{
+			Submarine playerSub = new Submarine(
+				Game.entityManager, recState.submarineName, recState.propulsorName);
+			setupSimulationState(playerSub);
+			return;
+		}
 
 		// TRANSITION TO LOADOUT SCREEN
 		setupLoadoutScreen();

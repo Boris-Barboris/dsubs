@@ -43,7 +43,8 @@ struct LoginRes
 
 	/// true when the player already has a submarine to reconnect to. In that case
 	/// the server will start streaming kinematic and acoustic data immediately
-	/// after sending this message.
+	/// after sending this message. ReconnectStateRes will follow LoginRes
+	/// immediately.
 	bool alreadySpawned;
 }
 

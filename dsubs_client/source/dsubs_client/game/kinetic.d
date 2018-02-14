@@ -1,6 +1,8 @@
 module dsubs_client.game.kinetic;
 
 import std.algorithm: min;
+import std.conv: to;
+import std.experimental.logger;
 
 import dsubs_common.api;
 import dsubs_common.math;
@@ -30,7 +32,7 @@ struct KinematicTrace
 		immutable int maxLen = 3;
 
 		// most recent snapshots received
-		BodySnapshot[maxLen] trace;
+		BodySnapshot[maxLen] records;
 		// number of actual snapshots in trace, from 0 to 3
 		int len = 0;
 		// index of the oldest snapshot in the trace
@@ -49,17 +51,17 @@ struct KinematicTrace
 		if (len == maxLen)
 		{
 			int newOldest = (oldest + 1) % maxLen;
-			if (curTime < trace[newOldest].atTime)
+			if (curTime < records[newOldest].atTime)
 			{
 				// render loop is too slow, we need to push this body forward in time
 				// to keep up with the stream of updates coming from the server
 
 				// current interpolated state is behind the snapshot
 				// wich will be the new oldest one
-				curState = trace[newOldest];
+				curState = records[newOldest];
 				curTime = curState.atTime;
 			}
-			trace[oldest] = *cast(BodySnapshot*) &snapshot;
+			records[oldest] = *cast(BodySnapshot*) &snapshot;
 			oldest = newOldest;
 		}
 		else
@@ -69,7 +71,7 @@ struct KinematicTrace
 				curTime = snapshot.atTime;
 				curState = *cast(BodySnapshot*) &snapshot;
 			}
-			trace[(oldest + len) % maxLen] = *cast(BodySnapshot*) &snapshot;
+			records[(oldest + len) % maxLen] = *cast(BodySnapshot*) &snapshot;
 			len++;
 		}
 	}
@@ -85,7 +87,7 @@ struct KinematicTrace
 	@property ref const(BodySnapshot) mostRecent() const
 	{
 		assert(canInterpolate);
-		return trace[(oldest + len) % maxLen];
+		return records[(oldest + len - 1) % maxLen];
 	}
 
 	/// move time forward by 'usecs' microsecods and recalculate state
@@ -99,7 +101,7 @@ struct KinematicTrace
 		if (len > 2)
 		{
 			// there is a choice here
-			if (curTime <= trace[(oldest + 1) % len].atTime)
+			if (curTime <= records[(oldest + 1) % len].atTime)
 				updateResult(oldest, (oldest + 1) % len);
 			else
 				updateResult((oldest + 1) % len, (oldest + 2) % len);
@@ -114,8 +116,9 @@ struct KinematicTrace
 
 	private void updateResult(int i1, int i2)
 	{
-		double t = (curTime - trace[i1].atTime) /
-			cast(double) (trace[i2].atTime - trace[i1].atTime);
+		double t = (curTime - records[i1].atTime).to!double /
+			(records[i2].atTime - records[i1].atTime).to!double;
+		assert(t >= 0.0 && t <= 1.0);
 		double t_2 = t * t;
 		double t_3 = t_2 * t;
 
@@ -127,15 +130,15 @@ struct KinematicTrace
 			(t_3 - t_2) * m1;
 		}
 
-		curState.position = chspline(trace[i1].position, trace[i2].position,
-			trace[i1].velocity, trace[i2].velocity);
-		curState.rotation = chspline(trace[i1].rotation, trace[i2].rotation,
-			trace[i1].angVel, trace[i2].angVel);
+		curState.position = chspline(records[i1].position, records[i2].position,
+			records[i1].velocity, records[i2].velocity);
+		curState.rotation = chspline(records[i1].rotation, records[i2].rotation,
+			records[i1].angVel, records[i2].angVel);
 		// simple linear interpolation for velocities
-		curState.velocity = trace[i1].velocity +
-			t * (trace[i2].velocity - trace[i1].velocity);
-		curState.angVel = trace[i1].angVel +
-			t * (trace[i2].angVel - trace[i1].angVel);
+		curState.velocity = records[i1].velocity +
+			t * (records[i2].velocity - records[i1].velocity);
+		curState.angVel = records[i1].angVel +
+			t * (records[i2].angVel - records[i1].angVel);
 	}
 
 }

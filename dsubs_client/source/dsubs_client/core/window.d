@@ -6,7 +6,6 @@ import core.stdc.stdlib: free;
 import std.algorithm;
 import std.array;
 import std.conv: to;
-import std.functional: toDelegate;
 import std.experimental.logger: info, trace;
 
 import derelict.sfml2.graphics;
@@ -39,7 +38,7 @@ final class Window
 		sfRenderWindow_setVerticalSyncEnabled(m_wnd, true);
 		info("OK");
 		// register default handlers
-		registerHandler(sfEvtResized, toDelegate(&resizedHandler));
+		registerHandler(sfEvtResized, &resizedHandler);
 		m_view = sfView_create();
 		// custom sfml patch enables scissor testing
 		sfRenderWindow_setScissorTest(m_wnd, true);
@@ -143,10 +142,10 @@ private:
 	sfContextSettings m_ctxSettings;
 	Event!(void delegate(Window wnd, const sfEvent* evt))[sfEvtCount] m_eventHandlers;
 
-	static void resizedHandler(Window sender, const sfEvent* evt)
+	void resizedHandler(Window wnd, const sfEvent* evt)
 	{
-		sender.m_mode.width = evt.size.width;
-		sender.m_mode.height = evt.size.height;
-		trace("Resize event caught, w=", sender.width, " h=", sender.height);
+		m_mode.width = evt.size.width;
+		m_mode.height = evt.size.height;
+		trace("Resize event caught, w=", width, " h=", height);
 	}
 }

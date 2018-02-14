@@ -77,6 +77,12 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 	/// everything that will be rendered in draw call
 	WorldRenderable[] components;
 
+	void clear()
+	{
+		components.length = 0;
+		mouseReceivers.length = 0;
+	}
+
 	this(Window wnd)
 	{
 		camCtx = new CameraContext(wnd);
