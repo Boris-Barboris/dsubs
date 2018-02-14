@@ -241,6 +241,10 @@ private:
 			immutable LoginRes res = LoginRes(true, "Welcome to dsubs server",
 				g_commonEntityDbHash, alreadySpawned);
 			sendBytes(marshalMessage(&res));
+			if (alreadySpawned)
+			{
+				// TODO: send state
+			}
 		}
 		else
 		{

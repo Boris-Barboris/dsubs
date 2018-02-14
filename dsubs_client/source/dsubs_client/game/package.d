@@ -14,7 +14,7 @@ import dsubs_client.core.window;
 import dsubs_client.input.router;
 import dsubs_client.gui.manager;
 import dsubs_client.render.render;
-import dsubs_client.render.manager;
+import dsubs_client.render.worldmanager;
 
 import dsubs_client.game.connection;
 import dsubs_client.game.simulation;

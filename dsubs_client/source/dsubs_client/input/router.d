@@ -76,7 +76,7 @@ final class InputRouter
 		g_underCursor, g_kbFocused, g_mouseFocused;
 
 	static @property IInputReciever underCursor() { return g_underCursor; }
-	static @property IInputReciever underCursor(IInputReciever rhs) 
+	static @property IInputReciever underCursor(IInputReciever rhs)
 	{
 		if (g_underCursor !is rhs)
 		{
@@ -89,7 +89,7 @@ final class InputRouter
 	}
 
 	static @property IInputReciever kbFocused() { return g_kbFocused; }
-	static @property IInputReciever kbFocused(IInputReciever rhs) 
+	static @property IInputReciever kbFocused(IInputReciever rhs)
 	{
 		if (g_kbFocused !is rhs)
 		{
@@ -102,7 +102,7 @@ final class InputRouter
 	}
 
 	static @property IInputReciever mouseFocused() { return g_mouseFocused; }
-	static @property IInputReciever mouseFocused(IInputReciever rhs) 
+	static @property IInputReciever mouseFocused(IInputReciever rhs)
 	{
 		if (g_mouseFocused !is rhs)
 		{
@@ -245,7 +245,7 @@ private:
 		{
 			underCursor = rres.reciever;
 			// mouse button events also clear keyboard focus
-			if (evt.type == sfEvtMouseButtonPressed && 
+			if (evt.type == sfEvtMouseButtonPressed &&
 				rres.reciever != kbFocused)
 			{
 				kbFocused = null;

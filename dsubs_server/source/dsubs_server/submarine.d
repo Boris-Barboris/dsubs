@@ -36,7 +36,7 @@ final class Submarine
 		assert(rudder !is null);
 		assert(propulsor !is null);
 		rigidBody.forces = [cast(IForce) rudder, cast(IForce) propulsor];
-		// bind module transforms to myself
+		// bind module transforms to submarine itself
 		rudder.transform = transform;
 		propulsor.transform = transform;
 		registerPEntity(rigidBody);

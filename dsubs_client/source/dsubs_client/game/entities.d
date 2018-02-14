@@ -167,6 +167,17 @@ final class Submarine: WorldRenderable
 		trace.appendSnapshot(snap);
 	}
 
+	/// returns true if the snapshot was written to res
+	@property bool getLastSnapshot(out BodySnapshot res) const
+	{
+		if (trace.canInterpolate)
+		{
+			res = trace.mostRecent;
+			return true;
+		}
+		return false;
+	}
+
 	override void update(CameraContext camCtx, long usecsDelta)
 	{
 		if (trace.canInterpolate)

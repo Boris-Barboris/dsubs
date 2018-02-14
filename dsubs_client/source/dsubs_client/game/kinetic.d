@@ -7,7 +7,7 @@ import dsubs_common.math;
 
 
 
-/// gfm-vectored adaptaion of KinematicSnapshot
+/// adaptation of KinematicSnapshot with gfm vectors
 struct BodySnapshot
 {
 	usecs_t atTime;
@@ -48,32 +48,41 @@ struct KinematicTrace
 	{
 		if (len == maxLen)
 		{
-			// render loop is too slow, we need to push this body forward in time
-			// to keep up with the stream of updates coming from the server
 			int newOldest = (oldest + 1) % maxLen;
-			curState = trace[newOldest];
-			curTime = curState.atTime;
+			if (curTime < trace[newOldest].atTime)
+			{
+				// render loop is too slow, we need to push this body forward in time
+				// to keep up with the stream of updates coming from the server
+
+				// current interpolated state is behind the snapshot
+				// wich will be the new oldest one
+				curState = trace[newOldest];
+				curTime = curState.atTime;
+			}
 			trace[oldest] = *cast(BodySnapshot*) &snapshot;
 			oldest = newOldest;
 		}
 		else
 		{
 			if (len == 0)
+			{
 				curTime = snapshot.atTime;
+				curState = *cast(BodySnapshot*) &snapshot;
+			}
 			trace[(oldest + len) % maxLen] = *cast(BodySnapshot*) &snapshot;
 			len++;
 		}
 	}
 
 	/// result of an interpolation
-	@property BodySnapshot result() const
+	@property ref const(BodySnapshot) result() const
 	{
 		assert(canInterpolate);
 		return curState;
 	}
 
 	/// the most recent snapshot received
-	@property BodySnapshot mostRecent() const
+	@property ref const(BodySnapshot) mostRecent() const
 	{
 		assert(canInterpolate);
 		return trace[(oldest + len) % maxLen];
@@ -100,6 +109,7 @@ struct KinematicTrace
 			// there is only one interval
 			updateResult(oldest, (oldest + 1) % len);
 		}
+		curState.atTime = curTime;
 	}
 
 	private void updateResult(int i1, int i2)

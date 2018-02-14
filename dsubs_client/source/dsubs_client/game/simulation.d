@@ -56,9 +56,16 @@ void setupSimulationState(Submarine playerSub)
 		setupMainMenu();
 	};
 
+	// set up submarine coordinate update
+
+	bool camSetOnSub = false;
 	Game.serverConnection.onSubKinematicRes += (SubKinematicRes res)
 	{
 		Game.simState.playerSub.updateKinematics(res.snap);
-		Game.worldManager.camCtx.camera.center = res.snap.position.toGfm;
+		if (!camSetOnSub)
+		{
+			Game.worldManager.camCtx.camera.center = res.snap.position.toGfm;
+			camSetOnSub = true;
+		}
 	};
 }

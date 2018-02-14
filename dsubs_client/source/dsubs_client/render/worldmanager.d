@@ -1,4 +1,4 @@
-module dsubs_client.render.manager;
+module dsubs_client.render.worldmanager;
 
 import core.atomic;
 import core.time;
@@ -59,6 +59,14 @@ final class CameraContext
 	}
 }
 
+
+/// Something that may receive mouse events in the context of world space
+interface WorldMouseReceiver: IInputReciever
+{
+	bool isMouseEventInteresting(Window wnd, const sfEvent* evt, int x, int y);
+}
+
+
 /// Manages world-space objects rendering and IO event handling
 /// (selection, picking).
 final class WorldManager: IWindowDrawer, IWindowEventSubrouter
@@ -100,8 +108,16 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 
 	// Event handling
 
+	/// objects that may receive mouse right after renderables
+	WorldMouseReceiver[] mouseReceivers;
+
 	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y)
 	{
+		foreach (mr; mouseReceivers)
+		{
+			if (mr.isMouseEventInteresting(wnd, evt, x, y))
+				return RouteResult(mr);
+		}
 		return RouteResult(null);
 	}
 
