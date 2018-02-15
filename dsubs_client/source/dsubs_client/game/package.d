@@ -12,6 +12,7 @@ import dsubs_common.api;
 import dsubs_client.core.delayer;
 import dsubs_client.core.window;
 import dsubs_client.input.router;
+import dsubs_client.input.hotkeymanager;
 import dsubs_client.gui.manager;
 import dsubs_client.render.render;
 import dsubs_client.render.worldmanager;
@@ -31,6 +32,7 @@ __gshared:
 	Render render;
 	GuiManager guiManager;
 	WorldManager worldManager;
+	HotkeyManager hotkeyManager;
 	ServerConnection serverConnection;
 	Delayer delayer;
 
@@ -54,6 +56,7 @@ __gshared:
 		render = new Render(window, inputRouter);
 		guiManager = new GuiManager(window);
 		worldManager = new WorldManager(window);
+		hotkeyManager = new HotkeyManager(window);
 		mainMutex = new Mutex();
 		delayer = new Delayer();
 		scope(failure) delayer.stop();
@@ -61,6 +64,7 @@ __gshared:
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
 		inputRouter.worldRouter = worldManager;
+		inputRouter.hotkeyRouter = hotkeyManager;
 		serverConnection = new ServerConnection("127.0.0.1", mainMutex);
 		scope (failure) serverConnection.close();
 
@@ -88,9 +92,12 @@ __gshared:
 		guiManager.clearPanels();
 		render.clearHandlers();
 		worldManager.clear();
+		hotkeyManager.clear();
 		Game.simState = null;
 		// let's free some unneeded resources
 		GC.collect();
+		// hotkey manager requires some additional attention
+		render.onPreRender += (long usecs) { hotkeyManager.processHeldKeys(usecs); };
 	}
 
 	/// execute delegate 'what' after 'after' time interval, while holding

@@ -1,0 +1,176 @@
+module dsubs_client.input.hotkeymanager;
+
+import std.exception;
+import std.algorithm;
+
+public import derelict.sfml2.window;
+
+import dsubs_common.containers.array;
+
+import dsubs_client.core.window;
+import dsubs_client.input.router;
+
+
+/// keyboard modifier
+enum Modifier: int
+{
+	NONE = 0,
+	SHIFT = 1 << 0,
+	CTRL = 1 << 1,
+	ALT = 1 << 2
+}
+
+/// builds modifier bitmask from key event
+Modifier modFromKey(const(sfKeyEvent)* evt)
+{
+	Modifier res;
+	if (evt.shift)
+		res |= Modifier.SHIFT;
+	if (evt.alt)
+		res |= Modifier.ALT;
+	if (evt.control)
+		res |= Modifier.CTRL;
+	return res;
+}
+
+/// hotkey consisting of a key and modifiers
+struct Hotkey
+{
+	Modifier mod;
+	sfKeyCode key;
+}
+
+/// What to do when key was released
+private struct HotkeyAction
+{
+	void delegate() onRelease;
+}
+
+/// What to do if key is being held
+alias HoldAction = void delegate(long usecs, Modifier curMods);
+
+/// Class that stores and manages hotkey mapping. Deals with two kinds of
+/// inputs: key releases and raw keyboard access.
+final class HotkeyManager: IWindowEventSubrouter, IInputReciever
+{
+	private
+	{
+		Window m_wnd;
+		HotkeyAction[Hotkey] m_hotkeys;
+		HoldAction[] m_holdkeys;
+	}
+
+	this(Window wnd)
+	{
+		assert(wnd);
+		m_wnd = wnd;
+	}
+
+	void clear()
+	{
+		m_hotkeys.clear();
+		m_holdkeys.length = 0;
+	}
+
+	bool clearHotkey(Hotkey hk)
+	{
+		return m_hotkeys.remove(hk);
+	}
+
+	bool clearHoldkeys()
+	{
+		return m_holdkeys.length = 0;
+	}
+
+	/// return true if hotkey was overwritten, false otherwise, throws
+	/// if the hotkey is invalid.
+	bool setHotkey(Hotkey hk, void delegate() onRelease)
+	{
+		assert(onRelease !is null);
+		// TODO: check hotkey
+		HotkeyAction* existing = hk in m_hotkeys;
+		if (existing !is null)
+		{
+			*existing = HotkeyAction(onRelease);
+			return true;
+		}
+		m_hotkeys[hk] = HotkeyAction(onRelease);
+		return false;
+	}
+
+	void addHoldkey(HoldAction action)
+	{
+		assert(action !is null);
+		m_holdkeys ~= action;
+	}
+
+	// IWindowEventSubrouter implementation
+
+	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y)
+	{
+		return RouteResult(null);
+	}
+
+	RouteResult routeKeyboard(Window wnd, const sfEvent* evt)
+	{
+		if (evt.type == sfEvtKeyReleased)
+			return RouteResult(this);
+		return RouteResult(null);
+	}
+
+	void handleWindowResize(Window wnd, const sfSizeEvent* evt) {}
+
+	// IInputReciever implementation
+
+	void handleKbFocusGain() {}
+
+	void handleKbFocusLoss() {}
+
+	HandleResult handleKeyboard(Window wnd, const sfEvent* evt)
+	{
+		if (evt.type == sfEvtKeyReleased)
+		{
+			Hotkey hk = Hotkey(modFromKey(&evt.key), evt.key.code);
+			HotkeyAction* existing = hk in m_hotkeys;
+			if (existing !is null)
+				existing.onRelease();
+		}
+		return HandleResult(false);
+	}
+
+	/// interate over all registered HoldKeys and fire their handlers
+	void processHeldKeys(long usecs)
+	{
+		if (!m_wnd.hasFocus)
+			return;
+		Modifier curMod = getCurMod();
+		foreach (act; m_holdkeys)
+			act(usecs, curMod);
+	}
+
+	private static Modifier getCurMod()
+	{
+		Modifier res;
+		if (sfKeyboard_isKeyPressed(sfKeyLShift))
+			res |= Modifier.SHIFT;
+		if (sfKeyboard_isKeyPressed(sfKeyRShift))
+			res |= Modifier.SHIFT;
+		if (sfKeyboard_isKeyPressed(sfKeyLAlt))
+			res |= Modifier.ALT;
+		if (sfKeyboard_isKeyPressed(sfKeyRAlt))
+			res |= Modifier.ALT;
+		if (sfKeyboard_isKeyPressed(sfKeyLControl))
+			res |= Modifier.CTRL;
+		if (sfKeyboard_isKeyPressed(sfKeyRControl))
+			res |= Modifier.CTRL;
+		return res;
+	}
+
+	// dummy
+	void handleMouseEnter() {}
+	void handleMouseLeave() {}
+	void handleMouseFocusGain() {}
+	void handleMouseFocusLoss() {}
+	void handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
+		sfMouseButton btn, float delta) {}
+}

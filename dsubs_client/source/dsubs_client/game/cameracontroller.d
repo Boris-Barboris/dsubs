@@ -6,8 +6,10 @@ import std.experimental.logger;
 
 import dsubs_client.core.utils;
 import dsubs_client.game;
+import dsubs_client.game.simulation;
 import dsubs_client.gui;
 import dsubs_client.input.router;
+import dsubs_client.input.hotkeymanager;
 import dsubs_client.render.worldmanager;
 
 
@@ -16,6 +18,8 @@ import dsubs_client.render.worldmanager;
 final class CameraController: WorldMouseReceiver
 {
 	float zoomSpeed = 0.25f;
+	float kbPanSpeed = 2000.0f;
+	float kbZoomSpeed = 5.0f;
 
 	bool isMouseEventInteresting(Window wnd, const sfEvent* evt, int x, int y)
 	{
@@ -24,6 +28,43 @@ final class CameraController: WorldMouseReceiver
 		if (evt.type == sfEvtMouseWheelScrolled)
 			return true;
 		return false;
+	}
+
+	/// register panning and zooming hotkeys
+	this()
+	{
+		Game.hotkeyManager.addHoldkey(&handleKeyboard);
+	}
+
+	private void handleKeyboard(long usecs, Modifier curMods)
+	{
+		if (curMods == Modifier.NONE)
+		{
+			auto camera = Game.worldManager.camCtx.camera;
+
+			// pan
+			vec2d pan = vec2d(0.0, 0.0);
+			if (sfKeyboard_isKeyPressed(sfKeyLeft))
+				pan.x -= 1.0;
+			if (sfKeyboard_isKeyPressed(sfKeyRight))
+				pan.x += 1.0;
+			if (sfKeyboard_isKeyPressed(sfKeyDown))
+				pan.y -= 1.0;
+			if (sfKeyboard_isKeyPressed(sfKeyUp))
+				pan.y += 1.0;
+			pan *= double(usecs) / 1e6 * kbPanSpeed;
+			camera.pan(pan / camera.zoom);
+
+			// zoom
+			double dz = 0.0;
+			if (sfKeyboard_isKeyPressed(sfKeyE))
+				dz += 1.0;
+			if (sfKeyboard_isKeyPressed(sfKeyQ))
+				dz -= 1.0;
+			dz *= double(usecs) / 1e6 * kbZoomSpeed;
+			dz = fmax(-0.5, dz);
+			camera.zoom = fmin(25.0, fmax(0.001, camera.zoom * (1.0 + dz)));
+		}
 	}
 
 	private
@@ -84,5 +125,8 @@ final class CameraController: WorldMouseReceiver
 	void handleMouseFocusLoss() {}
 	void handleKbFocusGain() {}
 	void handleKbFocusLoss() {}
-	HandleResult handleKeyboard(Window wnd, const sfEvent* evt) { return HandleResult(true); }
+	HandleResult handleKeyboard(Window wnd, const sfEvent* evt)
+	{
+		return HandleResult(true);
+	}
 }

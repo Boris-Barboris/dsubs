@@ -114,7 +114,7 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 
 	// Event handling
 
-	/// objects that may receive mouse right after renderables
+	/// objects that may receive mouse right after clickables
 	WorldMouseReceiver[] mouseReceivers;
 
 	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y)

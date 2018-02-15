@@ -116,8 +116,8 @@ struct KinematicTrace
 
 	private void updateResult(int i1, int i2)
 	{
-		double t = (curTime - records[i1].atTime).to!double /
-			(records[i2].atTime - records[i1].atTime).to!double;
+		double t = (curTime - records[i1].atTime) /
+			double(records[i2].atTime - records[i1].atTime);
 		assert(t >= 0.0 && t <= 1.0);
 		double t_2 = t * t;
 		double t_3 = t_2 * t;
