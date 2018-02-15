@@ -36,8 +36,8 @@ Modifier modFromKey(const(sfKeyEvent)* evt)
 /// hotkey consisting of a key and modifiers
 struct Hotkey
 {
-	Modifier mod;
 	sfKeyCode key;
+	Modifier mod;
 }
 
 /// What to do when key was released
@@ -57,6 +57,7 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 	{
 		Window m_wnd;
 		HotkeyAction[Hotkey] m_hotkeys;
+		bool[sfKeyCount] m_pressed;
 		HoldAction[] m_holdkeys;
 	}
 
@@ -113,7 +114,7 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 
 	RouteResult routeKeyboard(Window wnd, const sfEvent* evt)
 	{
-		if (evt.type == sfEvtKeyReleased)
+		if (evt.type == sfEvtKeyReleased || evt.type == sfEvtKeyPressed)
 			return RouteResult(this);
 		return RouteResult(null);
 	}
@@ -128,12 +129,18 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 
 	HandleResult handleKeyboard(Window wnd, const sfEvent* evt)
 	{
+		if (evt.type == sfEvtKeyPressed)
+			m_pressed[evt.key.code] = true;
 		if (evt.type == sfEvtKeyReleased)
 		{
-			Hotkey hk = Hotkey(modFromKey(&evt.key), evt.key.code);
-			HotkeyAction* existing = hk in m_hotkeys;
-			if (existing !is null)
-				existing.onRelease();
+			if (m_pressed[evt.key.code])
+			{
+				m_pressed[evt.key.code] = false;
+				Hotkey hk = Hotkey(evt.key.code, modFromKey(&evt.key));
+				HotkeyAction* existing = hk in m_hotkeys;
+				if (existing !is null)
+					existing.onRelease();
+			}
 		}
 		return HandleResult(false);
 	}

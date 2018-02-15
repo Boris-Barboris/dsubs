@@ -21,6 +21,7 @@ import dsubs_client.game.cameracontroller;
 class SimulatorState
 {
 	Submarine playerSub;
+	CameraController camController;
 }
 
 
@@ -62,5 +63,6 @@ void setupSimulationState(Submarine playerSub)
 	};
 
 	// set up camera
-	Game.worldManager.mouseReceivers ~= new CameraController();
+	Game.simState.camController = new CameraController();
+	Game.worldManager.mouseReceivers ~= Game.simState.camController;
 }

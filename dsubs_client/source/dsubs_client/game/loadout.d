@@ -17,6 +17,7 @@ import dsubs_client.core.utils;
 import dsubs_client.game;
 import dsubs_client.game.simulation;
 import dsubs_client.gui;
+import dsubs_client.input.hotkeymanager;
 
 
 private
@@ -65,7 +66,7 @@ void setupLoadoutScreen()
 
 	// scrollist of hulls
 	GuiElement[] hullButtons;
-	foreach (hullname; hulls)
+	foreach (i, hullname; hulls)
 	{
 		Button hullSelector = builder(new Button()).content(hullname).
 			fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
@@ -87,6 +88,8 @@ void setupLoadoutScreen()
 				hullDescriptionBox.content =
 					Game.entityManager.submarineTemplates[hullname].description;
 			};
+		if (i == 0)
+			hullSelector.simulateClick();	// select first submarine in the list
 	}
 
 	Div hullDiv = builder(vDiv(hullButtons)).layoutType(LayoutType.CONTENT).
@@ -139,6 +142,10 @@ void setupLoadoutScreen()
 			trace("Requesting spawn: ", *req);
 			Game.serverConnection.sendMessage(req);
 		};
+
+	Game.hotkeyManager.setHotkey(Hotkey(sfKeyReturn),
+		() { startButton.simulateClick(); });
+
 	Game.serverConnection.onSpawnRes += (SpawnRes res)
 		{
 			if (res.spawnAllowed)
