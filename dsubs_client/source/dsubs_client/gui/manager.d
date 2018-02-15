@@ -32,7 +32,7 @@ class Panel
 {
 	protected GuiElement m_root;
 	@property GuiElement root() { return m_root; }
-	
+
 	/// If true, mouse click will push this panel on top of the stack.
 	bool zboost = false;
 
@@ -102,7 +102,7 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 			panel.draw(wnd);
 	}
 
-	// Z-ordered list of GuiElement trees. 
+	// Z-ordered list of GuiElement trees.
 	// First (front) element is the deepest one.
 	private DList!Panel panels;
 
@@ -110,7 +110,7 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 	void addPanel(Panel p)
 	{
 		panels.insertBack(p);
-		// initial shakedown in order to befriend new panel 
+		// initial shakedown in order to befriend new panel
 		// with current window size
 		sfSizeEvent fake = sfSizeEvent(sfEvtResized, m_wnd.width, m_wnd.height);
 		p.handleWindowResize(&fake);

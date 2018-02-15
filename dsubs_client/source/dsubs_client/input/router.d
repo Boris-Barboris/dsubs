@@ -33,7 +33,7 @@ interface IInputReciever
 	HandleResult handleKeyboard(Window wnd, const sfEvent* evt);
 	// mouse handling method. We forbid to pass mouse events through recievers.
 	void handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
-		sfMouseButton btn, int delta);
+		sfMouseButton btn, float delta);
 }
 
 /// Event handling result
@@ -132,7 +132,7 @@ final class InputRouter
 		wnd.registerHandler(sfEvtTextEntered, &routeKeyboardEvent);
 		wnd.registerHandler(sfEvtKeyPressed, &routeKeyboardEvent);
 		wnd.registerHandler(sfEvtKeyReleased, &routeKeyboardEvent);
-		wnd.registerHandler(sfEvtMouseWheelMoved, &routeMouseEvent);
+		wnd.registerHandler(sfEvtMouseWheelScrolled, &routeMouseEvent);
 		wnd.registerHandler(sfEvtMouseButtonPressed, &routeMouseEvent);
 		wnd.registerHandler(sfEvtMouseButtonReleased, &routeMouseEvent);
 		// we don't register MouseMoved handler, because we create artificial
@@ -239,7 +239,7 @@ private:
 	}
 
 	static bool handleMouse(Window wnd, RouteResult rres, const sfEvent* evt, int x, int y,
-		sfMouseButton btn, int delta)
+		sfMouseButton btn, float delta)
 	{
 		if (rres.reciever)
 		{
@@ -259,7 +259,8 @@ private:
 	void routeMouseEvent(Window wnd, const sfEvent* evt)
 	{
 		assert(wnd == m_window);
-		int x, y, delta;
+		int x, y;
+		float delta = 0.0f;
 		sfMouseButton btn;
 		if (!isMousePosEvent(evt, x, y, btn, delta))
 			assert(0, "Mouse event is not actually a mouse event");

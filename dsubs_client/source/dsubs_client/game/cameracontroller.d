@@ -21,7 +21,7 @@ final class CameraController: WorldMouseReceiver
 	{
 		if (evt.type == sfEvtMouseButtonPressed && evt.mouseButton.button == sfMouseRight)
 			return true;
-		if (evt.type == sfEvtMouseWheelMoved)
+		if (evt.type == sfEvtMouseWheelScrolled)
 			return true;
 		return false;
 	}
@@ -32,7 +32,7 @@ final class CameraController: WorldMouseReceiver
 	}
 
 	void handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
-		sfMouseButton btn, int delta)
+		sfMouseButton btn, float delta)
 	{
 		auto camera = Game.worldManager.camCtx.camera;
 		switch (evt.type)
@@ -57,7 +57,7 @@ final class CameraController: WorldMouseReceiver
 				camera.pan(panning);
 				break;
 			}
-			case sfEvtMouseWheelMoved:
+			case sfEvtMouseWheelScrolled:
 			{
 				double oldZoom = camera.zoom;
 				double dzoom = camera.zoom * zoomSpeed * delta;

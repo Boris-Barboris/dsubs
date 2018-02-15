@@ -1,7 +1,7 @@
 module dsubs_client.lib.sfml;
 
 import std.conv: to;
-import std.experimental.logger: info;
+import std.experimental.logger;
 import std.math: lrint;
 import std.meta: AliasSeq;
 
@@ -27,14 +27,14 @@ void loadSfmlLibraries()
 }
 
 bool isMousePosEvent(in sfEvent* evt, out int x, out int y,
-	out sfMouseButton mbutton, out int wheelDelta)
+	out sfMouseButton mbutton, out float wheelDelta)
 {
 	if (evt.type == sfEvtMouseMoved)
 	{
 		x = evt.mouseMove.x;
 		y = evt.mouseMove.y;
 		mbutton = -1;
-		wheelDelta = 0;
+		wheelDelta = 0.0f;
 		return true;
 	}
 	if (evt.type == sfEvtMouseButtonPressed)
@@ -42,7 +42,7 @@ bool isMousePosEvent(in sfEvent* evt, out int x, out int y,
 		x = evt.mouseButton.x;
 		y = evt.mouseButton.y;
 		mbutton = evt.mouseButton.button;
-		wheelDelta = 0;
+		wheelDelta = 0.0f;
 		return true;
 	}
 	if (evt.type == sfEvtMouseButtonReleased)
@@ -50,15 +50,15 @@ bool isMousePosEvent(in sfEvent* evt, out int x, out int y,
 		x = evt.mouseButton.x;
 		y = evt.mouseButton.y;
 		mbutton = evt.mouseButton.button;
-		wheelDelta = 0;
+		wheelDelta = 0.0f;
 		return true;
 	}
-	if (evt.type == sfEvtMouseWheelMoved)
+	if (evt.type == sfEvtMouseWheelScrolled)
 	{
-		x = evt.mouseWheel.x;
-		y = evt.mouseWheel.y;
+		x = evt.mouseWheelScroll.x;
+		y = evt.mouseWheelScroll.y;
 		mbutton = -1;
-		wheelDelta = evt.mouseWheel.delta;
+		wheelDelta = evt.mouseWheelScroll.delta;
 		return true;
 	}
 	return false;
@@ -69,7 +69,7 @@ bool isMousePosEvent(in sfEvent* evt)
 	return (evt.type == sfEvtMouseMoved ||
 			evt.type == sfEvtMouseButtonPressed ||
 			evt.type == sfEvtMouseButtonReleased ||
-			evt.type == sfEvtMouseWheelMoved);
+			evt.type == sfEvtMouseWheelScrolled);
 }
 
 bool isMouseEvent(in sfEvent* evt)

@@ -229,7 +229,7 @@ class GuiElement: IInputReciever
 	}
 
 	void handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
-		sfMouseButton btn, int delta)
+		sfMouseButton btn, float delta)
 	{
 		if (btn >= 0)
 		{
@@ -321,7 +321,7 @@ class GuiElement: IInputReciever
 	Event!(void delegate(int x, int y)) onMouseMove;
 	Event!(void delegate(int x, int y, sfMouseButton btn)) onMouseDown;
 	Event!(void delegate(int x, int y, sfMouseButton btn)) onMouseUp;
-	Event!(void delegate(int x, int y, int delta)) onMouseScroll;
+	Event!(void delegate(int x, int y, float delta)) onMouseScroll;
 	Event!(void delegate(const sfKeyEvent* evt)) onKeyPressed;
 	Event!(void delegate(const sfKeyEvent* evt)) onKeyReleased;
 	Event!(void delegate(const sfTextEvent* evt)) onTextEntered;

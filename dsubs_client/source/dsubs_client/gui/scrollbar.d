@@ -146,7 +146,7 @@ final class ScrollBar: GuiElement
 
 	private void updateChildPosition()
 	{
-		m_child.position = vec2i(position.x, 
+		m_child.position = vec2i(position.x,
 			lrint(position.y + m_scrollPosition).to!int);
 		updateSbVisual();
 	}
@@ -159,7 +159,7 @@ final class ScrollBar: GuiElement
 		updateChildPosition();
 	}
 
-	private void handleMouseScroll(int x, int y, int delta)
+	private void handleMouseScroll(int x, int y, float delta)
 	{
 		updateMouseScroll(delta);
 		updateChildPosition();
@@ -167,7 +167,7 @@ final class ScrollBar: GuiElement
 
 	private float m_maxScroll = 0.0f;
 
-	private void updateMouseScroll(int delta, float speedGain = g_scrollSpeed)
+	private void updateMouseScroll(float delta, float speedGain = g_scrollSpeed)
 	{
 		m_maxScroll = m_child.size.y - size.y;
 		if (m_maxScroll <= 0.0f)

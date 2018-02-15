@@ -274,11 +274,12 @@ class TextField: Label
 		updateText();
 	}
 
-	private void handleMouseScroll(int x, int y, int delta)
+	private void handleMouseScroll(int x, int y, float delta)
 	{
 		if (m_kbFocused && !m_mouseFocused)
 		{
-			m_cursorStart = max(0, min(m_content.length - 1, m_cursorStart + delta));
+			m_cursorStart = max(0, min(m_content.length - 1,
+				lrint(m_cursorStart + delta).to!int));
 			m_cursorEnd = m_cursorStart;
 			updateCursorVisuals();
 		}
