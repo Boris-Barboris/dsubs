@@ -23,7 +23,7 @@ struct HydroForceModel
 
 	double drag(double velSqr, double aoa)
 	{
-		return velSqr * (Cd0 + sin(aoa) * Cd1);
+		return velSqr * (Cd0 + fabs(sin(aoa)) * Cd1);
 	}
 
 	double torque(double angVel)
@@ -62,15 +62,21 @@ struct Kinematics
 		velSquaredLength = vel.squaredLength;
 		velLength = sqrt(velSquaredLength);
 		if (velLength > 0.0)
+		{
 			velNormalized = vel.normalized;
+			velRotation = courseAngle(velNormalized);
+		}
 		else
-			velNormalized = vec2d(0.0, 0.0);
-		velRotation = courseAngle(velNormalized);
+		{
+			velNormalized = vec2d(0.0, 1.0);
+			velRotation = 0.0;
+		}
 		double velLeftRotation = velRotation + PI_2;
 		velLeft = vec2d(-sin(velLeftRotation), cos(velLeftRotation));
 		forward = vec2d(-sin(rotation), cos(rotation));
 		double leftRotation = rotation + PI_2;
 		left = vec2d(-sin(leftRotation), cos(leftRotation));
+		//trace("updated kinematics: ", this);
 	}
 }
 
@@ -123,14 +129,14 @@ final class SubmergedRigidBody: PhysicalEntity
 		vec2d linAcc1 = linAcc(kinet);
 		double rotAcc1 = rotAcc(kinet);
 		nextKinet.pos += dt * kinet.vel;
-		nextKinet.rotation = clampAngle(nextKinet.rotation + dt * kinet.angVel);
+		nextKinet.rotation = clampAngle(kinet.rotation + dt * kinet.angVel);
+		//trace("linAcc: ", linAcc1);
 		nextKinet.vel += dt * linAcc1;
 		nextKinet.angVel += dt * rotAcc1;
 		foreach (force; forces)
 			force.propagateInTime(dt);
 		kinet = nextKinet;
 		kinet.updateCache();
-		//trace(kinet);
 		// update transform
 		transform.position = kinet.pos;
 		transform.rotation = kinet.rotation;

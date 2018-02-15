@@ -64,7 +64,7 @@ private void simulationLoop()
 				forEachPlayer((pctx) { pctx.sendKinematicsUpdate(worldTime); });
 			}
 			auto now = MonoTime.currTime();
-			Duration toSleep = msecs(249) - (now - lastLoopStart);
+			Duration toSleep = msecs(250) - (now - lastLoopStart);
 			if (toSleep < Duration.zero)
 				toSleep = Duration.zero;
 			Thread.sleep(toSleep);

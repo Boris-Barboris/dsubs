@@ -6,6 +6,7 @@ import core.sync.mutex;
 
 import dsubs_common.api;
 import dsubs_common.containers.array;
+import dsubs_common.math.angles;
 import gfm.math.vector;
 
 import dsubs_server.common;
@@ -54,9 +55,9 @@ final class PlayerContext
 	{
 		if (connection is null || submarine is null)
 			return;
-		vec2d shiftedPos = submarine.transform.position + coordShift;
+		vec2d shiftedPos = rotateVector(submarine.transform.position - coordShift, coordRot);
 		double shiftedRot = submarine.transform.rotation + coordRot;
-		vec2d vel = submarine.rigidBody.kinet.vel;
+		vec2d vel = rotateVector(submarine.rigidBody.kinet.vel, coordRot);
 		double angVel = submarine.rigidBody.kinet.angVel;
 		immutable(SubKinematicRes)* msg = new SubKinematicRes(KinematicSnapshot(
 			curTime + timeShift,

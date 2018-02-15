@@ -122,8 +122,8 @@ void buildPropulsorTemplates()
 				Vector2f(4.2f, -0.9f)
 			], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 		);
-	bp.posThrustK = RolledF(100.0f, 2.0f);
-	bp.negThrustK = RolledF(40.0f, 1.0f);
+	bp.posThrustK = RolledF(1500.0f, 2.0f);
+	bp.negThrustK = RolledF(800.0f, 1.0f);
 	g_propulsors["Standard screw"] = bp;
 }
 
@@ -238,10 +238,10 @@ void buildSubmarineTemplates()
 		);
 	sp.moi = RolledF(1000.0f, 5.0f);
 	sp.mass = RolledF(2000.0f, 10.0f);
-	sp.Cd0 = RolledF(1.0, 0.01f);
-	sp.Cd1 = RolledF(3.0, 0.02f);
-	sp.Cl = RolledF(500.0, 0.5f);
-	sp.Cr = RolledF(100.0, 0.5f);
-	sp.rudderSteerK = 1.0f;
+	sp.Cd0 = RolledF(2.0, 0.01f);
+	sp.Cd1 = RolledF(5.0, 0.02f);
+	sp.Cl = RolledF(100.0, 0.5f);
+	sp.Cr = RolledF(1000.0, 0.5f);
+	sp.rudderSteerK = 0.0001f;
 	g_submarines["Bobby"] = sp;
 }

@@ -89,7 +89,11 @@ void setupLoadoutScreen()
 					Game.entityManager.submarineTemplates[hullname].description;
 			};
 		if (i == 0)
+		{
+			assert(curSelectedSub is null);
 			hullSelector.simulateClick();	// select first submarine in the list
+			assert(curSelectedSub !is null);
+		}
 	}
 
 	Div hullDiv = builder(vDiv(hullButtons)).layoutType(LayoutType.CONTENT).
@@ -196,4 +200,5 @@ void setupLoadoutScreen()
 
 	Game.guiManager.addPanel(new Panel(prepareGui));
 	Game.worldManager.camCtx.camera.zoom = 10.0;
+	Game.worldManager.camCtx.camera.center = vec2d(0.0, 0.0);
 }

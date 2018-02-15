@@ -285,7 +285,7 @@ private:
 		synchronized(g_simMut.reader)
 		{
 			// finalize submarine and register it in a simulator
-			info("Bootstrapping new submarine for ", username, req);
+			info("Bootstrapping new submarine for ", username,", ", req);
 			sub.bootstrap();
 			playerCtx.submarine = sub;
 		}

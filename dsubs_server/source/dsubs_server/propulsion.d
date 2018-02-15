@@ -3,6 +3,7 @@ module dsubs_server.propulsion;
 import dsubs_common.math;
 
 import dsubs_server.damage;
+import dsubs_server.common;
 import dsubs_server.dynamics;
 
 
@@ -13,7 +14,7 @@ abstract class Propulsor: IForce
 	string prototypeName;
 
 	float rotSpd = 0.0f;		// [-1.0, 1.0]
-	float targetRotSpd = 0.0f;	// [-1.0, 1.0]
+	float targetRotSpd = 1.0f;	// [-1.0, 1.0]
 }
 
 /// simple propulsor with linear thrust law
@@ -26,6 +27,8 @@ class BasicPropulsor: Propulsor
 	vec2d getForce(const SubmergedRigidBody b, ref const Kinematics c)
 	{
 		double absThrust = rotSpd * (rotSpd >= 0.0f ? posThrustK : negThrustK);
+		//trace("absThrust: ", absThrust, " posThrustK: ", posThrustK);
+		//trace("thrust: ", transform.wforward * absThrust);
 		return transform.wforward * absThrust;
 	}
 
@@ -36,7 +39,9 @@ class BasicPropulsor: Propulsor
 
 	void propagateInTime(float dt)
 	{
+		//trace(rotSpd, " ", targetRotSpd);
 		rotSpd = cmove(rotSpd, targetRotSpd, rotAcceleration, dt);
+		//trace(rotSpd);
 	}
 }
 
@@ -46,7 +51,7 @@ abstract class Rudder: IForce
 	Transform2D transform;
 
 	/// target course
-	float targetCourse = 0.0;
+	float targetCourse = 0.0f;
 	float rudderPos = 0.0f;
 }
 
@@ -59,8 +64,8 @@ class BasicRudder: Rudder
 	float steeringK = 0.0f;
 
 	// PD controller gains
-	float Kp = 1.0;
-	float Kd = -0.1;
+	float Kp = 2.0;
+	float Kd = -10.0;
 
 	private float error = 0.0;
 	private float errorDeriv = 0.0;
@@ -73,9 +78,11 @@ class BasicRudder: Rudder
 
 	double getTorque(const SubmergedRigidBody b, ref const Kinematics c)
 	{
-		error = targetCourse - transform.wrotation;
+		error = angleDist(targetCourse, transform.wrotation);
 		errorDeriv = c.angVel;
-		return steeringK * rudderPos * c.velSquaredLength;
+		double absSin = fabs(sin(c.AoA));
+		double aoaScale = 1.0 - fmin(1.0, 2.0 * absSin);
+		return steeringK * rudderPos * c.velSquaredLength * aoaScale;
 	}
 
 	void propagateInTime(float dt)

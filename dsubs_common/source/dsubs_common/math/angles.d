@@ -28,6 +28,12 @@ double clampAngle(double a)
 	return fmod(a, 2 * PI);
 }
 
+unittest
+{
+	assert(abs(angleDist(clampAngle(0.5 + 2 * PI), 0.5)) < 0.01);
+	assert(abs(angleDist(clampAngle(-0.5 - 2 * PI), -0.5)) < 0.01);
+}
+
 /// Clamp angle into [-2 * PI, 0] interval
 double courseAngle(double a)
 {
@@ -52,8 +58,20 @@ unittest
 	assert(abs(angleDist(courseAngle(vec2d(0.01, -1.0)), -PI)) < 0.01);
 }
 
-/// Unity vector, facing course angle
+/// Unit vector, facing course angle
 vec2d courseVector(double c)
 {
 	return vec2d(-sin(c), cos(c));
+}
+
+vec2d rotateVector(vec2d v, double rot)
+{
+	double course = courseAngle(v) + rot;
+	double len = v.length;
+	return len * courseVector(course);
+}
+
+unittest
+{
+	assert((vec2d(-1.0, 0.0) - rotateVector(vec2d(0.0, 1.0), PI_2)).length < 0.001);
 }

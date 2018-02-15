@@ -82,7 +82,7 @@ final class ScrewPropulsor: Propulsor
 
 	override void update(CameraContext camCtx, long usecsDelta)
 	{
-		m_angVel = m_targetThrottle;	// TODO
+		m_angVel = 5.0 * m_targetThrottle;	// TODO
 		double delta = m_angVel * 1e-6 * usecsDelta;
 		m_rotorAngle += delta;
 		m_rotorAngle = clampAngle(m_rotorAngle);
@@ -184,9 +184,8 @@ final class Submarine: WorldRenderable
 		{
 			trace.moveForward(usecsDelta);
 			// update transform from the trace
-			auto snapshot = trace.result;
-			transform.position = snapshot.position;
-			transform.rotation = snapshot.rotation;
+			transform.position = trace.result.position;
+			transform.rotation = trace.result.rotation;
 		}
 		foreach (prop; m_propulsors)
 			prop.update(camCtx, usecsDelta);

@@ -94,7 +94,7 @@ __gshared:
 		worldManager.clear();
 		hotkeyManager.clear();
 		Game.simState = null;
-		// let's free some unneeded resources
+		// let's free some memory
 		GC.collect();
 		// hotkey manager requires some additional attention
 		render.onPreRender += (long usecs) { hotkeyManager.processHeldKeys(usecs); };

@@ -98,26 +98,23 @@ struct KinematicTrace
 		curTime = min(curTime + fwd, mostRecent.atTime);
 		// now we just need to find, between which points does the
 		// curTime lie
-		if (len > 2)
+		for (int curSecond = 1; curSecond < len; curSecond++)
 		{
-			// there is a choice here
-			if (curTime <= records[(oldest + 1) % len].atTime)
-				updateResult(oldest, (oldest + 1) % len);
-			else
-				updateResult((oldest + 1) % len, (oldest + 2) % len);
-		}
-		else
-		{
-			// there is only one interval
-			updateResult(oldest, (oldest + 1) % len);
+			int i2 = (oldest + curSecond) % maxLen;
+			if (curTime <= records[i2].atTime)
+			{
+				updateResult((oldest + curSecond - 1) % maxLen, i2);
+				break;
+			}
+			assert(curSecond != maxLen - 1, "Impossible, should be unreachable");
 		}
 		curState.atTime = curTime;
 	}
 
 	private void updateResult(int i1, int i2)
 	{
-		double t = (curTime - records[i1].atTime) /
-			double(records[i2].atTime - records[i1].atTime);
+		double dt = (records[i2].atTime - records[i1].atTime) / 1e6;
+		double t = (curTime - records[i1].atTime) / 1e6 / dt;
 		assert(t >= 0.0 && t <= 1.0);
 		double t_2 = t * t;
 		double t_3 = t_2 * t;
@@ -125,9 +122,9 @@ struct KinematicTrace
 		auto chspline(T)(T p0, T p1, T m0, T m1)
 		{
 			return (2 * t_3 - 3 * t_2 + 1) * p0 +
-			(t_3 - 2 * t_2 + t) * m0 +
+			(t_3 - 2 * t_2 + t) * dt * m0 +
 			(-2 * t_3 + 3 * t_2) * p1 +
-			(t_3 - t_2) * m1;
+			(t_3 - t_2) * dt * m1;
 		}
 
 		curState.position = chspline(records[i1].position, records[i2].position,

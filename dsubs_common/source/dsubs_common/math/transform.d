@@ -75,7 +75,7 @@ class Transform2D
 
 	final void removeChild(Transform2D kid)
 	{
-		if (m_children.removeFirst!(a => a is kid))
+		if (m_children.removeFirstUnstable(kid))
 		{
 			kid.m_parent = null;
 			kid.propagate();
