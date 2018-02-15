@@ -240,8 +240,8 @@ void buildSubmarineTemplates()
 	sp.mass = RolledF(2000.0f, 10.0f);
 	sp.Cd0 = RolledF(2.0, 0.01f);
 	sp.Cd1 = RolledF(5.0, 0.02f);
-	sp.Cl = RolledF(100.0, 0.5f);
-	sp.Cr = RolledF(1000.0, 0.5f);
+	sp.Cl = RolledF(100.0, 1.0f);
+	sp.Cr = RolledF(10000.0, 10.0f);
 	sp.rudderSteerK = 0.0001f;
 	g_submarines["Bobby"] = sp;
 }

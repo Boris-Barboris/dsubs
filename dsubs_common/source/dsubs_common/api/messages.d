@@ -121,3 +121,17 @@ struct SubKinematicRes
 	__gshared const int g_marshIdx;
 	KinematicSnapshot snap;
 }
+
+/// Sent by client in order to update desired throttle on his submarine
+struct ThrottleReq
+{
+	__gshared const int g_marshIdx;
+	float target;
+}
+
+/// Sent by client in order to update desired course of his submarine
+struct CourseReq
+{
+	__gshared const int g_marshIdx;
+	float target;
+}

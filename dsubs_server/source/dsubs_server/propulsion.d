@@ -81,7 +81,7 @@ class BasicRudder: Rudder
 		error = angleDist(targetCourse, transform.wrotation);
 		errorDeriv = c.angVel;
 		double absSin = fabs(sin(c.AoA));
-		double aoaScale = 1.0 - fmin(1.0, 2.0 * absSin);
+		double aoaScale = 1.0 - fmin(0.95, 2.0 * absSin);
 		return steeringK * rudderPos * c.velSquaredLength * aoaScale;
 	}
 
