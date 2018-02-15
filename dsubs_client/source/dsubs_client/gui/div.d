@@ -209,7 +209,7 @@ final class Div: GuiElement
 			// update external borders:
 			// top border
 			sfRectangleShape_setPosition(m_divBorders[0], sfVector2f(0.0f, 0.0f));
-			sfRectangleShape_setSize(m_divBorders[0], 
+			sfRectangleShape_setSize(m_divBorders[0],
 				sfVector2f(size.x, m_borderWidth));
 			// bottom border
 			sfRectangleShape_setPosition(m_divBorders[2], sfVector2f(0.0f, size.y - m_borderWidth));

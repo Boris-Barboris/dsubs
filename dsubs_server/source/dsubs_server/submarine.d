@@ -54,4 +54,20 @@ final class Submarine
 			owner.submarine = null;
 		owner = null;
 	}
+
+	/// set propulsor's target throttle
+	void setThrottleFromUser(float target)
+	{
+		enforce(!isNaN(target), "Nan throttle");
+		enforce(target <= 1.0f && target >= -1.0f, "Throttle not in [-1, 1] interval");
+		propulsor.targetRotSpd = target;
+	}
+
+	/// set rudder's target course
+	void setCourseFromUser(float target)
+	{
+		enforce(!isNaN(target), "Nan course");
+		target = clampAngle(target - owner.coordRot);
+		rudder.targetCourse = target;
+	}
 }

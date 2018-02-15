@@ -21,7 +21,7 @@ final class PasswordField: TextField
 
 	alias content = super.content;
 
-	@property override const(dmutstring) content() const { return m_hiddenContent; }
+	@property override dmutstring content() { return m_hiddenContent; }
 
 	@property override dmutstring content(dstring rhs)
 	out (result)

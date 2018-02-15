@@ -1,8 +1,10 @@
 module dsubs_common.mutstring;
 
 import std.algorithm.comparison;
+//import std.experimental.logger;
 import std.string;
 import std.utf;
+import std.format;
 
 
 /** Alias for simple mutable string, that we all need so much
@@ -39,7 +41,16 @@ CharT[] _s(CharT)(immutable(CharT)[] s, size_t size) nothrow pure @safe
 
 /// Copy string contents into mutstring, extending it if
 /// required.
-void str2mutCopy(CharT)(immutable(CharT)[] s, ref CharT[] ms) nothrow @safe
+void str2mutCopy(CharT1, CharT2)(immutable(CharT1)[] s, ref CharT2[] ms) nothrow @safe
+{
+	ms.length = s.length + 1;
+	for (size_t i = 0; i < s.length; i++)
+		ms[i] = s[i];
+	ms[s.length] = 0;
+}
+
+/// ditto
+void str2mutCopy(CharT1, CharT2)(const CharT1[] s, ref CharT2[] ms) nothrow @safe
 {
 	ms.length = s.length + 1;
 	for (size_t i = 0; i < s.length; i++)
@@ -61,6 +72,17 @@ void replaceInterval(CharT)(ref CharT[] s, size_t start, size_t end, CharT c)
 		s.length = s.length - shift;
 	}
 }
+
+/// Wrapper around sformat
+void mutsformat(string fmt, Args...)(ref dmutstring what, Args args)
+{
+	static char[64] tmpbuf = 0;
+	assert(tmpbuf[].length == 64);
+	char[] res = sformat!(fmt)(tmpbuf[], args);
+	//trace("after ", res);
+	str2mutCopy!(char, dchar)(res, what);
+}
+
 
 string str(const dmutstring mut)
 {

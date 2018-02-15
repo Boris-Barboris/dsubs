@@ -74,7 +74,15 @@ class Label: GuiElement
 		sfText_setColor(m_sfText, m_fontColor);
 	}
 
-	@property const(dmutstring) content() const { return m_content; }
+	@property dmutstring content() { return m_content; }
+
+	@property dmutstring content(dmutstring rhs)
+	{
+		m_content = rhs;
+		sfText_setUnicodeString(m_sfText, m_content.ptr);
+		updateText();
+		return m_content;
+	}
 
 	@property dmutstring content(dstring rhs)
 	{
@@ -158,7 +166,7 @@ class Label: GuiElement
 				y = size.y - m_padding - m_fontSize - glyphParams.topOffset;
 				break;
 			case VTextAlign.CENTER:
-				y = 0.5f * (size.y - m_fontSize) - glyphParams.topOffset;
+				y = 0.5f * (size.y - m_fontSize) - 0.5f * glyphParams.topOffset;
 		}
 		m_textPos.y = lrint(y).to!int;
 		m_contentPos.y = m_textPos.y + glyphParams.topOffset;

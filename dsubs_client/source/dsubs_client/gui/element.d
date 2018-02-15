@@ -96,7 +96,7 @@ class GuiElement: IInputReciever
 		return m_size;
 	}
 
-	/// save as size setter, but sets layout to fixed
+	/// same as size setter, but sets layout to fixed
 	@property vec2i fixedSize(vec2i rhs)
 	{
 		m_layoutType = LayoutType.FIXED;

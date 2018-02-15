@@ -122,8 +122,8 @@ void buildPropulsorTemplates()
 				Vector2f(4.2f, -0.9f)
 			], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 		);
-	bp.posThrustK = RolledF(1500.0f, 2.0f);
-	bp.negThrustK = RolledF(800.0f, 1.0f);
+	bp.posThrustK = RolledF(2400.0f, 40.0f);
+	bp.negThrustK = RolledF(600.0f, 20.0f);
 	g_propulsors["Standard screw"] = bp;
 }
 
@@ -203,9 +203,13 @@ void buildSubmarineTemplates()
 	sp = new BasicSubmarinePrototype();
 	sp.tmpl =
 		SubmarineTemplate(
-			"Bobby",
-			`Light attack submarine "Bobby" offers good balance of stealth, ` ~
-			"offensive power and survivability.",
+			"Eona",
+`Light attack submarine "Eona" offers good balance of stealth, ` ~
+`offensive capabilities and survivability.
+
+Length: 70m
+Displacement: 3000t,
+Top speed: 16m/s`,
 			[
 				ConvexPolygon(xSymmetry([
 						0.0, 35.0,
@@ -237,11 +241,11 @@ void buildSubmarineTemplates()
 			[]
 		);
 	sp.moi = RolledF(1000.0f, 5.0f);
-	sp.mass = RolledF(2000.0f, 10.0f);
-	sp.Cd0 = RolledF(2.0, 0.01f);
-	sp.Cd1 = RolledF(5.0, 0.02f);
+	sp.mass = RolledF(3000.0f, 10.0f);
+	sp.Cd0 = RolledF(9.0, 0.05f);
+	sp.Cd1 = RolledF(15.0, 0.05f);
 	sp.Cl = RolledF(100.0, 1.0f);
 	sp.Cr = RolledF(10000.0, 10.0f);
 	sp.rudderSteerK = 0.0001f;
-	g_submarines["Bobby"] = sp;
+	g_submarines["Eona"] = sp;
 }

@@ -14,7 +14,7 @@ abstract class Propulsor: IForce
 	string prototypeName;
 
 	float rotSpd = 0.0f;		// [-1.0, 1.0]
-	float targetRotSpd = 1.0f;	// [-1.0, 1.0]
+	float targetRotSpd = 0.0f;	// [-1.0, 1.0]
 }
 
 /// simple propulsor with linear thrust law

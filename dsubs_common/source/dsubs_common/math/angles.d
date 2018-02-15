@@ -5,7 +5,8 @@ import std.math;
 public import gfm.math.vector;
 
 
-/// Return a - b, clamped to [-PI; PI]
+/// Return a - b, clamped to [-PI; PI].
+/// Equal to smallest direction change from b to a.
 double angleDist(double a, double b)
 {
 	double val = fmod(a - b, 2 * PI);
@@ -41,6 +42,16 @@ double courseAngle(double a)
 	if (val > 0)
 		val -= 2 * PI;
 	return val;
+}
+
+double rad2dgr(double rad)
+{
+	return rad * 180.0 / PI;
+}
+
+double dgr2rad(double dgr)
+{
+	return dgr / 180.0 * PI;
 }
 
 /// Get the angle between dir and (0, 1.0) vector

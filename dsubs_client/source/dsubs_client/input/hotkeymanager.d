@@ -148,7 +148,9 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 	/// interate over all registered HoldKeys and fire their handlers
 	void processHeldKeys(long usecs)
 	{
-		if (!m_wnd.hasFocus)
+		// we don't handle held keys when window does not have focus or when
+		// there is a keyboard-capturing component
+		if (!m_wnd.hasFocus || InputRouter.kbFocused)
 			return;
 		Modifier curMod = getCurMod();
 		foreach (act; m_holdkeys)

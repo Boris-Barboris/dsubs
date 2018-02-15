@@ -113,6 +113,8 @@ struct ReconnectStateRes
 	__gshared const int g_marshIdx;
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
+	float targetCourse;
+	float targetThrottle;
 }
 
 /// Server periodically sends the player updates with his submarine position

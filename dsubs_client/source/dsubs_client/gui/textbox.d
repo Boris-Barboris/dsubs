@@ -109,6 +109,7 @@ final class TextBox: GuiElement
 		int charsInLine = max(1, floor(lineWidth / glyphWidth).to!int);
 		dchar[1024] tmp = 0;	// stack-allocated array to hold the line being built
 		size_t contentIdx = 0;	// cursor to query m_content
+		size_t curLineStart = 0;	// cursor in m_content where current line has started
 		int lineIdx = 0;		// current line index
 		size_t txtIdx = 0;		// cursor of the m_sfTexts element being filled
 		size_t tmpIdx = 0;		// cursor to fill tmp
@@ -121,7 +122,7 @@ final class TextBox: GuiElement
 					createTextObj();
 				sfText* t = m_sfTexts[txtIdx];
 				tmp[tmpIdx] = 0;	// zero terminator as if it was a C string
-				sfText_setUnicodeString(t, tmp.ptr);
+				sfText_setUnicodeString(t, &tmp[0]);
 				if (naiiveWidth && tmpIdx > 1)
 				{
 					// we now get accurate glyph width
@@ -131,7 +132,7 @@ final class TextBox: GuiElement
 					charsInLine = max(1, floor(lineWidth / glyphWidth).to!int);
 					naiiveWidth = false;
 					// essentially restart this line building
-					contentIdx -= tmpIdx;
+					contentIdx = curLineStart;
 					tmpIdx = 0;
 					return false;
 				}
@@ -140,6 +141,7 @@ final class TextBox: GuiElement
 			}
 			lineIdx++;
 			tmpIdx = 0;
+			curLineStart = contentIdx;
 			return true;
 		}
 
@@ -185,6 +187,7 @@ final class TextBox: GuiElement
 	{
 		sfFloatRect bounds = sfText_getLocalBounds(t);
 		float x = -bounds.left + m_padding;
+		//float x = m_padding;
 		int y = interline * lineNumber + m_padding;
 		sfText_setPosition(t, sfVector2f(lrint(x), y));
 	}

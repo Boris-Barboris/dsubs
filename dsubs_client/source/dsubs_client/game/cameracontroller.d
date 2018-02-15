@@ -1,5 +1,6 @@
 module dsubs_client.game.cameracontroller;
 
+import std.functional;
 import std.math;
 
 import std.experimental.logger;
@@ -34,6 +35,14 @@ final class CameraController: WorldMouseReceiver
 	this()
 	{
 		Game.hotkeyManager.addHoldkey(&handleKeyboard);
+		Game.hotkeyManager.setHotkey(Hotkey(sfKeyEscape),
+			toDelegate(&resetCameraToPlayerSub));
+	}
+
+	private static void resetCameraToPlayerSub()
+	{
+		Game.worldManager.camCtx.camera.center =
+					Game.simState.playerSub.transform.position;
 	}
 
 	private void handleKeyboard(long usecs, Modifier curMods)

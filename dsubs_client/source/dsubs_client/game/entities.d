@@ -27,9 +27,8 @@ class Propulsor
 	mixin Readonly!(const(PropulsorTemplate*), "tmpl");
 
 	protected ConvexShape m_shape;
-	protected double m_targetThrottle;
 
-	@property double targetThrottle(double target) { return m_targetThrottle = target; }
+	float targetThrottle = 0.0f;
 
 	this(EntityManager man, string propName)
 	{
@@ -49,8 +48,8 @@ final class ScrewPropulsor: Propulsor
 	private
 	{
 		ubyte m_bladeCount;
-		double m_rotorAngle = 0.0;
-		double m_angVel = 0.0;
+		float m_rotorAngle = 0.0;
+		float m_angVel = 0.0;
 		Transform m_rotTransform;
 	}
 
@@ -62,8 +61,8 @@ final class ScrewPropulsor: Propulsor
 		transform.addChild(m_rotTransform);
 
 		m_blades.length = m_bladeCount;
-		double step = 2.0 * PI / m_bladeCount;
-		double angle = m_rotorAngle;
+		float step = 2.0 * PI / m_bladeCount;
+		float angle = m_rotorAngle;
 		for (int i = 0; i < m_bladeCount; i++)
 		{
 			m_blades[i] = Blade(angle, cos(angle), sin(angle));
@@ -73,16 +72,16 @@ final class ScrewPropulsor: Propulsor
 
 	private struct Blade
 	{
-		double angle;
-		double bladeCos;
-		double bladeSin;
+		float angle;
+		float bladeCos;
+		float bladeSin;
 	}
 
 	private Blade[] m_blades;
 
 	override void update(CameraContext camCtx, long usecsDelta)
 	{
-		m_angVel = 5.0 * m_targetThrottle;	// TODO
+		m_angVel = cmove(m_angVel, 5.0 * targetThrottle, 2.0, usecsDelta / 1e6);
 		double delta = m_angVel * 1e-6 * usecsDelta;
 		m_rotorAngle += delta;
 		m_rotorAngle = clampAngle(m_rotorAngle);
@@ -155,6 +154,18 @@ final class Submarine: WorldRenderable
 	private ConvexShape[] m_shapes;
 	private KinematicTrace trace;
 
+	float targetCourse = 0.0f;
+	private float m_targetThrottle = 0.0f;
+
+	@property float targetThrottle() const { return m_targetThrottle; }
+	@property float targetThrottle(float tgt)
+	{
+		m_targetThrottle = tgt;
+		foreach (p; m_propulsors)
+			p.targetThrottle = tgt;
+		return tgt;
+	}
+
 	this(EntityManager man, string hullName, string propName)
 	{
 		m_tmpl = man.m_submarineTemplates[hullName];
@@ -219,7 +230,6 @@ final class Submarine: WorldRenderable
 			p.transform.position =
 				vec2d(mount.mountCenter.data[0], mount.mountCenter.data[1]);
 			transform.addChild(p.transform);
-			p.targetThrottle = 1.0;
 			m_propulsors ~= p;
 		}
 	}

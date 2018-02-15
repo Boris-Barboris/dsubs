@@ -53,14 +53,16 @@ void setupMainMenu()
 			hDiv([pwLabel, pwField, filler(LOGIN_FRACT)])
 		])).fixedSize(vec2i(0, loginSize * 2 + 20)).borderWidth(20).build();
 
-	loginField.onKeyPressed += (evt) {
+	loginField.onKeyPressed += (evt)
+	{
 		if (evt.code == sfKeyTab)
 			pwField.requestKbFocus();
 		if (evt.code == sfKeyReturn)
 			connectButton.simulateClick();
 	};
 
-	pwField.onKeyPressed += (evt) {
+	pwField.onKeyPressed += (evt)
+	{
 		if (evt.code == sfKeyReturn)
 			connectButton.simulateClick();
 	};
@@ -132,7 +134,9 @@ void setupMainMenu()
 		{
 			Submarine playerSub = new Submarine(
 				Game.entityManager, recState.submarineName, recState.propulsorName);
-			setupSimulationState(playerSub);
+			playerSub.targetCourse = recState.targetCourse;
+			playerSub.targetThrottle = recState.targetThrottle;
+			setupSimulationState(playerSub, true);
 			return;
 		}
 

@@ -5,6 +5,7 @@ import std.exception;
 import std.concurrency;
 import std.conv: to;
 import std.socket;
+import std.math;
 import core.atomic;
 import core.thread;
 
@@ -49,6 +50,8 @@ final class PlayerConnection
 		m_handlers[EntityDbReq.g_marshIdx] = &h_entityDbReq;
 		m_handlers[ClientPing.g_marshIdx] = &h_clientPing;
 		m_handlers[SpawnReq.g_marshIdx] = &h_spawnReq;
+		m_handlers[ThrottleReq.g_marshIdx] = &h_throttleReq;
+		m_handlers[CourseReq.g_marshIdx] = &h_courseReq;
 
 		// std is not very nice with it's shared obsession,
 		// we'll have to cast to it a lot
@@ -246,7 +249,9 @@ private:
 			{
 				immutable ReconnectStateRes rcres = ReconnectStateRes(
 					sub.prototypeName,
-					sub.propulsor.prototypeName);
+					sub.propulsor.prototypeName,
+					sub.rudder.targetCourse + playerCtx.coordRot,
+					sub.propulsor.targetRotSpd);
 				trace("User already spawned, sending reconnect state: ", rcres);
 				sendBytes(marshalMessage(&rcres));
 			}
@@ -272,7 +277,7 @@ private:
 		enforce(playerCtx.submarine is null, "Player already has a submarine spawned");
 		SpawnReq req;
 		demarshalMessage(&req, msgBody);
-		trace(req);
+		info("Spawn request from ", m_username, ": ", req);
 
 		// try to build a submarine
 		Submarine sub = buildSubFromLoadout(req, playerCtx);
@@ -289,5 +294,23 @@ private:
 			sub.bootstrap();
 			playerCtx.submarine = sub;
 		}
+	}
+
+	void h_throttleReq(ubyte[] msgBody)
+	{
+		enforce(m_authorized, "Permission denied");
+		enforce(playerCtx.submarine !is null, "You have no submarine");
+		ThrottleReq req;
+		demarshalMessage(&req, msgBody);
+		playerCtx.submarine.setThrottleFromUser(req.target);
+	}
+
+	void h_courseReq(ubyte[] msgBody)
+	{
+		enforce(m_authorized, "Permission denied");
+		enforce(playerCtx.submarine !is null, "You have no submarine");
+		CourseReq req;
+		demarshalMessage(&req, msgBody);
+		playerCtx.submarine.setCourseFromUser(req.target);
 	}
 }
