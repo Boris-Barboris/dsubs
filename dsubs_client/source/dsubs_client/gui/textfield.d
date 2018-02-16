@@ -105,6 +105,13 @@ class TextField: Label
 		m_cursorStart = m_cursorEnd = 0;
 	}
 
+	void selectAll()
+	{
+		m_cursorStart = 0;
+		m_cursorEnd = m_content.length - 1;
+		updateCursorVisuals();
+	}
+
 	protected override void updateText()
 	{
 		super.updateText();

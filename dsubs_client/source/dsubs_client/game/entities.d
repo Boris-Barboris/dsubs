@@ -14,7 +14,7 @@ import dsubs_common.api;
 
 import dsubs_client.core.utils;
 import dsubs_client.core.window;
-import dsubs_client.render.convex;
+import dsubs_client.render.shapes;
 import dsubs_client.render.worldmanager;
 import dsubs_client.math.transform;
 
@@ -179,11 +179,22 @@ final class Submarine: WorldRenderable
 	}
 
 	/// returns true if the snapshot was written to res
-	@property bool getLastSnapshot(out BodySnapshot res) const
+	bool getLastSnapshot(out BodySnapshot res) const
 	{
 		if (trace.canInterpolate)
 		{
 			res = trace.mostRecent;
+			return true;
+		}
+		return false;
+	}
+
+	/// returns true if the snapshot was written to res
+	bool getInterpolatedSnapshot(out BodySnapshot res) const
+	{
+		if (trace.canInterpolate)
+		{
+			res = trace.result;
 			return true;
 		}
 		return false;

@@ -18,16 +18,20 @@ import dsubs_client.game.simulation;
 import dsubs_client.gui;
 
 
+private
+{
+	immutable int MENU_BUTTON_FONTSIZE = 50;
+	immutable int LOGIN_FONT_SIZE = 22;
+	immutable int INFO_FONT_SIZE = 18;
+	immutable float LOGIN_FRACT = 0.3f;
+}
+
+
 void setupMainMenu()
 {
 	bool canLogin = false;
 	bool alreadySpawned = false;
 	ReconnectStateRes recState;
-
-	enum int MENU_BUTTON_FONTSIZE = 50;
-	enum int LOGIN_FONT_SIZE = 22;
-	enum int INFO_FONT_SIZE = 18;
-	enum float LOGIN_FRACT = 0.3f;
 
 	Game.clearEntities();
 

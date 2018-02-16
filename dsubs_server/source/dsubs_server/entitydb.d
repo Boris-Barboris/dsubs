@@ -6,6 +6,7 @@ import std.digest.sha;
 import std.exception;
 
 import dsubs_common.api;
+import dsubs_common.math;
 
 import dsubs_server.common;
 import dsubs_server.propulsion;
@@ -49,6 +50,7 @@ Submarine buildSubFromLoadout(const SpawnReq req, PlayerContext ctx)
 	enforce(pp !is null, "Unknown propulsor");
 	Submarine sub = sp.build(ctx);
 	sub.propulsor = pp.build();
+	trace("bop");
 	return sub;
 }
 
@@ -81,6 +83,7 @@ class BasicPropulsorPrototype: PropulsorPrototype
 	PropulsorTemplate tmpl;
 	RolledF posThrustK;
 	RolledF negThrustK;
+	float mass;
 	SpawnPermission permission = SpawnPermission.player;
 
 	BasicPropulsor build() const
@@ -89,6 +92,7 @@ class BasicPropulsorPrototype: PropulsorPrototype
 		res.posThrustK = posThrustK;
 		res.negThrustK = negThrustK;
 		res.prototypeName = tmpl.name;
+		res.mass = mass;
 		return res;
 	}
 
@@ -113,7 +117,7 @@ void buildPropulsorTemplates()
 		PropulsorTemplate(
 			"Standard screw",
 			"Five-bladed screw with no outstanding traits, " ~
-			"but relatively good high-speed performance.",
+			"but relatively good high-speed performance.\n\nMass: 50t",
 			PropulsorType.SCREW,
 			5,
 			ConvexPolygon([
@@ -124,6 +128,7 @@ void buildPropulsorTemplates()
 		);
 	bp.posThrustK = RolledF(2400.0f, 40.0f);
 	bp.negThrustK = RolledF(600.0f, 20.0f);
+	bp.mass = 50.0f;
 	g_propulsors["Standard screw"] = bp;
 }
 
@@ -161,24 +166,30 @@ class BasicSubmarinePrototype: SubmarinePrototype
 {
 	SubmarineTemplate tmpl;
 	// physical characteristics
-	RolledF moi, mass, Cd0, Cd1, Cr, Cl;
+	RolledF mass, Cd0, Cd1, Cr, Cl, Cm;
 
-	/// rudder gain, wich is multiplied on the sub moi when it's built
-	float rudderSteerK;
+	// MOI-related stuff
+	float moiK = 1.0f;
+	float hullLength;
+
+	/// Equilibrium drift angle on maximum rudder deflection, radians
+	float equilDrift;
 	SpawnPermission permission = SpawnPermission.player;
 
 	Submarine build(PlayerContext pc) const
 	{
 		Submarine res = new Submarine(pc, tmpl.name);
-		res.rigidBody.moi = moi;
+		res.moiK = moiK;
+		res.hullLength = hullLength;
 		res.rigidBody.mass = mass;
 		res.rigidBody.hydroModel.Cd0 = Cd0;
 		res.rigidBody.hydroModel.Cd1 = Cd1;
 		res.rigidBody.hydroModel.Cr = Cr;
 		res.rigidBody.hydroModel.Cl = Cl;
-		// FIXME: for now we simply bake rudder into the submarine
+		res.rigidBody.hydroModel.Cm = -Cm.roll();
 		auto brudder = new BasicRudder();
-		brudder.steeringK = rudderSteerK * res.rigidBody.moi;
+		// Cm * equilDrift = steeringK
+		brudder.steeringK = fabs(equilDrift * res.rigidBody.hydroModel.Cm);
 		res.rudder = brudder;
 		return res;
 	}
@@ -192,6 +203,30 @@ class BasicSubmarinePrototype: SubmarinePrototype
 	{
 		return permission;
 	}
+}
+
+
+vec2f getHullDims(ConvexPolygon[] pols)
+{
+	float xmin = float.max;
+	float xmax = -float.max;
+	float ymin = float.max;
+	float ymax = -float.max;
+	foreach (pol; pols)
+	{
+		foreach (vec; pol.points)
+		{
+			if (xmin > vec[0])
+				xmin = vec[0];
+			if (xmax < vec[0])
+				xmax = vec[0];
+			if (ymin > vec[1])
+				ymin = vec[1];
+			if (ymax < vec[1])
+				ymax = vec[1];
+		}
+	}
+	return vec2f(xmax - xmin, ymax - ymin);
 }
 
 
@@ -240,12 +275,15 @@ Top speed: 16m/s`,
 			1,
 			[]
 		);
-	sp.moi = RolledF(1000.0f, 5.0f);
 	sp.mass = RolledF(3000.0f, 10.0f);
 	sp.Cd0 = RolledF(9.0, 0.05f);
-	sp.Cd1 = RolledF(15.0, 0.05f);
-	sp.Cl = RolledF(100.0, 1.0f);
-	sp.Cr = RolledF(10000.0, 10.0f);
-	sp.rudderSteerK = 0.0001f;
+	sp.Cd1 = RolledF(16.0, 0.1f);
+	sp.Cl = RolledF(30.0, 0.2f);
+	sp.Cr = RolledF(1.2e6, 1e2);
+	sp.Cm = RolledF(100.0f, 3.0f);
+	sp.equilDrift = 0.175f;		// ~10 deg
+	vec2f dims = getHullDims(sp.tmpl.hullModel);
+	trace("dims: ", dims);
+	sp.hullLength = dims.y;
 	g_submarines["Eona"] = sp;
 }

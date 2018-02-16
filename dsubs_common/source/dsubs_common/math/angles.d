@@ -60,6 +60,12 @@ double courseAngle(vec2d dir)
 	return atan2(-dir.x, dir.y);
 }
 
+/// ditto
+float courseAngle(vec2f dir)
+{
+	return atan2(-dir.x, dir.y);
+}
+
 unittest
 {
 	assert(courseAngle(vec2d(0.0, 1.0)) == 0.0);

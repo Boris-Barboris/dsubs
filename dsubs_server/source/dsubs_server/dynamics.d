@@ -20,15 +20,20 @@ struct HydroForceModel
 	double Cr;
 	// lift model: lift = v^2 * sin(2 * AoA) * Cl
 	double Cl;
+	// torque model: torque = v^2 * Cm * sin(AoA)
+	// Assumes stability with negative Cm.
+	double Cm;
 
 	double drag(double velSqr, double aoa)
 	{
 		return velSqr * (Cd0 + fabs(sin(aoa)) * Cd1);
 	}
 
-	double torque(double angVel)
+	double torque(double velSqr, double angVel, double aoa)
 	{
-		return - sgn(angVel) * angVel * angVel * Cr;
+		double drag_tq = - sgn(angVel) * angVel * angVel * Cr;
+		double stabil_tq = velSqr * sin(aoa) * Cm;
+		return drag_tq + stabil_tq;
 	}
 
 	double lift(double velSqr, double aoa)
@@ -47,7 +52,7 @@ struct Kinematics
 	double rotation = 0.0;
 
 	// cache for popular stuff
-	double AoA;
+	double AoA;		/// drift angle
 	double velLength;
 	double velSquaredLength;
 	double velRotation;
@@ -158,7 +163,7 @@ final class SubmergedRigidBody: PhysicalEntity
 		double resultTorque = 0.0;
 		foreach (force; forces)
 			resultTorque += force.getTorque(this, c);
-		resultTorque += hydroModel.torque(c.angVel);
+		resultTorque += hydroModel.torque(c.velSquaredLength, c.angVel, c.AoA);
 		assert(moi > 0.0);
 		return resultTorque / moi;
 	}

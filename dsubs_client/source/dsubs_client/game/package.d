@@ -12,7 +12,7 @@ import dsubs_common.api;
 import dsubs_client.core.delayer;
 import dsubs_client.core.window;
 import dsubs_client.input.router;
-import dsubs_client.input.hotkeymanager;
+public import dsubs_client.input.hotkeymanager;
 import dsubs_client.gui.manager;
 import dsubs_client.render.render;
 import dsubs_client.render.worldmanager;

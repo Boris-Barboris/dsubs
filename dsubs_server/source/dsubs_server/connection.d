@@ -26,7 +26,7 @@ final class PlayerConnection
 	{
 		Socket m_sock;
 		Address m_remoteAddr;
-		Tid m_readerThread;
+		Thread m_readerThread;
 		Tid m_writerThread;
 		bool m_authorized = false;
 		shared bool m_closed = false;
@@ -55,7 +55,7 @@ final class PlayerConnection
 
 		// std is not very nice with it's shared obsession,
 		// we'll have to cast to it a lot
-		m_readerThread = spawn(cast(shared void delegate()) &readProc);
+		m_readerThread = new Thread(&readProc).start();
 		m_writerThread = spawn(cast(shared void delegate()) &writerProc);
 	}
 

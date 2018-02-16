@@ -22,7 +22,7 @@ final class ServerConnection
 		Socket m_sock;
 		Address m_serverAddr;
 
-		Tid m_readerThread;	/// this thread reads messages in infinite loop
+		Thread m_readerThread;	/// this thread reads messages in infinite loop
 
 		/// This thread writes in infinite loop. It's needed in order to not block main
 		/// threads on disconnects.
@@ -115,7 +115,7 @@ private:
 	void do_connect()
 	{
 		atomicStore(m_closed, false);
-		m_readerThread = spawn(cast(shared void delegate()) &readProc);
+		m_readerThread = new Thread(&readProc).start();
 	}
 
 	int[2] recvHeader()

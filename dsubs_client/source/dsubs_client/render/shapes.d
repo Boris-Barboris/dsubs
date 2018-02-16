@@ -59,6 +59,7 @@ final class CircleShape
 		sfCircleShape_setFillColor(m_shape, sfTransparent);
 		sfCircleShape_setOutlineColor(m_shape, sfWhite);
 		sfCircleShape_setOutlineThickness(m_shape, 1.0f);
+		sfCircleShape_setOrigin(m_shape, sfVector2f(radius, radius));
 	}
 
 	~this()
@@ -66,14 +67,15 @@ final class CircleShape
 		sfCircleShape_destroy(m_shape);
 	}
 
-	@porperty float radius() const
+	@property float radius() const
 	{
 		return sfCircleShape_getRadius(m_shape);
 	}
 
-	@porperty float radius(float rhs)
+	@property float radius(float rhs)
 	{
 		sfCircleShape_setRadius(m_shape, rhs);
+		sfCircleShape_setOrigin(m_shape, sfVector2f(rhs, rhs));
 		return rhs;
 	}
 
@@ -88,45 +90,45 @@ final class CircleShape
 		return rhs;
 	}
 
-	@porperty int vertexCount() const
+	@property int vertexCount() const
 	{
 		return sfCircleShape_getPointCount(m_shape);
 	}
 
-	@porperty int vertexCount(int rhs)
+	@property int vertexCount(int rhs)
 	{
 		sfCircleShape_setPointCount(m_shape, rhs);
 		return rhs;
 	}
 
-	@porperty sfColor fillColor() const
+	@property sfColor fillColor() const
 	{
-		return sfCircleShape_getPointCount(m_shape);
+		return sfCircleShape_getFillColor(m_shape);
 	}
 
-	@porperty sfColor fillColor(sfColor rhs)
+	@property sfColor fillColor(sfColor rhs)
 	{
 		sfCircleShape_setFillColor(m_shape, rhs);
 		return rhs;
 	}
 
-	@porperty sfColor borderColor() const
+	@property sfColor borderColor() const
 	{
 		return sfCircleShape_getOutlineColor(m_shape);
 	}
 
-	@porperty sfColor borderColor(sfColor rhs)
+	@property sfColor borderColor(sfColor rhs)
 	{
 		sfCircleShape_setOutlineColor(m_shape, rhs);
 		return rhs;
 	}
 
-	@porperty float borderWidth() const
+	@property float borderWidth() const
 	{
 		return sfCircleShape_getOutlineThickness(m_shape);
 	}
 
-	@porperty float borderWidth(float rhs)
+	@property float borderWidth(float rhs)
 	{
 		sfCircleShape_setOutlineThickness(m_shape, rhs);
 		return rhs;
@@ -150,7 +152,7 @@ final class LineShape
 		Transform m_transform;
 	}
 
-	@roperty Transform transform() { return m_transform; };
+	@property Transform transform() { return m_transform; };
 
 	this(vec2f p1, vec2f p2, sfColor color, float width = 1.0f)
 	{
@@ -160,6 +162,7 @@ final class LineShape
 		sfRectangleShape_setOutlineThickness(m_shape, 0.0f);
 		sfRectangleShape_setSize(m_shape, sfVector2f(1.0f, 1.0f));
 		sfRectangleShape_setPosition(m_shape, sfVector2f(0.0f, -0.5f));
+		rebuild(p1, p2, width);
 	}
 
 	void setPoints(vec2f p1, vec2f p2)
@@ -175,7 +178,7 @@ final class LineShape
 
 	private void rebuild(vec2f p1, vec2f p2, float width)
 	{
-		m_transform.position = p1;
+		m_transform.position = p1.tod;
 		m_transform.rotation = courseAngle(p2 - p1) + PI_2;
 		m_transform.scale = vec2d((p2 - p1).length, width);
 	}
@@ -187,6 +190,7 @@ final class LineShape
 		vec2d curScale = m_transform.scale;
 		curScale.y = rhs;
 		m_transform.scale = curScale;
+		return rhs;
 	}
 
 	void render(Window wnd)

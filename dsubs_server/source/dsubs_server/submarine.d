@@ -13,6 +13,8 @@ final class Submarine
 {
 	Transform2D transform;
 	SubmergedRigidBody rigidBody;
+	float moiK = 1.0f;
+	float hullLength;	// will be replaced
 
 	// modules of various nature
 	Rudder rudder;
@@ -43,6 +45,17 @@ final class Submarine
 		// bind module transforms to submarine itself
 		rudder.transform = transform;
 		propulsor.transform = transform;
+
+		// mass interactions
+		rigidBody.mass += propulsor.mass;
+		// calculate final MOI
+		rigidBody.moi = moiK * rigidBody.mass * hullLength * hullLength / 12.0;
+		assert(!isNaN(rigidBody.mass));
+		assert(!isNaN(rigidBody.moi));
+
+		trace("hull length ", hullLength);
+		trace("sub ", prototypeName, ", mass ", rigidBody.mass, ", moi ", rigidBody.moi);
+
 		registerPEntity(rigidBody);
 	}
 

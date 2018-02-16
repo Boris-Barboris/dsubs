@@ -61,6 +61,11 @@ struct PODVector(T, size_t size)
 	{
 		return *cast(Vector!(T, size)*) &this;
 	}
+
+	ref inout(T) opIndex(size_t i) inout
+	{
+		return data[i];
+	}
 }
 
 alias Vector2f = PODVector!(float, 2);

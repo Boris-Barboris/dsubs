@@ -44,3 +44,9 @@ NumT clamp(NumT)(NumT v, NumT lower, NumT upper)
 		return upper;
 	return v;
 }
+
+/// covert vec2f to vec2d
+vec2d tod(vec2f v)
+{
+	return vec2d(v.x, v.y);
+}

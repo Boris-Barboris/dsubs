@@ -15,6 +15,7 @@ abstract class Propulsor: IForce
 
 	float rotSpd = 0.0f;		// [-1.0, 1.0]
 	float targetRotSpd = 0.0f;	// [-1.0, 1.0]
+	float mass = 0.0f;
 }
 
 /// simple propulsor with linear thrust law
@@ -64,8 +65,8 @@ class BasicRudder: Rudder
 	float steeringK = 0.0f;
 
 	// PD controller gains
-	float Kp = 2.0;
-	float Kd = -10.0;
+	float Kp = 5.0f;
+	float Kd = -45.0;
 
 	private float error = 0.0;
 	private float errorDeriv = 0.0;
@@ -87,7 +88,9 @@ class BasicRudder: Rudder
 
 	void propagateInTime(float dt)
 	{
-		float targetRudderPos = Kp * error + Kd * errorDeriv;
+		float targetRudderPos = sgn(error);
+		if (fabs(error) < 0.4f)
+			targetRudderPos = clamp(Kp * error + Kd * errorDeriv, -1.0f, 1.0f);
 		rudderPos = cmove(rudderPos, targetRudderPos, posChangeSpeed, dt);
 	}
 }

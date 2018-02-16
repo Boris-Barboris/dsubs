@@ -18,6 +18,7 @@ import dsubs_client.core.utils;
 import dsubs_client.game;
 import dsubs_client.gui;
 import dsubs_client.game.cameracontroller;
+import dsubs_client.game.overlay;
 
 
 class SimulatorState
@@ -75,6 +76,9 @@ void setupSimulationState(Submarine playerSub, bool alreadyHaveSub = false)
 	Game.worldManager.mouseReceivers ~= Game.simState.camController;
 
 	setupSimulationGui();
+
+	// overlay
+	Game.worldManager.components ~= new PlayerSubIcon(playerSub);
 }
 
 
@@ -223,6 +227,17 @@ void setupSimulationGui()
 
 	Game.simState.tgtCourseField = tgtCourseField;
 	Game.simState.tgtThrottleField = tgtThrottleField;
+
+	Game.hotkeyManager.setHotkey(Hotkey(sfKeyC), ()
+	{
+		tgtCourseField.requestKbFocus();
+		tgtCourseField.selectAll();
+	});
+	Game.hotkeyManager.setHotkey(Hotkey(sfKeyT), ()
+	{
+		tgtThrottleField.requestKbFocus();
+		tgtThrottleField.selectAll();
+	});
 
 	Div bottomDiv = builder(
 		hDiv(
