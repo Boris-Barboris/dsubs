@@ -125,7 +125,7 @@ private:
 		enforce(received == 8, "Error during receive");
 		enforce(header[0] >= 0 && header[0] < g_msgDemarshallers.length, "Unknown message");
 		enforce(header[1] >= 0 && header[1] <= MAX_MSG_SIZE, "Message length invalid");
-		trace("received header ", header);
+		//trace("received header ", header);
 		return header;
 	}
 

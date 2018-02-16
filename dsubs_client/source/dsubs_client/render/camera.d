@@ -10,6 +10,7 @@ import gfm.math.matrix;
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 import dsubs_client.lib.sfml;
+import dsubs_common.event;
 import dsubs_common.math.transform: clampAngle;
 
 
@@ -64,7 +65,11 @@ class Camera2D
 		sfView_setRotation(m_sfView, -degrees(m_rotation));
 		sfView_setSize(m_sfView, m_screenSize.tosf);
 		sfView_zoom(m_sfView, 1.0 / m_zoom);
+		onRebuild(this);
 	}
+
+	/// make sure the handler does not cause recusrive rebuilding
+	Event!(void delegate(Camera2D cam)) onRebuild;
 
 	final @property sfView* view()
 	{
