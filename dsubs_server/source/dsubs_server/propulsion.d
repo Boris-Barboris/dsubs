@@ -27,7 +27,7 @@ class BasicPropulsor: Propulsor
 
 	vec2d getForce(const SubmergedRigidBody b, ref const Kinematics c)
 	{
-		double absThrust = rotSpd * (rotSpd >= 0.0f ? posThrustK : negThrustK);
+		double absThrust = rotSpd * rotSpd * (rotSpd >= 0.0f ? posThrustK : negThrustK);
 		//trace("absThrust: ", absThrust, " posThrustK: ", posThrustK);
 		//trace("thrust: ", transform.wforward * absThrust);
 		return transform.wforward * absThrust;

@@ -83,7 +83,7 @@ final class PlayerSubIcon: OverlayEntity
 		if (m_sub.getInterpolatedSnapshot(snap))
 		{
 			double velRot = courseAngle(snap.velocity);
-			double velLen = snap.velocity.length;
+			double velLen = 1.33 * snap.velocity.length;
 			// LineShape is horizontal when transform rotation is zero, so we need
 			// to add PI_2 in order to match it with dsubs rotation frame
 			m_velLine.transform.rotation = -transform.rotation + velRot + PI_2;

@@ -96,7 +96,7 @@ private shared Mutex g_conMut;
 /// managment
 void s_initializePlayersCtx()
 {
-	info("Initializing player context mutexts");
+	info("Initializing player context mutexes");
 	g_playerMut = new shared Mutex();
 	g_conMut = new shared Mutex();
 }

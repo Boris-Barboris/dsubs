@@ -126,7 +126,7 @@ void buildPropulsorTemplates()
 				Vector2f(4.2f, -0.9f)
 			], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 		);
-	bp.posThrustK = RolledF(2400.0f, 40.0f);
+	bp.posThrustK = RolledF(2600.0f, 40.0f);
 	bp.negThrustK = RolledF(600.0f, 20.0f);
 	bp.mass = 50.0f;
 	g_propulsors["Standard screw"] = bp;
@@ -244,7 +244,7 @@ void buildSubmarineTemplates()
 
 Length: 70m
 Displacement: 3000t,
-Top speed: 16m/s`,
+Top speed: 17m/s`,
 			[
 				ConvexPolygon(xSymmetry([
 						0.0, 35.0,
@@ -278,10 +278,10 @@ Top speed: 16m/s`,
 	sp.mass = RolledF(3000.0f, 10.0f);
 	sp.Cd0 = RolledF(9.0, 0.05f);
 	sp.Cd1 = RolledF(16.0, 0.1f);
-	sp.Cl = RolledF(30.0, 0.2f);
+	sp.Cl = RolledF(40.0, 0.4f);
 	sp.Cr = RolledF(1.2e6, 1e2);
-	sp.Cm = RolledF(100.0f, 3.0f);
-	sp.equilDrift = 0.175f;		// ~10 deg
+	sp.Cm = RolledF(150.0f, 3.0f);
+	sp.equilDrift = 0.2f;		// ~13 deg
 	vec2f dims = getHullDims(sp.tmpl.hullModel);
 	trace("dims: ", dims);
 	sp.hullLength = dims.y;
