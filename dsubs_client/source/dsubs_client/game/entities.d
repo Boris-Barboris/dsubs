@@ -81,7 +81,7 @@ final class ScrewPropulsor: Propulsor
 
 	override void update(CameraContext camCtx, long usecsDelta)
 	{
-		m_angVel = cmove(m_angVel, 5.0 * targetThrottle, 2.0, usecsDelta / 1e6);
+		m_angVel = cmove(m_angVel, 7.5 * targetThrottle, 2.0, usecsDelta / 1e6);
 		double delta = m_angVel * 1e-6 * usecsDelta;
 		m_rotorAngle += delta;
 		m_rotorAngle = clampAngle(m_rotorAngle);
