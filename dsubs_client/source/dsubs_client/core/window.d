@@ -31,6 +31,7 @@ final class Window
 		m_ctxSettings.majorVersion = 3;
 		m_ctxSettings.minorVersion = 2;
 		m_ctxSettings.attributeFlags = sfContextDefault;
+		m_ctxSettings.sRgbCapable = false;
 		info("OpenGL context settings: ", m_ctxSettings);
 		info("Creating window...");
 		m_wnd = sfRenderWindow_createUnicode(m_mode, windowName.ptr,

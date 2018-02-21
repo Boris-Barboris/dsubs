@@ -1,7 +1,7 @@
 module dsubs_common.api.constants;
 
-/// API version of this particular dsubs_common.api package.
-/// MUST be incremented on each change.
+/// API version of this particular dsubs_commonapi package.
+/// MUST be incremented on each change
 immutable int API_VERSION = 1;
 
 /// Safety limit on message size
@@ -12,3 +12,23 @@ alias id_t = uint;
 
 /// Time type, microseconds (1e-6 of a second)
 alias usecs_t = long;
+
+immutable int FREQ_BIN_COUNT = 32;
+
+/// 33 borders of frequency bins. Logarithmic scale.
+immutable int[FREQ_BIN_COUNT + 1] FREQ_BIN_BORDERS = [
+	20, 24, 29, 36, 43, 53, 64, 78, 95, 115, 139, 169, 206, 250, 303, 368,
+	447,543,659,801,972, 1181, 1434, 1741, 2115, 2568, 3118, 3787, 4599, 5584,
+	6781, 8235, 10000];
+
+/// 32 frequency bins, each located in the middle of neighbour frequencies in
+/// FREQ_BIN_BORDERS array.
+immutable int[FREQ_BIN_COUNT] FREQ_BINS;
+
+shared static this()
+{
+	int[FREQ_BIN_COUNT] bins;
+	for (int i = 0; i < FREQ_BIN_COUNT; i++)
+		bins[i] = (FREQ_BIN_BORDERS[i] + FREQ_BIN_BORDERS[i+1]) / 2;
+	FREQ_BINS = bins;
+}

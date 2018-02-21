@@ -280,8 +280,8 @@ Top speed: 17m/s`,
 	sp.Cd1 = RolledF(16.0, 0.1f);
 	sp.Cl = RolledF(40.0, 0.4f);
 	sp.Cr = RolledF(1.2e6, 1e2);
-	sp.Cm = RolledF(150.0f, 3.0f);
-	sp.equilDrift = 0.2f;		// ~13 deg
+	sp.Cm = RolledF(250.0f, 4.0f);
+	sp.equilDrift = 0.261f;		// ~15 deg
 	vec2f dims = getHullDims(sp.tmpl.hullModel);
 	trace("dims: ", dims);
 	sp.hullLength = dims.y;
