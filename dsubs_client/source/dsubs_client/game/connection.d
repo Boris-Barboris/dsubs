@@ -60,14 +60,17 @@ final class ServerConnection
 
 	/// Close connection and do not reconnect. Returns true when actual
 	/// socket closing was performed by this call.
-	bool close(string reason = "unspecified")
+	bool close(string reason = "unspecified", bool raiseEvent = true)
 	{
 		if (!cas(&m_closed, false, true))
 			return false;
 		trace("Closing connection ", m_serverAddr);
 		atomicStore(m_connected, false);
-		synchronized(m_mutex)
-			onConnectionClosed(reason);
+		if (raiseEvent)
+		{
+			synchronized(m_mutex)
+				onConnectionClosed(reason);
+		}
 		m_sock.shutdown(SocketShutdown.BOTH);
 		m_sock.close();
 		if (m_writerRunning)

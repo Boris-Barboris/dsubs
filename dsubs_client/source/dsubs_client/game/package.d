@@ -59,14 +59,13 @@ __gshared:
 		hotkeyManager = new HotkeyManager(window);
 		mainMutex = new Mutex();
 		delayer = new Delayer();
-		scope(failure) delayer.stop();
 		render.guiRender = guiManager;
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
 		inputRouter.worldRouter = worldManager;
 		inputRouter.hotkeyRouter = hotkeyManager;
 		serverConnection = new ServerConnection("127.0.0.1", mainMutex);
-		scope (failure) serverConnection.close();
+		scope (failure) serverConnection.close("client shutdown", false);
 
 		// setup main menu
 		synchronized (mainMutex)
@@ -75,12 +74,8 @@ __gshared:
 		render.start(mainMutex);
 		window.pollEvents(mainMutex);
 
-		delayer.stop();
-		render.stop();
-		serverConnection.close();
+		serverConnection.close("client shutdown", false);
 		window.close();
-		// give time to all background threads to acknowledge shutdown
-		Thread.sleep(msecs(100));
 	}
 
 	/// clear various callbacks and objects in order to transition to another
