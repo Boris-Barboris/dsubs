@@ -129,7 +129,9 @@ struct KinematicTrace
 
 		curState.position = chspline(records[i1].position, records[i2].position,
 			records[i1].velocity, records[i2].velocity);
-		curState.rotation = chspline(records[i1].rotation, records[i2].rotation,
+		// rotations must be moved to one half-circle in order to prevent "flips"
+		curState.rotation = chspline(records[i1].rotation, records[i1].rotation +
+			angleDist(records[i2].rotation, records[i1].rotation),
 			records[i1].angVel, records[i2].angVel);
 		// simple linear interpolation for velocities
 		curState.velocity = records[i1].velocity +

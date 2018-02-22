@@ -51,6 +51,7 @@ private void simulationLoop()
 {
 	try
 	{
+		int counter = 0;
 		usecs_t worldTime = 0;
 		while (!stopRequested)
 		{
@@ -64,6 +65,12 @@ private void simulationLoop()
 				forEachPlayer((pctx) { pctx.sendKinematicsUpdate(worldTime); });
 			}
 			auto now = MonoTime.currTime();
+			if (counter == 0)
+			{
+				trace("Simulation step took ", (now - lastLoopStart).total!"usecs", "usecs");
+				now = MonoTime.currTime();
+			}
+			counter = (counter + 1) % 10;
 			Duration toSleep = msecs(250) - (now - lastLoopStart);
 			if (toSleep < Duration.zero)
 				toSleep = Duration.zero;
