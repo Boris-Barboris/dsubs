@@ -9,8 +9,8 @@ import dsubs_common.math;
 import dsubs_server.rng;
 
 
-alias watt = float;
-alias dB = float;
+alias watt = float;	/// 1.0 'watt' is equal to intensity of 6.67e-19 W/m^2
+alias dB = float;	/// re 1uPa, intensity of 6.67e-19 W/m^2
 alias RolledWatt = RolledF;
 
 private __gshared
@@ -30,34 +30,47 @@ shared static this()
 	{
 		g_freqDissipation[i] = 1e-5 + FREQ_BINS[i] * FREQ_BINS[i] * 1e-8;
 		g_baseSeaNoiseDb[i] = 75.0f - 7.0f * log2(FREQ_BINS[i] / float(FREQ_BINS[0]));
-		float seaNoiseWatt = toWatt(g_baseSeaNoiseDb[i]);
-		g_baseSeaNoise[i] = RolledWatt(seaNoiseWatt, 0.1f * seaNoiseWatt);
+		// scale from 1Hz band to actual band size
+		g_baseSeaNoiseDb[i] += freqBinWidth(i).toDb;
+		float seaNoiseWatt = toIntensity(g_baseSeaNoiseDb[i]);
+		g_baseSeaNoise[i] = RolledWatt(seaNoiseWatt, 0.05f * seaNoiseWatt);
 	}
 }
 
-dB toIntensity(watt power)
+dB toIntensityLevel(watt intensity)
 {
-	assert(power > 0.0, "non-positive power");
-	return 10.0f * log10(power);
+	assert(intensity > 0.0, "non-positive intensity");
+	return 10.0f * log10(intensity);
 }
 
-watt toWatt(dB intensity)
+alias toDb = toIntensityLevel;
+
+watt toIntensity(dB ilevel)
 {
-	return pow(10.0f, intensity * 0.1f);
+	return pow(10.0f, ilevel * 0.1f);
 }
 
-/// universal sound intensity reduction, caused by range between source and sensor
-dB getIntensityAtRange(int freqBin, dB intensity, double range)
+alias fromDb = toIntensity;
+
+/// universal sound intensity level reduction, caused by range and propagation losses.
+dB getIntensityLevelAtRange(int freqBin, dB ilevel, double range)
 {
-	return intensity - toIntensity(range * range) - g_freqDissipation[freqBin] * range;
+	return ilevel - toDb(range * range) - g_freqDissipation[freqBin] * range;
 }
 
+private float freqBinWidth(int bin)
+{
+	return FREQ_BIN_BORDERS[bin + 1] - FREQ_BIN_BORDERS[bin];
+}
+
+//dB totalBandLevel(ref const watt[FREQ_BIN_COUNT] )
 
 /// Entity wich can generate noise
 class NoiseGenerator
 {
 	/// Watt per unit body angle, not omnidirectional watt
 	RolledWatt[FREQ_BIN_COUNT] baseProfile;
+	protected watt[FREQ_BIN_COUNT] m_curNoise;
 
 	/// global emission gain
 	float generationK = 1.0f;
@@ -67,7 +80,14 @@ class NoiseGenerator
 		assert(generationK >= 0.0f, "negative noise generationK gain");
 	}
 
-	/// Calculate absolute noise emission intensity towards the course 'dir' and
+	/// Roll randoms and generate intensities from the baseProfle
+	void instantiate()
+	{
+		foreach (i, level; baseProfile)
+			m_curNoise[i] = generationK * level.roll();
+	}
+
+	/// Calculate sound intensity towards the course 'dir' and
 	/// add it to output.
 	abstract void addNoisePowerTo(double dir, ref watt[FREQ_BIN_COUNT] output);
 }
@@ -77,16 +97,23 @@ class OmniNoise: NoiseGenerator
 {
 	override void addNoisePowerTo(double dir, ref watt[FREQ_BIN_COUNT] output)
 	{
-		foreach (i, level; baseProfile)
-			output[i] = generationK * level;
+		for (int i = 0; i < FREQ_BIN_COUNT; i++)
+			output[i] += m_curNoise[i];
 	}
 }
 
-/// Cosine direction law for noise generation, usefull for propulsors
-class CosinDirectedNoise: NoiseGenerator
+/// Cosine direction law for noise generation, usefull for propulsors.
+class CosineDirectedNoise: NoiseGenerator
 {
-	float backNoiseK = 0.0f;
+	private float m_backNoiseK = 0.0f;
 	Transform2D transform;
+
+	/// positive for backwards noise emission
+	@property float backNoiseK(float rhs)
+	{
+		assert(fabs(rhs) <= 0.5f);
+		return m_backNoiseK = rhs;
+	}
 
 	this(Transform2D t)
 	{
@@ -95,9 +122,9 @@ class CosinDirectedNoise: NoiseGenerator
 
 	override void addNoisePowerTo(double dir, ref watt[FREQ_BIN_COUNT] output)
 	{
-		float k = 1.0f + backNoiseK * cos(dir - transform.rotation);
+		float k = 1.0f - fabs(m_backNoiseK) - m_backNoiseK * cos(dir - transform.wrotation);
 		assert(k >= 0.0, "negative back-directed noise");
-		foreach (i, level; baseProfile)
-			output[i] = generationK * k * level;
+		for (int i = 0; i < FREQ_BIN_COUNT; i++)
+			output[i] += m_curNoise[i] * k;
 	}
 }

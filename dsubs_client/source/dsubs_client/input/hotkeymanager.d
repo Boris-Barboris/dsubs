@@ -129,6 +129,8 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 
 	HandleResult handleKeyboard(Window wnd, const sfEvent* evt)
 	{
+		if (evt.key.code >= m_pressed.length)
+			return HandleResult(false);
 		if (evt.type == sfEvtKeyPressed)
 			m_pressed[evt.key.code] = true;
 		if (evt.type == sfEvtKeyReleased)

@@ -97,7 +97,7 @@ void updateTgtThrottleDisplay(float newTgt)
 
 private
 {
-	immutable int TAB_SIZE = 30;
+	immutable int TAB_SIZE = 28;
 	immutable int BIG_BTN_FONT = 25;
 	immutable int BTN_FONT = 20;
 	immutable sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
@@ -112,9 +112,9 @@ void setupSimulationGui()
 
 	Button tacticalTab = builder(new Button()).content("F1 Tactical").
 		fontSize(BIG_BTN_FONT).build;
-	Button passiveAcTab = builder(new Button()).content("F2 Passive Acoustics").
+	Button passiveAcTab = builder(new Button()).content("F2 Broadband").
 		fontSize(BIG_BTN_FONT).build;
-	Button activeAcTab = builder(new Button()).content("F3 Active Acoustics").
+	Button activeAcTab = builder(new Button()).content("F3 Active").
 		fontSize(BIG_BTN_FONT).build;
 
 	Div tabDiv = builder(hDiv([
@@ -202,6 +202,7 @@ void setupSimulationGui()
 				newTgt = -100.0f;
 			}
 			newTgt /= 100.0f;
+			trace("setting throttle to: ", newTgt);
 			immutable ThrottleReq req = ThrottleReq(newTgt);
 			Game.serverConnection.sendMessage(&req);
 			playerSub.targetThrottle = newTgt;

@@ -127,7 +127,7 @@ void buildPropulsorTemplates()
 			], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 		);
 	bp.posThrustK = RolledF(2600.0f, 40.0f);
-	bp.negThrustK = RolledF(600.0f, 20.0f);
+	bp.negThrustK = RolledF(700.0f, 20.0f);
 	bp.mass = 50.0f;
 	g_propulsors["Standard screw"] = bp;
 }

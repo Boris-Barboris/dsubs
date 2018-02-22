@@ -73,6 +73,7 @@ final class Submarine
 	{
 		enforce(!isNaN(target), "Nan throttle");
 		enforce(target <= 1.0f && target >= -1.0f, "Throttle not in [-1, 1] interval");
+		trace("setting target speed rot to ", target);
 		propulsor.targetRotSpd = target;
 	}
 

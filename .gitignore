@@ -18,6 +18,7 @@
 
 # sounds
 *.wav
+__pycache__
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
