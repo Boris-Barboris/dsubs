@@ -25,7 +25,11 @@ def freqBinWidth(bin):
 # let's calculate dissipation coefficients
 g_freqDissipation = numpy.empty([FREQ_BIN_COUNT], float)
 for i in range(0, FREQ_BIN_COUNT):
-    g_freqDissipation[i] = 1e-5 + 1e-8 * FREQ_BINS[i] ** 2
+    f2 = (FREQ_BINS[i] * 1e-3) ** 2
+    g_freqDissipation[i] = 2e-3 * (0.11 * f2 / (1 + f2) +
+        44 * f2 / (4100 + f2) + 3e-4 * f2)
+
+print("Dissipation koeffs: ", g_freqDissipation)
 
 def getIntensityAtRange(freqBin, ilevel, range):
     return ilevel - toIntensityLevel(range * range) - g_freqDissipation[freqBin] * range
@@ -62,7 +66,7 @@ class NoiseGenerator:
     def addNoisePowerTo(self, dir, output):
         k = 1.0 - abs(self.backNoiseK) - self.backNoiseK * math.cos(dir)
         for i in range(0, FREQ_BIN_COUNT):
-            output[i] += k * self.baseProfile[i]
+            output[i] += self.generationK * k * self.baseProfile[i]
 
 
 class TargetSignal:
@@ -82,39 +86,53 @@ class TargetSignal:
         return result
 
 
+class ParasiticNoise:
+    def __init__(self, gen, range, gain):
+        self.gen = gen
+        self.range = range
+        self.gain = gain
+
+
 # sound receiver
 class NoiseReceiver:
-    def __init__(self, lBin, hBin, span, antennaCount):
+    def __init__(self, lBin, hBin, span, antennaCount, parasites):
         self.lowerBin = lBin
         self.higherBin = hBin
         self.span = deg2rad(span)
         self.antennaCount = antennaCount
-        self.buffer = numpy.full([self.antennaCount], 0.0)
+        self.parasites = parasites
 
     # clear buffer and apply bakcground noise
-    def resetToBackground(self):
-        ibackground = getBroadbandIntensity(g_baseSeaNoise, self.lowerBin, self.higherBin)
-        # account for antennae directional characteristics
-        self.ibackground = ibackground * 0.5 * self.span / numpy.pi / self.antennaCount
-        for i in range(self.lowerBin, self.higherBin):
-            self.buffer = numpy.full([self.antennaCount], self.ibackground)
+    def resetBackground(self):
+        # get narrowband sea noise level
+        self.iback = g_baseSeaNoise * (0.5 * self.span / numpy.pi / self.antennaCount)
+        # calculate parasitic noise
+        for parasite in self.parasites:
+            iparasite = numpy.full([FREQ_BIN_COUNT], 0.0)
+            parasite.gen.addNoisePowerTo(0, iparasite)
+            iparasite *= parasite.gain / (parasite.range ** 2)
+            self.iback += iparasite
+        # calculate broadband noise
+        self.ibackground = getBroadbandIntensity(self.iback,
+            self.lowerBin, self.higherBin)
 
-    # get SNR for target, where noise is background noise
+
+    # get broadband SNR for target
     def getSNR(self, target):
         ibands = target.getIntensity()
         broad = getBroadbandIntensity(ibands, self.lowerBin, self.higherBin)
         return broad / self.ibackground
 
-    # the same, but in narrowband bin
+    def getSNRdB(self, target):
+        return toIntensityLevel(self.getSNR(target))
+
+    # get narrowband SNR for target in frequency bin 'bin'
     def getBinSNR(self, target, bin):
         assert bin >= self.lowerBin
         assert bin < self.higherBin
         ibands = target.getIntensity()
-        ibackbin = g_baseSeaNoise[bin] * 0.5 * self.span / numpy.pi / self.antennaCount
+        ibackbin = self.iback[bin]
         return ibands[bin] / ibackbin
 
     def getBinSNRdB(self, target, bin):
         return toIntensityLevel(self.getBinSNR(target, bin))
-
-    def getSNRdB(self, target):
-        return toIntensityLevel(self.getSNR(target))
