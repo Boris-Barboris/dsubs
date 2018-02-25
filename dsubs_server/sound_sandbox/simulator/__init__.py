@@ -1,6 +1,6 @@
 import numpy
 import math
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 def toIntensityLevel(intensities):
@@ -63,10 +63,26 @@ class NoiseGenerator:
         self.backNoiseK = backNoiseK
         self.baseProfile = bandLevels
 
+    def gainFromGenK(self):
+        return self.generationK
+
     def addNoisePowerTo(self, dir, output):
         k = 1.0 - abs(self.backNoiseK) - self.backNoiseK * math.cos(dir)
         for i in range(0, FREQ_BIN_COUNT):
-            output[i] += self.generationK * k * self.baseProfile[i]
+            output[i] += self.gainFromGenK() * k * self.baseProfile[i]
+
+
+# polynomial noise increase with generationK
+class PolynomialGenerator(NoiseGenerator):
+    def __init__(self, bandLevels, backNoiseK, exponent, zeroBias = 0.0):
+        super().__init__(bandLevels, backNoiseK)
+        self.exponent = exponent
+        assert zeroBias >= 0.0
+        assert zeroBias <= 1.0
+        self.zeroBias = zeroBias
+
+    def gainFromGenK(self):
+        return self.zeroBias + (1.0 - self.zeroBias) * self.generationK ** self.exponent
 
 
 class TargetSignal:

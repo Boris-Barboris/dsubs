@@ -86,7 +86,7 @@ final class CameraController: WorldMouseReceiver
 		double targetZoom;
 		vec2d zoomPivot;
 		double zoomVel = 0.0f;
-		double zoomAcc = 30.0f;
+		double zoomAcc = 50.0f;
 	}
 
 	private static double parabolicMove(double y1, double v1, double y2,

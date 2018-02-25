@@ -10,18 +10,18 @@ import matplotlib.pyplot as plt
 
 g_noisegens = {
     # standard screw is 5-bladed screw of no particular speciality
-    "Standard Screw": sim.NoiseGenerator(
+    "Standard Screw": sim.PolynomialGenerator(
         numpy.array([40, 50, 80, 100, 150, 400, 300, 280,
         250, 210, 220, 200, 210, 150, 200, 330,
         500, 780, 2300, 3900, 4650, 2600, 2200, 1900,
         2100, 1200, 1500, 3100, 1000, 100, 300, 200]) * 5e3,
-        0.2),
-    "Eona hull": sim.NoiseGenerator(
+        0.2, 3.0),
+    "Eona hull": sim.PolynomialGenerator(
         numpy.array([20, 25, 20, 24, 27, 45, 40, 15,
         18, 23, 28, 30, 27, 21, 15, 10,
         9, 8, 8, 8, 8, 7, 9, 20,
         25, 21, 17, 10, 8, 7, 4, 1]) * 1e3,
-        0.0),
+        0.0, 2.5, 1e-3),
 }
 
 g_sensors = {

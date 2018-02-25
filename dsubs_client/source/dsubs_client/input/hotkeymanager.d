@@ -129,6 +129,8 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 
 	HandleResult handleKeyboard(Window wnd, const sfEvent* evt)
 	{
+		// this check required for some undefined keycodes, like printScr wich
+		// are out of m_pressed array bounds
 		if (evt.key.code >= m_pressed.length)
 			return HandleResult(false);
 		if (evt.type == sfEvtKeyPressed)
