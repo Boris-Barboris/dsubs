@@ -18,6 +18,9 @@
 
 # sounds
 *.wav
+*.mp3
+*.wmv
+*.zip
 __pycache__
 
 # User-specific files (MonoDevelop/Xamarin Studio)
