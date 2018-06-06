@@ -19,13 +19,13 @@ def _waterRangeDissipationK(freq):
 def getIntensityAtRange(freq, ilevel, range):
     return ilevel - toIntensityLevel(range * range) - _waterRangeDissipationK(freqBin) * range
 
-# omnidirectional narrowband sea noise intensity
-def seaNoiseIntensity(freq):
+# standard omnidirectional narrowband sea noise intensity level
+def seaNoiseIntensityLevel(freq):
     return 75.0 - 7.0 * numpy.log2(freq / 20.0)
 
 def deg2rad(deg):
     return numpy.pi / 180.0 * deg
 
-# min and maximum frequencies that dsubs acoustic system will handle
+# min and maximum frequencies that dsubs passive acoustics system will handle
 MIN_FREQ = 20
 MAX_FREQ = 10000

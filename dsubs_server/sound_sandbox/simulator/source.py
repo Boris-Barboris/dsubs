@@ -2,19 +2,34 @@ import numpy
 import math
 import constants as cst
 
+
+class Hydrophone:
+    def __init__(self, fov, res, fmin, fmax):
+        self.track = numpy.zeros(cst.MAX_FREQ * 2)
+        self.fov = fov
+        self.resolution = res
+        self.fmin = fmin
+        self.fmax = fmax
+        self.matrix = numpy.zeros(res)
+        self.volume_mult = 1.0 # human-controlled volume gain
+
+    # calculate
+    def _calcAvgSeaILForPixel(self):
+
+
 # abstract sound source interface
 class SoundSource:
     def __init__(self):
-        pass
+        self.size = 20.0 # affects the halo size on close distances
 
     # given relative bearing 'brng', return fraction of the
-    # intensity that will be emitted in that direction
+    # intensity that will be emitted in that direction.
     def _bearingGain(self, brng):
         return 1.0
 
-    # add sound pressure time-sequence to the 'output' vector as perceived
-    # by omnidirectional hydrophone at range 'range' and relative bearing 'brng'.
-    # hydrophone band is minf-maxf
+    # add sound pressure time-sequence of unit length (1 second) to the 'output'
+    # vector as perceived by directional hydrophone at range 'range' and
+    # relative bearing 'brng'. hydrophone band is minf-maxf
     def addPressure(self, brng, range, output, minf, maxf):
         pass
 
