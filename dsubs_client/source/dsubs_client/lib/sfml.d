@@ -15,6 +15,24 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.network;
 
 
+version(linux)
+{
+	void initXLib()
+	{
+		import core.stdc.stdio;
+		import core.stdc.stdlib;
+		import core.sys.posix.dlfcn;
+
+		info("Loading libX11 and initializinth thread support");
+		void *lh = dlopen("libX11.so", RTLD_NOW);
+		if (lh == null)
+			throw new Exception("failed to load libX11.so");
+		extern(C) int function() fn = cast(int function()) dlsym(lh, "XInitThreads");
+		fn();
+	}
+}
+
+
 void loadSfmlLibraries()
 {
 	info("Loading CSFML dynamic libraries...");
@@ -22,7 +40,7 @@ void loadSfmlLibraries()
 	DerelictSFML2Window.load();
 	DerelictSFML2Audio.load();
 	DerelictSFML2Graphics.load();
-	DerelictSFML2Network.load();
+	// DerelictSFML2Network.load();
 	info("OK");
 }
 

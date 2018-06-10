@@ -97,7 +97,7 @@ void setupLoadoutScreen()
 	}
 
 	Div hullDiv = builder(vDiv(hullButtons)).layoutType(LayoutType.CONTENT).
-		size(vec2i(200, BTN_SIZE * hulls.length + hulls.length)).build;
+		size(vec2i(200, BTN_SIZE * hulls.length.to!int + hulls.length.to!int)).build;
 	ScrollBar hullsScrollbar = new ScrollBar(hullDiv);
 
 	TextBox moduleDescriptionBox = new TextBox();
@@ -125,7 +125,7 @@ void setupLoadoutScreen()
 	}
 
 	Div propsDiv = builder(vDiv(propButtons)).layoutType(LayoutType.CONTENT).
-		size(vec2i(200, BTN_SIZE * hulls.length + hulls.length)).build;
+		size(vec2i(200, BTN_SIZE * hulls.length.to!int + hulls.length.to!int)).build;
 	ScrollBar propsScrollbar = new ScrollBar(propsDiv);
 
 

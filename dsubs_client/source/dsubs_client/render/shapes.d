@@ -90,12 +90,12 @@ final class CircleShape
 		return rhs;
 	}
 
-	@property int vertexCount() const
+	@property size_t vertexCount() const
 	{
 		return sfCircleShape_getPointCount(m_shape);
 	}
 
-	@property int vertexCount(int rhs)
+	@property size_t vertexCount(int rhs)
 	{
 		sfCircleShape_setPointCount(m_shape, rhs);
 		return rhs;

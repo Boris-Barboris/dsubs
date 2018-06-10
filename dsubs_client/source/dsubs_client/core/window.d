@@ -23,13 +23,13 @@ final class Window
 	this(dstring windowName = "dsubs"d)
 	{
 		m_mode = sfVideoMode_getDesktopMode();
-		m_mode.width = to!uint(m_mode.width / 1.4);
-		m_mode.height = to!uint(m_mode.height / 1.4);
+		m_mode.width = 640; // to!uint(m_mode.width / 1.4);
+		m_mode.height = 480; // to!uint(m_mode.height / 1.4);
 		m_ctxSettings.depthBits = 24;
 		m_ctxSettings.stencilBits = 8;
 		m_ctxSettings.antialiasingLevel = 4;
-		m_ctxSettings.majorVersion = 3;
-		m_ctxSettings.minorVersion = 2;
+		m_ctxSettings.majorVersion = 2;
+		m_ctxSettings.minorVersion = 0;
 		m_ctxSettings.attributeFlags = sfContextDefault;
 		m_ctxSettings.sRgbCapable = false;
 		info("OpenGL context settings: ", m_ctxSettings);

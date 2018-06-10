@@ -49,7 +49,7 @@ final class Div: GuiElement
 	this(DivType divType, GuiElement[] kids)
 	{
 		assert(kids.length > 0);
-		
+
 		if (divType == DivType.HORZ)
 		{
 			dim = 0;
@@ -148,7 +148,7 @@ final class Div: GuiElement
 	private void updateChildren()
 	{
 		m_updatingKids = true;
-		int intBudget = size[dim] - m_borderWidth * (m_children.length - 1) - 
+		int intBudget = size[dim] - m_borderWidth * (m_children.length.to!int - 1) -
 			2 * externalBorder;
 		float budget = max(0, intBudget);
 		// fixed-sized kids go first
@@ -180,7 +180,7 @@ final class Div: GuiElement
 			childCount++;
 		}
 		// and now greedy ones
-		int greedyCount = m_children.length - childCount;
+		int greedyCount = m_children.length.to!int - childCount;
 		foreach (child; m_children.filter!(a => a.layoutType == LayoutType.GREEDY))
 		{
 			float newSize = chip(budget, budget / greedyCount);
@@ -213,15 +213,15 @@ final class Div: GuiElement
 				sfVector2f(size.x, m_borderWidth));
 			// bottom border
 			sfRectangleShape_setPosition(m_divBorders[2], sfVector2f(0.0f, size.y - m_borderWidth));
-			sfRectangleShape_setSize(m_divBorders[2], 
+			sfRectangleShape_setSize(m_divBorders[2],
 				sfVector2f(size.x, m_borderWidth));
 			// left border
 			sfRectangleShape_setPosition(m_divBorders[1], sfVector2f(0.0f, m_borderWidth));
-			sfRectangleShape_setSize(m_divBorders[1], 
+			sfRectangleShape_setSize(m_divBorders[1],
 				sfVector2f(m_borderWidth, size.y - 2 * m_borderWidth));
 			// right border
 			sfRectangleShape_setPosition(m_divBorders[3], sfVector2f(size.x - m_borderWidth, m_borderWidth));
-			sfRectangleShape_setSize(m_divBorders[3], 
+			sfRectangleShape_setSize(m_divBorders[3],
 				sfVector2f(m_borderWidth, size.y - 2 * m_borderWidth));
 		}
 		// update inter-child borders

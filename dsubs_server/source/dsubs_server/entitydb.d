@@ -143,7 +143,7 @@ Vector2f[] xSymmetry(float[] coords)
 {
 	assert(coords.length >= 4);
 	assert(coords.length % 2 == 0);
-	int len = coords.length / 2;
+	int len = coords.length.to!int / 2;
 	Vector2f[] res;
 	for (int i = 0; i < len; i++)
 		res ~= Vector2f(coords[i*2], coords[i*2 + 1]);

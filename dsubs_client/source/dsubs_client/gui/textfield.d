@@ -108,7 +108,7 @@ class TextField: Label
 	void selectAll()
 	{
 		m_cursorStart = 0;
-		m_cursorEnd = m_content.length - 1;
+		m_cursorEnd = m_content.length.to!int - 1;
 		updateCursorVisuals();
 	}
 
@@ -119,7 +119,7 @@ class TextField: Label
 		if (content.length <= m_cursorStart)
 			m_cursorStart = max(0, m_content.length - 1).to!int;
 		if (content.length < m_cursorEnd)
-			m_cursorEnd = m_content.length;
+			m_cursorEnd = m_content.length.to!int;
 		updateCursorVisuals();
 	}
 
@@ -325,16 +325,16 @@ class TextField: Label
 				break;
 			case sfKeyEnd:
 				if (kevt.shift)
-					m_cursorEnd = m_content.length - 1;
+					m_cursorEnd = m_content.length.to!int - 1;
 				else
-					m_cursorStart = m_cursorEnd = m_content.length - 1;
+					m_cursorStart = m_cursorEnd = m_content.length.to!int - 1;
 				updateCursorVisuals();
 				break;
 			case sfKeyA:
 				if (kevt.control)
 				{
 					m_cursorStart = 0;
-					m_cursorEnd = m_content.length - 1;
+					m_cursorEnd = m_content.length.to!int - 1;
 					updateCursorVisuals();
 				}
 				break;

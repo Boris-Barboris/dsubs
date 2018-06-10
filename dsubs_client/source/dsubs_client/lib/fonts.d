@@ -63,9 +63,9 @@ __gshared immutable string[string] g_fontFiles;
 shared static this()
 {
 	g_fontFiles = [
-		"Sans": "fonts\\LiberationSans-Regular.ttf",
-		"SansMono": "fonts\\LiberationMono-Regular.ttf",
-		"UbuntuMono": "fonts\\ubuntu.mono.ttf",
+		"Sans": "fonts/LiberationSans-Regular.ttf",
+		"SansMono": "fonts/LiberationMono-Regular.ttf",
+		"UbuntuMono": "fonts/ubuntu.mono.ttf",
 	];
 }
 

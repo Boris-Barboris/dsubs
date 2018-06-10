@@ -13,6 +13,7 @@ import dsubs_client.game;
 void main(string[] argv)
 {
 	version ( unittest ) info("Unit tests OK");
+	version(linux) initXLib();
 	loadSfmlLibraries();
 	loadGlobalFonts();
 	runModuleTests();

@@ -118,7 +118,7 @@ PlayerContext getOrCreatePlayerCtx(string username)
 
 int getPlayerCount()
 {
-	return g_players.length;
+	return g_players.length.to!int;
 }
 
 /// add new connection to g_greshConnections array

@@ -11,7 +11,7 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 import dsubs_client.lib.sfml;
 import dsubs_common.event;
-import dsubs_common.math.transform: clampAngle;
+import dsubs_common.math.angles: clampAngle;
 
 
 /// 2D-camera class, specializes on relative, iterative
