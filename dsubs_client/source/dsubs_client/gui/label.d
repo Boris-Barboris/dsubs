@@ -34,7 +34,7 @@ enum VTextAlign: ubyte
 	BOTTOM = 2,
 }
 
-/// One text line
+/// Single-line text container
 class Label: GuiElement
 {
 	private

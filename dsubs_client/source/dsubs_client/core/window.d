@@ -23,6 +23,7 @@ final class Window
 	this(dstring windowName = "dsubs"d)
 	{
 		m_mode = sfVideoMode_getDesktopMode();
+		info("DesktopMode: ", m_mode);
 		m_mode.width = 640; // to!uint(m_mode.width / 1.4);
 		m_mode.height = 480; // to!uint(m_mode.height / 1.4);
 		m_ctxSettings.depthBits = 24;

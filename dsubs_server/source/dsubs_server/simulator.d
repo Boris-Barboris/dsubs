@@ -55,23 +55,19 @@ private void simulationLoop()
 		usecs_t worldTime = 0;
 		while (!stopRequested)
 		{
-			lastLoopStart = MonoTime.currTime();
 			synchronized (g_simMut.writer)
 			{
+				lastLoopStart = MonoTime.currTime();
 				// physics integration. All rigid bodies are moved.
-				integratePBodies(0.25f, 0.25f);
-				worldTime += 250_000;
+				integratePBodies(1.0f, 0.25f);
+				worldTime += 1000_000;
 				// need to send updated submarine coordinates to players
 				forEachPlayer((pctx) { pctx.sendKinematicsUpdate(worldTime); });
 			}
 			auto now = MonoTime.currTime();
-			if (counter == 0)
-			{
-				trace("Simulation step took ", (now - lastLoopStart).total!"usecs", "usecs");
-				now = MonoTime.currTime();
-			}
+			trace("Simulation step took ", (now - lastLoopStart).total!"usecs", "usecs");
 			counter = (counter + 1) % 10;
-			Duration toSleep = msecs(250) - (now - lastLoopStart);
+			Duration toSleep = seconds(1) - (now - lastLoopStart);
 			if (toSleep < Duration.zero)
 				toSleep = Duration.zero;
 			Thread.sleep(toSleep);

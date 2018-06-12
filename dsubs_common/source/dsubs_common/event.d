@@ -5,6 +5,7 @@ import std.traits: isDelegate, Parameters, ReturnType;
 import dsubs_common.containers.array: removeFirst;
 
 
+/// Collection of subscibed delegates that can be raised.
 struct Event(DlgT)
 	if (isDelegate!DlgT && is(ReturnType!DlgT == void))
 {
@@ -13,7 +14,7 @@ struct Event(DlgT)
 
 	private HandlerType[] handlers;
 
-	/// append or remove handler
+	/// Append or remove handler
 	void opOpAssign(string op)(HandlerType handler)
 	{
 		static if (op == "+")
@@ -27,7 +28,7 @@ struct Event(DlgT)
 		else static assert(0, "Operator " ~ op ~ "= non-applicable to event");
 	}
 
-	/// forget about all handlers
+	/// Release all subscribers
 	void clear()
 	{
 		handlers.length = 0;

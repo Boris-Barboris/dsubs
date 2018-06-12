@@ -8,7 +8,7 @@ public import gfm.math.vector;
 import dsubs_common.containers.array;
 
 
-// each cell node spans it's own square
+// Each cell node spans it's own square.
 private struct Square
 {
 	private

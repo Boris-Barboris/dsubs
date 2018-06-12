@@ -1,5 +1,9 @@
 module dsubs_common.api.entities;
 
+import std.traits;
+
+import gfm.math.vector;
+
 import dsubs_common.api.constants;
 import dsubs_common.api.utils;
 
@@ -10,9 +14,45 @@ struct RgbaColor
 	ubyte a = 255;
 }
 
+/// Reflection-friendly POD vector. Needed because gfm vector uses anonymous union
+/// wich I don't even want to bother to reflect correctly.
+struct PODVector(T, size_t size)
+	if (isNumeric!T)
+{
+	T[size] data = 0;
+
+	this(T...)(T args)
+		if (T.length == size)
+	{
+		foreach (i, arg; args)
+			data[i] = arg;
+	}
+
+	/// reinterpret cast to gfm vector
+	Vector!(T, size) toGfm() const @trusted
+	{
+		return *cast(Vector!(T, size)*) &this;
+	}
+
+	ref inout(T) opIndex(size_t i) inout
+	{
+		return data[i];
+	}
+}
+
+alias Vector2f = PODVector!(float, 2);
+alias Vector2d = PODVector!(double, 2);
+
+unittest
+{
+	Vector2f vec;
+	assert(vec[0] == 0.0f);
+	assert(vec[1] == 0.0f);
+}
+
 struct ConvexPolygon
 {
-	Vector2f[] points;	/// counter-clock wise
+	Vector2f[] points;	/// counter-clockwise vertices
 	RgbaColor fillColor;
 	float borderWidth = 0.0f;
 	RgbaColor borderColor;
@@ -27,7 +67,7 @@ enum PropulsorType: ubyte
 struct PropulsorTemplate
 {
 	/// human-readable name
-	@MaxLenAttr(64) string name;
+	string name;
 
 	/// description of this propulsor
 	string description;
@@ -46,14 +86,13 @@ struct MountPoint
 	Vector2f mountCenter;
 	float rotation = 0.0f;
 	float scale = 1.0f;
-	bool underHull;		// true when this mount point should be drawn behind hull
 }
 
 /// Playable submarine template
 struct SubmarineTemplate
 {
 	/// human-readable name
-	@MaxLenAttr(64) string name;
+	string name;
 
 	/// description to present to the player on prepare screen
 	string description;
@@ -75,7 +114,7 @@ struct SubmarineTemplate
 struct WeaponTemplate
 {
 	/// human-readable name
-	@MaxLenAttr(64) string name;
+	string name;
 
 	/// description to present to the player on prepare screen
 	string description;

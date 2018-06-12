@@ -1,40 +1,22 @@
 module dsubs_common.api.marshalling;
 
 import std.conv: to;
+import std.exception: enforce;
 import std.traits;
 import std.meta;
+import std.math: isNaN, isInfinity;
 
-import dsubs_common.api.messages;
 import dsubs_common.api.utils;
 import dsubs_common.meta;
 
 
-alias MsgMarshallerT = immutable(ubyte)[] function(immutable(void)* inMsgPtr);
-alias MsgDemarshallerT = void function(void* outMsgPtr, const(ubyte)[] data);
-
-// Static arrays of generated marshalling functions
-__gshared immutable MsgMarshallerT[] g_msgMarshallers;
-__gshared immutable MsgDemarshallerT[] g_msgDemarshallers;
-
-shared static this()
-{
-	foreach (int idx, member; Erase!("object", Erase!("dsubs_common",
-		__traits(allMembers, dsubs_common.api.messages))))
-	{
-		mixin("alias symbol = dsubs_common.api.messages." ~ member ~ ";");
-		static if (is(symbol == struct))
-		{
-			pragma(msg, "Detected protocol message ", symbol, ", assigning index ", idx);
-			g_msgMarshallers ~= cast(MsgMarshallerT) &marshalMessage!symbol;
-			g_msgDemarshallers ~= cast(MsgDemarshallerT) &demarshalMessage!symbol;
-			*(cast(int*) &symbol.g_marshIdx) = idx;
-		}
-	}
-}
+alias MsgMarshallerFunc = immutable(ubyte)[] function(immutable(void)* inMsgPtr);
+alias MsgDemarshallerFunc = void function(void* outMsgPtr, const(ubyte)[] data);
 
 void demarshalMessage(MsgT)(MsgT* outMsgPtr, const(ubyte)[] data)
 {
 	demarshalStruct(*outMsgPtr, data);
+	enforce!ProtocolException(data.length == 0, "Leftover data on demarshalling");
 }
 
 immutable(ubyte)[] marshalMessage(MsgT)(immutable(MsgT)* msg)
@@ -52,6 +34,8 @@ immutable(ubyte)[] marshalMessage(MsgT)(immutable(MsgT)* msg)
 	marshalStruct!MsgT(*msg, volatileBuf);
 	return cast(immutable(ubyte)[]) buf;
 }
+
+
 
 private:
 
@@ -145,6 +129,13 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 		static if (isBasicType!MemberT || is(MemberT == union))
 		{
 			__traits(getMember, ptr, field) = *(cast(MemberT*) from.ptr);
+			static if (isFloatingPoint!MemberT)
+			{
+				if (isNaN(__traits(getMember, ptr, field)))
+					throw new ProtocolException("NaN poisoning");
+				if (isInfinity(__traits(getMember, ptr, field)))
+					throw new ProtocolException("Infinity poisoning");
+			}
 			from = from[MemberT.sizeof .. $];
 		}
 		else static if (isArray!MemberT)
@@ -154,17 +145,18 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 			{
 				arrLen = *(cast(int*) from.ptr);
 				from = from[4 .. $];
+				if (arrLen < 0)
+					throw new ProtocolException("Negative array length");
+				static if (HasUda!(StructT, field, MaxLenAttr))
+				{
+					int maxLen = GetUda!(StructT, field, MaxLenAttr).maxLength;
+					if (arrLen > maxLen)
+						throw new MaxLenExceeded(arrLen, maxLen);
+				}
 				__traits(getMember, ptr, field).reserve(arrLen);
 			}
 			else
 				arrLen = __traits(getMember, ptr, field).length.to!int;
-			static if (HasUda!(StructT, field, MaxLenAttr))
-			{
-				// validate length
-				int maxLen = GetUda!(StructT, field, MaxLenAttr).maxLength;
-				if (arrLen > maxLen)
-					throw new MaxLenExceeded(arrLen, maxLen);
-			}
 			static if (isBasicType!(ArrayElementT!MemberT))
 			{
 				for (int i = 0; i < arrLen; i++)
@@ -178,6 +170,13 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 					{
 						__traits(getMember, ptr, field)[i] =
 							*(cast(ArrayElementT!MemberT *) from.ptr);
+					}
+					static if (isFloatingPoint!(ArrayElementT!MemberT))
+					{
+						if (isNaN(__traits(getMember, ptr, field)[i]))
+							throw new ProtocolException("NaN poisoning");
+						if (isInfinity(__traits(getMember, ptr, field)[i]))
+							throw new ProtocolException("Infinity poisoning");
 					}
 					from = from[ArrayElementSize!MemberT .. $];
 				}
@@ -206,9 +205,16 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 
 unittest
 {
-	immutable LoginReq req = LoginReq("uname", "password");
+	struct TetsMsg
+	{
+		__gshared const int g_marshIdx = 3;
+		@MaxLenAttr(64) string username;
+		@MaxLenAttr(64) string password;
+	}
+
+	immutable TetsMsg req = TetsMsg("uname", "password");
 	immutable(ubyte)[] buf = marshalMessage(&req);
-	LoginReq res;
+	TetsMsg res;
 	demarshalMessage(&res, buf[8 .. $]);
 	assert(res.username == req.username);
 	assert(res.password == req.password);

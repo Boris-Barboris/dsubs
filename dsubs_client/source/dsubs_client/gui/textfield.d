@@ -380,6 +380,9 @@ class TextField: Label
 				// ESC button
 				returnKbFocus();
 				break;
+			case 127:
+				// Delete button
+				break;
 			default:
 				if (c >= 32 || c == '\b')
 					doHandleText(c);

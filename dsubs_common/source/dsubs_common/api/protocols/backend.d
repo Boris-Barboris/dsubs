@@ -1,6 +1,6 @@
-// Binary protocol messages
+/// Protocol messages for master-client - dsubs backend interactions.
 
-module dsubs_common.api.messages;
+module dsubs_common.api.protocols.backend;
 
 import dsubs_common.api.constants;
 import dsubs_common.api.entities;
@@ -24,7 +24,7 @@ struct ServerStatusRes
 	int playersOnline;
 }
 
-/** This unit requests authorization from the server.
+/** This message requests authorization from the server.
 After authorization succeeded, you don't need to send any more of those.
 Authorization is done only once for TCP connection. */
 struct LoginReq
@@ -92,8 +92,6 @@ struct SpawnReq
 	@MaxLenAttr(64) string propulsorName;
 }
 
-/// server will send it to client right after authorization if the spawn
-/// is still on cooldown.
 struct SpawnRes
 {
 	__gshared const int g_marshIdx;

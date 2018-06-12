@@ -13,11 +13,6 @@
 	"license": "GPL-2.0",
 	"configurations": [
 		{
-			"name": "unit",
-			"targetType": "executable",
-			"buildOptions": ["debugMode", "debugInfo", "unittests"]
-		},
-		{
 			"name": "debuglib",
 			"targetType": "staticLibrary",
 			"buildOptions": ["debugMode", "debugInfo"]

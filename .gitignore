@@ -11,6 +11,7 @@ libdsubs_common.a
 dsubs_client/dsubs_client
 dsubs_server/dsubs_server
 pull_libs.sh
+dsubs_common-test-debuglib
 
 *dub.selections.json
 

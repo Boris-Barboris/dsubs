@@ -125,7 +125,7 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 	{
 		GuiRouteResult res;
 		// look for reciever from top to bottom of z-ordered panel stack
-		for (auto i = panels.end(); !i.end; i.prev)
+		for (auto i = panels.last; !i.end; i.prev)
 		{
 			Panel panel = i.val;
 			res = panel.routeMousePos(evt, x, y);

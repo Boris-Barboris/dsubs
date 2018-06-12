@@ -3,7 +3,7 @@ module dsubs_common.containers.dlist;
 import std.functional: unaryFun;
 
 
-// Double-linked list
+/// Double-linked list that is more transparent than phobos variant.
 struct DList(T)
 {
 	static struct DNode
@@ -24,31 +24,22 @@ struct DList(T)
 			if (n)
 				n.prev = &this;
 		}
-
-		~this()
-		{
-			if (prev)
-				prev.next = next;
-			if (next)
-				next.prev = prev;
-		}
 	}
 
 	DNode* _first, _last;
 
 	ref T front()
 	{
-		assert(!empty);
+		assert(!empty, "list is empty");
 		return _first.val;
 	}
 
 	ref T back()
 	{
-		assert(!empty);
+		assert(!empty, "list is empty");
 		return _last.val;
 	}
 
-	// DList is struct only because of VFT overhead
 	@disable this(this);
 
 	this(T[] range)
@@ -57,30 +48,13 @@ struct DList(T)
 			this.insertBack(el);
 	}
 
-	~this()
-	{
-		destroy_all();
-	}
-
-	private void destroy_all()
-	{
-		DNode* ptr = _first;
-		while (ptr)
-		{
-			DNode* next = ptr.next;
-			destroy_node(ptr);
-			ptr = next;
-		}
-	}
-
 	void clear()
 	{
-		destroy_all();
 		_first = _last = null;
 		assert(empty);
 	}
 
-	// Two-side iterator
+	// Bidirectional iterator that wraps raw node interactions
 	struct Iterator
 	{
 		DNode* _target;
@@ -100,7 +74,7 @@ struct DList(T)
 			assert(!this.end);
 			_target = _target.prev;
 		}
-		@property bool end() const { return _target == null; }
+		@property bool end() const { return _target is null; }
 	}
 
 	struct Range
@@ -135,46 +109,38 @@ struct DList(T)
 		{
 			if (first.end || last.end)
 				return true;
-			return first._target.prev == last._target;
+			return first._target.prev is last._target;
 		}
 		@property Range save() { return this; }
 	}
 
 	Range opSlice()
 	{
-		return Range(begin, end);
+		return Range(first, last);
 	}
 
-	@property Iterator begin() { return Iterator(_first); }
-	@property Iterator end() { return Iterator(_last); }
+	/// Get iterator that points to first node.
+	@property Iterator first() { return Iterator(_first); }
 
-	enum MoveDir {
-		FRWD,
-		BACK,
-	};
+	/// Get iterator that points to last node.
+	@property Iterator last() { return Iterator(_last); }
 
-	// MoveDirection - wich way to move cursor after underlying node is
-	// destroyed and deallocated.
-	void remove(MoveDir md = MoveDir.FRWD)(ref Iterator cursor)
+	/// Remove node under cursor. Cursor keeps pointing to the deleted node.
+	void remove(Iterator cursor)
 	{
 		assert(!cursor.end);
 		DNode* node = cursor._target;
-		if (_first == node)
+		if (_first is node)
 			_first = node.next;
-		if (_last == node)
+		if (_last is node)
 			_last = node.prev;
-		static if (md == MoveDir.FRWD)
-			cursor.next();
-		else
-			cursor.prev();
 		if (node.prev)
 			node.prev.next = node.next;
 		if (node.next)
 			node.next.prev = node.prev;
-		destroy_node(node);
 	}
 
-	@property bool empty()
+	@property bool empty() const
 	{
 		return _first == null;
 	}
@@ -182,11 +148,6 @@ struct DList(T)
 	DNode* create_node(DNode* prev, DNode* next, ref T val)
 	{
 		return new DNode(prev, next, val);
-		/*
-		static if (HoldsAllocator)
-			return this._allocator.make!DNode(prev, next, val);
-		else
-			return Allocator.instance.make!DNode(prev, next, val);*/
 	}
 
 	void insertFront(T val)
@@ -198,7 +159,7 @@ struct DList(T)
 	}
 
 	DList opOpAssign(string op, Stuff)(Stuff rhs)
-	if (op == "~" && is(typeof(insertBack(rhs))))
+		if (op == "~" && is(typeof(insertBack(rhs))))
 	{
 		insertBack(rhs);
 		return this;
@@ -215,32 +176,17 @@ struct DList(T)
 	void popFront()
 	{
 		assert(_first);
-		if (_last == _first)
+		if (_last is _first)
 			_last = null;
-		auto todelete = _first;
 		_first = _first.next;
-		destroy_node(todelete);
-	}
-
-	void destroy_node(DNode* node)
-	{
-		assert(node);
-		//delete node;
-		/*
-		static if (HoldsAllocator)
-			return this._allocator.dispose(node);
-		else
-			return Allocator.instance.dispose(node);*/
 	}
 
 	void popBack()
 	{
 		assert(_last);
-		if (_last == _first)
+		if (_last is _first)
 			_first = null;
-		auto todelete = _last;
 		_last = _last.prev;
-		destroy_node(todelete);
 	}
 }
 
@@ -269,39 +215,33 @@ unittest
 
 void removeAll(alias pred, T)(ref DList!T list)
 {
-	for (auto i = list.begin; !i.end;)
+	for (auto i = list.first; !i.end; i.next())
 		if (unaryFun!pred(i.val))
 			list.remove(i);
-		else
-			i.next();
 }
 
 void removeAll(T)(ref DList!T list, scope bool delegate(T) pred)
 {
-	for (auto i = list.begin; !i.end;)
+	for (auto i = list.first; !i.end; i.next())
 		if (pred(i.val))
 			list.remove(i);
-		else
-			i.next();
 }
 
 /// Remove all elements that satisfy pred and apply func to them
 void removeAll(T)(ref DList!T list, scope bool delegate(T) pred,
 	scope void delegate(ref T) func)
 {
-	for (auto i = list.begin; !i.end;)
+	for (auto i = list.first; !i.end; i.next())
 		if (unaryFun!pred(i.val))
 		{
 			list.remove(i);
 			func(i.val);
 		}
-		else
-			i.next();
 }
 
 bool removeFirst(alias pred, T)(ref DList!T list)
 {
-	for (auto i = list.begin; !i.end; i.next())
+	for (auto i = list.first; !i.end; i.next())
 		if (unaryFun!pred(i.val))
 		{
 			list.remove(i);
@@ -312,7 +252,7 @@ bool removeFirst(alias pred, T)(ref DList!T list)
 
 bool removeFirst(T)(ref DList!T list, scope bool delegate(T) pred)
 {
-	for (auto i = list.begin; !i.end; i.next())
+	for (auto i = list.first; !i.end; i.next())
 		if (pred(i.val))
 		{
 			list.remove(i);

@@ -1,21 +1,25 @@
+/**
+Functions for mutable char[] and dchar[] operations.
+*/
+
 module dsubs_common.mutstring;
 
 import std.algorithm.comparison;
-//import std.experimental.logger;
 import std.string;
 import std.utf;
 import std.format;
+import std.traits: isSomeChar;
 
 
-/** Alias for simple mutable string, that we all need so much
-in gaming in order to prevent excessive reallocations.
-Mutstrings are null-terminated, since they are needed for
-external libraries written in C. */
 alias mutstring = char[];
-alias dmutstring = dchar[];		// 32-bit unicode
+alias dmutstring = dchar[];
 
-/// Creates mutstring from string
-CharT[] _s(CharT)(immutable(CharT)[] s) nothrow pure @safe
+
+@safe:
+
+/// Create mutstring from string with the same code unit size.
+CharT[] _s(CharT)(immutable(CharT)[] s) nothrow
+	if (isSomeChar!CharT)
 {
 	size_t len = s.length;
 	CharT[] res = new CharT[len + 1];
@@ -25,9 +29,9 @@ CharT[] _s(CharT)(immutable(CharT)[] s) nothrow pure @safe
 	return res;
 }
 
-/// Creates mutstring from string, reserving space for at least size
-/// meaningful symbols
-CharT[] _s(CharT)(immutable(CharT)[] s, size_t size) nothrow pure @safe
+/// Create mutstring from string, reserving space for at least 'size' code units.
+CharT[] _s(CharT)(immutable(CharT)[] s, size_t size) nothrow
+	if (isSomeChar!CharT)
 {
 	size_t len = max(s.length, size);
 	CharT[] res;
@@ -39,71 +43,73 @@ CharT[] _s(CharT)(immutable(CharT)[] s, size_t size) nothrow pure @safe
 	return res;
 }
 
-/// Copy string contents into mutstring, extending it if
-/// required.
-void str2mutCopy(CharT1, CharT2)(immutable(CharT1)[] s, ref CharT2[] ms) nothrow @safe
+/// Copy string contents into mutstring, extending it if required.
+void str2mutCopy(CharT)(immutable(CharT)[] from, ref CharT[] to) nothrow
+	if (isSomeChar!CharT)
 {
-	ms.length = s.length + 1;
-	for (size_t i = 0; i < s.length; i++)
-		ms[i] = s[i];
-	ms[s.length] = 0;
+	to.length = from.length + 1;
+	for (size_t i = 0; i < from.length; i++)
+		to[i] = from[i];
+	to[from.length] = 0;
 }
 
 /// ditto
-void str2mutCopy(CharT1, CharT2)(const CharT1[] s, ref CharT2[] ms) nothrow @safe
+void str2mutCopy(CharT)(const CharT[] from, ref CharT[] to) nothrow
+	if (isSomeChar!CharT)
 {
-	ms.length = s.length + 1;
-	for (size_t i = 0; i < s.length; i++)
-		ms[i] = s[i];
-	ms[s.length] = 0;
+	to.length = from.length + 1;
+	for (size_t i = 0; i < from.length; i++)
+		to[i] = from[i];
+	to[from.length] = 0;
 }
 
-/// Replace symbols from index start to end in string s with one character c
-/// String never increases it's size.
-/// end is inclusive
-void replaceInterval(CharT)(ref CharT[] s, size_t start, size_t end, CharT c)
+/// ditto
+void str2mutCopy(CharT1, CharT2)(const CharT1[] from, ref CharT2[] to)
+	if (isSomeChar!CharT1 && isSomeChar!CharT2 && !is(CharT1 == CharT2))
 {
-	s[start] = c;
-	size_t shift = end - start;
-	if (shift > 0)
-	{
-		for (size_t i = start + 1; i < s.length - shift; i++)
-			s[i] = s[i+shift];
-		s.length = s.length - shift;
-	}
+	to.reserve(from.length + 1);	// rough heuristic
+	to.length = 0;
+	foreach (symb; from.byUTF!CharT2)
+		to ~= symb;
+	to ~= cast(CharT2) 0;
 }
 
-/// Wrapper around sformat
-void mutsformat(string fmt, Args...)(ref dmutstring what, Args args)
+/// ditto
+void str2mutCopy(CharT1, CharT2)(immutable(CharT1)[] from, ref CharT2[] to)
+	if (isSomeChar!CharT1 && isSomeChar!CharT2 && !is(CharT1 == CharT2))
 {
-	static char[64] tmpbuf = 0;
-	assert(tmpbuf[].length == 64);
+	to.reserve(from.length + 1);	// rough heuristic
+	to.length = 0;
+	foreach (symb; from.byUTF!CharT2)
+		to ~= symb;
+	to ~= cast(CharT2) 0;
+}
+
+/// Write 'args' formatted by format string 'fmt' to dmutstring 'dest'.
+void mutsformat(string fmt, Args...)(ref dmutstring dest, Args args)
+{
+	static char[128] tmpbuf = 0;	// yes, I know...
 	char[] res = sformat!(fmt)(tmpbuf[], args);
-	//trace("after ", res);
-	str2mutCopy!(char, dchar)(res, what);
+	str2mutCopy(res, dest);
 }
 
-
+/// Copy mutstring to new string.
 string str(const dmutstring mut)
 {
 	return mut[0..$-1].toUTF8;
 }
 
+/// ditto
 string str(const mutstring mut)
 {
 	return mut[0..$-1].toUTF8;
 }
 
-unittest
+/// Remove dmutstring elements starting at index 'start' and including
+/// 'end' index.
+void removeInterval(ref dmutstring s, size_t start, size_t end)
 {
-	mutstring s = _s("as");
-	s.replaceInterval(0, 1, 'd');
-	assert(equal(s[0..1], "d"));
-}
-
-/// end is inclusive
-void removeInterval(CharT)(ref CharT[] s, size_t start, size_t end)
-{
+	assert(end >= start);
 	size_t shift = end - start + 1;
 	if (shift > 0)
 	{
@@ -115,13 +121,18 @@ void removeInterval(CharT)(ref CharT[] s, size_t start, size_t end)
 
 unittest
 {
-	mutstring s = _s("asdf");
+	dmutstring s = _s("asdf"d);
+	assert(s.length == 5);
 	s.removeInterval(1, 2);
+	assert(s.length == 3);
 	assert(equal(s[0..2], "af"));
 }
 
-void insertAt(CharT)(ref CharT[] s, CharT c, size_t at)
+/// Insert char 'c' at index 'at' into dmustring.
+void insertAt(CharT)(ref dmutstring s, CharT c, size_t at)
+	if (isSomeChar!CharT)
 {
+	assert(at < s.length);
 	++s.length;
 	for (size_t i = s.length - 1; i > at; i--)
 		s[i] = s[i - 1];
@@ -130,25 +141,23 @@ void insertAt(CharT)(ref CharT[] s, CharT c, size_t at)
 
 unittest
 {
-	mutstring s = _s("as");
+	dmutstring s = _s("as"d);
 	s.insertAt('d', 0);
 	s.insertAt('d', 0);
 	assert(equal(s[0..4], "ddas"));
 }
 
-void removeAt(CharT)(ref CharT[] s, size_t at)
+/// Remove character at index 'at' from dmustring.
+void removeAt(ref dmutstring s, size_t at)
 {
-	if (at < s.length - 1 && at >= 0)
-	{
-		for (size_t i = at; i < s.length - 1; i++)
-			s[i] = s[i + 1];
-		--s.length;
-	}
-	else
-		throw new Exception("Out of mutstring content bounds");
+	assert(s.length > 0);
+	assert(at < s.length);
+	for (size_t i = at; i < s.length - 1; i++)
+		s[i] = s[i + 1];
+	--s.length;
 }
 
-nothrow unittest
+unittest
 {
 	mutstring s = _s("asdf");
 	assert(s[0] == 'a');
@@ -158,21 +167,21 @@ nothrow unittest
 	assert(indexOf(s, 'x') == -1);
 }
 
-nothrow unittest
+unittest
 {
 	auto s = _s("юникод"d);
 	static assert(is(typeof(s) == dmutstring));
 	assert(equal(s[0..1], "ю"d));
 }
 
-nothrow unittest
+unittest
 {
 	mutstring s = _s("foobar", 20);
 	assert(s.length == 7);
 	assert(s.capacity >= 20 - 6);
 }
 
-nothrow unittest
+unittest
 {
 	mutstring s = _s("aabb");
 	str2mutCopy("ccddee", s);
