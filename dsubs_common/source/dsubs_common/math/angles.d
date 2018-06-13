@@ -5,6 +5,8 @@ import std.math;
 public import gfm.math.vector;
 
 
+@safe @nogc:
+
 /// Return a - b, clamped to [-PI; PI].
 /// Equal to smallest direction change from b to a.
 double angleDist(double a, double b)
@@ -35,7 +37,7 @@ unittest
 	assert(abs(angleDist(clampAngle(-0.5 - 2 * PI), -0.5)) < 0.01);
 }
 
-/// Clamp angle into [-2 * PI, 0] interval
+/// Clamp direction into [-2 * PI, 0] interval
 double courseAngle(double a)
 {
 	double val = clampAngle(a);
@@ -54,7 +56,7 @@ double dgr2rad(double dgr)
 	return dgr / 180.0 * PI;
 }
 
-/// Get the angle between dir and (0, 1.0) vector
+/// Get the angle between dir and (0.0, 1.0) vector, clamped to [-PI, PI].
 double courseAngle(vec2d dir)
 {
 	return atan2(-dir.x, dir.y);
@@ -75,7 +77,7 @@ unittest
 	assert(abs(angleDist(courseAngle(vec2d(0.01, -1.0)), -PI)) < 0.01);
 }
 
-/// Unit vector, facing course angle
+/// Unit vector wich corresponds to course angle
 vec2d courseVector(double c)
 {
 	return vec2d(-sin(c), cos(c));

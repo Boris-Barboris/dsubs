@@ -9,11 +9,11 @@ public import dsubs_common.math;
 
 /** Wrapper that converts double-precision dsubs transform to
 single-precision sfml matrix. */
-class Transform: Transform2D
+final class Transform: Transform2D
 {
-	protected sfTransform m_sfmat;
+	private sfTransform m_sfmat;
 
-	final @property ref const(sfTransform) sfWorld()
+	@property ref const(sfTransform) sfWorld()
 	{
 		if (m_dirty)
 			rebuild();
@@ -23,6 +23,6 @@ class Transform: Transform2D
 	protected override void rebuild()
 	{
 		super.rebuild();
-		m_sfmat = m_worldCache.tosf;
+		m_sfmat = world.tosf;
 	}
 }

@@ -20,7 +20,7 @@ struct ServerStatusReq
 struct ServerStatusRes
 {
 	__gshared const int g_marshIdx;
-	int apiVersion;
+	int apiVersion = 1;
 	int playersOnline;
 }
 

@@ -4,7 +4,6 @@ import std.algorithm;
 import std.exception;
 import std.concurrency;
 import std.conv: to;
-import std.experimental.logger: info, trace, error;
 import std.socket;
 import core.atomic;
 import core.thread;
@@ -13,8 +12,7 @@ import core.time: Duration, seconds, msecs;
 import dsubs_common.event;
 import dsubs_common.api.constants;
 import dsubs_common.api.utils: ProtocolException;
-import dsubs_common.api.protocol: BackendProtocol;
-import dsubs_common.utils: ExceptionConstructors;
+import dsubs_common.utils;
 
 
 /// Exception thrown from TCP-related code.
@@ -31,12 +29,12 @@ private enum WriterMsg: byte
 
 private string generateRandomString()
 {
-    import std.ascii, std.base64, std.conv, std.random, std.range, std.array;
-    auto rndNums = rndGen.takeExactly(12).map!(i => cast(ubyte)(i % 256))();
-    auto result = appender!string();
-    Base64.encode(rndNums, result);
-    rndGen.popFrontExactly(10);
-    return result.data.filter!isAlphaNum.to!string;
+	import std.ascii, std.base64, std.conv, std.random, std.range, std.array;
+	auto rndNums = rndGen.takeExactly(12).map!(i => cast(ubyte)(i % 256))();
+	auto result = appender!string();
+	Base64.encode(rndNums, result);
+	rndGen.popFrontExactly(10);
+	return result.data.filter!isAlphaNum.to!string;
 }
 
 
@@ -72,6 +70,12 @@ class ProtocolConnection(alias Protocol)
 		m_handlers.length = Protocol.msgTypeCount;
 	}
 
+	final void clearHandlers()
+	{
+		for (size_t i = 0; i < m_handlers.length; i++)
+			m_handlers[i] = null;
+	}
+
 	/// Connection identifier for logging.
 	@property string conId() const
 	{
@@ -98,13 +102,13 @@ class ProtocolConnection(alias Protocol)
 	}
 
 	/// send asynchroniously (caller thread does not block)
-	final void sendBytes(immutable(ubyte)[] data)
+	private void sendBytes(immutable(ubyte)[] data)
 	{
 		send!(immutable(ubyte)[])(m_writerThread, data);
 	}
 
 	/// send raw bytes to the peer
-	protected final void sendBytesSync(const(ubyte)[] msgBody)
+	private void sendBytesSync(const(ubyte)[] msgBody)
 	{
 		auto sent = m_sock.send(msgBody);
 		enforce!ConnectionException(sent == msgBody.length, "Error during send");
@@ -142,7 +146,7 @@ class ProtocolConnection(alias Protocol)
 	/// Fired when connection and the socket were declared closed
 	Event!(void delegate(typeof(this))) onClose;
 
-	// first int - message type. Second - body size.
+	// first int - message type, second - body size.
 	private int[2] recvHeader()
 	{
 		int[2] header;
@@ -153,10 +157,10 @@ class ProtocolConnection(alias Protocol)
 		enforce!ProtocolException(header[1] >= 0 &&
 			header[1] <= MAX_MSG_SIZE, "Message length invalid");
 		if (header[0] >= 0)
-			trace(conId ~ " received header ",
+			trace(conId ~ " received message header ",
 				Protocol.msgTypeNames[header[0]], " ", header[1]);
 		else
-			trace(conId ~ " received header ", header);
+			trace(conId ~ " received message header ", header);
 		return header;
 	}
 
@@ -244,15 +248,16 @@ class ProtocolConnection(alias Protocol)
 unittest
 {
 	import dsubs_common.api.protocols.backend;
+	import dsubs_common.api.protocol: BackendProtocol;
 
 	auto thread1 = new Thread(()
 	{
 		Socket listenSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
+		scope(exit) listenSock.close();
 		// https://serverfault.com/a/329848
 		listenSock.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 		listenSock.bind(new InternetAddress("127.0.0.1", 25511));
 		listenSock.listen(16);
-		scope (exit) listenSock.close();
 		ProtocolConnection!BackendProtocol client, server;
 		auto thread2 = new Thread(()
 		{

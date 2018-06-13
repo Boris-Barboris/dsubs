@@ -85,6 +85,15 @@ void str2mutCopy(CharT1, CharT2)(immutable(CharT1)[] from, ref CharT2[] to)
 	to ~= cast(CharT2) 0;
 }
 
+unittest
+{
+	mutstring s = _s("aabb");
+	str2mutCopy("ccddee", s);
+	assert(s.length == 7);
+	assert(s[5] == 'e');
+	assert(s[6] == 0);
+}
+
 /// Write 'args' formatted by format string 'fmt' to dmutstring 'dest'.
 void mutsformat(string fmt, Args...)(ref dmutstring dest, Args args)
 {
@@ -159,6 +168,15 @@ void removeAt(ref dmutstring s, size_t at)
 
 unittest
 {
+	dmutstring s = _s("asdf"d);
+	s.removeAt(2);
+	assert(equal(s[0..$-1], "asf"d));
+	s.removeAt(0);
+	assert(equal(s[0..$-1], "sf"d));
+}
+
+unittest
+{
 	mutstring s = _s("asdf");
 	assert(s[0] == 'a');
 	assert(s[3] == 'f');
@@ -179,13 +197,4 @@ unittest
 	mutstring s = _s("foobar", 20);
 	assert(s.length == 7);
 	assert(s.capacity >= 20 - 6);
-}
-
-unittest
-{
-	mutstring s = _s("aabb");
-	str2mutCopy("ccddee", s);
-	assert(s.length == 7);
-	assert(s[5] == 'e');
-	assert(s[6] == 0);
 }

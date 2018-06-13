@@ -1,13 +1,17 @@
 module dsubs_common.api.protocol;
 
+import std.string: split;
 import std.meta: Erase;
 import dsubs_common.api.marshalling;
-static import dsubs_common.api.protocols.backend;
 
 
 /// Static storage for protocol message serialization\deserialization functions.
-template Protocol(alias messagesModule)
+template Protocol(string messagesModule)
 {
+	mixin("import " ~ messagesModule ~ ";");
+	mixin("alias msgModule = " ~ messagesModule ~ ";");
+	pragma(msg, "Generating protocol for module " ~ messagesModule);
+
 	static
 	{
 		immutable MsgMarshallerFunc[] msgMarshallers;
@@ -19,13 +23,14 @@ template Protocol(alias messagesModule)
 	// Generate marsh\demarsh functions for structures in dsubs_common.api.messages
 	shared static this()
 	{
-		pragma(msg, "Generating protocol for module " ~
-			__traits(identifier, messagesModule));
-		foreach (int idx, member; Erase!("object", Erase!("dsubs_common",
-			__traits(allMembers, messagesModule))))
+		// allMembers for module returns all declarations in it and two
+		// service literals - "object" and name of the package wich is
+		// the same as first word in full module path.
+		enum string packageName = messagesModule.split(".")[0];
+		foreach (int idx, member; Erase!("object", Erase!(packageName,
+			__traits(allMembers, msgModule))))
 		{
-			mixin("alias symbol = dsubs_common.api.protocols." ~
-				__traits(identifier, messagesModule) ~ "." ~ member ~ ";");
+			mixin("alias symbol = " ~ messagesModule ~ "." ~ member ~ ";");
 			static if (is(symbol == struct))
 			{
 				pragma(msg, "Detected protocol message ", symbol, ", assigning index ", idx);
@@ -42,8 +47,7 @@ template Protocol(alias messagesModule)
 	static immutable(ubyte)[] marshal(MsgT)(immutable MsgT msg)
 		if (is(MsgT == struct))
 	{
-		mixin("alias known = dsubs_common.api.protocols." ~
-			__traits(identifier, messagesModule) ~ "." ~ MsgT.stringof ~ ";");
+		mixin("alias known = " ~ messagesModule ~ "." ~ MsgT.stringof ~ ";");
 		static assert (is(known == MsgT), "message type " ~ MsgT.stringof ~
 			" not found in protocol");
 		return msgMarshallers[MsgT.g_marshIdx](&msg);
@@ -52,8 +56,7 @@ template Protocol(alias messagesModule)
 	static MsgT demarshal(MsgT)(const(ubyte)[] rawData)
 		if (is(MsgT == struct))
 	{
-		mixin("alias known = dsubs_common.api.protocols." ~
-			__traits(identifier, messagesModule) ~ "." ~ MsgT.stringof ~ ";");
+		mixin("alias known = " ~ messagesModule ~ "." ~ MsgT.stringof ~ ";");
 		static assert (is(known == MsgT), "message type " ~ MsgT.stringof ~
 			" not found in protocol");
 		MsgT result;
@@ -63,7 +66,7 @@ template Protocol(alias messagesModule)
 }
 
 /// Protocol for client-backend interactions
-alias BackendProtocol = Protocol!(dsubs_common.api.protocols.backend);
+alias BackendProtocol = Protocol!"dsubs_common.api.protocols.backend";
 
 
 unittest

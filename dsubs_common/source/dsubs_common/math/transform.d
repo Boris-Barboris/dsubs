@@ -14,27 +14,30 @@ import dsubs_common.math.angles;
 /** Hierarchical transform.
 Dsubs world is a 2D space. World X axis is directed to
 the right, Y axis - up. Positive angle is counter-clockwise. Zero rotation
-angle is aligned with Y axis - 0 rotation is directed to the North. */
+angle is aligned with Y axis - 0 rotation is directed to the North (up). */
 class Transform2D
 {
-	protected
+	private
 	{
 		// Individual components
 		vec2d m_scale = vec2d(1.0, 1.0);
-		double m_rotation = 0.0;		// radians
+		double m_rotation = 0.0;	// radians
 		vec2d m_position = vec2d(0.0, 0.0);
 
 		mat3x3d m_localTransform;
-		bool m_dirty = true;		// set to true when some of parents changed
 		mat3x3d m_worldCache;		// cached value of world-coordinates transform
-		bool m_inverseDirty = true;
 		mat3x3d m_inverseCache;		// inverted world matrix
 		Transform2D m_parent;
 		Transform2D[] m_children;
 	}
 
+	protected
+	{
+		bool m_dirty, m_inverseDirty = true;
+	}
+
 	/// Propagate the `dirty` signal from parent
-	private void propagate()
+	protected void propagate()
 	{
 		m_dirty = true;
 		m_inverseDirty = true;
@@ -60,7 +63,7 @@ class Transform2D
 	}
 
 	// Signal child transforms to recalculate their matrixes
-	private void updateChildren()
+	protected void updateChildren()
 	{
 		foreach (t; m_children)
 			t.m_inverseDirty = t.m_dirty = true;
@@ -82,13 +85,23 @@ class Transform2D
 		}
 	}
 
+	/// disconnects all children from this transform
+	final void clearChildren()
+	{
+		foreach (kid; m_children)
+		{
+			kid.m_parent = null;
+			kid.propagate();
+		}
+		m_children.length = 0;
+	}
+
 	final @property Transform2D parent() { return m_parent; }
 
-	final @property Transform2D parent(Transform2D val)
+	final @property void parent(Transform2D val)
 	{
 		m_parent = val;
 		propagate();
-		return m_parent;
 	}
 
 	/// transformation from local to parent (or world if no parent) reference frame
@@ -122,25 +135,23 @@ class Transform2D
 	final @property vec2d scale() const { return m_scale; }
 
 	/// sets local scale
-	final @property vec2d scale(vec2d val)
+	final @property void scale(vec2d val)
 	{
 		m_scale = val;
 		propagate();
-		return m_scale;
 	}
 
 	/// returns local rotation
 	final @property double rotation() const { return m_rotation; }
 
 	/// sets local rotation
-	final @property double rotation(double val)
+	final @property void rotation(double val)
 	{
 		m_rotation = clampAngle(val);
 		propagate();
-		return m_rotation;
 	}
 
-	/// returns world-frame rotation
+	/// returns world rotation
 	final @property double wrotation()
 	{
 		if (m_parent is null)
@@ -152,14 +163,13 @@ class Transform2D
 	final @property vec2d position() const { return m_position; }
 
 	/// sets local translation
-	final @property vec2d position(vec2d val)
+	final @property void position(vec2d val)
 	{
 		m_position = val;
 		propagate();
-		return m_position;
 	}
 
-	/// returns world-frame rotation
+	/// returns world translation
 	final @property vec2d wposition()
 	{
 		if (m_parent is null)
@@ -179,7 +189,7 @@ class Transform2D
 		return world.transformDirection(vec2d(-1.0, 0.0));
 	}
 
-	final @property Transform2D[] children() { return m_children; }
+	final @property const(Transform2D[]) children() const { return m_children; }
 
 	/// Initialize transform by individual components, applied in semantic order
 	final void fromComponents(vec2d scale, double rotation, vec2d position)

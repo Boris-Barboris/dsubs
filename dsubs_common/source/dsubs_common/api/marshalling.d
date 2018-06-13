@@ -14,9 +14,10 @@ alias MsgMarshallerFunc = immutable(ubyte)[] function(immutable(void)* inMsgPtr)
 alias MsgDemarshallerFunc = void function(void* outMsgPtr, const(ubyte)[] data);
 
 void demarshalMessage(MsgT)(MsgT* outMsgPtr, const(ubyte)[] data)
+	if (is(MsgT == struct))
 {
 	demarshalStruct(*outMsgPtr, data);
-	enforce!ProtocolException(data.length == 0, "Leftover data on demarshalling");
+	enforce!ProtocolException(data.length == 0, "Leftover data after demarshalling");
 }
 
 immutable(ubyte)[] marshalMessage(MsgT)(immutable(MsgT)* msg)

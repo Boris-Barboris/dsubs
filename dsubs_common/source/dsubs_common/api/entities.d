@@ -29,7 +29,7 @@ struct PODVector(T, size_t size)
 	}
 
 	/// reinterpret cast to gfm vector
-	Vector!(T, size) toGfm() const @trusted
+	pragma(inline) Vector!(T, size) toGfm() const @trusted
 	{
 		return *cast(Vector!(T, size)*) &this;
 	}

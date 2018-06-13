@@ -1,6 +1,6 @@
 module dsubs_common.api.utils;
 
-import std.conv;
+import std.conv: to;
 
 import dsubs_common.utils: ExceptionConstructors;
 

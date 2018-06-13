@@ -1,10 +1,13 @@
 module dsubs_common.math;
 
 public import std.math;
+import std.traits: isNumeric;
 
 public import dsubs_common.math.angles;
 public import dsubs_common.math.transform;
 
+
+@safe @nogc:
 
 double lerp(double a, double b, double x)
 {
@@ -36,6 +39,7 @@ double cmove(double cur, double tgt, double spd, double dt)
 
 /// return v clamped between lower and upper
 NumT clamp(NumT)(NumT v, NumT lower, NumT upper)
+	if (isNumeric!NumT)
 {
 	assert(lower <= upper);
 	if (v < lower)
@@ -43,6 +47,12 @@ NumT clamp(NumT)(NumT v, NumT lower, NumT upper)
 	if (v > upper)
 		return upper;
 	return v;
+}
+
+unittest
+{
+	assert(clamp(-2.0, -1.0, 0.0) == -1.0);
+	assert(clamp(2.0, -1.0, 0.0) == 0.0);
 }
 
 /// covert vec2f to vec2d

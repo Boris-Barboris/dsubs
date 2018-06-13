@@ -5,7 +5,7 @@ import std.traits: isDelegate, Parameters, ReturnType;
 import dsubs_common.containers.array: removeFirst;
 
 
-/// Collection of subscibed delegates that can be raised.
+/// Collection of subscribed delegates that can be raised.
 struct Event(DlgT)
 	if (isDelegate!DlgT && is(ReturnType!DlgT == void))
 {
@@ -34,12 +34,14 @@ struct Event(DlgT)
 		handlers.length = 0;
 	}
 
+	/// Call all subscribers
 	void raise(ArgTypes args) const
 	{
 		foreach (handler; handlers)
 			handler(args);
 	}
 
+	/// ditto
 	void opCall(ArgTypes args) const
 	{
 		raise(args);

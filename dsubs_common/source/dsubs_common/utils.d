@@ -1,5 +1,7 @@
 module dsubs_common.utils;
 
+public import std.experimental.logger: info, trace, error;
+
 
 /// Standard std-like exception constructors
 mixin template ExceptionConstructors()
