@@ -7,7 +7,6 @@ import core.sync.mutex;
 import dsubs_common.api;
 import dsubs_common.containers.array;
 import dsubs_common.math.angles;
-import gfm.math.vector;
 
 import dsubs_server.common;
 import dsubs_server.connection: PlayerConnection;

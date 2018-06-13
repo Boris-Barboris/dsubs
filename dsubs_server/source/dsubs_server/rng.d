@@ -1,57 +1,59 @@
 module dsubs_server.rng;
 
 import std.math;
-import std.traits;
+import std.traits: isFloatingPoint;
 
 public import std.random: uniform01, uniform;
 
 
 /// sample standard normal distribution using Box-Muller transform
-double rngStdNormal()
+F rngStdNormal(F = double)()
+	if (isFloatingPoint!F)
 {
-	static double prev;
+	static F prev;
 	if (!isNaN(prev))
 	{
-		double res = prev;
-		prev = double.nan;
+		F res = prev;
+		prev = F.nan;
 		return res;
 	}
-	double u1 = uniform01();
-	double u2 = uniform01();
+	F u1 = uniform01();
+	F u2 = uniform01();
+	// save one of the results for later
 	prev = sqrt(-2.0 * log(u1)) * sin(2.0 * PI * u2);
 	return sqrt(-2.0 * log(u1)) * cos(2.0 * PI * u2);
 }
 
 /// generate normally-distributed random double
-double rngNormal(double mean = 0.0, double stddev = 1.0, double dlimit = 3.0,
-	bool positive = true)
+F rngNormal(F = double)(F mean = 0.0, F stddev = 1.0, F dlimit = 3.0,
+	bool positive = true) if (isFloatingPoint!F)
 {
-	assert(stddev > 0.0);
-	assert(dlimit > 0.0);
-	double z0 = rngStdNormal();
+	assert(stddev >= 0.0);
+	assert(dlimit >= 0.0);
+	F z0 = rngStdNormal!F();
 	z0 = fmax(-dlimit, fmin(dlimit, z0));
-	double ret = z0 * stddev + mean;
+	F ret = mean + z0 * stddev;
 	if (positive)
 		ret = fmax(0.0, ret);
 	return ret;
 }
 
-/// Normally-distributed random floating point that gets rolled
-struct Rolled(T) if (isFloatingPoint!T)
+/// Normally-distributed random floating point number
+struct Rolled(F)
+	if (isFloatingPoint!T)
 {
-	T mean = 0.0;
-	T stddev = 1.0;
-	private T val;
+	F mean = 0.0;
+	F stddev = 1.0;
 
-	this(T mean, T stddev)
+	this(F mean, F stddev)
 	{
 		this.mean = mean;
 		this.stddev = stddev;
 	}
 
-	@property T roll() const
+	@property F roll() const
 	{
-		return rngNormal(mean, stddev);
+		return rngNormal!F(mean, stddev);
 	}
 
 	alias roll this;

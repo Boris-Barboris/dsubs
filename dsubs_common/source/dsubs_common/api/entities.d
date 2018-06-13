@@ -126,7 +126,7 @@ struct WeaponTemplate
 /// Some rigid body kinematics at specific time
 struct KinematicSnapshot
 {
-	usecs_t atTime;
+	usecs_t atTime;		/// game-world time
 	Vector2d position;
 	Vector2d velocity;
 	double rotation;
