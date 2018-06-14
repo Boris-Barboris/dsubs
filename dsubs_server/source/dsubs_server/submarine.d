@@ -1,87 +1,164 @@
 module dsubs_server.submarine;
 
+import dsubs_common.api.entities;
 import dsubs_common.math;
 
 import dsubs_server.common;
 import dsubs_server.dynamics;
-import dsubs_server.player;
+import dsubs_server.player: Player;
 import dsubs_server.propulsion;
 
 
 /// Server-side model of a submarine
 final class Submarine
 {
-	Transform2D transform;
-	SubmergedRigidBody rigidBody;
-	float moiK = 1.0f;
-	float hullLength;	// will be replaced
+	private
+	{
+		Transform2D m_transform;
+		RigidBody m_rigidBody;
+		float m_moiK = 1.0f;
+		float m_hullLength;	// will be replaced
 
-	// modules of various nature
-	Rudder rudder;
-	Propulsor propulsor;
+		// modules of various nature
+		Rudder m_rudder;
+		Propulsor m_propulsor;
 
-	PlayerContext owner;
+		// player reference
+		Player m_owner;
 
-	/// name of the submarine type
-	string prototypeName;
+		/// name of the submarine type
+		string m_prototypeName;
+	}
+
+	@property Transform2D transform() { return m_transform; }
+
+	@property RigidBody rigidBody() { return m_rigidBody; }
+
+	@property void propulsor(Propulsor rhs)
+	{
+		m_propulsor = rhs;
+	}
+
+	@property inout(Propulsor) propulsor() inout { return m_propulsor; }
+
+	@property inout(Rudder) rudder() inout { return m_rudder; }
+
+	@property string prototypeName() const { return m_prototypeName; }
 
 	/// creates transform and rigid body
-	this(PlayerContext owner, string prototypeName)
+	this(Player owner, string prototypeName)
 	{
-		assert(owner !is null);
-		this.owner = owner;
-		this.prototypeName = prototypeName;
-		transform = new Transform2D();
-		rigidBody = new SubmergedRigidBody(transform);
+		assert(owner);
+		this.m_owner = owner;
+		this.m_prototypeName = prototypeName;
+		m_transform = new Transform2D();
+		m_rigidBody = new RigidBody(transform);
+	}
+
+	private double calcMoi() const
+	{
+		return m_moiK * m_rigidBody.mass * m_hullLength * m_hullLength / 12.0;
 	}
 
 	/// call this once after assigning all modules and initial values,
 	/// to entangle all internal connections and register the submarine
 	void bootstrap()
 	{
-		assert(rudder !is null);
-		assert(propulsor !is null);
-		rigidBody.forces = [cast(IForce) rudder, cast(IForce) propulsor];
+		assert(m_rudder !is null);
+		assert(m_propulsor !is null);
+
+		m_rigidBody.forces = [cast(IForce) m_rudder, cast(IForce) m_propulsor];
 		// bind module transforms to submarine itself
-		rudder.transform = transform;
-		propulsor.transform = transform;
-
-		// mass interactions
-		rigidBody.mass += propulsor.mass;
+		m_rudder.transform = m_transform;
+		m_propulsor.transform = m_transform;
+		// add module masses to the hull
+		m_rigidBody.mass += m_propulsor.mass;
 		// calculate final MOI
-		rigidBody.moi = moiK * rigidBody.mass * hullLength * hullLength / 12.0;
-		assert(!isNaN(rigidBody.mass));
-		assert(!isNaN(rigidBody.moi));
-
-		trace("hull length ", hullLength);
-		trace("sub ", prototypeName, ", mass ", rigidBody.mass, ", moi ", rigidBody.moi);
-
-		registerPEntity(rigidBody);
+		m_rigidBody.moi = calcMoi();
+		assert(!isNaN(m_rigidBody.mass));
+		assert(!isNaN(m_rigidBody.moi));
+		trace("hull length ", m_hullLength);
+		trace("sub ", m_prototypeName, ", mass ", m_rigidBody.mass, ", moi ", m_rigidBody.moi);
+		// register entities
+		Globals.phys.registerEntity(m_rigidBody);
 	}
 
 	/// call this when removing this submarine from the physical world
 	void shutdown()
 	{
-		unregisterPEntity(rigidBody);
-		if (owner && owner.submarine is this)
-			owner.submarine = null;
-		owner = null;
+		Globals.phys.unregisterEntity(m_rigidBody);
+		if (m_owner)
+		{
+			m_owner.unsetSubmarine(this);
+			m_owner = null;
+		}
 	}
+
+	@property float targetThrottle() const { return m_propulsor.targetRotSpd; }
 
 	/// set propulsor's target throttle
-	void setThrottleFromUser(float target)
+	@property void targetThrottle(float target)
 	{
-		enforce(!isNaN(target), "Nan throttle");
+		enforce(!isNaN(target), "NaN target throttle");
 		enforce(target <= 1.0f && target >= -1.0f, "Throttle not in [-1, 1] interval");
-		trace("setting target speed rot to ", target);
-		propulsor.targetRotSpd = target;
+		m_propulsor.targetRotSpd = target;
 	}
 
+	@property float targetCourse() const { return m_rudder.targetCourse; }
+
 	/// set rudder's target course
-	void setCourseFromUser(float target)
+	@property void targetCourse(float target)
 	{
-		enforce(!isNaN(target), "Nan course");
-		target = clampAngle(target - owner.coordRot);
-		rudder.targetCourse = target;
+		enforce(!isNaN(target), "NaN target course");
+		m_rudder.targetCourse = clampAngle(target);
+	}
+}
+
+
+interface SubmarinePrototype
+{
+	Submarine build(Player p) const;
+	immutable(SubmarineTemplate)* getTemplate() const;
+}
+
+class BasicSubmarinePrototype: SubmarinePrototype
+{
+	immutable SubmarineTemplate tmpl;
+	// physical characteristics
+	RolledF mass, Cd0, Cd1, Cr, Cl, Cm;
+
+	// MOI-related stuff
+	float moiK = 1.0f;
+	float hullLength;
+
+	/// Equilibrium drift angle on maximum rudder deflection, radians
+	float equilDrift;
+
+	this(immutable SubmarineTemplate t)
+	{
+		tmpl = t;
+	}
+
+	Submarine build(Player p) const
+	{
+		Submarine res = new Submarine(p, tmpl.name);
+		res.m_moiK = moiK;
+		res.m_hullLength = hullLength;
+		res.m_rigidBody.mass = mass;
+		res.m_rigidBody.hydroModel.Cd0 = Cd0;
+		res.m_rigidBody.hydroModel.Cd1 = Cd1;
+		res.m_rigidBody.hydroModel.Cr = Cr;
+		res.m_rigidBody.hydroModel.Cl = Cl;
+		res.m_rigidBody.hydroModel.Cm = -Cm.roll();
+		auto brudder = new BasicRudder();
+		// Cm * equilDrift = steeringK
+		brudder.steeringK = fabs(equilDrift * res.m_rigidBody.hydroModel.Cm);
+		res.m_rudder = brudder;
+		return res;
+	}
+
+	immutable(SubmarineTemplate)* getTemplate() const
+	{
+		return &tmpl;
 	}
 }

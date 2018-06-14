@@ -10,11 +10,7 @@
 		"derelict-sfml2": { "path": "../DerelictSFML2" },
 		"dsubs_common": { "path": "../dsubs_common" }
 	},
-	"description": "Dsubs client.",
+	"description": "dsubs client",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
-	"license": "GPL-2.0",
-	"copyFiles-windows": ["libs-win-x86/*.dll"],
-	"subConfigurations": {
-		"dsubs_common": "debuglib"
-	}
+	"copyFiles-windows": ["libs-win-x86/*.dll"]
 }

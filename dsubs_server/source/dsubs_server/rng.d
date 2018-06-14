@@ -40,7 +40,7 @@ F rngNormal(F = double)(F mean = 0.0, F stddev = 1.0, F dlimit = 3.0,
 
 /// Normally-distributed random floating point number
 struct Rolled(F)
-	if (isFloatingPoint!T)
+	if (isFloatingPoint!F)
 {
 	F mean = 0.0;
 	F stddev = 1.0;

@@ -28,6 +28,11 @@ struct Event(DlgT)
 		else static assert(0, "Operator " ~ op ~ "= non-applicable to event");
 	}
 
+	void subscribe(HandlerType handler)
+	{
+		handlers ~= handler;
+	}
+
 	/// Release all subscribers
 	void clear()
 	{

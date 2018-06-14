@@ -9,10 +9,6 @@
 		"gfm:math": "~>6.2.7",
 		"dsubs_common": { "path": "../dsubs_common" }
 	},
-	"description": "Dsubs server.",
-	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
-	"license": "All rights reserved",
-	"subConfigurations": {
-		"dsubs_common": "debuglib"
-	}
+	"description": "dsubs server",
+	"copyright": "Copyright (C) 2017-2018, Alexander Baranin"
 }

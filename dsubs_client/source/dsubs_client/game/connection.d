@@ -2,7 +2,6 @@ module dsubs_client.game.connection;
 
 import std.algorithm;
 import std.conv: to;
-import std.concurrency;
 import std.exception;
 import std.experimental.logger;
 import std.socket;
@@ -11,7 +10,6 @@ import core.sync.mutex;
 import core.thread;
 
 import dsubs_common.api;
-import dsubs_common.event;
 
 
 /// TCP connection to dsubs server

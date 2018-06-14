@@ -1,176 +1,251 @@
 module dsubs_server.player;
 
-import std.math;
+import core.atomic;
 
-import core.sync.mutex;
-
-import dsubs_common.api;
-import dsubs_common.containers.array;
-import dsubs_common.math.angles;
+import dsubs_common.math;
+import dsubs_common.api.protocols.backend;
+import dsubs_common.api.entities: KinematicSnapshot;
 
 import dsubs_server.common;
-import dsubs_server.connection: PlayerConnection;
-import dsubs_server.submarine;
-import dsubs_server.rng;
+import dsubs_server.connections.playercon: PlayerConnection;
+import dsubs_server.submarine: Submarine;
 
 
-/// This structure hold player information. It is expected to always be
-/// mutated by one thread only
-final class PlayerContext
+class AuthException: Exception
 {
-	this(string uname)
+	mixin ExceptionConstructors;
+}
+
+
+final class Player
+{
+	private
 	{
-		username = uname;
-		coordShift = vec2d(uniform(-30000.0, 30000.0), uniform(-30000.0, 30000.0));
-		coordRot = uniform(-PI, PI);
-		timeShift = uniform(-200_000_000L, 200_000_000L);
+		const string m_username;
+		const string m_password;
+
+		vec2d coordShift;
+		double coordRot;
+		usecs_t timeShift;
+
+		PlayerConnection m_connection;
+		Submarine m_submarine;
+
+		enum double MAX_COORD_SHIFT = 50_000.0;
+		enum long MAX_TIME_SHIFT = 200_000_000L;
+
+		static shared int s_playerCount = 0;
 	}
 
-	const string username;
-	string password;
-	bool isBot = false;
-	bool isAdmin = false;
-
-	// maybe not needed
-	int playerKillCount;
-	int botKillCount;
-	int deathCount;
-
-	/// obfuscating reference frame origin shift
-	vec2d coordShift;
-	/// obfuscating reference frame rotation
-	double coordRot;
-	/// obfuscating world time shift
-	usecs_t timeShift;
-
-	/// current active connection to this player, null if none
-	PlayerConnection connection;
-
-	/// player's submarine (null if he doesn't have one yet)
-	Submarine submarine;
-
-	/// send the player kinematic information of his submarine
-	void sendKinematicsUpdate(usecs_t curTime)
+	static int getPlayersOnline()
 	{
-		if (connection is null || submarine is null)
-			return;
-		vec2d shiftedPos = rotateVector(submarine.transform.position - coordShift, coordRot);
-		double shiftedRot = submarine.transform.rotation + coordRot;
-		vec2d vel = rotateVector(submarine.rigidBody.kinet.vel, coordRot);
-		double angVel = submarine.rigidBody.kinet.angVel;
-		immutable(SubKinematicRes)* msg = new SubKinematicRes(KinematicSnapshot(
-			curTime + timeShift,
-			Vector2d(shiftedPos.x, shiftedPos.y),
-			Vector2d(vel.x, vel.y),
-			shiftedRot,
-			angVel));
-		connection.sendMessage(msg);
+		return atomicLoad(Player.s_playerCount);
 	}
-}
 
-
-/// randomizes position and rotation of a submarine
-void randomizePosition(Submarine sub)
-{
-	double px = uniform(-100.0, 100);
-	double py = uniform(-100.0, 100);
-	double rot = uniform(-PI, PI);
-	sub.transform.position = vec2d(px, py);
-	sub.transform.rotation = rot;
-	sub.rigidBody.updateFromTransform();
-	sub.rudder.targetCourse = rot;
-}
-
-
-private __gshared PlayerContext[string] g_players;
-/// mutex that guards g_players
-private shared Mutex g_playerMut;
-
-/// all unauthorized connections
-private __gshared PlayerConnection[] g_freshConnections;
-/// mutex that guards g_freshConnections
-private shared Mutex g_conMut;
-
-/// initialize all globals, responsible for connection and player context
-/// managment
-void s_initializePlayersCtx()
-{
-	info("Initializing player context mutexes");
-	g_playerMut = new shared Mutex();
-	g_conMut = new shared Mutex();
-}
-
-PlayerContext getOrCreatePlayerCtx(string username)
-{
-	synchronized (g_playerMut)
+	this(PlayerConnection con, string uname, string pw)
 	{
-		PlayerContext* ctx = username in g_players;
-		if (ctx is null)
+		assert(con);
+		enforce!AuthException(uname.length > 0, "empty username");
+		m_username = uname;
+		m_password = pw;
+		m_connection = con;
+		con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
+		con.player = this;
+		atomicOp!"+="(s_playerCount, 1);
+	}
+
+	@property string username() const { return m_username; }
+	@property Submarine submarine() { return m_submarine; }
+
+	/// Set submarine to null
+	bool unsetSubmarine(Submarine assumedOldSub)
+	{
+		synchronized(this)
 		{
-			PlayerContext newCtx = new PlayerContext(username);
-			g_players[username] = newCtx;
-			return newCtx;
-		}
-		return *ctx;
-	}
-}
-
-int getPlayerCount()
-{
-	return g_players.length.to!int;
-}
-
-/// add new connection to g_greshConnections array
-void addNewConnection(PlayerConnection pc)
-{
-	synchronized (g_conMut)
-		g_freshConnections ~= pc;
-}
-
-/// try to authorize the connection. If successfull, PlayerContext is assigned
-/// to the connection.
-bool confirmConnection(PlayerConnection pc)
-{
-	PlayerContext ctx = getOrCreatePlayerCtx(pc.username);
-	bool existed = ctx.connection !is null;
-	if (existed)
-	{
-		PlayerConnection econ = ctx.connection;
-		if (ctx.password != pc.password)
+			if (m_submarine is assumedOldSub)
+			{
+				m_submarine = null;
+				return true;
+			}
 			return false;
-		info("Closing previous connection of this user");
-		econ.closeSync("Another client has authorized");
+		}
 	}
-	ctx.connection = pc;
-	pc.playerCtx = ctx;
-	ctx.password = pc.password;
-	trace("Number of authorized connections: ", g_players.length);
-	synchronized (g_conMut)
-		g_freshConnections.removeFirstUnstable(pc);
-	return true;
+
+	private bool unsetConnection(PlayerConnection assumedOldCon)
+	{
+		synchronized(this)
+		{
+			if (m_connection is assumedOldCon)
+			{
+				m_connection = null;
+				return true;
+			}
+			return false;
+		}
+	}
+
+	private void generateShift()
+	{
+		// generate random reference frame shift
+		coordShift = vec2d(
+			uniform(-MAX_COORD_SHIFT, MAX_COORD_SHIFT),
+			uniform(-MAX_COORD_SHIFT, MAX_COORD_SHIFT));
+		coordRot = uniform(-PI, PI);
+		timeShift = uniform(-MAX_TIME_SHIFT, MAX_TIME_SHIFT);
+	}
+
+	/// handle connection being closed - clear m_connection field
+	private void onConnectionClose(PlayerConnection oldCon)
+	{
+		assert(oldCon && !oldCon.isOpen);
+		bool cleared = unsetConnection(oldCon);
+		oldCon.player = null;
+		if (cleared)
+			atomicOp!"-="(s_playerCount, 1);
+	}
+
+	/// force close the connection
+	void closeConnection()
+	{
+		PlayerConnection con = m_connection;
+		if (con)
+		{
+			info("Closing previous connection of ", m_username);
+			con.close();
+		}
+	}
+
+	/// set current
+	private void emplaceConnection(PlayerConnection con)
+	{
+		closeConnection();
+		m_connection = con;
+		atomicOp!"+="(s_playerCount, 1);
+		con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
+	}
+
+	/// true if proposed credentials are the same as used
+	private bool compareCredentials(string uname, string pw) const
+	{
+		return uname == m_username && pw == m_password;
+	}
+
+	immutable(ReconnectStateRes) getReconnectState() const
+	{
+		const Submarine s = m_submarine;
+		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
+		return immutable ReconnectStateRes(
+			s.prototypeName, s.propulsor.prototypeName,
+			s.targetCourse + coordRot, s.targetThrottle);
+	}
+
+	void handleSpawnRequest(const SpawnReq req)
+	{
+		Submarine s;
+		synchronized(this)
+		{
+			s = m_submarine;
+			enforce(s is null, "Already spawned");
+			s = Globals.entityDb.buildSubFromLoadout(req, this);
+			generateShift();
+			randomizePosition(s);
+			synchronized(Globals.simMut.reader)
+			{
+				s.bootstrap();
+				m_submarine = s;
+			}
+		}
+	}
+
+	void handleThrottleRequest(const ThrottleReq req)
+	{
+		Submarine s = m_submarine;
+		enforce(s, "player has no submarine, unable to set throttle");
+		s.targetThrottle = req.target;
+	}
+
+	void handleCourseRequest(const CourseReq req)
+	{
+		Submarine s = m_submarine;
+		enforce(s, "player has no submarine, unable to set course");
+		s.targetCourse = req.target + coordRot;
+	}
+
+	void sendKinematicsUpdate(usecs_t worldTime)
+	{
+		Submarine s = submarine;
+		PlayerConnection con = m_connection;
+		if (con && con.isOpen && s)
+		{
+			vec2d shiftedPos = rotateVector(s.transform.position - coordShift, coordRot);
+			double shiftedRot = s.transform.rotation + coordRot;
+			vec2d vel = rotateVector(s.rigidBody.kinet.vel, coordRot);
+			double angVel = s.rigidBody.kinet.angVel;
+			immutable(SubKinematicRes) msg = immutable SubKinematicRes(
+				KinematicSnapshot(
+					worldTime + timeShift,
+					Vector2d(shiftedPos.x, shiftedPos.y),
+					Vector2d(vel.x, vel.y),
+					shiftedRot,
+					angVel));
+			con.sendMessage(msg);
+		}
+	}
+
+	private static void randomizePosition(Submarine sub)
+	{
+		double px = uniform(-1000.0, 1000.0);
+		double py = uniform(-1000.0, 1000.0);
+		double rot = uniform(-PI, PI);
+		sub.transform.position = vec2d(px, py);
+		sub.transform.rotation = rot;
+		sub.rigidBody.updateFromTransform();
+		sub.rudder.targetCourse = rot;
+	}
 }
 
-/// remove connection from player's context or g_freshConnections
-void removeConnection(PlayerConnection pc)
-{
-	if (pc.playerCtx !is null)
-	{
-		pc.playerCtx.connection = null;
-		pc.playerCtx = null;
-	}
-	else
-	{
-		synchronized (g_conMut)
-			g_freshConnections.removeFirstUnstable(pc);
-	}
-}
 
-/// apply delegate dlg to each player context
-void forEachPlayer(scope void delegate(PlayerContext) dlg)
+final class PlayerCollection
 {
-	synchronized (g_playerMut)
+	private
 	{
-		foreach (PlayerContext pc; g_players.values)
-			dlg(pc);
+		Player[string] m_players;
+	}
+
+	/// Get or create Player for connection.
+	Player authorizeConnection(PlayerConnection con, string username, string password)
+	{
+		assert(con);
+		scope(success) info("Player ", username, " authorized");
+		synchronized(this)
+		{
+			Player* p = username in m_players;
+			if (p !is null)
+			{
+				// player is already present, let's try to authorize new connection
+				enforce!AuthException(p.compareCredentials(username, password),
+					"invalid password");
+				p.emplaceConnection(con);
+				return *p;
+			}
+			else
+			{
+				// new player
+				Player np = new Player(con, username, password);
+				m_players[username] = np;
+				return np;
+			}
+		}
+	}
+
+	/// Run dlg on each player while holding a lock on
+	/// player collection.
+	void forEachPlayer(scope void delegate(Player) dlg)
+	{
+		synchronized (this)
+		{
+			foreach (Player p; m_players.values)
+				dlg(p);
+		}
 	}
 }

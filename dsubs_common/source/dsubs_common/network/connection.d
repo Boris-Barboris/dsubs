@@ -102,7 +102,7 @@ class ProtocolConnection(alias Protocol)
 	}
 
 	/// send asynchroniously (caller thread does not block)
-	private void sendBytes(immutable(ubyte)[] data)
+	protected final void sendBytes(immutable(ubyte)[] data)
 	{
 		send!(immutable(ubyte)[])(m_writerThread, data);
 	}

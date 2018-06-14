@@ -1,34 +1,33 @@
 module dsubs_server.dynamics;
 
 import std.algorithm;
-import std.math;
-import core.sync.mutex;
 
 import dsubs_common.containers.array;
 import dsubs_common.math;
 
 import dsubs_server.common;
-import dsubs_server.threading;
 
 
 struct HydroForceModel
 {
 	// drag model: drag = v^2 * (Cd0 + Cd1 * sin(AoA))
-	double Cd0;
-	double Cd1;
+	double Cd0 = 0.0;
+	double Cd1 = 0.0;
 	// rotational drag model: torque = -angV^2 * Cr
-	double Cr;
+	double Cr = 0.0;
 	// lift model: lift = v^2 * sin(2 * AoA) * Cl
-	double Cl;
+	double Cl = 0.0;
 	// torque model: torque = v^2 * Cm * sin(AoA)
 	// Assumes stability with negative Cm.
-	double Cm;
+	double Cm = 0.0;
 
+	/// magnitude of drag force
 	double drag(double velSqr, double aoa)
 	{
 		return velSqr * (Cd0 + fabs(sin(aoa)) * Cd1);
 	}
 
+	/// magnitude of torque
 	double torque(double velSqr, double angVel, double aoa)
 	{
 		double drag_tq = - sgn(angVel) * angVel * angVel * Cr;
@@ -36,6 +35,7 @@ struct HydroForceModel
 		return drag_tq + stabil_tq;
 	}
 
+	/// magnitude of lift, always towards left hand
 	double lift(double velSqr, double aoa)
 	{
 		return velSqr * sin(2.0 * aoa) * Cl;
@@ -86,16 +86,16 @@ struct Kinematics
 }
 
 
-/// Some external source of force and torque
+/// Some external source of force and torque, that can act on RigidBody
 interface IForce
 {
 	/// get this force vector at the time 't' since the beginning of this
 	/// physics update.
-	vec2d getForce(const SubmergedRigidBody b, const ref Kinematics c);
+	vec2d getForce(const RigidBody b, const ref Kinematics c);
 
 	/// get this force resulting torque at the time 't' since the beginning of this
 	/// physics update.
-	double getTorque(const SubmergedRigidBody b, const ref Kinematics c);
+	double getTorque(const RigidBody b, const ref Kinematics c);
 
 	/// if there is some timing logic inside IForce, move forward in time on dt.
 	void propagateInTime(float dt);
@@ -103,7 +103,7 @@ interface IForce
 
 
 /// Rigid body for 2d dsubs world
-final class SubmergedRigidBody: PhysicalEntity
+final class RigidBody: PhysicalEntity
 {
 	Kinematics kinet;
 	double moi;
@@ -118,7 +118,7 @@ final class SubmergedRigidBody: PhysicalEntity
 		updateFromTransform();
 	}
 
-	/// update kinematics position and rotation from transform
+	/// update kinematics position and rotation from this body's transform
 	void updateFromTransform()
 	{
 		kinet.pos = transform.position;
@@ -180,42 +180,40 @@ abstract class PhysicalEntity
 }
 
 
-/// list of all physical objects
-private __gshared PhysicalEntity[] g_allBodies;
-/// mutex that guards g_allBodies
-private shared Mutex g_pbMut;
-
-shared static this()
+/// Set of rigid bodies that is simulated
+final class PhysicalEnv
 {
-	g_allBodies.reserve(512);
-	g_pbMut = new shared Mutex();
-}
-
-/// add new PhysicalEntity to global list
-void registerPEntity(PhysicalEntity e)
-{
-	g_pbMut.lock();
-	scope(exit) g_pbMut.unlock();
-	g_allBodies ~= e;
-}
-
-/// remove PhysicalEntity from global list
-void unregisterPEntity(PhysicalEntity e)
-{
-	g_pbMut.lock();
-	scope(exit) g_pbMut.unlock();
-	g_allBodies.removeFirstUnstable(e);
-}
-
-/// perform physics update for all pgysical bodies.
-void integratePBodies(float fwd = 1.0f, float maxDt = 0.25f)
-{
-	long stepCount = lrint(fwd / maxDt);
-	assert(stepCount > 0);
-	float dt = fwd / stepCount;
-	for (int i = 0; i < stepCount; i++)
+	private
 	{
-		foreach (i, ref entity; g_taskPool.parallel(g_allBodies, 8))
-			entity.integrate(dt);
+		PhysicalEntity[PhysicalEntity] m_entities;
+	}
+
+	void registerEntity(PhysicalEntity e)
+	{
+		synchronized(this)
+		{
+			m_entities[e] = e;
+		}
+	}
+
+	void unregisterEntity(PhysicalEntity e)
+	{
+		synchronized(this)
+		{
+			m_entities.remove(e);
+		}
+	}
+
+	/// perform physics update for all entities
+	void integratePBodies(float fwd = 1.0f, float maxDt = 0.25f)
+	{
+		long stepCount = lrint(fwd / maxDt);
+		assert(stepCount > 0);
+		float dt = fwd / stepCount;
+		for (int i = 0; i < stepCount; i++)
+		{
+			foreach (i, ref entity; Globals.taskPool.parallel(m_entities.values, 8))
+				entity.integrate(dt);
+		}
 	}
 }

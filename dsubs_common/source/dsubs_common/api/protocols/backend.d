@@ -2,9 +2,9 @@
 
 module dsubs_common.api.protocols.backend;
 
-import dsubs_common.api.constants;
-import dsubs_common.api.entities;
-import dsubs_common.api.utils;
+public import dsubs_common.api.constants;
+public import dsubs_common.api.entities;
+public import dsubs_common.api.utils;
 
 
 // WARNING: all structs in this module are automatically registeded as
@@ -20,8 +20,8 @@ struct ServerStatusReq
 struct ServerStatusRes
 {
 	__gshared const int g_marshIdx;
-	int apiVersion = 1;
 	int playersOnline;
+	int apiVersion = 1;
 }
 
 /** This message requests authorization from the server.
@@ -54,19 +54,6 @@ struct SessionClosedRes
 {
 	__gshared const int g_marshIdx;
 	@MaxLenAttr(64) string reason;
-}
-
-struct ClientPing
-{
-	__gshared const int g_marshIdx;
-	usecs_t clientTime;
-}
-
-/// Sent in response to ClientPing
-struct ServerPong
-{
-	__gshared const int g_marshIdx;
-	usecs_t clientTime;		/// clientTime of the offending ClientPing
 }
 
 /// Sent by client when he wants to download entity database

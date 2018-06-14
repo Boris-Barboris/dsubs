@@ -8,14 +8,7 @@
 		"gfm:math": "~>6.2.7",
 		"painlesstraits": "0.3.0"
 	},
-	"description": "Common library for dsubs.",
+	"description": "Common library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
-	"license": "GPL-2.0",
-	"configurations": [
-		{
-			"name": "debuglib",
-			"targetType": "staticLibrary",
-			"buildOptions": ["debugMode", "debugInfo"]
-		}
-	]
+	"targetType": "staticLibrary"
 }

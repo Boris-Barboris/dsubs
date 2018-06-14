@@ -37,7 +37,12 @@ final class Delayer
 		m_cond = new Condition(new Mutex());
 		m_records = new RecordCollection();
 		m_recordsLock = new Mutex();
-		m_thread = new Thread(&proc).start();
+		m_thread = new Thread(&proc);
+	}
+
+	void start()
+	{
+		m_thread.start();
 	}
 
 	void stop()

@@ -58,7 +58,7 @@ struct FontRecord
 
 __gshared FontRecord*[string] g_loadedFonts;
 
-__gshared immutable string[string] g_fontFiles;
+immutable string[string] g_fontFiles;
 
 shared static this()
 {
@@ -73,7 +73,7 @@ void loadGlobalFonts()
 {
 	foreach (string name, string filename; g_fontFiles)
 	{
-		auto cstr = toStringz(filename);
-		g_loadedFonts[name] = new FontRecord(sfFont_createFromFile(cstr));
+		g_loadedFonts[name] =
+			new FontRecord(sfFont_createFromFile(toStringz(filename)));
 	}
 }

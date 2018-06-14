@@ -73,7 +73,7 @@ unittest
 {
 	assert(BackendProtocol.msgTypeCount > 0);
 	alias ServerStatusRes = dsubs_common.api.protocols.backend.ServerStatusRes;
-	ServerStatusRes testStruct;
+	immutable ServerStatusRes testStruct;
 	auto bytes = BackendProtocol.marshal(testStruct);
 	assert(bytes.length > 0);
 
@@ -82,6 +82,6 @@ unittest
 	{
 		__gshared int g_marshIdx = 13;
 	}
-	static assert (__traits(compiles, BackendProtocol.marshal(ServerStatusRes())));
-	static assert (!__traits(compiles, BackendProtocol.marshal(EntityDbRes())));
+	static assert (__traits(compiles, BackendProtocol.marshal(immutable ServerStatusRes())));
+	static assert (!__traits(compiles, BackendProtocol.marshal(immutable EntityDbRes())));
 }

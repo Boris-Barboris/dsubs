@@ -1,18 +1,14 @@
 module dsubs_client.lib.sfml;
 
-import std.conv: to;
-import std.experimental.logger;
-import std.math: lrint;
 import std.meta: AliasSeq;
-
-import gfm.math.vector;
-import gfm.math.matrix;
 
 import derelict.sfml2.system;
 import derelict.sfml2.window;
 import derelict.sfml2.audio;
 import derelict.sfml2.graphics;
 import derelict.sfml2.network;
+
+import dsubs_client.common;
 
 
 version(linux)
@@ -35,15 +31,16 @@ version(linux)
 
 void loadSfmlLibraries()
 {
-	info("Loading CSFML dynamic libraries...");
+	info("Loading CSFML shared libraries...");
 	DerelictSFML2System.load();
 	DerelictSFML2Window.load();
 	DerelictSFML2Audio.load();
 	DerelictSFML2Graphics.load();
 	// DerelictSFML2Network.load();
-	info("OK");
+	info("OK!");
 }
 
+/// check if sfml event is mouse-related and has position
 bool isMousePosEvent(in sfEvent* evt, out int x, out int y,
 	out sfMouseButton mbutton, out float wheelDelta)
 {

@@ -1,8 +1,8 @@
 module dsubs_server.propulsion;
 
+import dsubs_common.api.entities;
 import dsubs_common.math;
 
-import dsubs_server.damage;
 import dsubs_server.common;
 import dsubs_server.dynamics;
 
@@ -11,38 +11,85 @@ import dsubs_server.dynamics;
 abstract class Propulsor: IForce
 {
 	Transform2D transform;
-	string prototypeName;
 
-	float rotSpd = 0.0f;		// [-1.0, 1.0]
-	float targetRotSpd = 0.0f;	// [-1.0, 1.0]
-	float mass = 0.0f;
+	protected
+	{
+		string m_prototypeName;
+
+		/// current rotation speed, [-1.0, 1.0]
+		float m_rotSpd = 0.0f;
+
+		/// mass that is added to the hull
+		float m_mass = 0.0f;
+	}
+
+	@property string prototypeName() const { return m_prototypeName; }
+	@property float mass() const { return m_mass; }
+
+	/// desired rotation speed, [-1.0, 1.0]
+	float targetRotSpd = 0.0f;
 }
 
 /// simple propulsor with linear thrust law
-class BasicPropulsor: Propulsor
+final class BasicPropulsor: Propulsor
 {
-	float rotAcceleration = 0.34f;	/// how fast rotSpd can change
-	float posThrustK = 0.0f;
-	float negThrustK = 0.0f;
-
-	vec2d getForce(const SubmergedRigidBody b, ref const Kinematics c)
+	private
 	{
-		double absThrust = rotSpd * rotSpd * (rotSpd >= 0.0f ? posThrustK : -negThrustK);
-		//trace("absThrust: ", absThrust, " posThrustK: ", posThrustK);
-		//trace("thrust: ", transform.wforward * absThrust);
+		/// how fast rotSpd can change
+		float rotAcceleration = 0.34f;
+		float posThrustK = 0.0f;
+		float negThrustK = 0.0f;
+	}
+
+	vec2d getForce(const RigidBody b, ref const Kinematics c)
+	{
+		double absThrust = m_rotSpd * m_rotSpd * (m_rotSpd >= 0.0f ? posThrustK : -negThrustK);
 		return transform.wforward * absThrust;
 	}
 
-	double getTorque(const SubmergedRigidBody b, ref const Kinematics c)
+	double getTorque(const RigidBody b, ref const Kinematics c)
 	{
 		return 0.0;
 	}
 
 	void propagateInTime(float dt)
 	{
-		//trace(rotSpd, " ", targetRotSpd);
-		rotSpd = cmove(rotSpd, targetRotSpd, rotAcceleration, dt);
-		//trace(rotSpd);
+		m_rotSpd = cmove(m_rotSpd, targetRotSpd, rotAcceleration, dt);
+	}
+}
+
+
+interface PropulsorPrototype
+{
+	Propulsor build() const;
+	immutable(PropulsorTemplate)* getTemplate() const;
+}
+
+class BasicPropulsorPrototype: PropulsorPrototype
+{
+	immutable PropulsorTemplate tmpl;
+	RolledF posThrustK;
+	RolledF negThrustK;
+	float mass;
+
+	this(immutable PropulsorTemplate t)
+	{
+		tmpl = t;
+	}
+
+	BasicPropulsor build() const
+	{
+		BasicPropulsor res = new BasicPropulsor();
+		res.posThrustK = posThrustK;
+		res.negThrustK = negThrustK;
+		res.m_prototypeName = tmpl.name;
+		res.m_mass = mass;
+		return res;
+	}
+
+	immutable(PropulsorTemplate)* getTemplate() const
+	{
+		return &tmpl;
 	}
 }
 
@@ -50,34 +97,36 @@ class BasicPropulsor: Propulsor
 abstract class Rudder: IForce
 {
 	Transform2D transform;
+	protected float rudderPos = 0.0f;
 
 	/// target course
 	float targetCourse = 0.0f;
-	float rudderPos = 0.0f;
 }
 
 /// PD-controlled rudder
-class BasicRudder: Rudder
+final class BasicRudder: Rudder
 {
-	float posChangeSpeed = 1.0f;
-
 	/// actual torque power
 	float steeringK = 0.0f;
 
-	// PD controller gains
-	float Kp = 5.0f;
-	float Kd = -45.0;
+	private
+	{
+		float posChangeSpeed = 1.0f;
+		// PD controller gains
+		float Kp = 5.0f;
+		float Kd = -45.0;
 
-	private float error = 0.0;
-	private float errorDeriv = 0.0;
+		float error = 0.0;
+		float errorDeriv = 0.0;
+	}
 
-	vec2d getForce(const SubmergedRigidBody b, ref const Kinematics c)
+	vec2d getForce(const RigidBody b, ref const Kinematics c)
 	{
 		// TODO: there should be small lift here but fuck it
 		return vec2d(0.0, 0.0);
 	}
 
-	double getTorque(const SubmergedRigidBody b, ref const Kinematics c)
+	double getTorque(const RigidBody b, ref const Kinematics c)
 	{
 		error = angleDist(targetCourse, transform.wrotation);
 		errorDeriv = c.angVel;
