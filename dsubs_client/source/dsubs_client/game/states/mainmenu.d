@@ -1,4 +1,4 @@
-module dsubs_client.game.mainmenu;
+module dsubs_client.game.states.mainmenu;
 
 import std.conv: to;
 import std.math;
@@ -20,10 +20,10 @@ import dsubs_client.gui;
 
 private
 {
-	immutable int MENU_BUTTON_FONTSIZE = 50;
-	immutable int LOGIN_FONT_SIZE = 22;
-	immutable int INFO_FONT_SIZE = 18;
-	immutable float LOGIN_FRACT = 0.3f;
+	enum int MENU_BUTTON_FONTSIZE = 50;
+	enum int LOGIN_FONT_SIZE = 22;
+	enum int INFO_FONT_SIZE = 18;
+	enum float LOGIN_FRACT = 0.3f;
 }
 
 
@@ -44,7 +44,7 @@ void setupMainMenu()
 		fontColor(sfColor(255, 255, 0, 255)).htextAlign(HTextAlign.CENTER).build();
 
 	int loginSize = (LOGIN_FONT_SIZE * 1.3).lrint.to!int;
-	Label loginLabel = builder(new Label()).content("Your nickname:").
+	Label loginLabel = builder(new Label()).content("Login:").
 		htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).fraction(LOGIN_FRACT).build();
 	TextField loginField = builder(new TextField()).fontSize(LOGIN_FONT_SIZE).build();
 

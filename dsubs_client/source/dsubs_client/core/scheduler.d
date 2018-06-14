@@ -1,23 +1,24 @@
-module dsubs_client.core.delayer;
+module dsubs_client.core.scheduler;
 
 import std.container.rbtree;
 import std.experimental.logger;
 
-public import core.time;
+public import core.time: Duration;
+import core.time;
 import core.atomic;
 import core.thread;
 import core.sync.condition;
 import core.sync.mutex;
 
 
-/// Background thread wich dispatches delayed delegates
-final class Delayer
+/// Background thread that dispatches delayed delegates
+final class Scheduler
 {
 	private struct DelayRecord
 	{
 		MonoTime when;
 		void delegate() what;
-		Mutex toLock;
+		Mutex lockToHold;
 	}
 
 	private
@@ -97,8 +98,8 @@ final class Delayer
 			{
 				DelayRecord firstRecord = m_records.front;
 				// actually run the code
-				if (firstRecord.toLock)
-					firstRecord.toLock.lock();
+				if (firstRecord.lockToHold)
+					firstRecord.lockToHold.lock();
 				try
 				{
 					firstRecord.what();
@@ -107,8 +108,8 @@ final class Delayer
 				{
 					error(e);
 				}
-				if (firstRecord.toLock)
-					firstRecord.toLock.unlock();
+				if (firstRecord.lockToHold)
+					firstRecord.lockToHold.unlock();
 				m_records.removeFront();
 			}
 			// setup next wakeup

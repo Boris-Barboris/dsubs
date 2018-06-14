@@ -102,26 +102,36 @@ class Camera2D
 		return vec2d(rs.x / rs.z, rs.y / rs.z);
 	}
 
-	mixin template FieldDirtyProperty(T, string fieldName)
+	final @property vec2d center() const { return m_center; }
+
+	final @property vec2d center(vec2d rhs)
 	{
-		mixin("final @property const(" ~ T.stringof ~ ") " ~ fieldName ~
-			"() const { return m_" ~ fieldName ~ ";};");
-		mixin("final @property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~
-			T.stringof ~ " rhs) {" ~ "m_" ~ fieldName ~
-			"= rhs; m_dirty=true; return m_" ~ fieldName ~ ";}");
+		m_dirty = true;
+		return m_center = rhs;
 	}
 
-	mixin FieldDirtyProperty!(vec2d, "center");
-	mixin FieldDirtyProperty!(double, "zoom");
-	mixin FieldDirtyProperty!(vec2ui, "screenSize");
+	final @property double zoom() const { return m_zoom; }
+
+	final @property double zoom(double rhs)
+	{
+		m_dirty = true;
+		return m_zoom = rhs;
+	}
+
+	final @property vec2ui screenSize() const { return m_screenSize; }
+
+	final @property vec2ui screenSize(vec2ui rhs)
+	{
+		m_dirty = true;
+		return m_screenSize = rhs;
+	}
 
 	final @property double rotation() const { return m_rotation; }
 
 	final @property double rotation(double rhs)
 	{
-		m_rotation = clampAngle(rhs);
 		m_dirty = true;
-		return m_rotation;
+		return m_rotation = clampAngle(rhs);
 	}
 
 	/** Pan camera by rotated, but not scaled translation vector

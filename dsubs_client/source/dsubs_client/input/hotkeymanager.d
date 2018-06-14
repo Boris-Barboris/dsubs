@@ -179,7 +179,7 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 		return res;
 	}
 
-	// dummy
+	// dummy IInputReciever interface functions
 	void handleMouseEnter() {}
 	void handleMouseLeave() {}
 	void handleMouseFocusGain() {}

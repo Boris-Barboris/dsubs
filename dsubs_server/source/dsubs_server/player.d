@@ -60,28 +60,22 @@ final class Player
 	/// Set submarine to null
 	bool unsetSubmarine(Submarine assumedOldSub)
 	{
-		synchronized(this)
+		if (m_submarine is assumedOldSub)
 		{
-			if (m_submarine is assumedOldSub)
-			{
-				m_submarine = null;
-				return true;
-			}
-			return false;
+			m_submarine = null;
+			return true;
 		}
+		return false;
 	}
 
 	private bool unsetConnection(PlayerConnection assumedOldCon)
 	{
-		synchronized(this)
+		if (m_connection is assumedOldCon)
 		{
-			if (m_connection is assumedOldCon)
-			{
-				m_connection = null;
-				return true;
-			}
-			return false;
+			m_connection = null;
+			return true;
 		}
+		return false;
 	}
 
 	private void generateShift()
@@ -141,16 +135,15 @@ final class Player
 
 	void handleSpawnRequest(const SpawnReq req)
 	{
-		Submarine s;
-		synchronized(this)
+		synchronized(Globals.simMut.reader)
 		{
-			s = m_submarine;
-			enforce(s is null, "Already spawned");
-			s = Globals.entityDb.buildSubFromLoadout(req, this);
-			generateShift();
-			randomizePosition(s);
-			synchronized(Globals.simMut.reader)
+			synchronized(this)
 			{
+				Submarine s = m_submarine;
+				enforce(s is null, "Already spawned");
+				s = Globals.entityDb.buildSubFromLoadout(req, this);
+				generateShift();
+				randomizePosition(s);
 				s.bootstrap();
 				m_submarine = s;
 			}

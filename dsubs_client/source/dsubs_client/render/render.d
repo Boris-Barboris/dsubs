@@ -87,7 +87,8 @@ final class Render
 
 	private float m_avgFps = 0.0f;
 	@property float avgFps() const { return m_avgFps; }
-	enum int FPS_UPDATE_FREQ = 60;
+
+	private enum int FPS_UPDATE_FREQ = 60;
 
 	/// Thread function
 	private void render(scope Mutex mutex)
@@ -138,7 +139,7 @@ final class Render
 		catch (Throwable err)
 		{
 			error("Render loop crashed: ", err.toString);
-			assert(0);
+			throw err;
 		}
 		trace("Exiting render loop, stop_flag is ", m_stopFlag);
 	}

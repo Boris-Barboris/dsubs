@@ -9,7 +9,7 @@ import core.memory: GC;
 
 import dsubs_common.api;
 
-import dsubs_client.core.delayer;
+import dsubs_client.core.scheduler;
 import dsubs_client.core.window;
 import dsubs_client.input.router;
 public import dsubs_client.input.hotkeymanager;
@@ -18,9 +18,9 @@ import dsubs_client.render.render;
 import dsubs_client.render.worldmanager;
 
 import dsubs_client.game.connection;
-import dsubs_client.game.simulation;
+import dsubs_client.game.states.simulation;
 public import dsubs_client.game.entities;
-public import dsubs_client.game.mainmenu;
+public import dsubs_client.game.states.mainmenu;
 
 
 /// Namespace for globals wich represent the game state.
@@ -34,10 +34,10 @@ __gshared:
 	WorldManager worldManager;
 	HotkeyManager hotkeyManager;
 	ServerConnection serverConnection;
-	Delayer delayer;
+	Scheduler scheduler;
 
 	/// Global lock, held by window message pump and render threads.
-	/// When in doubt, lock this one.
+	/// When in doubt, hold this one.
 	Mutex mainMutex;
 
 	// entity databases in different forms
@@ -58,7 +58,7 @@ __gshared:
 		worldManager = new WorldManager(window);
 		hotkeyManager = new HotkeyManager(window);
 		mainMutex = new Mutex();
-		delayer = new Delayer();
+		scheduler = new Scheduler();
 		render.guiRender = guiManager;
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
@@ -100,7 +100,7 @@ __gshared:
 	static void delay(void delegate() what, Duration after,
 		Mutex mutToHold = Game.mainMutex)
 	{
-		assert(Game.delayer !is null);
-		Game.delayer.delay(what, after, mutToHold);
+		assert(Game.scheduler !is null);
+		Game.scheduler.delay(what, after, mutToHold);
 	}
 }

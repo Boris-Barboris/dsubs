@@ -71,9 +71,8 @@ final class InputRouter
 	// Focused components. Just assign them to what you need. Focused
 	// components are global and static. Only one reciever is under cursor.
 	// Only one reciever is focused. Only one window is actively getting
-	// events.
-	private static __gshared IInputReciever
-		g_underCursor, g_kbFocused, g_mouseFocused;
+	// events. Dsubs GUI code is not thread-safe.
+	private __gshared IInputReciever g_underCursor, g_kbFocused, g_mouseFocused;
 
 	static @property IInputReciever underCursor() { return g_underCursor; }
 	static @property IInputReciever underCursor(IInputReciever rhs)
@@ -144,7 +143,8 @@ final class InputRouter
 
 	/// In dynamic, moving environment it's simpler to just generate
 	/// mouseMove event every time screen is redrawn in order to get new
-	/// object under the cursor. Rrouters should have a good caching mechanism.
+	/// object under the cursor. Routers with expensive lookup
+	/// should have a good caching mechanism.
 	void simulateMouseMove()
 	{
 		if (m_wndHasFocus && (m_mouseInside || g_mouseFocused))
