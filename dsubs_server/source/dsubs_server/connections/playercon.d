@@ -46,13 +46,13 @@ private:
 		enforce!AuthException(m_player is null, "already authorized");
 		try
 		{
-			Player p = Globals.players.authorizeConnection(this, req.username, req.password);
-			if (p.submarine)
+			m_player = Globals.players.authorizeConnection(this, req.username, req.password);
+			if (m_player.submarine)
 			{
 				// we are already spawned
 				sendMessage(immutable LoginRes(true, "Welcome",
 					Globals.entityDb.commonEntityDbHash, true));
-				sendMessage(p.getReconnectState());
+				sendMessage(m_player.getReconnectState());
 			}
 			else
 			{

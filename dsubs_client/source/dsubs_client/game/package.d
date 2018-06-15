@@ -12,15 +12,16 @@ import dsubs_common.api;
 import dsubs_client.core.scheduler;
 import dsubs_client.core.window;
 import dsubs_client.input.router;
-public import dsubs_client.input.hotkeymanager;
+import dsubs_client.input.hotkeymanager;
 import dsubs_client.gui.manager;
 import dsubs_client.render.render;
 import dsubs_client.render.worldmanager;
 
+import dsubs_client.game.gamestate;
 import dsubs_client.game.connection;
 import dsubs_client.game.states.simulation;
-public import dsubs_client.game.entities;
-public import dsubs_client.game.states.mainmenu;
+import dsubs_client.game.entities;
+import dsubs_client.game.states.mainmenu;
 
 
 /// Namespace for globals wich represent the game state.
@@ -44,8 +45,15 @@ __gshared:
 	EntityDbRes entityDb;
 	EntityManager entityManager;
 
-	/// simulator state
-	SimulatorState simState;
+	/// game states
+	GameState activeState;
+
+	// shortcut to simulator state
+	static @property SimulatorState simState()
+	{
+		enforce(activeState && activeState.kind == GameStateKind.SIMULATION);
+		return cast(SimulatorState) activeState;
+	}
 
 	/// start the game
 	static void start()
@@ -59,6 +67,7 @@ __gshared:
 		hotkeyManager = new HotkeyManager(window);
 		mainMutex = new Mutex();
 		scheduler = new Scheduler();
+		scheduler.start();
 		render.guiRender = guiManager;
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
@@ -82,7 +91,6 @@ __gshared:
 	/// game state.
 	static void clearEntities()
 	{
-		serverConnection.clearHandlers();
 		inputRouter.clearFocused();
 		guiManager.clearPanels();
 		render.clearHandlers();

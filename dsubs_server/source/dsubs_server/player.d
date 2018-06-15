@@ -39,7 +39,7 @@ final class Player
 
 	static int getPlayersOnline()
 	{
-		return atomicLoad(Player.s_playerCount);
+		return atomicLoad(s_playerCount);
 	}
 
 	this(PlayerConnection con, string uname, string pw)
@@ -57,22 +57,12 @@ final class Player
 	@property string username() const { return m_username; }
 	@property Submarine submarine() { return m_submarine; }
 
-	/// Set submarine to null
+	/// Set submarine to null. simMut should be held.
 	bool unsetSubmarine(Submarine assumedOldSub)
 	{
 		if (m_submarine is assumedOldSub)
 		{
 			m_submarine = null;
-			return true;
-		}
-		return false;
-	}
-
-	private bool unsetConnection(PlayerConnection assumedOldCon)
-	{
-		if (m_connection is assumedOldCon)
-		{
-			m_connection = null;
 			return true;
 		}
 		return false;
@@ -88,34 +78,44 @@ final class Player
 		timeShift = uniform(-MAX_TIME_SHIFT, MAX_TIME_SHIFT);
 	}
 
-	/// handle connection being closed - clear m_connection field
+	/// handle connection being closed.
 	private void onConnectionClose(PlayerConnection oldCon)
 	{
 		assert(oldCon && !oldCon.isOpen);
-		bool cleared = unsetConnection(oldCon);
 		oldCon.player = null;
-		if (cleared)
-			atomicOp!"-="(s_playerCount, 1);
+		synchronized(this)
+		{
+			if (m_connection is oldCon)
+			{
+				m_connection = null;
+				atomicOp!"-="(s_playerCount, 1);
+			}
+		}
 	}
 
 	/// force close the connection
-	void closeConnection()
+	bool closeConnection()
 	{
 		PlayerConnection con = m_connection;
 		if (con)
 		{
 			info("Closing previous connection of ", m_username);
 			con.close();
+			return true;
 		}
+		return false;
 	}
 
 	/// set current
 	private void emplaceConnection(PlayerConnection con)
 	{
-		closeConnection();
-		m_connection = con;
-		atomicOp!"+="(s_playerCount, 1);
-		con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
+		synchronized(this)
+		{
+			closeConnection();
+			m_connection = con;
+			atomicOp!"+="(s_playerCount, 1);
+			con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
+		}
 	}
 
 	/// true if proposed credentials are the same as used
@@ -152,21 +152,28 @@ final class Player
 
 	void handleThrottleRequest(const ThrottleReq req)
 	{
-		Submarine s = m_submarine;
-		enforce(s, "player has no submarine, unable to set throttle");
-		s.targetThrottle = req.target;
+		synchronized(Globals.simMut.reader)
+		{
+			Submarine s = m_submarine;
+			enforce(s, "player has no submarine, unable to set throttle");
+			s.targetThrottle = req.target;
+		}
 	}
 
 	void handleCourseRequest(const CourseReq req)
 	{
-		Submarine s = m_submarine;
-		enforce(s, "player has no submarine, unable to set course");
-		s.targetCourse = req.target + coordRot;
+		synchronized(Globals.simMut.reader)
+		{
+			Submarine s = m_submarine;
+			enforce(s, "player has no submarine, unable to set course");
+			s.targetCourse = req.target + coordRot;
+		}
 	}
 
+	// simMut.writer is held by the simulator
 	void sendKinematicsUpdate(usecs_t worldTime)
 	{
-		Submarine s = submarine;
+		Submarine s = m_submarine;
 		PlayerConnection con = m_connection;
 		if (con && con.isOpen && s)
 		{

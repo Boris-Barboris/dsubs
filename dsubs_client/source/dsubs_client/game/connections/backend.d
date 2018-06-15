@@ -2,7 +2,8 @@ module dsubs_client.game.connections.backend;
 
 import std.socket;
 
-import core.sync.mutex;
+import core.atomic;
+import core.thread;
 
 import dsubs_common.api;
 import dsubs_common.api.protocol;
@@ -15,35 +16,54 @@ import dsubs_client.common;
 /// TCP connection to backend dsubs server
 final class BackendConnection: ProtocolConnection!BackendProtocol
 {
-	private Mutex m_mutex;
-
 	/// Create the connection object and spool up worker threads.
 	/// 'lockToHold' is a mutex guarding event objects.
-	this(Socket sock, Mutex lockToHold)
+	this(Socket sock)
 	{
-		assert(lockToHold);
-		m_mutex = lockToHold;
 		super(sock);
 	}
+}
 
-	// clear all handlers from events
-	void clearHandlers()
+
+/// Maintains connection to backend
+final class BackendConMaintainer
+{
+	private Thread m_thread;
+	private shared bool exit_flag;
+	private BackendConnection m_con;
+
+	this()
 	{
-		onConnectionClosed.clear();
-		onConnectionSuccess.clear();
-		onLoginRes.clear();
-		onEntityDbRecieved.clear();
-		onSpawnRes.clear();
-		onSubKinematicRes.clear();
-		onReconnectStateRes.clear();
+		m_thread = new Thread(&proc);
 	}
 
-	// Subscribe to these events. They are all fired while holding m_mutex.
-	Event!(void delegate(string reason)) onConnectionClosed;
-	Event!(void delegate(ServerStatusRes res)) onConnectionSuccess;
-	Event!(void delegate(LoginRes res)) onLoginRes;
-	Event!(void delegate(EntityDbRes res)) onEntityDbRecieved;
-	Event!(void delegate(SpawnRes res)) onSpawnRes;
-	Event!(void delegate(SubKinematicRes res)) onSubKinematicRes;
-	Event!(void delegate(ReconnectStateRes res)) onReconnectStateRes;
+	void stopAsync()
+	{
+		atomicStore(exit_flag, true);
+		BackendConnection c = m_con;
+		if (c)
+			c.close();
+		m_con = null;
+	}
+
+	private void proc()
+	{
+		while (!atomicLoad(exit_flag))
+		{
+			try
+			{
+				Socket clientSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
+				auto addr = new InternetAddress("127.0.0.1", 17855);
+				info("Attempting to connect to backend ", addr);
+				clientSock.connect(addr);
+				m_con = new BackendConnection(clientSock);
+				m_con.join();
+			}
+			catch (Exception ex)
+			{
+				error(ex.toString());
+				Thread.sleep(seconds(3));
+			}
+		}
+	}
 }

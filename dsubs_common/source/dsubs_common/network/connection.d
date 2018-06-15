@@ -96,6 +96,12 @@ class ProtocolConnection(alias Protocol)
 		m_started = true;
 	}
 
+	/// Block until the connection is closed.
+	final void join()
+	{
+		m_readerThread.join();
+	}
+
 	final void sendMessage(MsgT)(immutable MsgT msg)
 	{
 		sendBytes(Protocol.marshal(msg));
