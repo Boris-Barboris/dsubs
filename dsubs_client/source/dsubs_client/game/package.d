@@ -19,9 +19,9 @@ import dsubs_client.render.worldmanager;
 
 import dsubs_client.game.gamestate;
 import dsubs_client.game.connection;
-import dsubs_client.game.states.simulation;
 import dsubs_client.game.entities;
 import dsubs_client.game.states.mainmenu;
+import dsubs_client.game.states.simulation;
 
 
 /// Namespace for globals wich represent the game state.
@@ -45,13 +45,25 @@ __gshared:
 	EntityDbRes entityDb;
 	EntityManager entityManager;
 
-	/// game states
-	GameState activeState;
+	private GameState m_activeState;
+
+	/// get current active game state object
+	static @property GameState activeState() { return m_activeState; }
+
+	/// switch game to new state
+	static @property void activeState(GameState newState)
+	{
+		assert(newState);
+		clearEntities();
+		m_activeState = newState;
+		m_activeState.setup();
+	}
 
 	// shortcut to simulator state
 	static @property SimulatorState simState()
 	{
-		enforce(activeState && activeState.kind == GameStateKind.SIMULATION);
+		enforce(activeState && activeState.kind == GameStateKind.SIMULATION,
+			"game is not in simulation state");
 		return cast(SimulatorState) activeState;
 	}
 

@@ -10,24 +10,22 @@ enum GameStateKind
 	SIMULATION
 }
 
-interface GameState
+abstract class GameState
 {
-	/// name of the game state
-	@property GameStateKind kind() const;
+	private GameStateKind m_kind;
+
+	this(GameStateKind k) { m_kind = kind; }
+
+	/// type of this game state
+	final @property GameStateKind kind() const { return m_kind; }
 
 	/// Transform the Game into this state.
 	/// Only called while holding Game.mainMutex.
 	void setup();
 
 	/// Called when backend connection is closed.
-	void handleBackendDisconnect()
-	{
-
-	}
+	void handleBackendDisconnect();
 
 	/// Called when CIC connection is closed.
-	void handleCICDisconnect()
-	{
-
-	}
+	void handleCICDisconnect();
 }

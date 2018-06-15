@@ -1,9 +1,6 @@
 module dsubs_client.game.states.mainmenu;
 
-import std.conv: to;
-import std.math;
 import std.utf;
-import std.experimental.logger;
 
 import core.thread;
 
@@ -11,10 +8,12 @@ import derelict.sfml2.window;
 
 import dsubs_common.api;
 
+import dsubs_client.common;
 import dsubs_client.core.utils;
 import dsubs_client.game;
-import dsubs_client.game.loadout;
-import dsubs_client.game.simulation;
+import dsubs_client.game.gamestate;
+import dsubs_client.game.states.loadout;
+import dsubs_client.game.states.simulation;
 import dsubs_client.gui;
 
 
@@ -24,6 +23,25 @@ private
 	enum int LOGIN_FONT_SIZE = 22;
 	enum int INFO_FONT_SIZE = 18;
 	enum float LOGIN_FRACT = 0.3f;
+}
+
+final class MainMenuState: GameState
+{
+	this()
+	{
+		super(GameStateKind.MAINMENU);
+	}
+
+	private
+	{
+		bool canLogin;
+		bool alreadySpawned;
+	}
+
+	void setup()
+	{
+
+	}
 }
 
 

@@ -25,7 +25,7 @@ final class BackendConnection: ProtocolConnection!BackendProtocol
 }
 
 
-/// Maintains connection to backend
+/// Worker thread that maintains connection to the backend open.
 final class BackendConMaintainer
 {
 	private Thread m_thread;
@@ -34,10 +34,15 @@ final class BackendConMaintainer
 
 	this()
 	{
-		m_thread = new Thread(&proc);
+		m_thread = new Thread(&proc, 16 * 1024);
 	}
 
-	void stopAsync()
+	void start()
+	{
+		m_thread.start();
+	}
+
+	void stop()
 	{
 		atomicStore(exit_flag, true);
 		BackendConnection c = m_con;
@@ -57,6 +62,7 @@ final class BackendConMaintainer
 				info("Attempting to connect to backend ", addr);
 				clientSock.connect(addr);
 				m_con = new BackendConnection(clientSock);
+				m_con.start();
 				m_con.join();
 			}
 			catch (Exception ex)
