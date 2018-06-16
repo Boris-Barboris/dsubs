@@ -99,7 +99,7 @@ class ProtocolConnection(alias Protocol)
 	/// Block until the connection is closed.
 	final void join()
 	{
-		m_readerThread.join();
+		m_readerThread.join(false);
 	}
 
 	final void sendMessage(MsgT)(immutable MsgT msg)
@@ -124,8 +124,6 @@ class ProtocolConnection(alias Protocol)
 	final void setHandler(MsgT)(void delegate(MsgT msg) handler)
 	{
 		assert(handler);
-		if (m_handlers[MsgT.g_marshIdx])
-			throw new Exception("Handler already set");
 		m_handlers[MsgT.g_marshIdx] =
 			(ubyte[] msgBody) { handler(Protocol.demarshal!MsgT(msgBody)); };
 	}
@@ -159,7 +157,7 @@ class ProtocolConnection(alias Protocol)
 		auto received = m_sock.receive(header);
 		enforce!ConnectionException(received == 8, "Error during receive");
 		enforce!ProtocolException(header[0] >= -1 &&
-			header[0] < m_handlers.length, "Unknown message " ~ header[0].to!string);
+			header[0] < m_handlers.length.to!int, "Unknown message " ~ header[0].to!string);
 		enforce!ProtocolException(header[1] >= 0 &&
 			header[1] <= MAX_MSG_SIZE, "Message length invalid");
 		if (header[0] >= 0)

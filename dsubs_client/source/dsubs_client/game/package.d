@@ -1,6 +1,5 @@
 module dsubs_client.game;
 
-import std.experimental.logger;
 import std.parallelism;
 
 import core.sync.mutex;
@@ -8,7 +7,9 @@ import core.thread;
 import core.memory: GC;
 
 import dsubs_common.api;
+import dsubs_common.api.protocols.backend: EntityDbRes;
 
+import dsubs_client.common;
 import dsubs_client.core.scheduler;
 import dsubs_client.core.window;
 import dsubs_client.input.router;
@@ -18,10 +19,9 @@ import dsubs_client.render.render;
 import dsubs_client.render.worldmanager;
 
 import dsubs_client.game.gamestate;
-import dsubs_client.game.connection;
+import dsubs_client.game.connections.backend;
 import dsubs_client.game.entities;
 import dsubs_client.game.states.mainmenu;
-import dsubs_client.game.states.simulation;
 
 
 /// Namespace for globals wich represent the game state.
@@ -34,7 +34,6 @@ __gshared:
 	GuiManager guiManager;
 	WorldManager worldManager;
 	HotkeyManager hotkeyManager;
-	ServerConnection serverConnection;
 	Scheduler scheduler;
 
 	/// Global lock, held by window message pump and render threads.
@@ -44,6 +43,9 @@ __gshared:
 	// entity databases in different forms
 	EntityDbRes entityDb;
 	EntityManager entityManager;
+
+	/// persistent backend connection
+	BackendConMaintainer bconm;
 
 	private GameState m_activeState;
 
@@ -60,14 +62,21 @@ __gshared:
 	}
 
 	// shortcut to simulator state
-	static @property SimulatorState simState()
+	// static @property SimulatorState simState()
+	// {
+	// 	enforce(m_activeState && m_activeState.kind == GameStateKind.SIMULATION,
+	// 		"game is not in simulation state");
+	// 	return cast(SimulatorState) m_activeState;
+	// }
+
+	static @property MainMenuState mainMenuState()
 	{
-		enforce(activeState && activeState.kind == GameStateKind.SIMULATION,
-			"game is not in simulation state");
-		return cast(SimulatorState) activeState;
+		enforce(m_activeState && m_activeState.kind == GameStateKind.MAINMENU,
+			"game is not in main menu state");
+		return cast(MainMenuState) m_activeState;
 	}
 
-	/// start the game
+	/// start the game (blocks caller thread)
 	static void start()
 	{
 		assert(window is null);
@@ -80,35 +89,41 @@ __gshared:
 		mainMutex = new Mutex();
 		scheduler = new Scheduler();
 		scheduler.start();
+		scope(failure) scheduler.stop();
 		render.guiRender = guiManager;
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
 		inputRouter.worldRouter = worldManager;
 		inputRouter.hotkeyRouter = hotkeyManager;
-		serverConnection = new ServerConnection("127.0.0.1", mainMutex);
-		scope (failure) serverConnection.close("client shutdown", false);
 
 		// setup main menu
 		synchronized (mainMutex)
-			setupMainMenu();
+			activeState = new MainMenuState();
+
+		// start connection maintainer
+		bconm = new BackendConMaintainer();
+		bconm.start();
+		scope(failure) bconm.stop();
 		// start render thread and serve the windows event pump
 		render.start(mainMutex);
+		scope(failure) render.stop();
 		window.pollEvents(mainMutex);
 
-		serverConnection.close("client shutdown", false);
+		scheduler.stop();
+		render.stop();
+		bconm.stop();
 		window.close();
 	}
 
 	/// clear various callbacks and objects in order to transition to another
 	/// game state.
-	static void clearEntities()
+	private static void clearEntities()
 	{
 		inputRouter.clearFocused();
 		guiManager.clearPanels();
 		render.clearHandlers();
 		worldManager.clear();
 		hotkeyManager.clear();
-		Game.simState = null;
 		// let's free some memory after the clear
 		delay(() { GC.collect(); }, msecs(100));
 		// hotkey manager requires some additional attention

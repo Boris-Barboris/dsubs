@@ -51,7 +51,7 @@ final class Scheduler
 		if (!cas(&m_stop, false, true))
 			return;
 		m_cond.notify();
-		m_thread.join();
+		m_thread.join(false);
 	}
 
 	/// execute delegate 'what' after 'after' time interval, while holding

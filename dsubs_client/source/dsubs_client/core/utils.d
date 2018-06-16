@@ -33,7 +33,7 @@ mixin template AppendSet(T, string fieldName, string postupdateCode)
 {
 	mixin("alias " ~ fieldName ~ " = super." ~ fieldName ~ ";");
 	mixin("override @property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
-		"{ super." ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName ~ ";}");
+		"{ super." ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return " ~ fieldName ~ ";}");
 }
 
 /// Replace postupdateCode in setter of the base class

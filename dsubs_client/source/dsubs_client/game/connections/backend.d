@@ -8,19 +8,55 @@ import core.thread;
 import dsubs_common.api;
 import dsubs_common.api.protocol;
 import dsubs_common.api.protocols.backend;
+import dsubs_common.network.connection;
 
 import dsubs_client.common;
+import dsubs_client.game;
+import dsubs_client.game.entities;
 
 
 
 /// TCP connection to backend dsubs server
 final class BackendConnection: ProtocolConnection!BackendProtocol
 {
-	/// Create the connection object and spool up worker threads.
-	/// 'lockToHold' is a mutex guarding event objects.
 	this(Socket sock)
 	{
 		super(sock);
+		onClose += (con) { Game.activeState.handleBackendDisconnect(); };
+		setHandler(&h_serverStatus);
+		setHandler(&h_login);
+		setHandler(&h_entityDb);
+		setHandler(&h_reconnectState);
+	}
+
+	void h_serverStatus(ServerStatusRes res)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.mainMenuState.handleServerStatus(res);
+		}
+	}
+
+	void h_login(LoginRes res)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.mainMenuState.handleLogin(res);
+		}
+	}
+
+	void h_entityDb(EntityDbRes res)
+	{
+		Game.entityDb = res;
+		Game.entityManager = new EntityManager(res);
+	}
+
+	void h_reconnectState(ReconnectStateRes res)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.mainMenuState.handleReconnectState(res);
+		}
 	}
 }
 
@@ -32,23 +68,23 @@ final class BackendConMaintainer
 	private shared bool exit_flag;
 	private BackendConnection m_con;
 
-	this()
-	{
-		m_thread = new Thread(&proc, 16 * 1024);
-	}
+	@property BackendConnection con() { return m_con; }
 
 	void start()
 	{
+		assert(m_con is null);
+		m_thread = new Thread(&proc);
 		m_thread.start();
 	}
 
 	void stop()
 	{
 		atomicStore(exit_flag, true);
-		BackendConnection c = m_con;
-		if (c)
-			c.close();
-		m_con = null;
+		if (m_con)
+		{
+			m_con.close();
+			m_con = null;
+		}
 	}
 
 	private void proc()
@@ -63,12 +99,14 @@ final class BackendConMaintainer
 				clientSock.connect(addr);
 				m_con = new BackendConnection(clientSock);
 				m_con.start();
+				m_con.sendMessage(immutable ServerStatusReq());
 				m_con.join();
 			}
 			catch (Exception ex)
 			{
-				error(ex.toString());
-				Thread.sleep(seconds(3));
+				error(ex.msg);
+				// flood protection
+				Thread.sleep(seconds(10));
 			}
 		}
 	}

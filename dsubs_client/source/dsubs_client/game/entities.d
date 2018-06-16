@@ -10,7 +10,8 @@ import std.experimental.logger;
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 
-import dsubs_common.api;
+import dsubs_common.api.entities;
+import dsubs_common.api.protocols.backend;
 
 import dsubs_client.core.utils;
 import dsubs_client.core.window;
@@ -259,6 +260,7 @@ final class EntityManager
 	/// construct shape collection from entity database
 	this(const(EntityDbRes) db)
 	{
+		info("building entity manager from serialized database");
 		foreach (prop; db.propulsors)
 		{
 			auto ptr = new PropulsorTemplate;
