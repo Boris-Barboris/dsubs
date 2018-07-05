@@ -129,7 +129,7 @@ final class Player
 		const Submarine s = m_submarine;
 		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
 		return immutable ReconnectStateRes(
-			s.prototypeName, s.propulsor.prototypeName,
+			s.spawnId, s.prototypeName, s.propulsor.prototypeName,
 			s.targetCourse + coordRot, s.targetThrottle);
 	}
 

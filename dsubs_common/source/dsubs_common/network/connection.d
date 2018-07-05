@@ -63,8 +63,8 @@ class ProtocolConnection(alias Protocol)
 	{
 		assert(sock);
 		m_sock = sock;
-		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, seconds(10));
-		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, seconds(10));
+		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, seconds(15));
+		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, seconds(15));
 		m_remoteAddr = sock.remoteAddress();
 		m_conId = "[" ~ generateRandomString() ~ "]";
 		m_handlers.length = Protocol.msgTypeCount;
@@ -216,7 +216,7 @@ class ProtocolConnection(alias Protocol)
 			{
 				try
 				{
-					bool timedOut = !receiveTimeout(seconds(5),
+					bool timedOut = !receiveTimeout(seconds(10),
 						(immutable(ubyte)[] msgBody)
 						{
 							sendBytesSync(msgBody);

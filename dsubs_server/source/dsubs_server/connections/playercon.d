@@ -78,7 +78,7 @@ private:
 		Player p = m_player;
 		enforce!AuthException(p, "unauthorized");
 		p.handleSpawnRequest(req);
-		sendMessage(immutable SpawnRes(true));
+		sendMessage(immutable SpawnRes(true, p.submarine.spawnId));
 	}
 
 	void h_throttleReq(ThrottleReq req)

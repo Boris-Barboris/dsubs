@@ -28,6 +28,8 @@ final class Submarine
 
 		/// name of the submarine type
 		string m_prototypeName;
+
+		int m_spawnId;
 	}
 
 	@property Transform2D transform() { return m_transform; }
@@ -45,6 +47,8 @@ final class Submarine
 
 	@property string prototypeName() const { return m_prototypeName; }
 
+	@property int spawnId() const { return m_spawnId; }
+
 	/// creates transform and rigid body
 	this(Player owner, string prototypeName)
 	{
@@ -53,6 +57,7 @@ final class Submarine
 		this.m_prototypeName = prototypeName;
 		m_transform = new Transform2D();
 		m_rigidBody = new RigidBody(transform);
+		m_spawnId = uniform(0, int.max);
 	}
 
 	private double calcMoi() const
