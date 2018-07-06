@@ -108,7 +108,7 @@ class ProtocolConnection(alias Protocol)
 	}
 
 	/// send asynchroniously (caller thread does not block)
-	protected final void sendBytes(immutable(ubyte)[] data)
+	final void sendBytes(immutable(ubyte)[] data)
 	{
 		send!(immutable(ubyte)[])(m_writerThread, data);
 	}
@@ -120,10 +120,11 @@ class ProtocolConnection(alias Protocol)
 		enforce!ConnectionException(sent == msgBody.length, "Error during send");
 	}
 
-	/// Set handler for protocol message of type MsgT. Can be only called once.
+	/// Set handler for protocol message of type MsgT. Should only be called once.
 	final void setHandler(MsgT)(void delegate(MsgT msg) handler)
 	{
 		assert(handler);
+		assert(m_handlers[MsgT.g_marshIdx] is null);
 		m_handlers[MsgT.g_marshIdx] =
 			(ubyte[] msgBody) { handler(Protocol.demarshal!MsgT(msgBody)); };
 	}

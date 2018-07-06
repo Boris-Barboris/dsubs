@@ -16,7 +16,7 @@ final class ConListener
 	{
 		Thread publicEpThread;
 		Socket publicSock;
-		Object[Object] allCons;
+		PlayerConnection[Object] allCons;
 	}
 
 	this()
@@ -29,14 +29,25 @@ final class ConListener
 		publicEpThread.start();
 	}
 
+	private void removeCon(PlayerConnection con)
+	{
+		synchronized(this)
+		{
+			allCons.remove(con);
+		}
+	}
+
 	private void publicEndpoint()
 	{
 		TcpServer server = TcpServer("0.0.0.0", 17855);
 		serveTcp(server, publicSock, (Socket s)
 		{
 			PlayerConnection con = new PlayerConnection(s);
-			allCons[con] = con;
-			con.onClose += (c) { allCons.remove(c); };
+			synchronized(this)
+			{
+				allCons[con] = con;
+			}
+			con.onClose += cast(con.onClose.HandlerType) &removeCon;
 			con.start();
 		});
 	}

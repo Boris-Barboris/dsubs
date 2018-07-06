@@ -31,7 +31,7 @@ mixin template FinalGetSet(T, string fieldName, string postupdateCode)
 /// Append additional postupdateCode to setter of the base class
 mixin template AppendSet(T, string fieldName, string postupdateCode)
 {
-	mixin("alias " ~ fieldName ~ " = super." ~ fieldName ~ ";");
+	mixin("alias " ~ fieldName ~ " = typeof(super)." ~ fieldName ~ ";");
 	mixin("override @property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
 		"{ super." ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return " ~ fieldName ~ ";}");
 }
@@ -39,7 +39,7 @@ mixin template AppendSet(T, string fieldName, string postupdateCode)
 /// Replace postupdateCode in setter of the base class
 mixin template RewriteSet(T, string fieldName, string postupdateCode)
 {
-	mixin("alias " ~ fieldName ~ " = super." ~ fieldName ~ ";");
+	mixin("alias " ~ fieldName ~ " = typeof(super)." ~ fieldName ~ ";");
 	mixin("override @property " ~ T.stringof ~ " " ~ fieldName ~ "(" ~ T.stringof ~ " rhs) " ~
 		"{ m_" ~ fieldName ~ " = rhs;" ~ postupdateCode ~ "return m_" ~ fieldName ~ ";}");
 }

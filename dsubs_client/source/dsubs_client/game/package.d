@@ -21,7 +21,10 @@ import dsubs_client.render.worldmanager;
 import dsubs_client.game.gamestate;
 import dsubs_client.game.connections.backend;
 import dsubs_client.game.entities;
+import dsubs_client.game.cic.server;
 import dsubs_client.game.states.mainmenu;
+import dsubs_client.game.states.loadout;
+import dsubs_client.game.states.simulation;
 
 
 /// Namespace for globals wich represent the game state.
@@ -47,6 +50,10 @@ __gshared:
 	/// persistent backend connection
 	BackendConMaintainer bconm;
 
+	/// CIC
+	CICServer cic;
+	CICClientConnection ciccon;
+
 	private GameState m_activeState;
 
 	/// get current active game state object
@@ -61,19 +68,25 @@ __gshared:
 		m_activeState.setup();
 	}
 
-	// shortcut to simulator state
-	// static @property SimulatorState simState()
-	// {
-	// 	enforce(m_activeState && m_activeState.kind == GameStateKind.SIMULATION,
-	// 		"game is not in simulation state");
-	// 	return cast(SimulatorState) m_activeState;
-	// }
-
 	static @property MainMenuState mainMenuState()
 	{
 		enforce(m_activeState && m_activeState.kind == GameStateKind.MAINMENU,
 			"game is not in main menu state");
 		return cast(MainMenuState) m_activeState;
+	}
+
+	static @property LoadoutState loadoutState()
+	{
+		enforce(m_activeState && m_activeState.kind == GameStateKind.LOADOUT,
+			"game is not in loadout state");
+		return cast(LoadoutState) m_activeState;
+	}
+
+	static @property SimulatorState simState()
+	{
+		enforce(m_activeState && m_activeState.kind == GameStateKind.SIMULATION,
+			"game is not in simulator state");
+		return cast(SimulatorState) m_activeState;
 	}
 
 	/// start the game (blocks caller thread)
@@ -125,7 +138,7 @@ __gshared:
 		worldManager.clear();
 		hotkeyManager.clear();
 		// let's free some memory after the clear
-		delay(() { GC.collect(); }, msecs(100));
+		delay(() { GC.collect(); }, msecs(500));
 		// hotkey manager requires some additional attention
 		render.onPreRender += (long usecs) { hotkeyManager.processHeldKeys(usecs); };
 	}

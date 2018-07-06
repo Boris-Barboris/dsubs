@@ -237,7 +237,7 @@ final class Div: GuiElement
 		}
 	}
 
-	alias position = super.position;
+	alias position = typeof(super).position;
 
 	override @property vec2i position(vec2i rhs)
 	{

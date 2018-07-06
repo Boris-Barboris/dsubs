@@ -13,6 +13,8 @@ import dsubs_client.common;
 import dsubs_client.core.utils;
 import dsubs_client.game;
 import dsubs_client.game.gamestate;
+import dsubs_client.game.states.loadout;
+import dsubs_client.game.entities;
 import dsubs_client.gui;
 
 
@@ -184,10 +186,28 @@ final class MainMenuState: GameState
 		connectButton.signalClickEnd();
 	}
 
+	void handleEntityDb(EntityDbRes res)
+	{
+		Game.entityDb = res;
+		Game.entityManager = new EntityManager(Game.entityDb);
+
+		// if (alreadySpawned)
+		// {
+		// 	Submarine playerSub = new Submarine(
+		// 		Game.entityManager, recState.submarineName, recState.propulsorName);
+		// 	playerSub.targetCourse = recState.targetCourse;
+		// 	playerSub.targetThrottle = recState.targetThrottle;
+		// 	setupSimulationState(playerSub, true);
+		// 	return;
+		// }
+
+		Game.activeState = new LoadoutState();
+	}
+
 	override void handleBackendDisconnect()
 	{
 		canLogin = alreadySpawned = false;
-		infoLabel.content = "Srver connection closed";
+		infoLabel.content = "Backend server connection closed";
 		connectButton.signalClickEnd();
 	}
 

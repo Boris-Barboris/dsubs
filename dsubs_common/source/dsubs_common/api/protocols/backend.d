@@ -86,15 +86,12 @@ struct SpawnRes
 	/// true when the server has accepted your spawn request
 	bool spawnAllowed;
 
-	/// random int that can be used to identify game session
-	int spawnId;
-
 	/// if spawn was rejected because the player has died recently, this will
 	/// be the time in seconds left until the spawn is allowed again.
 	int secsLeft;
 }
 
-/// When reconnecting to existing submarine, server flushes the submarine
+/// Right after successfull spawn or reconnection server flushes the submarine
 /// configuration and state to the client using this message.
 struct ReconnectStateRes
 {

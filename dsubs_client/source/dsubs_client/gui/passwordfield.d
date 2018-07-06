@@ -19,7 +19,7 @@ final class PasswordField: TextField
 		m_hiddenContent = _s(""d, 31);
 	}
 
-	alias content = super.content;
+	alias content = typeof(super).content;
 
 	@property override dmutstring content() { return m_hiddenContent; }
 

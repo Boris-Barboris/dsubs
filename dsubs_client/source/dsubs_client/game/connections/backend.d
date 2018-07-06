@@ -22,12 +22,20 @@ final class BackendConnection: ProtocolConnection!BackendProtocol
 	this(Socket sock)
 	{
 		super(sock);
-		onClose += (con) { Game.activeState.handleBackendDisconnect(); };
+		onClose += (con)
+			{
+				synchronized(Game.mainMutex)
+					Game.activeState.handleBackendDisconnect();
+			};
 		setHandler(&h_serverStatus);
 		setHandler(&h_login);
 		setHandler(&h_entityDb);
 		setHandler(&h_reconnectState);
+		setHandler(&h_spawnRes);
+		setHandler(&h_subKinematicRes);
 	}
+
+private:
 
 	void h_serverStatus(ServerStatusRes res)
 	{
@@ -47,8 +55,10 @@ final class BackendConnection: ProtocolConnection!BackendProtocol
 
 	void h_entityDb(EntityDbRes res)
 	{
-		Game.entityDb = res;
-		Game.entityManager = new EntityManager(res);
+		synchronized(Game.mainMutex)
+		{
+			Game.mainMenuState.handleEntityDb(res);
+		}
 	}
 
 	void h_reconnectState(ReconnectStateRes res)
@@ -57,6 +67,19 @@ final class BackendConnection: ProtocolConnection!BackendProtocol
 		{
 			Game.mainMenuState.handleReconnectState(res);
 		}
+	}
+
+	void h_spawnRes(SpawnRes res)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.loadoutState.handleSpawnRes(res);
+		}
+	}
+
+	void h_subKinematicRes(SubKinematicRes res)
+	{
+		Game.cic.handleSubKinematicRes(res);
 	}
 }
 
