@@ -28,11 +28,13 @@ final class Simulator
 		m_thread.join();
 	}
 
+	private usecs_t m_worldTime = 0;
+	@property usecs_t worldTime() const { return m_worldTime; }
+
 	private void simulationLoop()
 	{
 		try
 		{
-			usecs_t worldTime = 0;
 			MonoTime lastLoopStart;
 			while (true)
 			{
@@ -41,9 +43,9 @@ final class Simulator
 					lastLoopStart = MonoTime.currTime();
 					// physics integration. All rigid bodies are moved.
 					Globals.phys.integratePBodies(1.0f, 0.25f);
-					worldTime += 1000_000;
+					m_worldTime += 1000_000;
 					// need to send updated submarine coordinates to players
-					Globals.players.forEachPlayer((p) { p.sendKinematicsUpdate(worldTime); });
+					Globals.players.forEachPlayer((p) { p.sendKinematicsUpdate(); });
 				}
 				auto now = MonoTime.currTime();
 				trace("Simulation step took ", (now - lastLoopStart).total!"usecs", "usecs");

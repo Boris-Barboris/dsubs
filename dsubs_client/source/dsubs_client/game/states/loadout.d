@@ -40,12 +40,21 @@ final class LoadoutState: GameState
 		super(GameStateKind.LOADOUT);
 	}
 
+	private Submarine curSelectedSub;
+	private TextBox hullDescriptionBox;
+	private Button startButton;
+
 	override void handleBackendDisconnect()
 	{
+		error("backend connection closed");
 		Game.activeState = new MainMenuState();
 	}
 
-	override void handleCICDisconnect() {}
+	override void handleCICDisconnect()
+	{
+		error("cic connection closed");
+		Game.activeState = new MainMenuState();
+	}
 
 	override void setup()
 	{
@@ -60,9 +69,8 @@ final class LoadoutState: GameState
 		*/
 
 		string curSelectedPropulsor = propulsors[0];
-		Submarine curSelectedSub;
 
-		TextBox hullDescriptionBox = new TextBox();
+		hullDescriptionBox = new TextBox();
 		hullDescriptionBox.fontSize = 16;
 
 		// scrollist of hulls
@@ -130,7 +138,7 @@ final class LoadoutState: GameState
 		ScrollBar propsScrollbar = new ScrollBar(propsDiv);
 
 
-		Button startButton = builder(new Button(ButtonType.ASYNC)).fontSize(45).
+		startButton = builder(new Button(ButtonType.ASYNC)).fontSize(45).
 			htextAlign(HTextAlign.CENTER).content("Start").fixedSize(vec2i(1, 70)).
 			build();
 		startButton.onClick += (btn)
@@ -191,10 +199,13 @@ final class LoadoutState: GameState
 			// we need to create new CIC server
 			if (Game.cic)
 				Game.cic.stop();
+			info("building new CIC server");
 			Game.cic = new CICServer("");
+			info("starting CIC");
 			Game.cic.start();
+			info("connecting to local CIC");
 			Game.ciccon = CICClientConnection.connect("127.0.0.1", "");
-			// TODO: switch to simulation
+			// CIC client will perform simulator bootstrap from here
 			return;
 		}
 		else if (res.secsLeft >= 0)

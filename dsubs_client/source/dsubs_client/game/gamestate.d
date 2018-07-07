@@ -14,7 +14,7 @@ abstract class GameState
 {
 	private GameStateKind m_kind;
 
-	this(GameStateKind k) { m_kind = kind; }
+	this(GameStateKind k) { m_kind = k; }
 
 	/// type of this game state
 	final @property GameStateKind kind() const { return m_kind; }

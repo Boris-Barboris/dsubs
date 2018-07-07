@@ -44,6 +44,7 @@ __gshared:
 	Mutex mainMutex;
 
 	// entity databases in different forms
+	immutable(ubyte)[] entityDbHash;
 	EntityDbRes entityDb;
 	EntityManager entityManager;
 
@@ -63,6 +64,9 @@ __gshared:
 	static @property void activeState(GameState newState)
 	{
 		assert(newState);
+		if (m_activeState)
+			info("STATE TRANSITION: " ~ m_activeState.kind.to!string ~ " to ",
+				newState.kind.to!string);
 		clearEntities();
 		m_activeState = newState;
 		m_activeState.setup();
@@ -70,22 +74,22 @@ __gshared:
 
 	static @property MainMenuState mainMenuState()
 	{
-		enforce(m_activeState && m_activeState.kind == GameStateKind.MAINMENU,
-			"game is not in main menu state");
+		enforce(m_activeState.kind == GameStateKind.MAINMENU,
+			"game is not in main menu state, but in " ~ m_activeState.kind.to!string);
 		return cast(MainMenuState) m_activeState;
 	}
 
 	static @property LoadoutState loadoutState()
 	{
-		enforce(m_activeState && m_activeState.kind == GameStateKind.LOADOUT,
-			"game is not in loadout state");
+		enforce(m_activeState.kind == GameStateKind.LOADOUT,
+			"game is not in loadout state, but in " ~ m_activeState.kind.to!string);
 		return cast(LoadoutState) m_activeState;
 	}
 
 	static @property SimulatorState simState()
 	{
-		enforce(m_activeState && m_activeState.kind == GameStateKind.SIMULATION,
-			"game is not in simulator state");
+		enforce(m_activeState.kind == GameStateKind.SIMULATION,
+			"game is not in simulator state, but in " ~ m_activeState.kind.to!string);
 		return cast(SimulatorState) m_activeState;
 	}
 
@@ -122,6 +126,10 @@ __gshared:
 		scope(failure) render.stop();
 		window.pollEvents(mainMutex);
 
+		if (ciccon)
+			ciccon.close();
+		if (cic)
+			cic.stop();
 		scheduler.stop();
 		render.stop();
 		bconm.stop();

@@ -86,7 +86,7 @@ final class CameraController: WorldMouseReceiver
 		double targetZoom;
 		vec2d zoomPivot;
 		double zoomVel = 0.0f;
-		double zoomAcc = 50.0f;
+		double zoomAcc = 75.0f;
 	}
 
 	private static double parabolicMove(double y1, double v1, double y2,
@@ -151,10 +151,10 @@ final class CameraController: WorldMouseReceiver
 		camera.zoom = parabolicMove(oldZoom, zoomVel, targetZoom, zoomAcc * oldZoom, dt, zoomVel);
 		if (camera.zoom == targetZoom)
 			smoothing = false;
-		// panning
+		// panning while zooming
 		vec2d topan = zoomPivot / oldZoom - zoomPivot / camera.zoom;
 		if (zoomVel < 0)
-			topan = 0.5 * topan;
+			topan = 0.4 * topan;
 		camera.pan(topan);
 	}
 

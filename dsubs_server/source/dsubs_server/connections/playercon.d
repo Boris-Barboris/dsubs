@@ -17,10 +17,13 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 	private
 	{
 		Player m_player;
+		bool m_simulatorFlow;
 	}
 
 	@property Player player() { return m_player; }
 	@property void player(Player rhs) { m_player = rhs; }
+
+	@property bool simulatorFlow() const { return m_simulatorFlow; }
 
 	this(Socket sock)
 	{
@@ -31,6 +34,7 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 		setHandler(&h_spawnReq);
 		setHandler(&h_throttleReq);
 		setHandler(&h_courseReq);
+		setHandler(&h_reconnectReq);
 	}
 
 private:
@@ -52,7 +56,6 @@ private:
 				// we are already spawned
 				sendMessage(immutable LoginRes(true, "Welcome",
 					Globals.entityDb.commonEntityDbHash, true));
-				sendMessage(m_player.getReconnectState());
 			}
 			else
 			{
@@ -77,9 +80,21 @@ private:
 	{
 		Player p = m_player;
 		enforce!AuthException(p, "unauthorized");
-		p.handleSpawnRequest(req);
+		immutable(ReconnectStateRes) rres = p.handleSpawnRequest(req);
 		sendMessage(immutable SpawnRes(true));
-		sendMessage(m_player.getReconnectState());
+		sendMessage(rres);
+		m_simulatorFlow = true;
+	}
+
+	void h_reconnectReq(ReconnectReq req)
+	{
+		Player p = m_player;
+		enforce!AuthException(p, "unauthorized");
+		synchronized(Globals.simMut.reader)
+		{
+			sendMessage(p.getReconnectState());
+			m_simulatorFlow = true;
+		}
 	}
 
 	void h_throttleReq(ThrottleReq req)

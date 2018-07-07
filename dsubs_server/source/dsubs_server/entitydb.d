@@ -96,12 +96,12 @@ private:
 		sp = new BasicSubmarinePrototype(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Bob",
-				`Light attack submarine "Bob" offers good balance of stealth, ` ~
-				`offensive capabilities and survivability.
+`Light attack submarine "Bob" offers good balance of stealth, ` ~
+`offensive capabilities and survivability.
 
-				Length: 70m
-				Displacement: 3000t
-				Top speed: 17m/s`,
+Length: 70m
+Displacement: 3000t
+Top speed: 17m/s`,
 				[
 					ConvexPolygon(xSymmetry([
 							0.0, 35.0,

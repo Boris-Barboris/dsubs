@@ -1,4 +1,4 @@
-module dsubs_client.game.simulation;
+module dsubs_client.game.states.simulation;
 
 import std.algorithm;
 import std.array;
@@ -12,14 +12,18 @@ import core.thread;
 import derelict.sfml2.window;
 
 import dsubs_common.api;
+import dsubs_common.api.protocols.backend;
 import dsubs_common.math;
 
 import dsubs_client.core.utils;
 import dsubs_client.game;
 import dsubs_client.gui;
+import dsubs_client.input.hotkeymanager;
 import dsubs_client.game.gamestate;
+import dsubs_client.game.entities;
 import dsubs_client.game.states.mainmenu;
 import dsubs_client.game.cic.server;
+import dsubs_client.game.cic.messages;
 import dsubs_client.game.cameracontroller;
 import dsubs_client.game.overlay;
 
@@ -27,92 +31,54 @@ import dsubs_client.game.overlay;
 
 final class SimulatorState: GameState
 {
-	this(Submarine playerSub, bool isCicMaster, bool alreadyHaveSub = false)
+	this(CICReconnectStateRes recState)
 	{
 		super(GameStateKind.SIMULATION);
-		this.playerSub = playerSub;
-		this.alreadyHaveSub = alreadyHaveSub;
-		this.isCicMaster = isCicMaster;
+		this.recState = recState;
 	}
 
 	private
 	{
-		bool alreadyHaveSub;
-		bool isCicMaster;
-		bool flushReceived;
+		CICReconnectStateRes recState;
 	}
 
-	Submarine playerSub;
-	CameraController camController;
-
-	// important UI elements
-	private SimulationGUI gui;
+	mixin Readonly!(Submarine, "playerSub");
+	mixin Readonly!(CameraController, "camController");
+	mixin Readonly!(SimulationGUI, "gui");
 
 	override void setup()
 	{
-		Game.worldManager.components ~= playerSub;
-		Game.worldManager.camCtx.camera.zoom = 10.0;
-
-		// set up submarine coordinate update
-		bool camSetOnSub = false;
-		Game.serverConnection.onSubKinematicRes += (SubKinematicRes res)
-		{
-			Game.simState.playerSub.updateKinematics(res.snap);
-			if (!camSetOnSub)
-			{
-				Game.worldManager.camCtx.camera.center = res.snap.position.toGfm;
-				camSetOnSub = true;
-				if (!alreadyHaveSub)
-					updateTgtCourseDisplay(res.snap.rotation);
-			}
-		};
+		// create submarine
+		m_playerSub = new Submarine(
+			Game.entityManager, recState.submarineName, recState.propulsorName);
+		m_playerSub.targetCourse = recState.targetCourse;
+		m_playerSub.targetThrottle = recState.targetThrottle;
+		m_playerSub.updateKinematics(recState.subSnap);
+		Game.worldManager.components ~= m_playerSub;
 
 		// set up camera
-		Game.simState.camController = new CameraController();
-		Game.worldManager.mouseReceivers ~= Game.simState.camController;
+		Game.worldManager.camCtx.camera.center = recState.subSnap.position.toGfm;
+		Game.worldManager.camCtx.camera.zoom = 10.0;
+		m_camController = new CameraController();
+		Game.worldManager.mouseReceivers ~= m_camController;
 
-		gui = new SimulationGUI();
-
-		// overlay
-		Game.worldManager.components ~= new PlayerSubIcon(playerSub);
-	}
-
-	void handleReconnectStateRes(ReconnectStateRes res)
-	{
-		if (isCicMaster)
-		{
-			// we initialize CIC here
-			if (Game.cic)
-				Game.cic.stop();
-			Game.cic = new CICServer("");
-			Game.cic.start();
-			Game.ciccon = CICClientConnection.connect("127.0.0.1", "");
-		}
+		m_gui = new SimulationGUI();
+		Game.worldManager.components ~= new PlayerSubIcon(m_playerSub);
 	}
 
 	override void handleBackendDisconnect()
 	{
-		if (isCicMaster)
+		if (Game.cic)
+		{
 			Game.activeState = new MainMenuState();
+		}
 	}
 
 	override void handleCICDisconnect()
 	{
+		error("CIC connection lost");
 		Game.activeState = new MainMenuState();
 	}
-}
-
-
-void updateTgtCourseDisplay(float newTgt)
-{
-	Game.simState.tgtCourseField.content =
-		format("%.1f", -newTgt.courseAngle.rad2dgr);
-}
-
-void updateTgtThrottleDisplay(float newTgt)
-{
-	Game.simState.tgtThrottleField.content =
-		format("%.1f", 100.0f * newTgt);
 }
 
 
@@ -126,13 +92,13 @@ private
 }
 
 
-private final class SimulationGUI
+final class SimulationGUI
 {
 
 	Label curCourse, curSpeed;
 	TextField tgtCourseField, tgtThrottleField;
 
-	void handleSubKinematicRes(SubKinematicRes res)
+	void handleSubKinematicRes(CICSubKinematicRes res)
 	{
 		// course
 		dmutstring cc = curCourse.content;
@@ -145,6 +111,16 @@ private final class SimulationGUI
 		double proj = dot(vel, fwd);
 		mutsformat!"speed: %.1f"(cc, proj);
 		curSpeed.content = cc;
+	}
+
+	void updateTgtCourseDisplay(float newTgt)
+	{
+		tgtCourseField.content = format("%.1f", -newTgt.courseAngle.rad2dgr);
+	}
+
+	void updateTgtThrottleDisplay(float newTgt)
+	{
+		tgtThrottleField.content = format("%.1f", 100.0f * newTgt);
 	}
 
 	this()
@@ -201,8 +177,8 @@ private final class SimulationGUI
 			{
 				float newTgt = tgtCourseField.content[0..$-1].to!float;
 				if (isNaN(newTgt))
-					throw new Exception("cheaky cunt");
-				immutable CourseReq req = CourseReq(-dgr2rad(newTgt));
+					throw new Exception("cheaky cunt, no NaNs");
+				auto req = immutable CICCourseReq(-dgr2rad(newTgt));
 				Game.ciccon.sendMessage(req);
 			}
 			catch (Exception e)
@@ -218,7 +194,7 @@ private final class SimulationGUI
 			{
 				float newTgt = tgtThrottleField.content[0..$-1].to!float;
 				if (isNaN(newTgt))
-					throw new Exception("cheaky cunt");
+					throw new Exception("cheaky cunt, no NaNs");
 				if (newTgt > 100.0f)
 				{
 					tgtThrottleField.content = "100";
@@ -231,7 +207,7 @@ private final class SimulationGUI
 				}
 				newTgt /= 100.0f;
 				trace("setting throttle to: ", newTgt);
-				immutable ThrottleReq req = ThrottleReq(newTgt);
+				auto req = immutable CICThrottleReq(newTgt);
 				Game.ciccon.sendMessage(req);
 				playerSub.targetThrottle = newTgt;
 			}
@@ -253,9 +229,6 @@ private final class SimulationGUI
 			if (evt.code == sfKeyReturn)
 				trySendTgtThrottle();
 		};
-
-		Game.simState.tgtCourseField = tgtCourseField;
-		Game.simState.tgtThrottleField = tgtThrottleField;
 
 		Game.hotkeyManager.setHotkey(Hotkey(sfKeyC), ()
 		{

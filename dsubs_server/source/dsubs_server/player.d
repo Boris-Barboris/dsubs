@@ -124,16 +124,16 @@ final class Player
 		return uname == m_username && pw == m_password;
 	}
 
-	immutable(ReconnectStateRes) getReconnectState() const
+	immutable(ReconnectStateRes) getReconnectState()
 	{
 		const Submarine s = m_submarine;
 		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
 		return immutable ReconnectStateRes(
 			s.spawnId, s.prototypeName, s.propulsor.prototypeName,
-			s.targetCourse + coordRot, s.targetThrottle);
+			genSubSnapshot(), s.targetCourse + coordRot, s.targetThrottle);
 	}
 
-	void handleSpawnRequest(const SpawnReq req)
+	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req)
 	{
 		synchronized(Globals.simMut.reader)
 		{
@@ -146,6 +146,7 @@ final class Player
 				randomizePosition(s);
 				s.bootstrap();
 				m_submarine = s;
+				return getReconnectState();
 			}
 		}
 	}
@@ -166,30 +167,33 @@ final class Player
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to set course");
-			s.targetCourse = req.target + coordRot;
+			s.targetCourse = req.target - coordRot;
 		}
 	}
 
+	private KinematicSnapshot genSubSnapshot()
+	{
+		assert(m_submarine);
+		Submarine s = m_submarine;
+		vec2d shiftedPos = rotateVector(s.transform.position - coordShift, coordRot);
+		double shiftedRot = s.transform.rotation + coordRot;
+		vec2d vel = rotateVector(s.rigidBody.kinet.vel, coordRot);
+		double angVel = s.rigidBody.kinet.angVel;
+		return KinematicSnapshot(
+				Globals.sim.worldTime + timeShift,
+				Vector2d(shiftedPos.x, shiftedPos.y),
+				Vector2d(vel.x, vel.y),
+				shiftedRot,
+				angVel);
+	}
+
 	// simMut.writer is held by the simulator
-	void sendKinematicsUpdate(usecs_t worldTime)
+	void sendKinematicsUpdate()
 	{
 		Submarine s = m_submarine;
 		PlayerConnection con = m_connection;
-		if (con && con.isOpen && s)
-		{
-			vec2d shiftedPos = rotateVector(s.transform.position - coordShift, coordRot);
-			double shiftedRot = s.transform.rotation + coordRot;
-			vec2d vel = rotateVector(s.rigidBody.kinet.vel, coordRot);
-			double angVel = s.rigidBody.kinet.angVel;
-			immutable(SubKinematicRes) msg = immutable SubKinematicRes(
-				KinematicSnapshot(
-					worldTime + timeShift,
-					Vector2d(shiftedPos.x, shiftedPos.y),
-					Vector2d(vel.x, vel.y),
-					shiftedRot,
-					angVel));
-			con.sendMessage(msg);
-		}
+		if (con && con.isOpen && con.simulatorFlow && s)
+			con.sendMessage(immutable SubKinematicRes(genSubSnapshot()));
 	}
 
 	private static void randomizePosition(Submarine sub)

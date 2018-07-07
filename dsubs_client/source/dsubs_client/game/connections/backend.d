@@ -65,7 +65,7 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
-			Game.mainMenuState.handleReconnectState(res);
+			Game.cic.handleReconnectStateRes(res);
 		}
 	}
 

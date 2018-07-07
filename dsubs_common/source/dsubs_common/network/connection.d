@@ -193,12 +193,13 @@ class ProtocolConnection(alias Protocol)
 				if (handler)
 					handler(recvBody(header[1]));
 				else
-					throw new ProtocolException("Unacceptable message " ~ header[0].to!string);
+					throw new ProtocolException("No handler for message " ~
+						Protocol.msgTypeNames[header[0]]);
 			}
 		}
 		catch (Exception e)
 		{
-			error(conId ~ " Exception caught in reader thread: ", e.msg);
+			error(conId ~ " Exception caught in reader thread: ", e.toString());
 			close();
 		}
 		catch (Throwable e)

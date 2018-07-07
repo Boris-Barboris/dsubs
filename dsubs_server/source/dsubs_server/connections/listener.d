@@ -26,6 +26,8 @@ final class ConListener
 
 	void startListeners()
 	{
+		TcpServer server = TcpServer("0.0.0.0", 17855);
+		publicSock = listenTcp(server);
 		publicEpThread.start();
 	}
 
@@ -39,8 +41,7 @@ final class ConListener
 
 	private void publicEndpoint()
 	{
-		TcpServer server = TcpServer("0.0.0.0", 17855);
-		serveTcp(server, publicSock, (Socket s)
+		serveTcp(publicSock, (Socket s)
 		{
 			PlayerConnection con = new PlayerConnection(s);
 			synchronized(this)

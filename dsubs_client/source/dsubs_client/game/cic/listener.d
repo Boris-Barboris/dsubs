@@ -32,26 +32,31 @@ final class CICListener
 
 	void start()
 	{
+		TcpServer server = TcpServer("0.0.0.0", 17900);
+		publicSock = listenTcp(server);
 		publicEpThread.start();
 	}
 
 	/// stop accepting new connections, close all opened ones
 	void stop()
 	{
-		publicSock.close();
-		publicSock = null;
-		synchronized(this)
+		if (publicSock)
 		{
-			foreach (CICServerConnection c; allCons.byValue())
-				c.close();
-			allCons.clear();
+			info("closing CIC listening socket");
+			publicSock.close();
+			publicSock = null;
+			synchronized(this)
+			{
+				foreach (CICServerConnection c; allCons.byValue())
+					c.close();
+				allCons.clear();
+			}
 		}
 	}
 
 	private void publicEndpoint()
 	{
-		TcpServer server = TcpServer("0.0.0.0", 17900);
-		serveTcp(server, publicSock, (Socket s)
+		serveTcp(publicSock, (Socket s)
 		{
 			auto con = new CICServerConnection(m_cicserv, s, m_password);
 			synchronized(this)
@@ -71,14 +76,14 @@ final class CICListener
 		}
 	}
 
-	/// broadcast message to all authorized clients
+	/// broadcast message to all clients in simulator flow
 	void broadcast(immutable(ubyte)[] data)
 	{
 		synchronized(this)
 		{
 			foreach (CICServerConnection c; allCons.byValue())
 			{
-				if (c.authorized)
+				if (c.inSimFlow)
 					c.sendBytes(data);
 			}
 		}

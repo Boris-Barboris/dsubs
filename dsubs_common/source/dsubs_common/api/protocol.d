@@ -27,18 +27,19 @@ template Protocol(string messagesModule)
 		// service literals - "object" and name of the package wich is
 		// the same as first word in full module path.
 		enum string packageName = messagesModule.split(".")[0];
-		foreach (int idx, member; Erase!("object", Erase!(packageName,
+		int idx = 0;
+		foreach (member; Erase!("object", Erase!(packageName,
 			__traits(allMembers, msgModule))))
 		{
 			mixin("alias symbol = " ~ messagesModule ~ "." ~ member ~ ";");
 			static if (is(symbol == struct))
 			{
-				pragma(msg, "Detected protocol message ", symbol, ", assigning index ", idx);
+				pragma(msg, "Detected protocol message ", symbol);
 				msgMarshallers ~= cast(MsgMarshallerFunc) &marshalMessage!symbol;
 				msgDemarshallers ~= cast(MsgDemarshallerFunc) &demarshalMessage!symbol;
 				msgTypeNames ~= symbol.stringof;
 				// next we assign a number to this message type
-				*(cast(int*) &symbol.g_marshIdx) = idx;
+				*(cast(int*) &symbol.g_marshIdx) = idx++;
 				msgTypeCount++;
 			}
 		}

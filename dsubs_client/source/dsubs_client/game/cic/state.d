@@ -1,6 +1,7 @@
 module dsubs_client.game.cic.state;
 
 import dsubs_common.api.protocols.backend;
+import dsubs_client.game.cic.messages;
 
 
 /**
@@ -11,4 +12,38 @@ CIC server crash.
 */
 final class CICState
 {
+	private
+	{
+		CICReconnectStateRes m_recState;
+		bool m_recStateInitialized;
+	}
+
+	@property immutable(CICReconnectStateRes) recState() const
+	{
+		return cast(immutable CICReconnectStateRes) m_recState;
+	}
+
+	/// false until the very first reconnect state received from backend
+	bool recStateInitialized() const { return m_recStateInitialized; }
+
+	void handleReconnectStateRes(ReconnectStateRes res)
+	{
+		m_recState = cast(CICReconnectStateRes) res;
+		m_recStateInitialized = true;
+	}
+
+	void handleSubKinematicRes(SubKinematicRes res)
+	{
+		m_recState.subSnap = res.snap;
+	}
+
+	void handleThrottleReq(CICThrottleReq req)
+	{
+		m_recState.targetThrottle = req.target;
+	}
+
+	void handleCourseReq(CICCourseReq req)
+	{
+		m_recState.targetCourse = req.target;
+	}
 }

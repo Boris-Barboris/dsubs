@@ -15,6 +15,8 @@ import dsubs_client.game;
 import dsubs_client.game.gamestate;
 import dsubs_client.game.states.loadout;
 import dsubs_client.game.entities;
+import dsubs_client.game.cic.server;
+import dsubs_client.game.cic.messages;
 import dsubs_client.gui;
 
 
@@ -38,13 +40,18 @@ final class MainMenuState: GameState
 	{
 		bool canLogin;
 		bool alreadySpawned;
-		ReconnectStateRes recState;
 		Label infoLabel;
 		Button connectButton;
 	}
 
 	override void setup()
 	{
+		// stop CIC if needed
+		if (Game.cic)
+			Game.cic.stop();
+		if (Game.ciccon)
+			Game.ciccon.close();
+
 		int btnSize = (MENU_BUTTON_FONTSIZE * 1.3).lrint.to!int;
 		connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").
 			fontSize(MENU_BUTTON_FONTSIZE).fixedSize(vec2i(400, btnSize)).build();
@@ -80,29 +87,6 @@ final class MainMenuState: GameState
 			if (evt.code == sfKeyReturn)
 				connectButton.simulateClick();
 		};
-
-		// Game.serverConnection.onEntityDbRecieved += (EntityDbRes res)
-		// {
-		// 	trace("Entity database recieved");
-		// 	infoLabel.content = "got database with " ~
-		// 		res.controllableSubs.length.to!string ~ " submarines";
-		// 	Game.entityDb = res;
-		// 	trace("Building entity manager");
-		// 	Game.entityManager = new EntityManager(Game.entityDb);
-
-		// 	if (alreadySpawned)
-		// 	{
-		// 		Submarine playerSub = new Submarine(
-		// 			Game.entityManager, recState.submarineName, recState.propulsorName);
-		// 		playerSub.targetCourse = recState.targetCourse;
-		// 		playerSub.targetThrottle = recState.targetThrottle;
-		// 		setupSimulationState(playerSub, true);
-		// 		return;
-		// 	}
-
-		// 	// TRANSITION TO LOADOUT SCREEN
-		// 	setupLoadoutScreen();
-		// };
 
 		connectButton.onClick += (b)
 		{
@@ -157,12 +141,6 @@ final class MainMenuState: GameState
 		infoLabel.content = res.playersOnline.to!string ~ " players online";
 	}
 
-	void handleReconnectState(ReconnectStateRes res)
-	{
-		alreadySpawned = true;
-		recState = res;
-	}
-
 	void handleLogin(LoginRes res)
 	{
 		if (res.success)
@@ -170,6 +148,7 @@ final class MainMenuState: GameState
 			info("login successfull");
 			infoLabel.content = res.welcomeMsg;
 			canLogin = false;
+			Game.entityDbHash = res.dbHash;
 			infoLabel.content = "Requesting entity database";
 			Game.bconm.con.sendMessage(immutable EntityDbReq());
 			// check if we are already swimming out there on the server
@@ -178,6 +157,8 @@ final class MainMenuState: GameState
 				info("Player is already spawned");
 				alreadySpawned = true;
 			}
+			else
+				alreadySpawned = false;
 		}
 		else
 		{
@@ -188,20 +169,26 @@ final class MainMenuState: GameState
 
 	void handleEntityDb(EntityDbRes res)
 	{
+		info("entity db received");
 		Game.entityDb = res;
 		Game.entityManager = new EntityManager(Game.entityDb);
 
-		// if (alreadySpawned)
-		// {
-		// 	Submarine playerSub = new Submarine(
-		// 		Game.entityManager, recState.submarineName, recState.propulsorName);
-		// 	playerSub.targetCourse = recState.targetCourse;
-		// 	playerSub.targetThrottle = recState.targetThrottle;
-		// 	setupSimulationState(playerSub, true);
-		// 	return;
-		// }
-
-		Game.activeState = new LoadoutState();
+		if (alreadySpawned)
+		{
+			if (Game.cic)
+				Game.cic.stop();
+			info("building new CIC server");
+			Game.cic = new CICServer("");
+			info("starting CIC");
+			Game.cic.start();
+			info("connecting to local CIC");
+			Game.ciccon = CICClientConnection.connect("127.0.0.1", "");
+			// send request for reconnection
+			Game.bconm.con.sendMessage(immutable ReconnectReq());
+			// CIC client connection will do the rest
+		}
+		else
+			Game.activeState = new LoadoutState();
 	}
 
 	override void handleBackendDisconnect()

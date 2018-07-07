@@ -12,15 +12,12 @@ struct TcpServer
 	// TODO: encryption and cert stuff
 }
 
-
-/// Serve Tcp connection requests in caller thread. To abort the infinite loop, close
-/// the listenSocket that this function outputs through a parameter.
-void serveTcp(TcpServer settings, out Socket listenSock,
-	scope void delegate(Socket) onAccept)
+/// Create TCP listener socket
+Socket listenTcp(TcpServer settings)
 {
 	Address addr = parseAddress(settings.listenAddr, settings.port);
-	listenSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
-	scope(exit) listenSock.close();
+	Socket listenSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
+	scope(failure) listenSock.close();
 	listenSock.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 	version (Windows) { /* windows has socket buf size autotuning */ }
 	else
@@ -29,8 +26,16 @@ void serveTcp(TcpServer settings, out Socket listenSock,
 		listenSock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDBUF, 256 * 1024);
 	}
 	listenSock.bind(addr);
-	listenSock.listen(128);
+	listenSock.listen(16);
 	info("Serving TCP on ", addr);
+	return listenSock;
+}
+
+/// Serve Tcp connection requests in caller thread. To abort the infinite loop, close
+/// the listenSocket.
+void serveTcp(Socket listenSock, scope void delegate(Socket) onAccept)
+{
+	scope(exit) listenSock.close();
 	while (true)
 	{
 		Socket s = listenSock.accept();

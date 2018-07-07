@@ -41,10 +41,7 @@ struct LoginRes
 	string welcomeMsg;	/// auth failure reason can be here
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
 
-	/// true when the player already has a submarine to reconnect to. In that case
-	/// the server will start streaming kinematic and acoustic data immediately
-	/// after sending this message. ReconnectStateRes will follow LoginRes
-	/// immediately.
+	/// true when the player already has a submarine to reconnect to.
 	bool alreadySpawned;
 }
 
@@ -79,6 +76,8 @@ struct SpawnReq
 	@MaxLenAttr(64) string propulsorName;
 }
 
+/// If swapw was allowed, this message will be followed by
+/// ReconnectStateRes.
 struct SpawnRes
 {
 	__gshared const int g_marshIdx;
@@ -91,6 +90,15 @@ struct SpawnRes
 	int secsLeft;
 }
 
+/// request to reconnect to existing submarine. Should be issued
+/// when 'alreadySpawned' from LoginRes was true instead of SpawnReq.
+/// Server will reply with ReconnectStateRes and resume normal
+/// streaming flow operations.
+struct ReconnectReq
+{
+	__gshared const int g_marshIdx;
+}
+
 /// Right after successfull spawn or reconnection server flushes the submarine
 /// configuration and state to the client using this message.
 struct ReconnectStateRes
@@ -99,9 +107,18 @@ struct ReconnectStateRes
 	int spawnId;
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
+	KinematicSnapshot subSnap;
 	float targetCourse;
 	float targetThrottle;
 }
+
+/*
+SIMULATOR FLOW MESSAGES:
+
+following messages are sent and received when client and backend both enter
+normal simulation state by either successfully spawning submarine or
+reconnecting to it.
+*/
 
 /// Server periodically sends the player updates with his submarine position
 struct SubKinematicRes
