@@ -43,14 +43,15 @@ final class CICListener
 		if (publicSock)
 		{
 			info("closing CIC listening socket");
-			publicSock.close();
-			publicSock = null;
 			synchronized(this)
 			{
 				foreach (CICServerConnection c; allCons.byValue())
 					c.close();
 				allCons.clear();
 			}
+			publicSock.shutdown(SocketShutdown.BOTH);
+			publicSock.close();
+			publicSock = null;
 		}
 	}
 

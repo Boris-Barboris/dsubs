@@ -47,10 +47,10 @@ final class MainMenuState: GameState
 	override void setup()
 	{
 		// stop CIC if needed
-		if (Game.cic)
-			Game.cic.stop();
 		if (Game.ciccon)
 			Game.ciccon.close();
+		if (Game.cic)
+			Game.cic.stop();
 
 		int btnSize = (MENU_BUTTON_FONTSIZE * 1.3).lrint.to!int;
 		connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").

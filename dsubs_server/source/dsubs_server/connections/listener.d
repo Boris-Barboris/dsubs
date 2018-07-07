@@ -24,10 +24,14 @@ final class ConListener
 		publicEpThread = new Thread(&publicEndpoint);
 	}
 
-	void startListeners()
+	void bindSockets()
 	{
 		TcpServer server = TcpServer("0.0.0.0", 17855);
 		publicSock = listenTcp(server);
+	}
+
+	void startListeners()
+	{
 		publicEpThread.start();
 	}
 

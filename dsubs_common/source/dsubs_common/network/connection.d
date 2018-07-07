@@ -30,10 +30,10 @@ private enum WriterMsg: byte
 private string generateRandomString()
 {
 	import std.ascii, std.base64, std.conv, std.random, std.range, std.array;
-	auto rndNums = rndGen.takeExactly(12).map!(i => cast(ubyte)(i % 256))();
+	auto rndNums = rndGen.takeExactly(7).map!(i => cast(ubyte)(i % 256))();
 	auto result = appender!string();
 	Base64.encode(rndNums, result);
-	rndGen.popFrontExactly(10);
+	rndGen.popFrontExactly(7);
 	return result.data.filter!isAlphaNum.to!string;
 }
 
@@ -136,7 +136,7 @@ class ProtocolConnection(alias Protocol)
 		// connection will be closed once
 		if (!cas(&m_closed, false, true))
 			return;
-		info(conId ~ " Closing connection to ", m_remoteAddr);
+		info(conId, " Closing connection to ", m_remoteAddr);
 		send!WriterMsg(m_writerThread, WriterMsg.TERMINATE);
 		doClose();
 	}
@@ -162,10 +162,10 @@ class ProtocolConnection(alias Protocol)
 		enforce!ProtocolException(header[1] >= 0 &&
 			header[1] <= MAX_MSG_SIZE, "Message length invalid");
 		if (header[0] >= 0)
-			trace(conId ~ " received message header ",
+			trace(conId, " received message header ",
 				Protocol.msgTypeNames[header[0]], " ", header[1]);
 		else
-			trace(conId ~ " received message header ", header);
+			trace(conId, " received message header ", header);
 		return header;
 	}
 
@@ -197,14 +197,19 @@ class ProtocolConnection(alias Protocol)
 						Protocol.msgTypeNames[header[0]]);
 			}
 		}
+		catch (ConnectionException e)
+		{
+			error(conId, " ConnectionException in reader thread: ", e.msg);
+			close();
+		}
 		catch (Exception e)
 		{
-			error(conId ~ " Exception caught in reader thread: ", e.toString());
+			error(conId, " Exception caught in reader thread: ", e.toString());
 			close();
 		}
 		catch (Throwable e)
 		{
-			error(conId ~ " Throwable caught in reader thread: ", e.toString());
+			error(conId, " Throwable caught in reader thread: ", e.toString());
 			throw e;
 		}
 	}
@@ -238,13 +243,13 @@ class ProtocolConnection(alias Protocol)
 				}
 				catch (OwnerTerminated otex)
 				{
-					trace(conId ~ " swallowing OwnerTerminated");
+					trace(conId, " swallowing OwnerTerminated");
 				}
 			}
 		}
 		catch (Throwable e)
 		{
-			error(conId ~ " Throwable caught in writer thread: ", e.msg);
+			error(conId, " Throwable caught in writer thread: ", e.msg);
 			close();
 		}
 	}
