@@ -207,8 +207,7 @@ final class SimulationGUI
 				}
 				newTgt /= 100.0f;
 				trace("setting throttle to: ", newTgt);
-				auto req = immutable CICThrottleReq(newTgt);
-				Game.ciccon.sendMessage(req);
+				Game.ciccon.sendMessage(immutable CICThrottleReq(newTgt));
 				playerSub.targetThrottle = newTgt;
 			}
 			catch (Exception e)

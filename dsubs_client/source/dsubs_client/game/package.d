@@ -113,14 +113,14 @@ __gshared:
 		inputRouter.worldRouter = worldManager;
 		inputRouter.hotkeyRouter = hotkeyManager;
 
+		// start connection maintainer
+		bconm = new BackendConMaintainer();
+		scope(failure) bconm.stop();
+
 		// setup main menu
 		synchronized (mainMutex)
 			activeState = new MainMenuState();
 
-		// start connection maintainer
-		bconm = new BackendConMaintainer();
-		bconm.start();
-		scope(failure) bconm.stop();
 		// start render thread and serve the windows event pump
 		render.start(mainMutex);
 		scope(failure) render.stop();

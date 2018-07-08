@@ -1,5 +1,7 @@
 module dsubs_client.game.connections.cicclient;
 
+import core.thread;
+
 import std.socket;
 
 import dsubs_common.api;
@@ -42,18 +44,42 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 	static CICClientConnection connect(string url, string password)
 	{
 		Socket clientSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
+		scope(failure) clientSock.close();
 		auto addr = new InternetAddress(url, 17900);
 		info("Attempting to connect to CIC server ", addr);
 		clientSock.connect(addr);
 		auto con = new CICClientConnection(clientSock);
-		con.onClose += (c)
-			{
-				synchronized(Game.mainMutex)
-					Game.activeState.handleCICDisconnect();
-			};
 		con.start();
 		con.sendMessage(immutable CICLoginReq(password));
 		return con;
+	}
+
+	/// Asynchronously connect to CIC server in background thread.
+	/// Returns callback that can be used to abort the attempt to connect.
+	static void delegate() connectAsync(string hostName, string password,
+		void delegate(CICClientConnection c) onSuccess,
+		void delegate(Exception ex) onFailure)
+	{
+		Socket clientSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
+		auto addr = new InternetAddress(hostName, 17900);
+		info("Attempting to connect to CIC server ", addr);
+		Thread thread = new Thread(()
+		{
+			try
+			{
+				scope(failure) clientSock.close();
+				clientSock.connect(addr);
+				auto con = new CICClientConnection(clientSock);
+				con.start();
+				con.sendMessage(immutable CICLoginReq(password));
+				onSuccess(con);
+			}
+			catch (Exception ex)
+			{
+				onFailure(ex);
+			}
+		}).start();
+		return () { clientSock.shutdown(SocketShutdown.BOTH); clientSock.close(); };
 	}
 
 private:

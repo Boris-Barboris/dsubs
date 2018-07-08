@@ -38,20 +38,14 @@ final class MainMenuState: GameState
 
 	private
 	{
-		bool canLogin;
-		bool alreadySpawned;
+		bool canLogin, alreadySpawned;
 		Label infoLabel;
-		Button connectButton;
+		Button connectButton, cicConnectButton;
+		void delegate() cicConnectCancellator;
 	}
 
 	override void setup()
 	{
-		// stop CIC if needed
-		if (Game.ciccon)
-			Game.ciccon.close();
-		if (Game.cic)
-			Game.cic.stop();
-
 		int btnSize = (MENU_BUTTON_FONTSIZE * 1.3).lrint.to!int;
 		connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").
 			fontSize(MENU_BUTTON_FONTSIZE).fixedSize(vec2i(400, btnSize)).build();
@@ -95,9 +89,58 @@ final class MainMenuState: GameState
 				connectButton.signalClickEnd();
 				return;
 			}
+			if (cicConnectCancellator)
+			{
+				cicConnectCancellator();
+				cicConnectCancellator = null;
+			}
 			Game.bconm.con.sendMessage(
 				immutable LoginReq(loginField.content.str, pwField.content.str));
 			infoLabel.content = "Authorizing...";
+		};
+
+		Label cicIpLabel = builder(new Label()).content("coop IP:").
+			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).fraction(LOGIN_FRACT).build();
+		TextField cicIpField = builder(new TextField()).content("localhost").
+			fontSize(LOGIN_FONT_SIZE).build();
+
+		Div cicDiv = builder(hDiv([cicIpLabel, cicIpField, filler(LOGIN_FRACT)])).
+			fixedSize(vec2i(0, loginSize + 20)).build();
+
+		cicConnectButton = builder(new Button(ButtonType.ASYNC)).content("Join coop host").
+			fontSize(MENU_BUTTON_FONTSIZE / 2).fixedSize(vec2i(400, btnSize / 2)).build();
+
+		cicConnectButton.onClick += (b)
+		{
+			if (cicConnectCancellator)
+			{
+				cicConnectButton.signalClickEnd();
+				return;
+			}
+			cicConnectCancellator = CICClientConnection.connectAsync(
+				cicIpField.content.to!string, "",
+				(CICClientConnection c)
+				{
+					synchronized(Game.mainMutex)
+					{
+						Game.ciccon = c;
+						cicConnectButton.signalClickEnd();
+						cicConnectCancellator = null;
+						info("stopping backend connection maintainer to focus on CIC");
+						Game.bconm.stop();
+						infoLabel.content = "Connected to CIC server";
+					}
+				},
+				(Exception ex)
+				{
+					error(ex.msg);
+					synchronized(Game.mainMutex)
+					{
+						infoLabel.content = ex.msg;
+						cicConnectButton.signalClickEnd();
+						cicConnectCancellator = null;
+					}
+				});
 		};
 
 		Button exitButton = builder(new Button()).content("Exit").
@@ -112,6 +155,9 @@ final class MainMenuState: GameState
 			connectButton,
 			infoLabel,
 			filler(50),
+			cicDiv,
+			cicConnectButton,
+			filler(50),
 			exitButton,
 			filler()
 		])).fixedSize(vec2i(600, 10)).build();
@@ -124,6 +170,19 @@ final class MainMenuState: GameState
 
 		Game.guiManager.addPanel(new Panel(mainMenuLayout));
 		loginField.requestKbFocus();
+
+		// cleanup connections state
+		if (Game.ciccon)
+		{
+			Game.ciccon.close();
+			Game.ciccon = null;
+		}
+		if (Game.cic)
+		{
+			Game.cic.stop();
+			Game.cic = null;
+		}
+		Game.bconm.start();
 	}
 
 	void handleServerStatus(ServerStatusRes res)
@@ -198,5 +257,11 @@ final class MainMenuState: GameState
 		connectButton.signalClickEnd();
 	}
 
-	override void handleCICDisconnect() {}
+	override void handleCICDisconnect()
+	{
+		Game.ciccon = null;
+		cicConnectCancellator = null;
+		cicConnectButton.signalClickEnd();
+		Game.bconm.start();
+	}
 }

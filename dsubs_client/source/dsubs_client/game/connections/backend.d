@@ -95,13 +95,18 @@ final class BackendConMaintainer
 
 	void start()
 	{
+		if (m_con)
+			return;
+		trace("starting BackendConMaintainer");
 		assert(m_con is null);
+		exit_flag = false;
 		m_thread = new Thread(&proc);
 		m_thread.start();
 	}
 
 	void stop()
 	{
+		trace("stopping BackendConMaintainer");
 		atomicStore(exit_flag, true);
 		if (m_con)
 		{
@@ -112,6 +117,7 @@ final class BackendConMaintainer
 
 	private void proc()
 	{
+		scope(exit) m_con = null;
 		while (!atomicLoad(exit_flag))
 		{
 			try
