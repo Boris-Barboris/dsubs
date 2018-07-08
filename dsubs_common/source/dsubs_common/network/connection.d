@@ -5,6 +5,8 @@ import std.exception;
 import std.concurrency;
 import std.conv: to;
 import std.socket;
+
+import core.stdc.errno;
 import core.atomic;
 import core.thread;
 import core.time: Duration, seconds, msecs;
@@ -63,8 +65,8 @@ class ProtocolConnection(alias Protocol)
 	{
 		assert(sock);
 		m_sock = sock;
-		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, seconds(15));
-		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, seconds(15));
+		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, seconds(30));
+		sock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDTIMEO, seconds(30));
 		m_remoteAddr = sock.remoteAddress();
 		m_conId = "[" ~ generateRandomString() ~ "]";
 		m_handlers.length = Protocol.msgTypeCount;
@@ -116,8 +118,19 @@ class ProtocolConnection(alias Protocol)
 	/// send raw bytes to the peer
 	private void sendBytesSync(const(ubyte)[] msgBody)
 	{
+	before_send:
 		auto sent = m_sock.send(msgBody);
-		enforce!ConnectionException(sent == msgBody.length, "Error during send");
+		if (sent == Socket.ERROR)
+		{
+			version(Posix)
+			{
+				if (errno == EINTR)
+					goto before_send;
+			}
+			throw new ConnectionException(m_sock.getErrorText());
+		}
+		enforce!ConnectionException(sent == msgBody.length, "Partial send: " ~
+			sent.to!string ~ " <> " ~ msgBody.length.to!string);
 	}
 
 	/// Set handler for protocol message of type MsgT. Should only be called once.
@@ -154,9 +167,21 @@ class ProtocolConnection(alias Protocol)
 	// first int - message type, second - body size.
 	private int[2] recvHeader()
 	{
+	read_start:
 		int[2] header;
 		auto received = m_sock.receive(header);
-		enforce!ConnectionException(received == 8, "Error during receive");
+		enforce!ConnectionException(received != 0, "Remote peer closed connection");
+		if (received == Socket.ERROR)
+		{
+			version(Posix)
+			{
+				if (errno == EINTR)
+					goto read_start;
+			}
+			throw new ConnectionException(lastSocketError());
+		}
+		enforce!ConnectionException(received == 8, "Error during receive, partial read: " ~
+			received.to!string ~ " <> 8");
 		enforce!ProtocolException(header[0] >= -1 &&
 			header[0] < m_handlers.length.to!int, "Unknown message " ~ header[0].to!string);
 		enforce!ProtocolException(header[1] >= 0 &&

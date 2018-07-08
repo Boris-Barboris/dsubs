@@ -115,7 +115,15 @@ __gshared:
 
 		// start connection maintainer
 		bconm = new BackendConMaintainer();
-		scope(failure) bconm.stop();
+		scope(exit)
+		{
+			// connection cleanup
+			bconm.stop();
+			if (ciccon)
+				ciccon.close();
+			if (cic)
+				cic.stop();
+		}
 
 		// setup main menu
 		synchronized (mainMutex)
@@ -126,13 +134,8 @@ __gshared:
 		scope(failure) render.stop();
 		window.pollEvents(mainMutex);
 
-		if (ciccon)
-			ciccon.close();
-		if (cic)
-			cic.stop();
 		scheduler.stop();
 		render.stop();
-		bconm.stop();
 		window.close();
 	}
 

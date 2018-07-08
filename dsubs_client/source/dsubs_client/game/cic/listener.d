@@ -32,41 +32,43 @@ final class CICListener
 
 	void start()
 	{
-		TcpServer server = TcpServer("0.0.0.0", 17900);
-		publicSock = listenTcp(server);
-		publicEpThread.start();
+		synchronized(this)
+		{
+			TcpServer server = TcpServer("0.0.0.0", 17900);
+			publicSock = listenTcp(server);
+			publicEpThread.start();
+		}
 	}
 
 	/// stop accepting new connections, close all opened ones
 	void stop()
 	{
-		if (publicSock)
+		synchronized(this)
 		{
-			info("closing CIC listening socket");
-			synchronized(this)
+			if (publicSock)
 			{
+				info("closing CIC listening socket");
 				foreach (CICServerConnection c; allCons.byValue())
 					c.close();
 				allCons.clear();
+				publicSock.shutdown(SocketShutdown.BOTH);
+				publicSock.close();
 			}
-			publicSock.shutdown(SocketShutdown.BOTH);
-			publicSock.close();
-			publicSock = null;
 		}
 	}
 
 	private void publicEndpoint()
 	{
 		serveTcp(publicSock, (Socket s)
-		{
-			auto con = new CICServerConnection(m_cicserv, s, m_password);
-			synchronized(this)
 			{
-				allCons[con] = con;
-			}
-			con.onClose += cast(con.onClose.HandlerType) &removeCon;
-			con.start();
-		});
+				auto con = new CICServerConnection(m_cicserv, s, m_password);
+				synchronized(this)
+				{
+					allCons[con] = con;
+				}
+				con.onClose += cast(con.onClose.HandlerType) &removeCon;
+				con.start();
+			});
 	}
 
 	private void removeCon(CICServerConnection c)

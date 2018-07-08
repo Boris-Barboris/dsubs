@@ -68,10 +68,7 @@ final class SimulatorState: GameState
 
 	override void handleBackendDisconnect()
 	{
-		if (Game.cic)
-		{
-			Game.activeState = new MainMenuState();
-		}
+		Game.activeState = new MainMenuState();
 	}
 
 	override void handleCICDisconnect()

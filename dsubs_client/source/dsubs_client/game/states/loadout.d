@@ -200,7 +200,7 @@ final class LoadoutState: GameState
 			if (Game.cic)
 				Game.cic.stop();
 			info("building new CIC server");
-			Game.cic = new CICServer("");
+			Game.cic = new CICServer("", Game.bconm.con);
 			info("starting CIC");
 			Game.cic.start();
 			info("connecting to local CIC");

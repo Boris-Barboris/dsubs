@@ -89,30 +89,28 @@ final class BackendConMaintainer
 {
 	private Thread m_thread;
 	private shared bool exit_flag;
+	private bool m_started;
 	private BackendConnection m_con;
 
 	@property BackendConnection con() { return m_con; }
 
 	void start()
 	{
-		if (m_con)
-			return;
+		assert(!m_started);
 		trace("starting BackendConMaintainer");
 		assert(m_con is null);
 		exit_flag = false;
 		m_thread = new Thread(&proc);
 		m_thread.start();
+		m_started = true;
 	}
 
 	void stop()
 	{
 		trace("stopping BackendConMaintainer");
 		atomicStore(exit_flag, true);
-		if (m_con)
-		{
+		if (m_started && m_con)
 			m_con.close();
-			m_con = null;
-		}
 	}
 
 	private void proc()

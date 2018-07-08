@@ -44,6 +44,7 @@ private:
 
 	void h_loginReq(CICLoginReq req)
 	{
+		enforce(!m_authorized, "already authorized");
 		enforce(req.password == m_expectedPw, "Wrong password");
 		info("CIC peer connection authorized");
 		immutable(ubyte)[] dbHash;
@@ -69,6 +70,7 @@ private:
 	void h_enterSimFlowReq(CICEnterSimFlowReq req)
 	{
 		enforce(m_authorized, "unauthorized");
+		enforce(!m_inSimFlow, "already in simulator flow");
 		synchronized(m_cicserv)
 		{
 			if (m_cicserv.state.recStateInitialized)

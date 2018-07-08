@@ -17,6 +17,7 @@ import dsubs_client.game.states.loadout;
 import dsubs_client.game.entities;
 import dsubs_client.game.cic.server;
 import dsubs_client.game.cic.messages;
+import dsubs_client.game.connections.backend;
 import dsubs_client.gui;
 
 
@@ -173,16 +174,8 @@ final class MainMenuState: GameState
 
 		// cleanup connections state
 		if (Game.ciccon)
-		{
 			Game.ciccon.close();
-			Game.ciccon = null;
-		}
-		if (Game.cic)
-		{
-			Game.cic.stop();
-			Game.cic = null;
-		}
-		Game.bconm.start();
+		resetBackConM();
 	}
 
 	void handleServerStatus(ServerStatusRes res)
@@ -237,7 +230,7 @@ final class MainMenuState: GameState
 			if (Game.cic)
 				Game.cic.stop();
 			info("building new CIC server");
-			Game.cic = new CICServer("");
+			Game.cic = new CICServer("", Game.bconm.con);
 			info("starting CIC");
 			Game.cic.start();
 			info("connecting to local CIC");
@@ -257,11 +250,16 @@ final class MainMenuState: GameState
 		connectButton.signalClickEnd();
 	}
 
+	private void resetBackConM()
+	{
+		Game.bconm.stop();
+		Game.bconm = new BackendConMaintainer();
+		Game.bconm.start();
+	}
+
 	override void handleCICDisconnect()
 	{
-		Game.ciccon = null;
 		cicConnectCancellator = null;
 		cicConnectButton.signalClickEnd();
-		Game.bconm.start();
 	}
 }

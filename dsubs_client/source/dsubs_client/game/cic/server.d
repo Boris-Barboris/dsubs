@@ -8,6 +8,7 @@ import dsubs_client.game;
 import dsubs_client.game.cic.listener;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cic.state;
+import dsubs_client.game.connections.backend;
 
 public import dsubs_client.game.connections.cicclient;
 
@@ -22,30 +23,29 @@ final class CICServer
 	{
 		CICListener m_listener;
 		CICState m_state;
+		BackendConnection m_bcon;
 	}
 
 	mixin Readonly!(int, "spawnId");
 
-	this(string password, int spawnId = -1)
+	this(string password, BackendConnection bcon, int spawnId = -1)
 	{
 		m_listener = new CICListener(this, password);
 		m_state = new CICState();
+		m_bcon = bcon;
 		m_spawnId = spawnId;
 	}
 
 	void start()
 	{
+		assert(m_listener);
 		m_listener.start();
 	}
 
 	void stop()
 	{
-		if (m_listener)
-		{
-			info("shutting CIC server down");
-			m_listener.stop();
-			m_listener = null;
-		}
+		info("shutting CIC server down");
+		m_listener.stop();
 	}
 
 	@property CICState state() { return m_state; }
@@ -74,7 +74,7 @@ final class CICServer
 		{
 			m_state.handleThrottleReq(req);
 			m_listener.broadcast(cast(immutable CICThrottleReq) req);
-			Game.bconm.con.sendMessage(cast(immutable ThrottleReq) req);
+			m_bcon.sendMessage(cast(immutable ThrottleReq) req);
 		}
 	}
 
@@ -84,7 +84,7 @@ final class CICServer
 		{
 			m_state.handleCourseReq(req);
 			m_listener.broadcast(cast(immutable CICCourseReq) req);
-			Game.bconm.con.sendMessage(cast(immutable CourseReq) req);
+			m_bcon.sendMessage(cast(immutable CourseReq) req);
 		}
 	}
 }

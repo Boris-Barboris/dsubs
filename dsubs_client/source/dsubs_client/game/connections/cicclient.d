@@ -29,6 +29,10 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 			{
 				synchronized(Game.mainMutex)
 				{
+					// under no circumstance local CIC server should survive
+					// local cic connection crash
+					if (Game.cic)
+						Game.cic.stop();
 					Game.activeState.handleCICDisconnect();
 				}
 			};
@@ -122,12 +126,13 @@ private:
 			Game.entityDb = cast(EntityDbRes) res;
 			Game.entityManager = new EntityManager(Game.entityDb);
 		}
+		info("entityDb received from CIC, entering simulation flow");
 		sendMessage(immutable CICEnterSimFlowReq());
 	}
 
 	void h_reconnectStateRes(CICReconnectStateRes res)
 	{
-		info("received reconnect state, switching to simulation state");
+		info("received reconnect state from CIC, switching to simulation state");
 		synchronized(Game.mainMutex)
 		{
 			Game.activeState = new SimulatorState(res);
