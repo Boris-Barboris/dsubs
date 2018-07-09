@@ -10,6 +10,9 @@
 libdsubs_common.a
 dsubs_client/dsubs_client
 dsubs_server/dsubs_server
+dsubs_sound/dsubs_sound
+dsubs_sound/dsubs_sound-test-library
+dsubs_sound/libdsubs_sound.a
 pull_libs.sh
 dsubs_common-test-debuglib
 dsubs_common-test-library

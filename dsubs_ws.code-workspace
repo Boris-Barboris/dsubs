@@ -6,9 +6,12 @@
 	],
 	"settings": {
 		"d.projectImportPaths": [
-			"D:\\Coding\\dsubs\\DerelictSFML2\\source",
-			"D:\\Coding\\dsubs\\dsubs_common\\source",
-			"D:\\Coding\\dsubs\\dsubs_client\\source"
+			"/home/boris/.dub/packages/gfm-6.2.13/gfm/math/",
+			"/home/boris/src/dsubs/DerelictSFML2/source/",
+			"/home/boris/src/dsubs/dsubs_client/source/",
+			"/home/boris/src/dsubs/dsubs_common/source/",
+			"/home/boris/src/dsubs/dsubs_server/source/",
+			"/home/boris/src/dsubs/dsubs_sound/source/"
 		]
 	}
 }

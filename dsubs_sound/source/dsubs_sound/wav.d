@@ -1,8 +1,9 @@
-module dsubs_server.sound.wav;
+module dsubs_sound.wav;
 
+import std.complex;
 import std.conv: to;
 import std.range;
-import std.random;
+import std.math;
 import std.stdio;
 
 
@@ -32,10 +33,20 @@ void writeWavFile(string filename, short[] samples, int srate = 4096)
 	f.close();
 }
 
-void writeWhiteNoise()
+void writeWavFile(string filename, Complex!float[] samples, float norm, int srate = 4096)
 {
+	short[] ss;
+	ss.length = samples.length;
+	for (size_t i = 0; i < samples.length; i++)
+		ss[i] = ((fmax(-1.0f, fmin(1.0f, samples[i].re / norm))) * short.max).to!short;
+	writeWavFile(filename, ss, srate);
+}
+
+unittest
+{
+	import std.random;
 	short[] samples = new short[4096 * 2];
 	foreach (ref s; samples)
 		s = uniform!short();
-	writeWavFile("noise.wav", samples);
+ 	writeWavFile("noise.wav", samples);
 }

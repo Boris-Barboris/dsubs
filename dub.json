@@ -1,0 +1,47 @@
+{
+	"name": "dsubs",
+	"targetType": "none",
+	"version": "0.0.1",
+	"authors": [
+		"Boris-Barboris"
+	],
+	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
+	"subPackages": [
+		{
+			"importPaths": [
+				"dsubs_client"
+			],
+			"name": "dsubs_client",
+			"sourcePaths": [
+					"dsubs_client/source"
+			]
+		},
+		{
+			"importPaths": [
+				"dsubs_common"
+			],
+			"name": "dsubs_common",
+			"sourcePaths": [
+					"dsubs_common/source"
+			]
+		},
+		{
+			"importPaths": [
+				"dsubs_server"
+			],
+			"name": "dsubs_server",
+			"sourcePaths": [
+					"dsubs_server/source"
+			]
+		},
+		{
+			"importPaths": [
+				"dsubs_sound"
+			],
+			"name": "dsubs_sound",
+			"sourcePaths": [
+					"dsubs_sound/source"
+			]
+		}
+	]
+}

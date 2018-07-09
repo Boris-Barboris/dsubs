@@ -1,0 +1,10 @@
+{
+	"name": "dsubs_sound",
+	"version": "0.0.1",
+	"authors": [
+		"Boris-Barboris"
+	],
+	"description": "Server-side acoustics library for dsubs",
+	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
+	"targetType": "executable"
+}
