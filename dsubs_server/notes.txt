@@ -1,0 +1,37 @@
+LOFAR and DEMON analysis: technical description.
+
+LOFAR analysis can be considered as a broadband spectral analysis covering the expected range of the controlled object noise. The sequence of LOFAR analysis is as follows:
+
+	Selection of direction of interest (also referred to as “bearing”);
+	Processing of the incoming signal with Hanning window;
+	Further processing of the resulting signal with the Fast Fourier Transform (the FFT processing is used in order to obtain signal representation in the particular frequency domain).
+
+Signal normalization by means of implementing a task-specific algorithm. This stage of the target signal processing is intended for overall signal normalization, evaluation of the background noise level, signal bias removal, and peak equalization.
+
+DEMON analysis is a narrowband analysis used for cavitation noise processing with further accumulation of data obtained from the controlled object. In terms of practical implementation, DEMON analysis allows to separate the cavitation noise from the overall signal spectrum and to estimate the number of shafts, their rotation frequency, and blade rate. Since this analysis provides a comprehensive information on the target propellers, it is also quite useful for target detection purposes. The sequence of DEMON analysis is as follows:
+
+	Selection of direction of interest (also referred to as “bearing”);
+	Further bandpass filtering. It is implemented in order to reduce the cavitation frequency range of the overall signal;
+	Squaring of the signal (by means of a standard demodulation algorithm);
+	The next step of signal processing is the implementation of normalization algorithm (it is used to reduce the background noise level as well as to emphasize the target signal peaks);
+	The final stage of the target signal processing is the use of a short-time Fast Fourier Transform (it allows to observe signal peaks in the frequency domain).
+
+For active systems the change in frequency is 0.69 Hz per knot per kHz and half this for passive systems as propagation is only one way
+
+
+	"d.projectImportPaths": [
+			"C:/heap/programms/dmd/dmd2/src/phobos/",
+			"C:/heap/programms/dmd/dmd2/src/druntime/import/",
+			"C:/coding/dsubs/DerelictSFML2/source/",
+			"C:/coding/dsubs/dsubs_common/source/",
+			"C:/coding/dsubs/dsubs_server/source/",
+			"C:/coding/dsubs/dsubs_client/source/",
+		]
+
+	"d.servedPath": "C:/Users/John Bull/AppData/Roaming/code-d/bin/serve-d.exe",
+	"d.projectImportPaths": [
+		"C:/heap/programms/dmd/dmd2/src/phobos/",
+		"C:/heap/programms/dmd/dmd2/src/druntime/import/"
+	]
+
+	C:\Users\John Bull\AppData\Roaming\dub\packages\gfm-6.2.13\gfm\math

@@ -7,7 +7,7 @@ import std.stdio;
 
 
 // http://soundfile.sapp.org/doc/WaveFormat/
-void writeWavFile(string filename, short[] samples, int srate = 8000)
+void writeWavFile(string filename, short[] samples, int srate = 4096)
 {
 	File f = File(filename, "wb");
 	f.write("RIFF");
@@ -34,7 +34,7 @@ void writeWavFile(string filename, short[] samples, int srate = 8000)
 
 void writeWhiteNoise()
 {
-	short[] samples = new short[16000];
+	short[] samples = new short[4096 * 2];
 	foreach (ref s; samples)
 		s = uniform!short();
 	writeWavFile("noise.wav", samples);
