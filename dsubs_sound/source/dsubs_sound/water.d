@@ -64,9 +64,42 @@ IntensityLevel flowNoise(float freq, float speed, float spdMod = 1.0f)
 {
 	float kts = speed * 3.6 / 2;
 	float res = 90.0f;
-	// 1.8 db per knot
-	res += (kts - 10.0f) * 1.8f * spdMod;
-	// 9db per ofcave fall
-	res -= 9.0f * log2(freq / 1000.0f);
+	if (freq >= 100.0f)
+	{
+		// 18 db per knot
+		res += log2(kts / 10.0f) * 18.0f * spdMod;
+		// 9db per ofcave fall
+		res -= 9.0f * log2(freq / 1000.0f);
+	}
+	else
+	{
+		res += log2(kts / 10.0f) * 9.0f * spdMod;
+		res -= 9.0f * log2(0.1f);
+	}
 	return IntensityLevel(res);
+}
+
+unittest
+{
+	import std.algorithm;
+	import std.stdio;
+	import dsubs_sound.wav;
+
+	IntensitySpectrum ispec;
+	ispec.bins.length = 2047;
+	foreach (i, ref b; ispec.bins)
+	{
+		if (i > 20)
+			b = flowNoise(i + 1, 10.0f) + 2.0f * uniform01!float;
+		else
+			b = 0.0f;
+	}
+	Spectrum pspec;
+	ispec.genSpectrum(pspec);
+	Fft fftCache = new Fft(4096);
+	TimeDomainSignal tds;
+	pspec.toTimeDomain(fftCache, tds);
+	float maxp = tds.samples.map!(a => a.re).maxElement;
+	writeln("flow noise max pressure: ", maxp);
+	writeWavFile("turbulence-flow-noise.wav", tds.samples, 0.75f / maxp, tds.samplingRate);
 }
