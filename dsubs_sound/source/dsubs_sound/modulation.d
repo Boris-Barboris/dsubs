@@ -1,20 +1,19 @@
 module dsubs_sound.modulation;
 
-import std.math;
-
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
 
 
+/// DEMON component that modulates time-domain signal with a cascade of harmonics
 struct AmplitudeModulator
 {
-	float fundFreq;	/// fundamental frequency
-	float[] harmonics;	/// [fundFreq, 2 * fundFreq, 3 * fundFreq ...]
+	float fundFreq;		/// fundamental frequency
+	float[] harmonics;	/// [fundFreq, 2 * fundFreq, 3 * fundFreq ...] amplitudes
 	float startPhase;
 
 	void modulate(ref TimeDomainSignal dest)
 	{
-		import std.algorithm.iteration;
+		import std.algorithm.iteration: map, sum;
 
 		assert(harmonics.length > 0);
 		float dt = 1.0f / dest.samplingRate;
@@ -39,7 +38,6 @@ struct AmplitudeModulator
 // correctness test
 unittest
 {
-	import std.stdio;
 	import dsubs_sound.wav;
 
 	Fft fftCache = new Fft(4096);

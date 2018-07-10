@@ -7,6 +7,11 @@ struct Intensity
 {
 	float val;
 	alias val this;
+
+	IntensityLevel toDb() const
+	{
+		return IntensityLevel(val.toDb());
+	}
 }
 
 /// Sound intensity level (db)
@@ -14,6 +19,11 @@ struct IntensityLevel
 {
 	float val;
 	alias val this;
+
+	Intensity toLinear() const
+	{
+		return Intensity(val.toLinear());
+	}
 }
 
 float toDb(float linear)

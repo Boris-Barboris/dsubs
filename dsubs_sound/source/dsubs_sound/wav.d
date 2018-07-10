@@ -37,9 +37,6 @@ void writeWavFile(SR)(string filename, SR samples, int srate = 4096)
 	f.rawWrite([(len - 8).to!int]);
 	f.seek(40);
 	f.rawWrite([(sampleCount * short.sizeof).to!int]);
-	f.flush();
-	f.sync();
-	f.close();
 }
 
 void writeWavFile(CSR)(string filename, CSR samples, float norm, int srate = 4096)
@@ -48,13 +45,4 @@ void writeWavFile(CSR)(string filename, CSR samples, float norm, int srate = 409
 	writeWavFile(filename,
 		samples.map!(s => ((fmax(-1.0f, fmin(1.0f, s.re * norm))) * short.max).to!short),
 		srate);
-}
-
-unittest
-{
-	import std.random;
-	short[] samples = new short[4096 * 2];
-	foreach (ref s; samples)
-		s = uniform!short();
- 	writeWavFile("noise.wav", samples);
 }

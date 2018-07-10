@@ -1,29 +1,57 @@
 module dsubs_sound.spectrum;
 
 import dsubs_sound.common;
+import dsubs_sound.wav;
 
 
+/// Right half of spectrum. If desired spectrum size is 4096, this must be 4096 / 2 - 1.
 struct IntensitySpectrum
 {
 	IntensityLevel[] bins;
-	int freqRes;	/// frequency resolution (Hz / bin)
+	int freqRes = 1;	/// frequency resolution (Hz / bin)
 
 	/// convert intensity spectrum to pressure spectrum using rng to
 	/// create random phases.
 	void genSpectrum(ref Spectrum dest) const
 	{
+		assert((bins.length + 1) % 2 == 0);
 		dest.freqRes = freqRes;
-		dest.bins.length = bins.length;
+		dest.bins.length = bins.length * 2 + 2;
 		for (size_t i = 0; i < bins.length; i++)
-			dest.bins[i] = fromPolar(bins[i].toLinear, randPhase());
+		{
+			dest.bins[i + 1] = fromPolar(bins[i].toLinear, randPhase());
+			dest.bins[$ - 1 - i] = dest.bins[i + 1].conj;
+		}
+		dest.bins[0] = dest.bins[$/2] = complex!float(0);
 	}
 }
 
-/// Frequency spectrum of a periodic signal
+unittest
+{
+	import std.algorithm;
+	import std.stdio;
+	import dsubs_sound.wav;
+
+	IntensitySpectrum ispec;
+	ispec.bins.length = 2047;
+	ispec.bins.each!((ref IntensityLevel il) => il.val = 82.0f - 4 * uniform01!float);
+	Spectrum pspec;
+	ispec.genSpectrum(pspec);
+	assert(pspec.bins.length == 4096);
+	Fft fftCache = new Fft(4096);
+	TimeDomainSignal tds;
+	pspec.toTimeDomain(fftCache, tds);
+	float maxp = tds.samples.map!(a => a.re).maxElement;
+	writeln("IntensitySpectrum test result: ", tds.samples[0 .. 6],
+		", max pressure: ", maxp);
+	writeWavFile("ispec_whitenoise.wav", tds.samples, 0.5f / maxp, tds.samplingRate);
+}
+
+/// Frequency spectrum of a periodic signal, ready for IFFT
 struct Spectrum
 {
 	Complex!float[] bins;
-	int freqRes;	/// frequency resolution (Hz / bin)
+	int freqRes = 1;	/// frequency resolution (Hz / bin)
 
 	void toTimeDomain(Fft fftCache, ref TimeDomainSignal dest) const
 	{
@@ -45,6 +73,30 @@ struct TimeDomainSignal
 	int samplingRate;
 }
 
+/// Create smooth transition from prev to onto. onto samples will be changed.
+/// Function tries to make power transition smooth.
+void overlapTDS(const TimeDomainSignal prev, TimeDomainSignal onto, int sampleCount)
+{
+	assert(prev.samplingRate == onto.samplingRate);
+	for (int i = 0; i < sampleCount; i++)
+	{
+		// power factor
+		float factor = float(i + 1) / (sampleCount + 1);
+		onto.samples[i].re = onto.samples[i].re * sqrt(factor) +
+			sqrt(1.0f - factor) * prev.samples[$ - sampleCount + i].re;
+	}
+}
+
+unittest
+{
+	import std.range;
+
+	auto tds1 = whiteNoise(4096, 4096);
+	auto tds2 = whiteNoise(4096, 4096);
+	overlapTDS(tds1, tds2, 256);
+	writeWavFile("overlap.wav", chain(tds1.samples, tds2.samples), 1.0f, tds1.samplingRate);
+}
+
 Spectrum whiteNoiseSpectrum(int bins = 4096, int freqRes = 1)
 {
 	Spectrum s;
@@ -52,11 +104,10 @@ Spectrum whiteNoiseSpectrum(int bins = 4096, int freqRes = 1)
 	s.bins.length = bins;
 	for (int i = 1; i < bins / 2; i++)
 	{
-		s.bins[i] = fromPolar(uniform01!float(), randPhase());
-		s.bins[bins - i] = complex(s.bins[i].re, -s.bins[i].im);
+		s.bins[i] = fromPolar(1.25f - 0.5f * uniform01!float(), randPhase());
+		s.bins[$ - i] = s.bins[i].conj;
 	}
-	s.bins[0] = complex(0, 0);
-	s.bins[bins / 2] = complex(0, 0);
+	s.bins[0] = s.bins[$/2] = complex!float(0);
 	return s;
 }
 
@@ -73,9 +124,8 @@ TimeDomainSignal whiteNoise(int sampleCount, int samplingRate, float level = 0.2
 // correctness test
 unittest
 {
-	import std.stdio;
-	import dsubs_sound.wav;
 	import std.algorithm.iteration;
+	import std.stdio;
 	import std.range: repeat;
 
 	Spectrum s = whiteNoiseSpectrum(4096, 1);
