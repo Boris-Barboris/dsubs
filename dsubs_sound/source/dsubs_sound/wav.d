@@ -1,5 +1,6 @@
 module dsubs_sound.wav;
 
+import std.algorithm.iteration;
 import std.complex;
 import std.conv: to;
 import std.range;
@@ -8,7 +9,8 @@ import std.stdio;
 
 
 // http://soundfile.sapp.org/doc/WaveFormat/
-void writeWavFile(string filename, short[] samples, int srate = 4096)
+void writeWavFile(SR)(string filename, SR samples, int srate = 4096)
+	if (isInputRange!SR && is(ElementType!SR == short))
 {
 	File f = File(filename, "wb");
 	f.write("RIFF");
@@ -23,23 +25,29 @@ void writeWavFile(string filename, short[] samples, int srate = 4096)
 	f.rawWrite([short(16 * 1 / 8)]);
 	f.rawWrite([short(16)]);
 	f.write("data");
-	f.rawWrite([(samples.length * short.sizeof).to!int]);
-	f.rawWrite(samples);
+	f.rawWrite([0]);
+	int sampleCount = 0;
+	foreach(s; samples)
+	{
+		f.rawWrite([s]);
+		sampleCount++;
+	}
 	auto len = f.tell();
 	f.seek(4);
 	f.rawWrite([(len - 8).to!int]);
+	f.seek(40);
+	f.rawWrite([(sampleCount * short.sizeof).to!int]);
 	f.flush();
 	f.sync();
 	f.close();
 }
 
-void writeWavFile(string filename, Complex!float[] samples, float norm, int srate = 4096)
+void writeWavFile(CSR)(string filename, CSR samples, float norm, int srate = 4096)
+	if (isInputRange!CSR && is(ElementType!CSR == Complex!float))
 {
-	short[] ss;
-	ss.length = samples.length;
-	for (size_t i = 0; i < samples.length; i++)
-		ss[i] = ((fmax(-1.0f, fmin(1.0f, samples[i].re / norm))) * short.max).to!short;
-	writeWavFile(filename, ss, srate);
+	writeWavFile(filename,
+		samples.map!(s => ((fmax(-1.0f, fmin(1.0f, s.re * norm))) * short.max).to!short),
+		srate);
 }
 
 unittest
