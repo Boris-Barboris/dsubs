@@ -4,6 +4,9 @@
 	"authors": [
 		"Boris-Barboris"
 	],
+	"dependencies": {
+		"dsubs_common": { "path": "../dsubs_common" }
+	},
 	"description": "Server-side acoustics library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
 	"targetType": "executable"
