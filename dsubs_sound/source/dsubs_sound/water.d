@@ -39,9 +39,14 @@ unittest
 /// Reference propagation loss coefficient
 private float waterRangeDissipationK(float freq)
 {
+	// DMD bugs on windows produce NaNs here, that's
+	// why res11-res13 are needed
 	float f2 = pow(freq / 1e3, 2);
-	return 2e-3 * (0.11 * f2 / (1 + f2) +
-		44 * f2 / (4100 + f2) + 3e-4 * f2);
+	float res11 = 0.11 * f2 / (1 + f2);
+	float res12 = 44 * f2 / (4100 + f2);
+	float res13 = 3e-4 * f2;
+	float res = 2e-3 * (res11 + res12 + res13);
+	return res;
 }
 
 /// Scale intensity level of a band as if it is received underwater at range
@@ -53,7 +58,7 @@ IntensityLevel getILatRange(float freq, IntensityLevel il, float range, float di
 unittest
 {
 	IntensityLevel il = IntensityLevel(100.0f);
-	auto ilDamped = getILatRange(100.0f, il, 10000);
+	auto ilDamped = getILatRange(100.0f, il, 10000.0f);
 	assert(!isNaN(ilDamped.val));
 	assert(!isInfinity(ilDamped.val));
 	assert(ilDamped < 100.0f);
