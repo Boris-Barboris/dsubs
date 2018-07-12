@@ -170,7 +170,7 @@ class ProtocolConnection(alias Protocol)
 	read_start:
 		int[2] header;
 		auto received = m_sock.receive(header);
-		enforce!ConnectionException(received != 0, "Remote peer closed connection");
+		enforce!ConnectionException(received != 0, "Socket was closed");
 		if (received == Socket.ERROR)
 		{
 			version(Posix)

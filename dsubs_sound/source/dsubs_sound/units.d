@@ -2,6 +2,7 @@ module dsubs_sound.units;
 
 import std.math;
 
+
 /// Sound intensity (relative to reference intensity)
 struct Intensity
 {
@@ -17,7 +18,7 @@ struct Intensity
 /// Sound intensity level (db)
 struct IntensityLevel
 {
-	float val;
+	dB val;
 	alias val this;
 
 	Intensity toLinear() const
@@ -40,3 +41,5 @@ float pressureAmplitude(Intensity i)
 {
 	return sqrt(2 * i.val);
 }
+
+alias dB = float;
