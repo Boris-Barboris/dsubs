@@ -9,7 +9,7 @@ struct AmplitudeModulator
 {
 	float fundFreq;		/// fundamental frequency
 	float[] harmonics;	/// [fundFreq, 2 * fundFreq, 3 * fundFreq ...] amplitudes
-	float startPhase;
+	float startPhase = 0.0f;
 
 	void modulate(ref TimeDomainSignal dest)
 	{
@@ -42,7 +42,7 @@ unittest
 
 	Fft fftCache = new Fft(4096);
 	TimeDomainSignal tds = whiteNoise(4096 * 4, 4096);
-	AmplitudeModulator am = AmplitudeModulator(2.5f, [0.2f, 0.01f, 0.25f, 0.01f, 0.06f, 0.03f], 0.0f);
+	AmplitudeModulator am = AmplitudeModulator(2.5f, [0.2f, 0.01f, 0.25f, 0.01f, 0.06f], 0.0f);
 	am.modulate(tds);
 	writeWavFile("am_test.wav", tds.samples, 1.0f, tds.samplingRate);
 }
