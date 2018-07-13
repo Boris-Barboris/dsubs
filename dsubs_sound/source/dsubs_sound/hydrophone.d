@@ -31,8 +31,8 @@ struct Antennae
 
 	bool dirBelongsTo(float relBearing) const
 	{
-		return (relBearing <= mainAxisRot + span / 2) ||
-			(relBearing >= mainAxisRot - span / 2);
+		return (relBearing <= rot + span / 2) ||
+			(relBearing >= rot - span / 2);
 	}
 }
 

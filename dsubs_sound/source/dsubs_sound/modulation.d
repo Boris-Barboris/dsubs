@@ -7,11 +7,19 @@ import dsubs_sound.spectrum;
 /// DEMON component that modulates time-domain signal with a cascade of harmonics
 struct AmplitudeModulator
 {
-	float fundFreq;		/// fundamental frequency
-	float[] harmonics;	/// [fundFreq, 2 * fundFreq, 3 * fundFreq ...] amplitudes
+	float startFundFreq;	/// fundamental frequency at the beginning
+	float endFundFreq;		/// fundamental frequency at the end
+	float[] harmonics;		/// [fundFreq, 2 * fundFreq, 3 * fundFreq ...] amplitudes
 	float startPhase = 0.0f;
 
-	void modulate(ref TimeDomainSignal dest)
+	/// move phase forward according to endFundFreq
+	void updatePhase(float time)
+	{
+		startPhase += time * 2 * PI * endFundFreq;
+	}
+
+	/// modulate time-domain signal
+	void modulate(ref TimeDomainSignal dest) const
 	{
 		import std.algorithm.iteration: map, sum;
 
@@ -24,7 +32,9 @@ struct AmplitudeModulator
 		// main modulation loop
 		for (size_t i = 0; i < dest.samples.length; i++)
 		{
-			float phaseCommon = dt * i * 2 * PI * fundFreq;
+			float k = float(i) / dest.samples.length;
+			float freq = (1.0f - k) * startFundFreq + k * endFundFreq;
+			float phaseCommon = dt * i * 2 * PI * freq;
 			for (size_t j = 0; j < harmonics.length; j++)
 				phases[j] = startPhase + phaseCommon * (j + 1);
 			float modk = DC;
@@ -42,7 +52,7 @@ unittest
 
 	Fft fftCache = new Fft(4096);
 	TimeDomainSignal tds = whiteNoise(4096 * 4, 4096);
-	AmplitudeModulator am = AmplitudeModulator(2.5f, [0.2f, 0.01f, 0.25f, 0.01f, 0.06f], 0.0f);
+	AmplitudeModulator am = AmplitudeModulator(0.5f, 2.0f, [0.2f, 0.01f, 0.25f, 0.01f, 0.06f], 0.0f);
 	am.modulate(tds);
 	writeWavFile("am_test.wav", tds.samples, 1.0f, tds.samplingRate);
 }

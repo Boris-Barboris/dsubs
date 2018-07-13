@@ -5,41 +5,58 @@ import dsubs_sound.spectrum;
 import dsubs_sound.modulation;
 
 
-/// Positioned sound signal emitter
-class SoundSource
+/// Anisotropic sound emitter
+abstract class SoundSource
 {
 	this(Transform2D t)
 	{
 		m_transform = t;
 	}
 
-	protected
-	{
-		Transform2D m_transform;
-		IntensitySpectrum m_ispec;
-		AmplitudeModulator m_modulator;
-		bool am;	// amplitude modulation
-	}
-
-	/// Physical radius of emitting area. Affects tha halo size on
-	/// close distances.
-	float radius = 1.0f;
+	private Transform2D m_transform;
 
 	final @property Transform2D transform() { return m_transform; }
 
-	@property void modulator(AmplitudeModulator rhs)
+	/// Physical radius of emitting area. Affects tha halo size on
+	/// close distances.
+	@property float radius() const;
+
+	/// Is sound amplitude-modulated?
+	@property bool isModulated() const;
+
+	/// get modulator
+	@property const(AmplitudeModulator) modulator() const;
+
+	/// Generate intensity spectrum towards relative bearing.
+	void getIntensitySpectrum(double relBearing, ref IntensitySpectrum dest) const;
+}
+
+
+final class PropellerSound: SoundSource
+{
+	private
 	{
-		am = true;
-		m_modulator = rhs;
+		// Base reference intensity spectrum of non-cavitating component, per Hz
+		IntensitySpectrum m_baseBBSpectrum;
+		// Base reference intensity spectrum of cavitation noise component
+		IntensitySpectrum m_baseCavSpectrum;
+
+		AmplitudeModulator m_modulator;
+		float m_bladeRadius;
+		float m_bladeAoA;
+
+		// cavitation starts at this water normal velocity
+		float m_critNormalVel;
 	}
 
-	/// set reference intensity spectrum
-	@property void ispec(AmplitudeModulator rhs)
-	{
-		am = true;
-		m_modulator = rhs;
-	}
+	@property float radius() const { return 2.0f * m_bladeRadius; }
 
-	/// global gain that is added to intensity
-	dB gain = 0.0f;
+	@property bool isModulated() const { return true; }
+
+	@property const(AmplitudeModulator) modulator() const { return m_modulator; }
+
+	void getIntensitySpectrum(double relBearing, ref IntensitySpectrum dest) const
+	{
+
+	}
 }

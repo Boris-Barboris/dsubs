@@ -51,6 +51,7 @@ class ProtocolConnection(alias Protocol)
 		Thread m_readerThread;
 		Tid m_writerThread;
 		shared bool m_closed, m_started;
+		shared int m_writeQueueSize = 0;
 		string m_conId;
 
 		/// Connection implements some dsubs protocol. Each protocol
@@ -112,6 +113,12 @@ class ProtocolConnection(alias Protocol)
 	/// send asynchroniously (caller thread does not block)
 	final void sendBytes(immutable(ubyte)[] data)
 	{
+		if (atomicOp!"+="(m_writeQueueSize, 1) > 32)
+		{
+			error(conId, " write queue overflow, closing");
+			close();
+			return;
+		}
 		send!(immutable(ubyte)[])(m_writerThread, data);
 	}
 
@@ -251,6 +258,7 @@ class ProtocolConnection(alias Protocol)
 					bool timedOut = !receiveTimeout(seconds(10),
 						(immutable(ubyte)[] msgBody)
 						{
+							atomicOp!"-="(m_writeQueueSize, 1);
 							sendBytesSync(msgBody);
 						},
 						(WriterMsg msg)
