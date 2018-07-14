@@ -5,9 +5,33 @@ import dsubs_sound.wav;
 
 
 /// Right half of spectrum. If desired spectrum size is 4096, this must be 4096 / 2 - 1.
+struct IntensityLevelSpectrum
+{
+	// first bin is 1Hz
+	IntensityLevel[] bins;
+	int freqRes = 1;	/// frequency resolution (Hz / bin)
+
+	/// convert intensity level spectrum to pressure spectrum using rng to
+	/// create random phases.
+	void genSpectrum(ref Spectrum dest) const
+	{
+		assert((bins.length + 1) % 2 == 0);
+		dest.freqRes = freqRes;
+		dest.bins.length = bins.length * 2 + 2;
+		for (size_t i = 0; i < bins.length; i++)
+		{
+			dest.bins[i + 1] = fromPolar((bins[i] / 2).toLinear, randPhase());
+			dest.bins[$ - 1 - i] = dest.bins[i + 1].conj;
+		}
+		dest.bins[0] = dest.bins[$/2] = complex!float(0);
+	}
+}
+
+/// Right half of spectrum. If desired spectrum size is 4096, this must be 4096 / 2 - 1.
 struct IntensitySpectrum
 {
-	IntensityLevel[] bins;
+	// first bin is 1Hz
+	Intensity[] bins;
 	int freqRes = 1;	/// frequency resolution (Hz / bin)
 
 	/// convert intensity spectrum to pressure spectrum using rng to
@@ -19,12 +43,13 @@ struct IntensitySpectrum
 		dest.bins.length = bins.length * 2 + 2;
 		for (size_t i = 0; i < bins.length; i++)
 		{
-			dest.bins[i + 1] = fromPolar(bins[i].toLinear, randPhase());
+			dest.bins[i + 1] = fromPolar(sqrt(bins[i]), randPhase());
 			dest.bins[$ - 1 - i] = dest.bins[i + 1].conj;
 		}
 		dest.bins[0] = dest.bins[$/2] = complex!float(0);
 	}
 }
+
 
 unittest
 {
@@ -32,7 +57,7 @@ unittest
 	import std.stdio;
 	import dsubs_sound.wav;
 
-	IntensitySpectrum ispec;
+	IntensityLevelSpectrum ispec;
 	ispec.bins.length = 2047;
 	ispec.bins.each!((ref IntensityLevel il) => il.val = 82.0f - 4 * uniform01!float);
 	Spectrum pspec;
@@ -42,12 +67,12 @@ unittest
 	TimeDomainSignal tds;
 	pspec.toTimeDomain(fftCache, tds);
 	float maxp = tds.samples.map!(a => a.re).maxElement;
-	writeln("IntensitySpectrum test result: ", tds.samples[0 .. 6],
+	writeln("IntensityLevelSpectrum test result: ", tds.samples[0 .. 6],
 		", max pressure: ", maxp);
 	writeWavFile("ispec_whitenoise.wav", tds.samples, 0.5f / maxp, tds.samplingRate);
 }
 
-/// Frequency spectrum of a periodic signal, ready for IFFT
+/// Amplitude spectrum of a periodic signal, ready for IFFT
 struct Spectrum
 {
 	Complex!float[] bins;

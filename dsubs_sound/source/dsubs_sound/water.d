@@ -49,16 +49,28 @@ private float waterRangeDissipationK(float freq)
 	return res;
 }
 
-/// Scale intensity level of a band as if it is received underwater at range
-IntensityLevel getILatRange(float freq, IntensityLevel il, float range, float dissMod = 1.0f)
+private immutable float[] wrdk;
+
+shared static this()
 {
-	return IntensityLevel(il - toDb(range * range) - waterRangeDissipationK(freq) * range * dissMod);
+	float[] prep_wrdk;
+	prep_wrdk.length = 4096;
+	for (int i = 1; i < 4096; i++)
+		prep_wrdk[i] = waterRangeDissipationK(i);
+	wrdk = cast(immutable(float[])) prep_wrdk;
+}
+
+/// Scale intensity level of a band as if it is received underwater at range
+IntensityLevel getILatRange(int freq, IntensityLevel il, float range, float dissMod = 1.0f)
+{
+	assert(freq > 0 && freq < 4096);
+	return IntensityLevel(il - toDb(range * range) - wrdk[freq] * range * dissMod);
 }
 
 unittest
 {
 	IntensityLevel il = IntensityLevel(100.0f);
-	auto ilDamped = getILatRange(100.0f, il, 10000.0f);
+	auto ilDamped = getILatRange(100, il, 10000.0f);
 	assert(!isNaN(ilDamped.val));
 	assert(!isInfinity(ilDamped.val));
 	assert(ilDamped < 100.0f);

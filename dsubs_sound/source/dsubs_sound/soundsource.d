@@ -30,7 +30,7 @@ abstract class SoundSource
 
 	/// Generate intensity spectrum towards relative bearing.
 	void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
-		int minFreq, int maxFreq, float dissMod) const;
+		int minFreq, int maxFreq, float dissMod);
 }
 
 
@@ -45,7 +45,8 @@ final class PropellerSound: SoundSource
 	{
 		// Base reference intensity spectrum of non-cavitating component on 1Hz
 		IntensitySpectrum m_baseBBSpectrum;
-		// Base reference intensity spectrum of cavitation noise component on criticalNormalVel
+		// Base reference intensity spectrum of cavitation noise component on
+		// criticalNormalVel + 1m/s
 		IntensitySpectrum m_baseCavSpectrum;
 
 		AmplitudeModulator m_modulator;
@@ -56,7 +57,6 @@ final class PropellerSound: SoundSource
 
 		// cavitation starts at this water normal velocity
 		float m_critNormalVel;
-		float m_CavSquareK;
 		float m_rngSpan;
 	}
 
@@ -85,15 +85,31 @@ final class PropellerSound: SoundSource
 	}
 
 	override void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
-		int minFreq, int maxFreq, float dissMod) const
+		int minFreq, int maxFreq, float dissMod)
 	{
-		float range = listenerPos.length;
+		assert(m_baseBBSpectrum.bins.length == m_baseCavSpectrum.bins.length);
+		assert(m_baseBBSpectrum.freqRes == m_baseCavSpectrum.freqRes);
 		dest.freqRes = m_baseBBSpectrum.freqRes;
 		dest.bins.length = maxFreq;
-		// Broadband component
-		if (m_rotFreq != 0.0f)
+		// first we fill cutoff bins with zeroes
+		for (int i = 0; i < minFreq - 1; i++)
+			dest.bins[i] = 0.0f;
+		// now actual power calculation;
+		float freqCube = pow(m_rotFreq, 3);
+		bool cavitation = fabs(m_normalVel) > m_critNormalVel;
+		float cavSqr = pow(m_normalVel - m_critNormalVel, 2);
+		float range = (listenerPos - m_transform.wposition).length;
+		for (int i = minFreq - 1; i < maxFreq; i++)
 		{
-			float bbGain = 2.0f * toDb(m_rotFreq);
+			float output = m_baseBBSpectrum.bins[i] * freqCube;
+			if (cavitation)
+				output += m_baseCavSpectrum.bins[i] * cavSqr;
+			// apply linear-space randomization
+			output += output * m_rngSpan * uniform01!float();
+			// now we apply water sound loss
+			IntensityLevel outputDb = IntensityLevel(output.toDb());
+			outputDb = getILatRange(i + 1, outputDb, range, dissMod);
+			dest.bins[i] = outputDb.toLinear();
 		}
 	}
 }

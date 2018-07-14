@@ -37,9 +37,4 @@ float toLinear(float db)
 	return pow(10.0, db / 10.0);
 }
 
-float pressureAmplitude(Intensity i)
-{
-	return sqrt(2 * i.val);
-}
-
 alias dB = float;
