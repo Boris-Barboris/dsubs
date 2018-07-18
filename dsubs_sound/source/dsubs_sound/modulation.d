@@ -30,10 +30,10 @@ struct AmplitudeModulator
 		float DC = sqrt(1.0 - 0.5 * sum(harmonics.map!(a => a * a)));
 		assert(!isNaN(DC));
 		// main modulation loop
+		float dfreq = (endFundFreq - startFundFreq) / dest.samples.length;
 		for (size_t i = 0; i < dest.samples.length; i++)
 		{
-			float k = float(i) / dest.samples.length;
-			float freq = (1.0f - k) * startFundFreq + k * endFundFreq;
+			float freq = startFundFreq + dfreq * i;
 			float phaseCommon = dt * i * 2 * PI * freq;
 			for (size_t j = 0; j < harmonics.length; j++)
 				phases[j] = startPhase + phaseCommon * (j + 1);

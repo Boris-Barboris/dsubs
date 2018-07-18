@@ -25,6 +25,22 @@ struct IntensityLevelSpectrum
 		}
 		dest.bins[0] = dest.bins[$/2] = complex!float(0);
 	}
+
+	IntensitySpectrum toIntensity() const
+	{
+		IntensitySpectrum res;
+		res.freqRes = freqRes;
+		res.bins.length = bins.length;
+		foreach (i, ref b; res.bins)
+			b = this.bins[i].toLinear;
+		return res;
+	}
+
+	void addNumericNoise(float amplitude)
+	{
+		foreach (ref bin; bins)
+			bin = IntensityLevel(bin.val + uniform01!float * amplitude);
+	}
 }
 
 /// Right half of spectrum. If desired spectrum size is 4096, this must be 4096 / 2 - 1.

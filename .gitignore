@@ -18,6 +18,8 @@ pull_libs.sh
 dsubs_common-test-debuglib
 dsubs_common-test-library
 *.settings
+dsubs_server/dsubs_server-test-application
+2047bins.png
 
 *dub.selections.json
 

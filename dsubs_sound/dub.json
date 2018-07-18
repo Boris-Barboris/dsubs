@@ -5,6 +5,7 @@
 		"Boris-Barboris"
 	],
 	"dependencies": {
+		"imageformats": "~>7.0.0",
 		"dsubs_common": { "path": "../dsubs_common" }
 	},
 	"description": "Server-side acoustics library for dsubs",
