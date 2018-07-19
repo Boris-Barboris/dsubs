@@ -88,7 +88,7 @@ unittest
 	writeWavFile("ispec_whitenoise.wav", tds.samples, 0.5f / maxp, tds.samplingRate);
 }
 
-/// Amplitude spectrum of a periodic signal, ready for IFFT
+/// Amplitude (pressure) spectrum of a periodic signal, ready for IFFT
 struct Spectrum
 {
 	Complex!float[] bins;

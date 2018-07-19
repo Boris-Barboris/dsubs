@@ -77,22 +77,16 @@ unittest
 }
 
 /// band intensity level of flow noise
-IntensityLevel flowNoise(float freq, float speed, float spdMod = 1.0f)
+IntensityLevel flowNoise(float freq, float kts, float spdMod = 1.0f)
 {
-	float kts = speed * 3.6 / 2;
+	assert(kts >= 0.0f);
+	if (kts < 0.25f)
+		return IntensityLevel(0.0f);
 	float res = 90.0f;
-	if (freq >= 100.0f)
-	{
-		// 18 db per knot
-		res += log2(kts / 10.0f) * 18.0f * spdMod;
-		// 9db per ofcave fall
-		res -= 9.0f * log2(freq / 1000.0f);
-	}
-	else
-	{
-		res += log2(kts / 10.0f) * 9.0f * spdMod;
-		res -= 9.0f * log2(0.1f);
-	}
+	// 18 db per knot
+	res += log2(kts / 10.0f) * 18.0f * spdMod;
+	// 9db per octave fall
+	res -= 9.0f * log2(fmax(freq, 100.0f) / 1000.0f);
 	return IntensityLevel(res);
 }
 
@@ -106,11 +100,12 @@ unittest
 	ispec.bins.length = 2047;
 	foreach (i, ref b; ispec.bins)
 	{
-		if (i > 20)
-			b = flowNoise(i + 1, 10.0f) + 2.0f * uniform01!float;
+		if (i >= 19)
+			b = flowNoise(i + 1, 10.0f) + uniform(0.0f, 3.0f);
 		else
 			b = 0.0f;
 	}
+	writeln("flow noise: ", ispec.bins[19], " ", ispec.bins[$-1]);
 	Spectrum pspec;
 	ispec.genSpectrum(pspec);
 	Fft fftCache = new Fft(4096);
