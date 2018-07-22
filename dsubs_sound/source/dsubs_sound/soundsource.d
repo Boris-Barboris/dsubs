@@ -85,7 +85,7 @@ final class PropellerSound: SoundSource
 	}
 
 	override void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
-		int minFreq, int maxFreq, float dissMod)
+		int minFreq, int maxFreq, float dissMod = 1.0f)
 	{
 		assert(m_baseBBSpectrum.bins.length == m_baseCavSpectrum.bins.length);
 		assert(m_baseBBSpectrum.freqRes == m_baseCavSpectrum.freqRes);
