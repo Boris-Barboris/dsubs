@@ -20,6 +20,7 @@ dsubs_common-test-library
 *.settings
 dsubs_server/dsubs_server-test-application
 2047bins.png
+std_hydrophone_0kts.png
 
 *dub.selections.json
 

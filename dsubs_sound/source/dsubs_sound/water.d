@@ -80,7 +80,7 @@ unittest
 IntensityLevel flowNoise(float freq, float kts, float spdMod = 1.0f)
 {
 	assert(kts >= 0.0f);
-	if (kts < 0.25f)
+	if (kts < 0.01f)
 		return IntensityLevel(0.0f);
 	float res = 90.0f;
 	// 18 db per knot
