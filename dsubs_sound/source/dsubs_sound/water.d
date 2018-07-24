@@ -55,16 +55,16 @@ shared static this()
 {
 	float[] prep_wrdk;
 	prep_wrdk.length = 4096;
-	for (int i = 1; i < 4096; i++)
-		prep_wrdk[i] = waterRangeDissipationK(i);
+	for (int i = 1; i <= 4096; i++)
+		prep_wrdk[i - 1] = waterRangeDissipationK(i);
 	wrdk = cast(immutable(float[])) prep_wrdk;
 }
 
 /// Scale intensity level of a band as if it is received underwater at range
 IntensityLevel getILatRange(int freq, IntensityLevel il, float range, float dissMod = 1.0f)
 {
-	assert(freq > 0 && freq < 4096);
-	return IntensityLevel(il - toDb(range * range) - wrdk[freq] * range * dissMod);
+	assert(freq > 0 && freq <= 4096);
+	return IntensityLevel(il - toDb(range * range) - wrdk[freq - 1] * range * dissMod);
 }
 
 unittest
@@ -77,14 +77,14 @@ unittest
 }
 
 /// band intensity level of flow noise
-IntensityLevel flowNoise(float freq, float kts, float spdMod = 1.0f)
+IntensityLevel flowNoise(float freq, float kts)
 {
 	assert(kts >= 0.0f);
 	if (kts < 0.01f)
 		return IntensityLevel(0.0f);
 	float res = 90.0f;
 	// 18 db per knot
-	res += log2(kts / 10.0f) * 18.0f * spdMod;
+	res += log2(kts / 10.0f) * 18.0f;
 	// 9db per octave fall
 	res -= 9.0f * log2(fmax(freq, 100.0f) / 1000.0f);
 	return IntensityLevel(res);

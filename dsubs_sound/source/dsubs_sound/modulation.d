@@ -1,5 +1,7 @@
 module dsubs_sound.modulation;
 
+import std.math;
+
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
 
@@ -16,6 +18,7 @@ struct AmplitudeModulator
 	void updatePhase(float time)
 	{
 		startPhase += time * 2 * PI * endFundFreq;
+		startPhase = fmod(startPhase, 2 * PI);
 	}
 
 	/// modulate time-domain signal

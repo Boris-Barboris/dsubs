@@ -4,6 +4,7 @@ import dsubs_sound.common;
 import dsubs_sound.spectrum;
 import dsubs_sound.water;
 import dsubs_sound.modulation;
+import dsubs_sound.image;
 
 
 /// Anisotropic sound emitter
@@ -30,15 +31,34 @@ abstract class SoundSource
 
 	/// Generate intensity spectrum towards relative bearing.
 	void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
-		int minFreq, int maxFreq, float dissMod);
+		int minFreq, int maxFreq, float dissMod = 1.0f);
+}
+
+
+struct PropellerSoundTemplate
+{
+	IntensitySpectrum baseBBSpectrum;
+	IntensitySpectrum baseCavSpectrum;
+	AmplitudeModulator modulator;
+	float bladeRadius;
+	float bladeAoA;
+	float critNormalVel;
+	float rngSpan;
 }
 
 
 final class PropellerSound: SoundSource
 {
-	this(Transform2D t)
+	this(Transform2D t, PropellerSoundTemplate templ)
 	{
 		super(t);
+		m_baseBBSpectrum = templ.baseBBSpectrum;
+		m_baseCavSpectrum = templ.baseCavSpectrum;
+		m_modulator = templ.modulator;
+		m_bladeRadius = templ.bladeRadius;
+		m_bladeAoA = templ.bladeAoA;
+		m_critNormalVel = templ.critNormalVel;
+		m_rngSpan = templ.rngSpan;
 	}
 
 	private
@@ -59,6 +79,8 @@ final class PropellerSound: SoundSource
 		float m_critNormalVel;
 		float m_rngSpan;
 	}
+
+	@property float normalVel() const { return m_normalVel; }
 
 	override @property float radius() const { return 2.0f * m_bladeRadius; }
 
@@ -84,6 +106,11 @@ final class PropellerSound: SoundSource
 		m_modulator.endFundFreq = rotFreq;
 	}
 
+	void updatePhase(float dt)
+	{
+		m_modulator.updatePhase(dt);
+	}
+
 	override void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
 		int minFreq, int maxFreq, float dissMod = 1.0f)
 	{
@@ -97,7 +124,9 @@ final class PropellerSound: SoundSource
 		// now actual power calculation;
 		float freqCube = pow(m_rotFreq, 3);
 		bool cavitation = fabs(m_normalVel) > m_critNormalVel;
-		float cavSqr = pow(m_normalVel - m_critNormalVel, 2);
+		float cavSqr = 0.0f;
+		if (cavitation)
+			cavSqr = pow(m_normalVel - m_critNormalVel, 2);
 		float range = (listenerPos - m_transform.wposition).length;
 		for (int i = minFreq - 1; i < maxFreq; i++)
 		{
@@ -114,11 +143,30 @@ final class PropellerSound: SoundSource
 	}
 }
 
+PropellerSoundTemplate stdPropellerTemplate()
+{
+	PropellerSoundTemplate tmpl;
+	auto ilspec = loadSpectrumFromImage("std_propeller.png");
+	ilspec.addNumericNoise(0.5f);
+	tmpl.baseBBSpectrum = ilspec.toIntensity;
+	ilspec = loadSpectrumFromImage("std_propeller_cav.png");
+	ilspec.addNumericNoise(0.5f);
+	tmpl.baseCavSpectrum = ilspec.toIntensity;
+	tmpl.modulator = AmplitudeModulator(0.0f, 0.0f,
+		[0.2f, 0.01f, 0.08f, 0.23f, 0.09f, 0.01f], 0.0f);
+	tmpl.bladeRadius = 4.2f;
+	tmpl.bladeAoA = dgr2rad(30.0);
+	tmpl.critNormalVel = 8.0f;
+	tmpl.rngSpan = 0.03f;
+	return tmpl;
+}
+
+
 unittest
 {
 	import std.stdio;
 
-	PropellerSound ps = new PropellerSound(new Transform2D());
+	PropellerSound ps = new PropellerSound(new Transform2D(), PropellerSoundTemplate());
 	ps.m_bladeRadius = 4.2f;
 	ps.m_bladeAoA = dgr2rad(30.0);
 	ps.preUpdate(2.0f, 0.0f);

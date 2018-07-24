@@ -65,10 +65,10 @@ unittest
 	TimeDomainSignal tds;
 	pspec.toTimeDomain(fftCache, tds);
 	tds.samples = tds.samples.cycle.takeExactly(4096 * 5).array;
-	AmplitudeModulator am = AmplitudeModulator(2.5f, 2.5f,
-		[0.2f, 0.01f, 0.25f, 0.01f, 0.06f], 0.0f);
+	AmplitudeModulator am = AmplitudeModulator(2.0f, 2.0f,
+		[0.2f, 0.01f, 0.08f, 0.23f, 0.09f, 0.01f], 0.0f);
 	am.modulate(tds);
 	float maxp = tds.samples.map!(a => a.re).maxElement;
 	writeln("std_propeller maxp: ", maxp);
-	writeWavFile("std_propeller.wav", tds.samples, 0.75f / maxp, tds.samplingRate);
+	writeWavFile("std_propeller_bb.wav", tds.samples, 0.9f / maxp, tds.samplingRate);
 }

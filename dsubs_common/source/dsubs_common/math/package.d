@@ -1,7 +1,7 @@
 module dsubs_common.math;
 
 public import std.math;
-import std.traits: isNumeric;
+import std.traits: isNumeric, isFloatingPoint, Unqual;
 
 public import dsubs_common.math.angles;
 public import dsubs_common.math.transform;
@@ -59,4 +59,17 @@ unittest
 vec2d tod(vec2f v)
 {
 	return vec2d(v.x, v.y);
+}
+
+/// approximation of Error function.
+// https://en.wikipedia.org/wiki/Error_function#Approximation_with_elementary_functions
+Unqual!F erf(F)(F x)
+	if (isFloatingPoint!(F))
+{
+	bool neg = x < 0.0;
+	x = abs(x);
+	F res = 1.0 - 1.0 /
+		pow(1.0 + 0.278393 * x + 0.230389 * pow(x, 2) +
+		0.000972 * pow(x, 3) + 0.078108 * pow(x, 4), 4);
+	return neg ? -res : res;
 }
