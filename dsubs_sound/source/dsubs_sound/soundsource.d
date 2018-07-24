@@ -35,7 +35,7 @@ abstract class SoundSource
 }
 
 
-struct PropellerSoundTemplate
+struct PropellerSoundPrototype
 {
 	IntensitySpectrum baseBBSpectrum;
 	IntensitySpectrum baseCavSpectrum;
@@ -49,7 +49,7 @@ struct PropellerSoundTemplate
 
 final class PropellerSound: SoundSource
 {
-	this(Transform2D t, PropellerSoundTemplate templ)
+	this(Transform2D t, PropellerSoundPrototype templ)
 	{
 		super(t);
 		m_baseBBSpectrum = templ.baseBBSpectrum;
@@ -143,9 +143,9 @@ final class PropellerSound: SoundSource
 	}
 }
 
-PropellerSoundTemplate stdPropellerTemplate()
+PropellerSoundPrototype stdPropellerProto()
 {
-	PropellerSoundTemplate tmpl;
+	PropellerSoundPrototype tmpl;
 	auto ilspec = loadSpectrumFromImage("std_propeller.png");
 	ilspec.addNumericNoise(0.5f);
 	tmpl.baseBBSpectrum = ilspec.toIntensity;
@@ -166,7 +166,7 @@ unittest
 {
 	import std.stdio;
 
-	PropellerSound ps = new PropellerSound(new Transform2D(), PropellerSoundTemplate());
+	PropellerSound ps = new PropellerSound(new Transform2D(), PropellerSoundPrototype());
 	ps.m_bladeRadius = 4.2f;
 	ps.m_bladeAoA = dgr2rad(30.0);
 	ps.preUpdate(2.0f, 0.0f);

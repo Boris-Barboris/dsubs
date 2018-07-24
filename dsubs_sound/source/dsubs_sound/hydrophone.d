@@ -245,7 +245,7 @@ unittest
 	import dsubs_sound.wav;
 
 	Transform2D propTrans = new Transform2D();
-	PropellerSound prop = new PropellerSound(propTrans, stdPropellerTemplate());
+	PropellerSound prop = new PropellerSound(propTrans, stdPropellerProto());
 	float freqPerMs = 2.0f / 17.0f;
 	float[] speeds = [1.0f, 3.0f, 5.0f, 7.5f, 10.0f, 12.5f, 15.0f, 17.0f];
 	float[] relBearings = iota(0, speeds.length).map!(
