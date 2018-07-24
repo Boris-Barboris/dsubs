@@ -112,6 +112,13 @@ struct TimeDomainSignal
 {
 	Complex!float[] samples;
 	int samplingRate;
+
+	void zeroOut(int sampleCount, int srate)
+	{
+		samplingRate = srate;
+		samples.length = sampleCount;
+		samples[] = complex!float(0);
+	}
 }
 
 /// Create smooth transition from prev to onto. onto samples will be changed.

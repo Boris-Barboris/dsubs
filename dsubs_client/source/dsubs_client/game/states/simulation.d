@@ -99,7 +99,7 @@ final class SimulationGUI
 	{
 		// course
 		dmutstring cc = curCourse.content;
-		mutsformat!"course: %.1f"(cc, -res.snap.rotation.courseAngle.rad2dgr);
+		mutsformat!"course: %.1f"(cc, -res.snap.rotation.compassAngle.rad2dgr);
 		curCourse.content = cc;
 		// speed
 		cc = curSpeed.content;
@@ -112,7 +112,7 @@ final class SimulationGUI
 
 	void updateTgtCourseDisplay(float newTgt)
 	{
-		tgtCourseField.content = format("%.1f", -newTgt.courseAngle.rad2dgr);
+		tgtCourseField.content = format("%.1f", -newTgt.compassAngle.rad2dgr);
 	}
 
 	void updateTgtThrottleDisplay(float newTgt)
@@ -162,7 +162,7 @@ final class SimulationGUI
 		}
 
 		tgtCourseField = builder(new TextField()).
-			content(format("%.1f", -playerSub.targetCourse.courseAngle.rad2dgr)).
+			content(format("%.1f", -playerSub.targetCourse.compassAngle.rad2dgr)).
 			symbolFilter(&numericSymbFilter).fontSize(BTN_FONT - 2).build;
 		tgtThrottleField = builder(new TextField()).
 			content(format("%.1f", 100.0f * playerSub.targetThrottle)).

@@ -73,3 +73,9 @@ Unqual!F erf(F)(F x)
 		0.000972 * pow(x, 3) + 0.078108 * pow(x, 4), 4);
 	return neg ? -res : res;
 }
+
+/// meters per second to knots
+double mpsToKts(double mps)
+{
+	return mps * 1.94384;
+}

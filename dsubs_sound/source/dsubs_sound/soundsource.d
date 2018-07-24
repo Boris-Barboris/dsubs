@@ -90,9 +90,9 @@ final class PropellerSound: SoundSource
 
 	/// Update state at the beginning of kinematic simulation. rotFreq is shaft rotation
 	/// frequency. waterSpeed is projection of water relative speed on shaft axis.
-	void preUpdate(float rotFreq, float waterSpeed)
+	void preUpdate(float startShaftFreq, float waterSpeed)
 	{
-		m_rotFreq = m_modulator.startFundFreq = rotFreq;
+		m_rotFreq = m_modulator.startFundFreq = startShaftFreq;
 		// linear blade edge velocity
 		vec2f bladeVel = vec2f(0.0f, -m_rotFreq * 2 * PI * m_bladeRadius);
 		vec2f waterVel = bladeVel + vec2f(waterSpeed, 0.0f);
@@ -101,13 +101,9 @@ final class PropellerSound: SoundSource
 	}
 
 	/// Modulator needs to know final rotation speed to simulate a smooth transition.
-	void postUpdate(float rotFreq)
+	void postUpdate(float endShaftFreq, float dt)
 	{
-		m_modulator.endFundFreq = rotFreq;
-	}
-
-	void updatePhase(float dt)
-	{
+		m_modulator.endFundFreq = endShaftFreq;
 		m_modulator.updatePhase(dt);
 	}
 
@@ -153,7 +149,7 @@ PropellerSoundPrototype stdPropellerProto()
 	ilspec.addNumericNoise(0.5f);
 	tmpl.baseCavSpectrum = ilspec.toIntensity;
 	tmpl.modulator = AmplitudeModulator(0.0f, 0.0f,
-		[0.2f, 0.01f, 0.08f, 0.23f, 0.09f, 0.01f], 0.0f);
+		[0.2f, 0.01f, 0.007f, 0.009f, 0.18f, 0.006f], 0.0f);
 	tmpl.bladeRadius = 4.2f;
 	tmpl.bladeAoA = dgr2rad(30.0);
 	tmpl.critNormalVel = 8.0f;

@@ -6,7 +6,7 @@ import std.math;
 /// Sound intensity (relative to reference intensity)
 struct Intensity
 {
-	float val;
+	float val = 0.0f;
 	alias val this;
 
 	IntensityLevel toDb() const
@@ -18,7 +18,7 @@ struct Intensity
 /// Sound intensity level (db)
 struct IntensityLevel
 {
-	dB val;
+	dB val = 0.0f;
 	alias val this;
 
 	Intensity toLinear() const

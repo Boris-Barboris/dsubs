@@ -31,14 +31,26 @@ double clampAngle(double a)
 	return fmod(a, 2 * PI);
 }
 
+/// Clamp angle into [-PI, PI] interval
+double clampAnglePi(double a)
+{
+	a = fmod(a, 2 * PI);
+	if (a > PI)
+		a -= 2 * PI;
+	else if (a < -PI)
+		a += 2 * PI;
+	return a;
+}
+
 unittest
 {
 	assert(abs(angleDist(clampAngle(0.5 + 2 * PI), 0.5)) < 0.01);
 	assert(abs(angleDist(clampAngle(-0.5 - 2 * PI), -0.5)) < 0.01);
+	assert(abs(angleDist(clampAnglePi(-0.5 - PI), PI - 0.5)) < 0.01);
 }
 
 /// Clamp direction into [-2 * PI, 0] interval
-double courseAngle(double a)
+double compassAngle(double a)
 {
 	double val = clampAngle(a);
 	if (val > 0)
