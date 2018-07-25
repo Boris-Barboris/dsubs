@@ -27,7 +27,7 @@ abstract class SoundSource
 	@property bool isModulated() const;
 
 	/// get modulator
-	@property const(AmplitudeModulator) modulator() const;
+	@property ref const(AmplitudeModulator) modulator() const;
 
 	/// Generate intensity spectrum towards relative bearing.
 	void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
@@ -86,7 +86,7 @@ final class PropellerSound: SoundSource
 
 	override @property bool isModulated() const { return true; }
 
-	override @property const(AmplitudeModulator) modulator() const { return m_modulator; }
+	override @property ref const(AmplitudeModulator) modulator() const { return m_modulator; }
 
 	/// Update state at the beginning of kinematic simulation. rotFreq is shaft rotation
 	/// frequency. waterSpeed is projection of water relative speed on shaft axis.

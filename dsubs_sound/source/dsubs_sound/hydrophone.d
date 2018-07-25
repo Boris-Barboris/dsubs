@@ -40,7 +40,7 @@ final class Hydrophone
 		m_directivity = p.directivity;
 		m_baseNoise = p.baseNoise;
 		m_span = p.antennaeSpan;
-		assert(m_span > 0.0f && m_span <= 2 * PI);
+		assert(m_span > 0.0f && m_span < 2 * PI - MAX_HALO);
 		assert(p.cellCount > 0);
 		m_cellAngle = m_span / p.cellCount;
 		foreach (ap; p.antennaes)
@@ -65,6 +65,8 @@ final class Hydrophone
 		static immutable double MAX_HALO = dgr2rad(20);
 		static immutable double MAX_HALO_2 = MAX_HALO / 2;
 
+		static immutable float ISOTROPIC_VAR = 2.0;
+
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
 		// broadband flow noise intensity
@@ -88,6 +90,8 @@ final class Hydrophone
 
 	@property bool hasListener() const { return m_hasListener; }
 
+	@property bool listenDirValid() const { return m_listenDirValid; }
+
 	@property void hasListener(bool rhs)
 	{
 		m_hasListener = rhs;
@@ -98,6 +102,18 @@ final class Hydrophone
 	@property void listenDir(double rhs)
 	{
 		m_listenDir = clampAnglePi(rhs);
+	}
+
+	/// finalize m_curTds by overlapping it with m_prevTds and applying noise
+	const(TimeDomainSignal) finalizeListenTds()
+	{
+		assert(m_listenDirValid);
+		if (m_prevTds.samples.length)
+			overlapTDS(m_prevTds, m_curTds, m_srate / 8);
+		float linNoise = m_baseNoise.toLinear;
+		foreach (ref s; m_curTds.samples)
+			s.re += uniform(-linNoise, linNoise);
+		return m_curTds;
 	}
 
 	// recalculate listening cell according to current transform rotation
@@ -111,7 +127,8 @@ final class Hydrophone
 				ant.listenCell = -1;
 				continue;
 			}
-			double relBearing = m_listenDir - m_transform.wrotation - ant.rot;
+			double relBearing = clampAnglePi(
+				m_listenDir - m_transform.wrotation - ant.rot);
 			bool belongs = (relBearing <= m_span / 2) && (relBearing >= -m_span / 2);
 			if (belongs)
 			{
@@ -128,7 +145,8 @@ final class Hydrophone
 		float res = 0;
 		for (int freq = m_minFreq; freq <= m_maxFreq; freq++)
 		{
-			float intensity = seaNoiseIL(freq).toLinear;
+			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
+			float intensity = (seaNoiseIL(freq) + rngm).toLinear;
 			res += intensity;
 			if (m_hasListener)
 				s_stageIspec.bins[freq - 1] += intensity;
@@ -143,7 +161,8 @@ final class Hydrophone
 		float mult = 0.01f;
 		for (int freq = m_minFreq; freq <= m_maxFreq; freq++)
 		{
-			float intensity = flowNoise(freq, kts).toLinear;
+			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
+			float intensity = (flowNoise(freq, kts) + rngm).toLinear;
 			res += intensity;
 			if (m_hasListener)
 				s_stageIspec.bins[freq - 1] += intensity * mult;
@@ -169,6 +188,17 @@ final class Hydrophone
 	{
 		s_stageIspec.genSpectrum(s_stageSpectrum);
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
+		foreach (i, ref s; m_curTds.samples)
+			s += s_stageTds.samples[i];
+		resetStageIspec();
+	}
+
+	/// ditto
+	private void applyStageIspec(ref const AmplitudeModulator mod)
+	{
+		s_stageIspec.genSpectrum(s_stageSpectrum);
+		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
+		mod.modulate(s_stageTds);
 		foreach (i, ref s; m_curTds.samples)
 			s += s_stageTds.samples[i];
 		resetStageIspec();
@@ -206,16 +236,33 @@ final class Hydrophone
 		}
 	}
 
+	// precalculated data
+	private struct SourcePrecalc
+	{
+		vec2d dir;
+		double range;
+		double worldBearing;
+		float haloBase;
+		float haloBound;
+	}
+
+	private SourcePrecalc precalcForSource(SoundSource s)
+	{
+		SourcePrecalc res;
+		res.dir = s.transform.wposition - m_transform.wposition;
+		res.range = res.dir.length;
+		res.worldBearing = courseAngle(res.dir);
+		// half of halo size
+		res.haloBase = s.radius / res.range;
+		res.haloBound = fmin(3.0 * res.haloBase, MAX_HALO);
+		return res;
+	}
+
 	void applySoundSource(SoundSource s)
 	{
-		vec2d dir = s.transform.wposition - m_transform.wposition;
-		double range = dir.length;
+		SourcePrecalc prec = precalcForSource(s);
 		foreach (a; m_ant)
-		{
-			double relBearing;
-			if (a.sourceVisible(dir, relBearing))
-				a.applySoundSource(s, range, relBearing);
-		}
+			a.applySoundSource(s, prec);
 	}
 
 	/// Continuous block of hydrophone elements
@@ -264,45 +311,38 @@ final class Hydrophone
 			}
 		}
 
-		bool sourceVisible(vec2d wTargetDir, out double relBearing)
-		{
-			vec2d relTargetDir = rotateVector(wTargetDir,
-				-m_transform.wrotation - rot);
-			relBearing = courseAngle(relTargetDir);
-			return (relBearing <= m_span / 2 + MAX_HALO_2) &&
-				(relBearing >= -m_span / 2 - MAX_HALO_2);
-		}
-
 		int relBearingToCell(double relBearing)
-		out(r)
-		{
-			assert(r >= 0);
-			assert(r < cells.length);
-		}
-		do
 		{
 			return floor((cell0Left - relBearing) / m_cellAngle).to!int;
 		}
 
-		void applySoundSource(SoundSource s, double range, double relBearing)
+		void applySoundSource(SoundSource s, SourcePrecalc p)
 		{
-			s.getIntensitySpectrum(m_transform.wposition, s_stageIspec, m_minFreq, m_maxFreq, 4.0f);
-			float bandSum = s_stageIspec.bins.sum() / (m_maxFreq + 1);
-			// half of halo size
-			float haloBase = s.radius / range;
-			float haloBound = fmin(3.0 * haloBase, MAX_HALO);
+			double relBearing = clampAnglePi(
+				p.worldBearing - m_transform.wrotation - rot);
 			// first cell we'll add energy to
-			int cellStart = max(0, relBearingToCell(relBearing + haloBound));
+			int cellStart = relBearingToCell(relBearing + p.haloBound);
 			// last cell we'll add energy to
-			int cellEnd = min(cells.length - 1, relBearingToCell(relBearing - haloBound));
+			int cellEnd = relBearingToCell(relBearing - p.haloBound);
+			// check if we actually intersect
+			if (cellStart >= cells.length || cellEnd < 0)
+				return;
+			cellStart = max(0, cellStart);
+			cellEnd = min(cells.length - 1, cellEnd);
+			s.getIntensitySpectrum(m_transform.wposition, s_stageIspec,
+				m_minFreq, m_maxFreq, 4.0f);
+			float bandSum = s_stageIspec.bins.sum() / (m_maxFreq + 1);
 			for (int ci = cellStart; ci <= cellEnd; ci++)
 			{
 				float cellLeft = cell0Left - ci * m_cellAngle;
 				float cellRight = cellLeft - m_cellAngle;
-				float normLeft = (relBearing - cellLeft) / haloBase;
-				float normRight = (relBearing - cellRight) / haloBase;
+				float normLeft = (relBearing - cellLeft) / p.haloBase;
+				float normRight = (relBearing - cellRight) / p.haloBase;
 				assert(normRight >= normLeft);
-				cells[ci] += bandSum * 0.5 * (erf(normRight) - erf(normLeft));
+				float powerPart = 0.5 * (erf(normRight) - erf(normLeft));
+				cells[ci] += bandSum * powerPart;
+				if (m_listenDirValid && listenCell == ci)
+					applyStageIspec(s.modulator);
 			}
 		}
 	}
@@ -403,16 +443,15 @@ unittest
 
 	// generate sound sample of std_propeller on 1km range
 	propTrans.position = vec2d(0.0, 1000.0);
-	IntensitySpectrum ispec;
-	prop.getIntensitySpectrum(vec2d(0, 0), ispec, 500, 2047, 4.0f);
-	Fft fftCache = new Fft(4096);
-	Spectrum pspec;
-	ispec.genSpectrum(pspec);
-	TimeDomainSignal tds;
-	pspec.toTimeDomain(fftCache, tds);
-	tds.samples = tds.samples.cycle.takeExactly(4096 * 5).array;
-	prop.modulator.modulate(tds);
+	h.hasListener = true;
+	h.listenDir = 0.0;
+	h.resetAndIsotropic(mpsToKts(0));
+	assert(h.m_listenDirValid);
+	assert(h.m_ant[0].listenCell >= 0);
+	h.applySoundSource(prop);
+	const(TimeDomainSignal) tds = h.finalizeListenTds();
 	float maxp = tds.samples.map!(a => a.re).maxElement;
 	writeln("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);
-	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav", tds.samples, 0.9f / maxp, tds.samplingRate);
+	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav", tds.samples,
+		0.9f / maxp, tds.samplingRate);
 }

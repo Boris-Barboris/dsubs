@@ -6,11 +6,12 @@ import std.conv: to;
 import std.range;
 import std.math;
 import std.stdio;
+import std.traits: Unqual;
 
 
 // http://soundfile.sapp.org/doc/WaveFormat/
 void writeWavFile(SR)(string filename, SR samples, int srate = 4096)
-	if (isInputRange!SR && is(ElementType!SR == short))
+	if (isInputRange!SR && is(Unqual!(ElementType!SR) == short))
 {
 	File f = File(filename, "wb");
 	f.write("RIFF");
@@ -40,7 +41,7 @@ void writeWavFile(SR)(string filename, SR samples, int srate = 4096)
 }
 
 void writeWavFile(CSR)(string filename, CSR samples, float norm, int srate = 4096)
-	if (isInputRange!CSR && is(ElementType!CSR == Complex!float))
+	if (isInputRange!CSR && is(Unqual!(ElementType!CSR) == Complex!float))
 {
 	writeWavFile(filename,
 		samples.map!(s => ((fmax(-1.0f, fmin(1.0f, s.re * norm))) * short.max).to!short),
