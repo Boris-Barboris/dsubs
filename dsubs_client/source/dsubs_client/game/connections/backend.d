@@ -63,10 +63,7 @@ private:
 
 	void h_reconnectState(ReconnectStateRes res)
 	{
-		synchronized(Game.mainMutex)
-		{
-			Game.cic.handleReconnectStateRes(res);
-		}
+		Game.cic.handleReconnectStateRes(res);
 	}
 
 	void h_spawnRes(SpawnRes res)

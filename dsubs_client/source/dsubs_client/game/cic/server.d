@@ -64,15 +64,18 @@ final class CICServer
 		synchronized(this)
 		{
 			m_state.handleSubKinematicRes(res);
-			m_listener.broadcast(cast(immutable CICSubKinematicRes) res);
 		}
+		m_listener.broadcast(cast(immutable CICSubKinematicRes) res);
 	}
 
 	void handleCICThrottleReq(CICThrottleReq req)
 	{
-		synchronized(this)
+		synchronized
 		{
-			m_state.handleThrottleReq(req);
+			synchronized(this)
+			{
+				m_state.handleThrottleReq(req);
+			}
 			m_listener.broadcast(cast(immutable CICThrottleReq) req);
 			m_bcon.sendMessage(cast(immutable ThrottleReq) req);
 		}
@@ -80,9 +83,12 @@ final class CICServer
 
 	void handleCICCourseReq(CICCourseReq req)
 	{
-		synchronized(this)
+		synchronized
 		{
-			m_state.handleCourseReq(req);
+			synchronized(this)
+			{
+				m_state.handleCourseReq(req);
+			}
 			m_listener.broadcast(cast(immutable CICCourseReq) req);
 			m_bcon.sendMessage(cast(immutable CourseReq) req);
 		}

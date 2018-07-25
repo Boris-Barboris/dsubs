@@ -81,11 +81,11 @@ final class SimulatorState: GameState
 
 private
 {
-	immutable int TAB_SIZE = 28;
-	immutable int BIG_BTN_FONT = 25;
-	immutable int BTN_FONT = 20;
-	immutable sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
-	immutable sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
+	enum int TAB_SIZE = 28;
+	enum int BIG_BTN_FONT = 25;
+	enum int BTN_FONT = 20;
+	enum sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
+	enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
 }
 
 
@@ -260,5 +260,44 @@ final class SimulationGUI
 		])).build;
 
 		Game.guiManager.addPanel(new Panel(topLevelDiv));
+	}
+}
+
+
+import derelict.sfml2.graphics;
+import dsubs_client.render.camera;
+
+
+/// Zoomable waterfall display
+final class Waterfall: GuiElement
+{
+
+	private
+	{
+		// directional resolution will be 1024 pixels, in time we save up to
+		// 1200 rows. Such texture weighs 5 Mb.
+		enum int WIDTH = 1024;
+		enum int HEIGHT = 60 * 20;
+	}
+
+	this()
+	{
+		m_renderTexture = sfRenderTexture_create(WIDTH, HEIGHT, false);
+		sfRenderTexture_setRepeated(m_renderTexture, true);
+		sfRenderTexture_clear(m_renderTexture, sfBlack);
+		m_camera = new Camera2D(vec2ui(WIDTH, HEIGHT));
+	}
+
+	~this()
+	{
+		sfRenderTexture_destroy(m_renderTexture);
+	}
+
+	private
+	{
+		// render target to write pixel data to. 0 pixel column is just after
+		// 180 course, 1023 pixel column is just before 180 course.
+		sfRenderTexture* m_renderTexture;
+		Camera2D m_camera;
 	}
 }

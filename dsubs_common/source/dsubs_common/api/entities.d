@@ -132,3 +132,25 @@ struct KinematicSnapshot
 	double rotation;
 	double angVel;
 }
+
+enum HydrophoneType: byte
+{
+	/// both broadband and narrowband data available, operator
+	/// can listen to raw signal in one direction.
+	STANDARD,
+	/// Only broadband data is available, no raw signal available
+	BROADBANDONLY
+}
+
+/// sound intensity level data from some antennae
+struct BroadbandRow
+{
+	/// Each sample corresponds to one antennae "cell" - directional virtual
+	/// sensor.
+	ushort[] samples;
+	/// Angular size of cell. Effectively directional resolution of
+	/// antennae.
+	float cellAngle;
+	/// At the time of sampling this was the world-frame rotation of the antenna
+	float worldRot;
+}
