@@ -100,7 +100,7 @@ private:
 `offensive capabilities and survivability.
 
 Length: 70m
-Displacement: 3000t
+Displacement: 2000t
 Top speed: 17m/s`,
 				[
 					ConvexPolygon(xSymmetry([
@@ -132,13 +132,13 @@ Top speed: 17m/s`,
 				1,
 				[]
 			));
-		sp.mass = RolledF(3000.0f, 10.0f);
+		sp.mass = RolledF(2000.0f, 10.0f);
 		sp.Cd0 = RolledF(9.0, 0.05f);
 		sp.Cd1 = RolledF(16.0, 0.1f);
 		sp.Cl = RolledF(40.0, 0.4f);
 		sp.Cr = RolledF(1.2e6, 1e2);
 		sp.Cm = RolledF(250.0f, 4.0f);
-		sp.equilDrift = 0.261f;		// ~15 deg
+		sp.equilDrift = dgr2rad(15);		// ~15 deg
 		vec2f dims = getHullDims(sp.tmpl.hullModel);
 		trace("dims: ", dims);
 		sp.hullLength = dims.y;
