@@ -47,6 +47,11 @@ final class Hydrophone
 			m_ant ~= new Antennae(p.cellCount, ap.rot);
 	}
 
+	static this()
+	{
+		s_fftCache = new Fft(4096);
+	}
+
 	private
 	{
 		Transform2D m_transform;
@@ -78,7 +83,7 @@ final class Hydrophone
 		static IntensitySpectrum s_stageIspec;
 		static Spectrum s_stageSpectrum;
 		static TimeDomainSignal s_stageTds;
-		static Fft s_fftCache = new Fft(4096);
+		static Fft s_fftCache;
 	}
 
 	@property bool hasListener() const { return m_hasListener; }
@@ -183,7 +188,7 @@ final class Hydrophone
 		{
 			m_prevTds = m_curTds;
 			resetCurTds();
-			resetStageData();
+			resetStageIspec();
 			updateListenCell();
 		}
 		updateSeaIntensity();
