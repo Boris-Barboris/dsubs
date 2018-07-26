@@ -31,6 +31,8 @@ import dsubs_client.game.states.simulation;
 class Game
 {
 __gshared:
+	bool shuttingDown;
+
 	Window window;
 	InputRouter inputRouter;
 	Render render;
@@ -64,6 +66,8 @@ __gshared:
 	static @property void activeState(GameState newState)
 	{
 		assert(newState);
+		if (shuttingDown)
+			return;
 		if (m_activeState)
 			info("STATE TRANSITION: " ~ m_activeState.kind.to!string ~ " to ",
 				newState.kind.to!string);
@@ -118,6 +122,7 @@ __gshared:
 		scope(exit)
 		{
 			// connection cleanup
+			info("shutting down TCP connections...");
 			bconm.stop();
 			if (ciccon)
 				ciccon.close();
@@ -131,9 +136,13 @@ __gshared:
 
 		// start render thread and serve the windows event pump
 		render.start(mainMutex);
-		scope(failure) render.stop();
+		scope(failure)
+		{
+			shuttingDown = true;
+			render.stop();
+		}
 		window.pollEvents(mainMutex);
-
+		shuttingDown = true;
 		scheduler.stop();
 		render.stop();
 		window.close();

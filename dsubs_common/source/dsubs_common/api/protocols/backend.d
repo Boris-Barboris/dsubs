@@ -140,3 +140,10 @@ struct CourseReq
 	__gshared const int g_marshIdx;
 	float target;
 }
+
+/// Server streams acoustic data to the player
+struct AcousticStreamRes
+{
+	__gshared const int g_marshIdx;
+	AntennaeCells[] cells;
+}

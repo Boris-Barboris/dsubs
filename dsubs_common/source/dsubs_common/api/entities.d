@@ -108,6 +108,9 @@ struct SubmarineTemplate
 
 	/// torpedo tube mounts
 	MountPoint[] tubeMounts;
+
+	/// Built-in hydrophones
+	HydrophoneTemplate[] hydrophones;
 }
 
 /// Self-propelled weapon
@@ -138,19 +141,29 @@ enum HydrophoneType: byte
 	/// both broadband and narrowband data available, operator
 	/// can listen to raw signal in one direction.
 	STANDARD,
-	/// Only broadband data is available, no raw signal available
+	/// Only broadband data is present, no raw signal is streamed
 	BROADBANDONLY
 }
 
-/// sound intensity level data from some antennae
-struct BroadbandRow
+struct HydrophoneTemplate
 {
+	string name;
+	HydrophoneType type;
+	MountPoint mount;
+	/// field of view of a single antennae
+	float fov = 0.0f;
+	/// antennae rotations relative to mount rotation.
+	/// length of this array is equal to number of antennaes in
+	/// the hydrophone.
+	float[] antRots;
+}
+
+/// sound intensity level data from some antennae
+struct AntennaeCells
+{
+	int hydrophoneIdx;	// index of the sub's hydrophone
+	int antennaeIdx;	// index of the antennae of the hydrophone
 	/// Each sample corresponds to one antennae "cell" - directional virtual
 	/// sensor.
-	ushort[] samples;
-	/// Angular size of cell. Effectively directional resolution of
-	/// antennae.
-	float cellAngle;
-	/// At the time of sampling this was the world-frame rotation of the antenna
-	float worldRot;
+	ushort[] cells;
 }

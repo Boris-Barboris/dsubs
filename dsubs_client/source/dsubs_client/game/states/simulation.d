@@ -255,7 +255,7 @@ final class SimulationGUI
 
 		Div topLevelDiv = builder(vDiv([
 			tabDiv,
-			filler,
+			new Waterfall(),
 			bottomDiv
 		])).build;
 
@@ -265,7 +265,10 @@ final class SimulationGUI
 
 
 import derelict.sfml2.graphics;
+import derelict.sfml2.system;
+
 import dsubs_client.render.camera;
+import dsubs_client.core.window;
 
 
 /// Zoomable waterfall display
@@ -275,17 +278,43 @@ final class Waterfall: GuiElement
 	private
 	{
 		// directional resolution will be 1024 pixels, in time we save up to
-		// 1200 rows. Such texture weighs 5 Mb.
+		// 60 rows. Such texture weighs 5 Mb.
 		enum int WIDTH = 1024;
-		enum int HEIGHT = 60 * 20;
+		enum int HEIGHT = 60;
+		enum float PXPERRAD = WIDTH / (PI * 2);
 	}
 
 	this()
 	{
-		m_renderTexture = sfRenderTexture_create(WIDTH, HEIGHT, false);
-		sfRenderTexture_setRepeated(m_renderTexture, true);
+		mouseTransparent = false;
+		m_renderTexture = sfRenderTexture_create(WIDTH, HEIGHT + 1, false);
 		sfRenderTexture_clear(m_renderTexture, sfBlack);
+		sfRenderTexture_setRepeated(m_renderTexture, sfTrue);
+		m_sfRst.texture = sfRenderTexture_getTexture(m_renderTexture);
+		bool ok = sfRenderTexture_setActive(m_renderTexture, false) == sfTrue;
+		assert(ok);
 		m_camera = new Camera2D(vec2ui(WIDTH, HEIGHT));
+		m_vertPos = -HEIGHT - 1;
+		m_vertices[0] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
+		m_vertices[1] = sfVertex(sfVector2f(1, 0), sfWhite, sfVector2f(WIDTH - 1, 0));
+		m_vertices[2] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(WIDTH - 1, HEIGHT - 1));
+		m_vertices[3] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
+		m_vertices[4] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(WIDTH - 1, HEIGHT - 1));
+		m_vertices[5] = sfVertex(sfVector2f(0, 1), sfWhite, sfVector2f(0, HEIGHT - 1));
+		foreach (ref sfVertex v; m_vertices)
+			v.texCoords.y -= m_vertPos;
+
+		// test reaction
+		onMouseUp += (int x, int y, sfMouseButton btn)
+			{
+				import std.random;
+				trace("debug waterfall data");
+				ubyte[] data = new ubyte[181];
+				foreach (ref d; data)
+					d = uniform(ubyte(15), ubyte.max);
+				drawData(data, dgr2rad(180), uniform(-2.0f, 2.0f));
+				completeRow();
+			};
 	}
 
 	~this()
@@ -299,5 +328,95 @@ final class Waterfall: GuiElement
 		// 180 course, 1023 pixel column is just before 180 course.
 		sfRenderTexture* m_renderTexture;
 		Camera2D m_camera;
+		sfVertex[6] m_vertices;
+		// m_renderTexture is perpetually streamed from
+		int m_vertPos;
+		sfVertex[] m_stage;
+
+		__gshared const sfRenderStates s_states =
+			sfRenderStates(sfBlendAlpha, sfTransform_Identity);
+	}
+
+	/// draw data to current row
+	void drawData(ubyte[] data, float fov, float bearing)
+	{
+		m_stage.length = data.length * 2;
+		float row = -m_vertPos - 0.5f;
+		float x = WIDTH / 2.0f - PXPERRAD * (bearing + fov / 2);
+		float dx = PXPERRAD * fov / data.length;
+		assert(dx > 0.0f);
+		if (x < 0.0f)
+			x += WIDTH;
+		if (x > WIDTH)
+			x -= WIDTH;
+		for (size_t i = 0, j = 0; i < data.length; i++, j += 2)
+		{
+			sfColor color = sfColor(data[i], data[i], data[i], 255);
+			m_stage[j].position = sfVector2f(x, row);
+			m_stage[j].color = color;
+			x += dx;
+			if (x > WIDTH)
+			{
+				// we have a special case of wraparound
+				m_stage[j + 1].position = sfVector2f(WIDTH, row);
+				m_stage[j + 1].color = color;
+				x -= WIDTH;
+				m_stage.length += 2;
+				m_stage[$ - 2].position = sfVector2f(0, row);
+				m_stage[$ - 2].color = color;
+				m_stage[$ - 1].position = sfVector2f(x, row);
+				m_stage[$ - 1].color = color;
+			}
+			else
+			{
+				m_stage[j + 1].position = sfVector2f(x, row);
+				m_stage[j + 1].color = color;
+			}
+		}
+
+		sfVertex[2] blackLine = [sfVertex(sfVector2f(0, row), sfBlack),
+			sfVertex(sfVector2f(WIDTH, row), sfBlack)];
+
+		bool ok = (sfRenderTexture_setActive(m_renderTexture, sfTrue) == sfTrue);
+		assert(ok, "unable to activate context");
+		sfRenderTexture_drawPrimitives(m_renderTexture, blackLine.ptr,
+			2, sfLines, &s_states);
+		sfRenderTexture_drawPrimitives(m_renderTexture, m_stage.ptr,
+			m_stage.length, sfLines, &s_states);
+	}
+
+	void completeRow()
+	{
+		sfRenderTexture_display(m_renderTexture);
+		m_vertPos++;
+		if (m_vertPos > 0)
+			m_vertPos -= HEIGHT;
+		updateTexCoords();
+	}
+
+	override void updateSize()
+	{
+		super.updateSize();
+		m_camera.screenSize = vec2ui(size.x.to!uint, size.y.to!uint);
+		m_vertices[1].position.x = m_vertices[2].position.x =
+			m_vertices[4].position.x = size.x;
+		m_vertices[2].position.y = m_vertices[4].position.y =
+			m_vertices[5].position.y = size.y;
+	}
+
+	/// update texture coordinates from camera transform
+	private void updateTexCoords()
+	{
+		m_vertices[0].texCoords.y = m_vertices[1].texCoords.y =
+			m_vertices[3].texCoords.y = -m_vertPos;
+		m_vertices[2].texCoords.y = m_vertices[4].texCoords.y =
+			m_vertices[5].texCoords.y = -m_vertPos + HEIGHT;
+	}
+
+	override void draw(Window wnd)
+	{
+		super.draw(wnd);
+		sfRenderWindow_drawPrimitives(wnd.wnd, m_vertices.ptr, 6, sfTriangles,
+			&m_sfRst);
 	}
 }
