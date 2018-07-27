@@ -43,17 +43,16 @@ final class CICListener
 	/// stop accepting new connections, close all opened ones
 	void stop()
 	{
+		if (!publicSock)
+			return;
+		info("closing CIC listening socket");
+		publicSock.shutdown(SocketShutdown.BOTH);
+		publicSock.close();
 		synchronized(this)
 		{
-			if (publicSock)
-			{
-				info("closing CIC listening socket");
-				foreach (CICServerConnection c; allCons.byValue())
-					c.close();
-				allCons.clear();
-				publicSock.shutdown(SocketShutdown.BOTH);
-				publicSock.close();
-			}
+			foreach (CICServerConnection c; allCons.byValue())
+				c.close();
+			allCons.clear();
 		}
 	}
 

@@ -38,11 +38,13 @@ class Camera2D
 		sfView* m_sfView;
 
 		bool m_dirty = false;
+		bool m_inverseY;
 	}
 
-	this(vec2ui screenSize = vec2ui(640, 480))
+	this(vec2ui screenSize = vec2ui(640, 480), bool inverseY = true)
 	{
 		m_sfView = sfView_create();
+		m_inverseY = inverseY;
 		fromComponents(vec2d(0, 0), 0, 1, screenSize);
 	}
 
@@ -57,11 +59,12 @@ class Camera2D
 		mat3x3d res = mat3x3d.translation(-m_center);
 		res = mat3x3d.rotateZ(-m_rotation) * res;
 		// screen Y is inversed relative to world Y, hence the minus
-		res = mat3x3d.scaling(vec2d(m_zoom, -m_zoom)) * res;
+		res = mat3x3d.scaling(vec2d(m_zoom, m_inverseY ? -m_zoom : m_zoom)) * res;
 		m_mat = mat3x3d.translation(vec2d(m_screenSize) / 2.0) * res;
 		m_imat = m_mat.inverse();
 		// update sfml view
-		sfView_setCenter(m_sfView, sfVector2f(m_center.x, -m_center.y));
+		sfView_setCenter(m_sfView,
+			sfVector2f(m_center.x, m_inverseY ? -m_center.y : m_center.y));
 		sfView_setRotation(m_sfView, -degrees(m_rotation));
 		sfView_setSize(m_sfView, m_screenSize.tosf);
 		sfView_zoom(m_sfView, 1.0 / m_zoom);

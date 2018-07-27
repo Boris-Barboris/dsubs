@@ -36,10 +36,14 @@ Socket listenTcp(TcpServer settings)
 void serveTcp(Socket listenSock, scope void delegate(Socket) onAccept)
 {
 	scope(exit) listenSock.close();
-	while (true)
+	try
 	{
-		Socket s = listenSock.accept();
-		info("TCP peer connected from ", s.remoteAddress.toAddrString());
-		onAccept(s);
+		while (true)
+		{
+			Socket s = listenSock.accept();
+			info("TCP peer connected from ", s.remoteAddress.toAddrString());
+			onAccept(s);
+		}
 	}
+	catch (SocketAcceptException) {}
 }

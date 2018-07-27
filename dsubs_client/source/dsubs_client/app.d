@@ -9,7 +9,7 @@ import dsubs_client.tests;
 import dsubs_client.game;
 
 
-int main(string[] argv)
+void main(string[] argv)
 {
 	version(unittest) info("Unit tests OK");
 	version(linux)
@@ -20,6 +20,7 @@ int main(string[] argv)
 	loadGlobalFonts();
 	runModuleTests();
 	//testGuiElements();
+	scope(failure) exit(1);
 	Game.start();
-	return 0;
+	exit(0);
 }

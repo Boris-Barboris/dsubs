@@ -279,8 +279,8 @@ final class Waterfall: GuiElement
 	{
 		// directional resolution will be 1024 pixels, in time we save up to
 		// 60 rows. Such texture weighs 5 Mb.
-		enum int WIDTH = 1024;
-		enum int HEIGHT = 60;
+		enum int WIDTH = 18;
+		enum int HEIGHT = 4;
 		enum float PXPERRAD = WIDTH / (PI * 2);
 	}
 
@@ -293,7 +293,9 @@ final class Waterfall: GuiElement
 		m_sfRst.texture = sfRenderTexture_getTexture(m_renderTexture);
 		bool ok = sfRenderTexture_setActive(m_renderTexture, false) == sfTrue;
 		assert(ok);
-		m_camera = new Camera2D(vec2ui(WIDTH, HEIGHT));
+		// camera is used to generate texture coordinates for m_vertices
+		m_camera = new Camera2D(vec2ui(WIDTH, HEIGHT), false);
+		m_camera.pan(vec2d(WIDTH * 0.5, HEIGHT * 0.5));
 		m_vertPos = -HEIGHT - 1;
 		m_vertices[0] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
 		m_vertices[1] = sfVertex(sfVector2f(1, 0), sfWhite, sfVector2f(WIDTH - 1, 0));
@@ -304,19 +306,27 @@ final class Waterfall: GuiElement
 		foreach (ref sfVertex v; m_vertices)
 			v.texCoords.y -= m_vertPos;
 
-		// test reaction
+		// test handlers
 		onMouseUp += (int x, int y, sfMouseButton btn)
 			{
+				if (btn != sfMouseLeft)
+					return;
 				import std.random;
 				static int t;
 				trace("debug waterfall data");
-				ubyte[] data = new ubyte[181];
+				ubyte[] data = new ubyte[WIDTH / 2];
 				foreach (ref d; data)
-					d = uniform(ubyte(15), ubyte.max);
+					d = uniform(ubyte(60), ubyte.max);
 				t++;
-				drawData(data, dgr2rad(t % 2 == 0 ? 180 : 90), uniform(-2.0f, 2.0f));
+				drawData(data, dgr2rad(90), dgr2rad(90 - 5 * t));
 				completeRow();
 			};
+
+		// mouse and keyboard handlers
+		onMouseDown += &processMouseDown;
+		onMouseUp += &processMouseUp;
+		onMouseMove += &processMouseMove;
+		onMouseScroll += &processMouseScroll;
 	}
 
 	~this()
@@ -343,7 +353,7 @@ final class Waterfall: GuiElement
 	void drawData(ubyte[] data, float fov, float bearing)
 	{
 		m_stage.length = data.length * 2;
-		float row = -m_vertPos - 0.5f;
+		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : HEIGHT + 0.5f;
 		float x = WIDTH / 2.0f - PXPERRAD * (bearing + fov / 2);
 		float dx = PXPERRAD * fov / data.length;
 		assert(dx > 0.0f);
@@ -385,8 +395,8 @@ final class Waterfall: GuiElement
 		sfRenderTexture_display(m_renderTexture);
 		m_vertPos++;
 		if (m_vertPos > 0)
-			m_vertPos -= HEIGHT;
-		float row = -m_vertPos - 0.5f;
+			m_vertPos -= HEIGHT + 1;
+		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : HEIGHT + 0.5f;
 		sfVertex[2] blackLine = [sfVertex(sfVector2f(0, row), sfBlack),
 			sfVertex(sfVector2f(WIDTH, row), sfBlack)];
 		sfRenderTexture_drawPrimitives(m_renderTexture, blackLine.ptr,
@@ -394,10 +404,72 @@ final class Waterfall: GuiElement
 		updateTexCoords();
 	}
 
+	private void processMouseDown(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight)
+		{
+			requestMouseFocus();
+			prev_x = x;
+			prev_y = y;
+		}
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight)
+			returnMouseFocus();
+	}
+
+	private
+	{
+		int prev_x, prev_y;
+	}
+
+	private void processMouseMove(int x, int y)
+	{
+		if (m_mouseFocused)
+		{
+			// we are panning
+			m_camera.pan(vec2d(double(prev_x - x) / size.x * WIDTH,
+				double(prev_y - y) / size.y * HEIGHT) / m_camera.zoom);
+			constraintCamera();
+			updateTexCoords();
+			prev_x = x;
+			prev_y = y;
+		}
+	}
+
+	private enum float ZOOM_SPD = 0.14f;
+
+	private void processMouseScroll(int x, int y, float delta)
+	{
+		double oldZoom = m_camera.zoom;
+		m_camera.zoom = max(1.0, min(16.0, m_camera.zoom * (1 + ZOOM_SPD * delta)));
+		if (delta > 0)
+		{
+			float ux = WIDTH * ((x - position.x) / float(size.x) - 0.5f);
+			float uy = HEIGHT * ((y - position.y) / float(size.y) - 0.5f);
+			vec2d zoomPivot = vec2d(ux, uy);
+			vec2d topan = zoomPivot / oldZoom - zoomPivot / m_camera.zoom;
+			m_camera.pan(topan);
+		}
+		constraintCamera();
+		updateTexCoords();
+	}
+
+	private void constraintCamera()
+	{
+		double overtop = -m_camera.transform2world(vec2d(0, 0)).y;
+		if (overtop > 0.0)
+			m_camera.pan(vec2d(0, overtop));
+		double underbot = m_camera.transform2world(vec2d(0, HEIGHT)).y - HEIGHT;
+		if (underbot > 0.0)
+			m_camera.pan(vec2d(0, -underbot));
+	}
+
 	override void updateSize()
 	{
 		super.updateSize();
-		m_camera.screenSize = vec2ui(size.x.to!uint, size.y.to!uint);
 		m_vertices[1].position.x = m_vertices[2].position.x =
 			m_vertices[4].position.x = size.x;
 		m_vertices[2].position.y = m_vertices[4].position.y =
@@ -407,10 +479,16 @@ final class Waterfall: GuiElement
 	/// update texture coordinates from camera transform
 	private void updateTexCoords()
 	{
+		// x
+		m_vertices[0].texCoords.x = m_vertices[3].texCoords.x =
+			m_vertices[5].texCoords.x = m_camera.transform2world(vec2d(0.0, 0.0)).x;
+		m_vertices[1].texCoords.x = m_vertices[2].texCoords.x =
+			m_vertices[4].texCoords.x = m_camera.transform2world(vec2d(WIDTH, 0.0)).x;
+		// y
 		m_vertices[0].texCoords.y = m_vertices[1].texCoords.y =
-			m_vertices[3].texCoords.y = -m_vertPos;
+			m_vertices[3].texCoords.y = m_camera.transform2world(vec2d(0.0, 0.0f)).y - m_vertPos;
 		m_vertices[2].texCoords.y = m_vertices[4].texCoords.y =
-			m_vertices[5].texCoords.y = -m_vertPos + HEIGHT;
+			m_vertices[5].texCoords.y = m_camera.transform2world(vec2d(0.0, HEIGHT)).y - m_vertPos;
 	}
 
 	override void draw(Window wnd)
