@@ -308,11 +308,13 @@ final class Waterfall: GuiElement
 		onMouseUp += (int x, int y, sfMouseButton btn)
 			{
 				import std.random;
+				static int t;
 				trace("debug waterfall data");
 				ubyte[] data = new ubyte[181];
 				foreach (ref d; data)
 					d = uniform(ubyte(15), ubyte.max);
-				drawData(data, dgr2rad(180), uniform(-2.0f, 2.0f));
+				t++;
+				drawData(data, dgr2rad(t % 2 == 0 ? 180 : 90), uniform(-2.0f, 2.0f));
 				completeRow();
 			};
 	}
@@ -373,14 +375,7 @@ final class Waterfall: GuiElement
 				m_stage[j + 1].color = color;
 			}
 		}
-
-		sfVertex[2] blackLine = [sfVertex(sfVector2f(0, row), sfBlack),
-			sfVertex(sfVector2f(WIDTH, row), sfBlack)];
-
-		bool ok = (sfRenderTexture_setActive(m_renderTexture, sfTrue) == sfTrue);
-		assert(ok, "unable to activate context");
-		sfRenderTexture_drawPrimitives(m_renderTexture, blackLine.ptr,
-			2, sfLines, &s_states);
+		sfRenderTexture_setActive(m_renderTexture, sfTrue);
 		sfRenderTexture_drawPrimitives(m_renderTexture, m_stage.ptr,
 			m_stage.length, sfLines, &s_states);
 	}
@@ -391,6 +386,11 @@ final class Waterfall: GuiElement
 		m_vertPos++;
 		if (m_vertPos > 0)
 			m_vertPos -= HEIGHT;
+		float row = -m_vertPos - 0.5f;
+		sfVertex[2] blackLine = [sfVertex(sfVector2f(0, row), sfBlack),
+			sfVertex(sfVector2f(WIDTH, row), sfBlack)];
+		sfRenderTexture_drawPrimitives(m_renderTexture, blackLine.ptr,
+			2, sfLines, &s_states);
 		updateTexCoords();
 	}
 
