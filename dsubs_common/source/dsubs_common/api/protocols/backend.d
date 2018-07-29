@@ -145,5 +145,6 @@ struct CourseReq
 struct AcousticStreamRes
 {
 	__gshared const int g_marshIdx;
-	AntennaeCells[] cells;
+	usecs_t atTime;
+	AntennaeData[] cells;
 }

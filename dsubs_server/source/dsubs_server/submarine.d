@@ -3,6 +3,8 @@ module dsubs_server.submarine;
 import dsubs_common.api.entities;
 import dsubs_common.math;
 
+import dsubs_sound.hydrophone;
+
 import dsubs_server.common;
 import dsubs_server.dynamics;
 import dsubs_server.player: Player;
@@ -22,6 +24,7 @@ final class Submarine
 		// modules of various nature
 		Rudder m_rudder;
 		Propulsor m_propulsor;
+		Hydrophone[] m_hydrophones;
 
 		// player reference
 		Player m_owner;
@@ -32,7 +35,7 @@ final class Submarine
 		int m_spawnId;
 	}
 
-	@property Transform2D transform() { return m_transform; }
+	final @property Transform2D transform() { return m_transform; }
 
 	@property RigidBody rigidBody() { return m_rigidBody; }
 
@@ -53,10 +56,10 @@ final class Submarine
 	this(Player owner, string prototypeName)
 	{
 		assert(owner);
-		this.m_owner = owner;
-		this.m_prototypeName = prototypeName;
 		m_transform = new Transform2D();
-		m_rigidBody = new RigidBody(transform);
+		m_owner = owner;
+		m_prototypeName = prototypeName;
+		m_rigidBody = new RigidBody(m_transform);
 		m_spawnId = uniform(0, int.max);
 	}
 
@@ -73,9 +76,11 @@ final class Submarine
 		assert(m_propulsor !is null);
 
 		m_rigidBody.forces = [cast(IForce) m_rudder, cast(IForce) m_propulsor];
-		// bind module transforms to submarine itself
+		// bind module transforms to submarine
 		m_rudder.transform = m_transform;
-		m_propulsor.transform = m_transform;
+		m_propulsor.transform.parent = m_transform;
+		foreach (h; m_hydrophones)
+			h.transform.parent = m_transform;
 		// add module masses to the hull
 		m_rigidBody.mass += m_propulsor.mass;
 		// calculate final MOI
@@ -120,13 +125,7 @@ final class Submarine
 }
 
 
-interface SubmarinePrototype
-{
-	Submarine build(Player p) const;
-	immutable(SubmarineTemplate)* getTemplate() const;
-}
-
-class BasicSubmarinePrototype: SubmarinePrototype
+class SubmarinePrototype
 {
 	immutable SubmarineTemplate tmpl;
 	// physical characteristics
@@ -138,6 +137,9 @@ class BasicSubmarinePrototype: SubmarinePrototype
 
 	/// Equilibrium drift angle on maximum rudder deflection, radians
 	float equilDrift;
+
+	// hydrophpone prototypes
+	HydrophonePrototype[] hprots;
 
 	this(immutable SubmarineTemplate t)
 	{
@@ -159,6 +161,14 @@ class BasicSubmarinePrototype: SubmarinePrototype
 		// Cm * equilDrift = steeringK
 		brudder.steeringK = fabs(equilDrift * res.m_rigidBody.hydroModel.Cm);
 		res.m_rudder = brudder;
+		// hydrophones
+		foreach (i, ref hp; hprots)
+		{
+			Transform2D t = new Transform2D();
+			t.position = tmpl.hydrophones[i].mount.mountCenter.toGfm!double;
+			t.rotation = tmpl.hydrophones[i].mount.rotation;
+			res.m_hydrophones ~= new Hydrophone(t, hp);
+		}
 		return res;
 	}
 

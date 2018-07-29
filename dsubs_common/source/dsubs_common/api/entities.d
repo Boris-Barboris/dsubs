@@ -29,9 +29,12 @@ struct PODVector(T, size_t size)
 	}
 
 	/// reinterpret cast to gfm vector
-	pragma(inline) Vector!(T, size) toGfm() const @trusted
+	pragma(inline) Vector!(FT, size) toGfm(FT = T)() const @trusted
 	{
-		return *cast(Vector!(T, size)*) &this;
+		static if (is(FT == T))
+			return *cast(Vector!(FT, size)*) &this;
+		else
+			return Vector!(FT, size)(data);
 	}
 
 	ref inout(T) opIndex(size_t i) inout
@@ -106,9 +109,6 @@ struct SubmarineTemplate
 	/// index of the first polygon in hullModel that is drawn on top of all propulsors
 	int elevatedHullShapeIdx = 1;
 
-	/// torpedo tube mounts
-	MountPoint[] tubeMounts;
-
 	/// Built-in hydrophones
 	HydrophoneTemplate[] hydrophones;
 }
@@ -147,6 +147,7 @@ enum HydrophoneType: byte
 
 struct HydrophoneTemplate
 {
+	/// short name to diplay in selectors
 	string name;
 	HydrophoneType type;
 	MountPoint mount;
@@ -159,11 +160,12 @@ struct HydrophoneTemplate
 }
 
 /// sound intensity level data from some antennae
-struct AntennaeCells
+struct AntennaeData
 {
 	int hydrophoneIdx;	// index of the sub's hydrophone
-	int antennaeIdx;	// index of the antennae of the hydrophone
-	/// Each sample corresponds to one antennae "cell" - directional virtual
-	/// sensor.
+	int antennaeIdx;	// index of the antennae on that hydrophone
+	/// Each sample corresponds to one antennae "cell" - directional virtual sensor.
+	/// Units are decibells, scaled to [0, ushort.max] interval. Conversion to
+	/// ushort is performed to save network bandwidth.
 	ushort[] cells;
 }

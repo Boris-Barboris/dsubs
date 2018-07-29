@@ -10,5 +10,5 @@
 	},
 	"description": "Server-side acoustics library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
-	"targetType": "executable"
+	"targetType": "library"
 }

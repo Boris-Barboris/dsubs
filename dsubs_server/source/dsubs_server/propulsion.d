@@ -3,6 +3,8 @@ module dsubs_server.propulsion;
 import dsubs_common.api.entities;
 import dsubs_common.math;
 
+import dsubs_sound.soundsource;
+
 import dsubs_server.common;
 import dsubs_server.dynamics;
 
@@ -10,24 +12,28 @@ import dsubs_server.dynamics;
 /// module that is responsible for forward\backwards thrust
 abstract class Propulsor: IForce
 {
-	Transform2D transform;
-
-	protected
+	private
 	{
+		Transform2D m_transform;
 		string m_prototypeName;
-
-		/// current rotation speed, [-1.0, 1.0]
-		float m_rotSpd = 0.0f;
-
 		/// mass that is added to the hull
 		float m_mass = 0.0f;
 	}
 
-	@property string prototypeName() const { return m_prototypeName; }
-	@property float mass() const { return m_mass; }
+	protected
+	{
+		/// current rotation speed, [-1.0, 1.0]
+		float m_rotSpd = 0.0f;
+	}
+
+	final @property Transform2D transform() { return m_transform; }
+	final @property string prototypeName() const { return m_prototypeName; }
+	final @property float mass() const { return m_mass; }
 
 	/// desired rotation speed, [-1.0, 1.0]
 	float targetRotSpd = 0.0f;
+
+	abstract void registerNoiseEmitters();
 }
 
 /// simple propulsor with linear thrust law
@@ -39,6 +45,8 @@ final class BasicPropulsor: Propulsor
 		float rotAcceleration = 0.34f;
 		float posThrustK = 0.0f;
 		float negThrustK = 0.0f;
+
+		PropellerSound m_sound;
 	}
 
 	vec2d getForce(const RigidBody b, ref const Kinematics c)
@@ -59,13 +67,7 @@ final class BasicPropulsor: Propulsor
 }
 
 
-interface PropulsorPrototype
-{
-	Propulsor build() const;
-	immutable(PropulsorTemplate)* getTemplate() const;
-}
-
-class BasicPropulsorPrototype: PropulsorPrototype
+class PropulsorPrototype: PropulsorPrototype
 {
 	immutable PropulsorTemplate tmpl;
 	RolledF posThrustK;

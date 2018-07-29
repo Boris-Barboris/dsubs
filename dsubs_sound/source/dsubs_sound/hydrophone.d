@@ -4,6 +4,7 @@ import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
 
 import dsubs_common.math;
+import dsubs_common.api.entities;
 
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
@@ -14,23 +15,20 @@ import dsubs_sound.modulation;
 
 struct HydrophonePrototype
 {
-	AntennaePrototype[] antennaes;
+	float[] antennaeRots;
 	int minFreq, maxFreq;
 	float antennaeSpan;
-	int cellCount;		// number of directional cells in each antennae
+	int cellCount;
 	float directivity;
-	dB baseNoise;
-}
-
-struct AntennaePrototype
-{
-	float rot;
+	dB baseNoise = 3.0f;
+	float bearingErrNoise = 0.001f;
+	float flowNoiseMult = 0.01f;
 }
 
 /// Hydrophone is a collection of identical antennaes
 final class Hydrophone
 {
-	this(Transform2D t, HydrophonePrototype p)
+	this(Transform2D t, ref const HydrophonePrototype p)
 	{
 		assert(p.minFreq >= 20 && p.maxFreq >= p.minFreq);
 		m_transform = t;
@@ -40,11 +38,13 @@ final class Hydrophone
 		m_directivity = p.directivity;
 		m_baseNoise = p.baseNoise;
 		m_span = p.antennaeSpan;
+		m_bearingErrNoise = p.bearingErrNoise;
+		m_flowNoiseMult = p.flowNoiseMult;
 		assert(m_span > 0.0f && m_span < 2 * PI - MAX_HALO);
 		assert(p.cellCount > 0);
 		m_cellAngle = m_span / p.cellCount;
-		foreach (ap; p.antennaes)
-			m_ant ~= new Antennae(p.cellCount, ap.rot);
+		foreach (rot; p.antennaeRots)
+			m_ant ~= new Antennae(p.cellCount, rot);
 	}
 
 	static this()
@@ -59,6 +59,8 @@ final class Hydrophone
 		int m_minFreq, m_maxFreq, m_srate;
 		float m_span, m_cellAngle;
 		float m_directivity;
+		float m_bearingErrNoise;
+		float m_flowNoiseMult;
 		dB m_baseNoise;
 
 		/// max size of sound halo
@@ -88,9 +90,13 @@ final class Hydrophone
 		static Fft s_fftCache;
 	}
 
+	@property Transform2D transform() { return m_transform; }
+
 	@property bool hasListener() const { return m_hasListener; }
 
 	@property bool listenDirValid() const { return m_listenDirValid; }
+
+	@property size_t antennaCount() const { return m_ant.length; }
 
 	@property void hasListener(bool rhs)
 	{
@@ -99,6 +105,7 @@ final class Hydrophone
 			m_listenDirValid = false;
 	}
 
+	/// set world-space direction the user wants to listen to
 	@property void listenDir(double rhs)
 	{
 		m_listenDir = clampAnglePi(rhs);
@@ -158,16 +165,15 @@ final class Hydrophone
 	private void updateFlowNoise(float kts)
 	{
 		float res = 0;
-		float mult = 0.01f;
 		for (int freq = m_minFreq; freq <= m_maxFreq; freq++)
 		{
 			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
 			float intensity = (flowNoise(freq, kts) + rngm).toLinear;
 			res += intensity;
 			if (m_hasListener)
-				s_stageIspec.bins[freq - 1] += intensity * mult;
+				s_stageIspec.bins[freq - 1] += intensity * m_flowNoiseMult;
 		}
-		res *= mult / (m_maxFreq + 1);
+		res *= m_flowNoiseMult / (m_maxFreq + 1);
 		m_baseFlowNoise = Intensity(res * m_directivity);
 	}
 
@@ -251,7 +257,7 @@ final class Hydrophone
 		SourcePrecalc res;
 		res.dir = s.transform.wposition - m_transform.wposition;
 		res.range = res.dir.length;
-		res.worldBearing = courseAngle(res.dir);
+		res.worldBearing = courseAngle(res.dir) + uniform(-m_bearingErrNoise, m_bearingErrNoise);
 		// half of halo size
 		res.haloBase = s.radius / res.range;
 		res.haloBound = fmin(3.0 * res.haloBase, MAX_HALO);
@@ -263,6 +269,13 @@ final class Hydrophone
 		SourcePrecalc prec = precalcForSource(s);
 		foreach (a; m_ant)
 			a.applySoundSource(s, prec);
+	}
+
+	immutable(ushort)[] getBroadbandData(int antennaIdx) const
+	{
+		ushort[] res;
+		m_ant[antennaIdx].imprint(res);
+		return cast(immutable(ushort)[]) res;
 	}
 
 	/// Continuous block of hydrophone elements
@@ -308,6 +321,17 @@ final class Hydrophone
 			{
 				dest[i] = IntensityLevel(c.toDb + uniform(0.0f, m_baseNoise));
 				assert(!isNaN(dest[i].val));
+			}
+		}
+
+		void imprint(ref ushort[] dest, dB maxLevel = 90.0f) const
+		{
+			dest.length = cells.length;
+			foreach (i, ref const c; cells)
+			{
+				float level = IntensityLevel(c.toDb + uniform(0.0f, m_baseNoise));
+				assert(!isNaN(level));
+				dest[i] = lrint(min(float(ushort.max), level / maxLevel * ushort.max)).to!ushort;
 			}
 		}
 
@@ -382,8 +406,8 @@ private void printToPng(string filename, IntensityLevel[][] data, dB zeroLevel, 
 unittest
 {
 	HydrophonePrototype hp = HydrophonePrototype(
-		[AntennaePrototype(0.0f)],
-		500, 2047, dgr2rad(180.0f), 90, 1.0f / 90.0f, 3.0f);
+		[0.0f],
+		500, 2047, dgr2rad(180.0f), 90, 1.0f / 90.0f);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 90;
@@ -416,8 +440,8 @@ unittest
 	writeln("relative bearings: ", relBearings);
 
 	HydrophonePrototype hp = HydrophonePrototype(
-		[AntennaePrototype(0.0f)],
-		500, 2047, dgr2rad(180), 181, 4 / 181.0f, 3.0f);
+		[0.0f],
+		500, 2047, dgr2rad(180), 181, 4 / 181.0f);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 500;

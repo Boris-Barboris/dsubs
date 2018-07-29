@@ -9,6 +9,10 @@ import dsubs_common.api;
 import dsubs_common.api.protocols.backend;
 import dsubs_common.math;
 
+import dsubs_sound.hydrophone;
+import dsubs_sound.soundsource;
+import dsubs_sound.image;
+
 import dsubs_server.common;
 import dsubs_server.propulsion;
 import dsubs_server.player: Player;
@@ -71,8 +75,8 @@ private:
 		// Standard screw
 		bp = new BasicPropulsorPrototype(
 			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
-				"Standard screw",
-				"Five-bladed screw with no outstanding traits, " ~
+				"Five-blade screw",
+				"Five-blade screw with no outstanding traits, " ~
 				"but relatively good high-speed performance.\n\nMass: 50t",
 				PropulsorType.SCREW,
 				5,
@@ -85,23 +89,25 @@ private:
 		bp.posThrustK = RolledF(2600.0f, 40.0f);
 		bp.negThrustK = RolledF(700.0f, 20.0f);
 		bp.mass = 50.0f;
-		g_propulsors["Standard screw"] = bp;
+		g_propulsors["Five-blade screw"] = bp;
 	}
 
 	void buildSubmarineTemplates()
 	{
-		BasicSubmarinePrototype sp;
+		SubmarinePrototype sp;
 
 		// Standard screw
-		sp = new BasicSubmarinePrototype(
+		sp = new SubmarinePrototype(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
-				"Bob",
-`Light attack submarine "Bob" offers good balance of stealth, ` ~
+				"Nautilus",
+`Light attack submarine "Nautilus" offers good balance of stealth, ` ~
 `offensive capabilities and survivability.
 
 Length: 70m
 Displacement: 2000t
-Top speed: 17m/s`,
+Top speed: 17m/s
+Hydrophones:
+  - passive 500-2kHz bow sphere array`,
 				[
 					ConvexPolygon(xSymmetry([
 							0.0, 35.0,
@@ -130,7 +136,13 @@ Top speed: 17m/s`,
 				],
 				[MountPoint(Vector2f(0.0, -34.0f))],
 				1,
-				[]
+				[
+					HydrophoneTemplate(
+						"bow", HydrophoneType.STANDARD,
+						MountPoint(Vector2f(0.0f, 14.2f)),
+						dgr2rad(180), [0.0f]
+					)
+				]
 			));
 		sp.mass = RolledF(2000.0f, 10.0f);
 		sp.Cd0 = RolledF(9.0, 0.05f);
@@ -142,7 +154,10 @@ Top speed: 17m/s`,
 		vec2f dims = getHullDims(sp.tmpl.hullModel);
 		trace("dims: ", dims);
 		sp.hullLength = dims.y;
-		g_submarines["Bob"] = sp;
+		sp.hprots = [
+			HydrophonePrototype([0.0f], 500, 2047, dgr2rad(180), 181, 4 / 181.0f)
+		];
+		g_submarines[sp.tmpl.name] = sp;
 	}
 
 }

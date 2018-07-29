@@ -116,6 +116,7 @@ final class Div: GuiElement
 		GuiElement old = m_children[idx];
 		old.parent = null;
 		old.parentViewport = null;
+		old.skipNextMouseTest();
 		newChild.parent = this;
 		newChild.parentViewport = &viewport();
 		m_children[idx] = newChild;
@@ -128,6 +129,13 @@ final class Div: GuiElement
 		// kids are expected to notify us on their property changes
 		if (!m_updatingKids)
 			updateChildren();
+	}
+
+	override void skipNextMouseTest()
+	{
+		super.skipNextMouseTest();
+		foreach (el; m_children)
+			el.skipNextMouseTest();
 	}
 
 	private vec2i dimVec(int dimVal, int odimVal) const

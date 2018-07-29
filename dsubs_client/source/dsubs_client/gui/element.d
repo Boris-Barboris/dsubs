@@ -84,9 +84,12 @@ class GuiElement: IInputReciever
 
 	final @property GuiElement parent(GuiElement rhs)
 	{
-		if (rhs is null)
-			m_skipNextMouseTest = true;
 		return m_parent = rhs;
+	}
+
+	void skipNextMouseTest()
+	{
+		m_skipNextMouseTest = true;
 	}
 
 	// Called by child when it's layout-related parameters have changed
