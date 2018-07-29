@@ -198,3 +198,44 @@ unittest
 	assert(s.length == 7);
 	assert(s.capacity >= 20 - 6);
 }
+
+
+/// OutputRange implementation that rewrites the mutstring content.
+/// Usefull in pair with std.formattedwrite. Does not set mutrsring length
+/// in the end, just writes trailing zero.
+auto mutstringRewriter(Char)(Char[] base)
+	if (isSomeChar!Char)
+{
+	assert(base.length > 0);
+	static struct Writer
+	{
+		Char[] base;
+		size_t len = 0;
+		void put(Char c)
+		{
+			if (len == base.length - 1)
+				base.length += 8;
+			base[len++] = c;
+		}
+		Char[] get()
+		{
+			base[len] = 0;
+			return base;
+		}
+	}
+
+	return Writer(base);
+}
+
+unittest
+{
+	import std.format;
+
+	mutstring s = _s("123");
+	auto rw = mutstringRewriter(s);
+	formattedWrite(rw, "%d", 77);
+	s = rw.get();
+	assert(s.length == 4);
+	assert(s[2] == 0);
+	assert(s[0..2] == "77");
+}

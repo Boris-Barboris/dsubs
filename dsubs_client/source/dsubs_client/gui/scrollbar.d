@@ -47,8 +47,8 @@ final class ScrollBar: GuiElement
 		sfRectangleShape_setFillColor(m_sbBackgroundRect, m_sbBackFillColor);
 		sfRectangleShape_setFillColor(m_sbHandleRect, m_sbHandleColor);
 		m_child = child;
-		m_child.m_parent = this;
-		m_child.parentViewport = &m_viewport;
+		m_child.parent = this;
+		m_child.parentViewport = &viewport();
 		mouseTransparent = false;
 		onMouseScroll += &handleMouseScroll;
 		onMouseDown += &handleMouseDown;
@@ -184,7 +184,7 @@ final class ScrollBar: GuiElement
 		super.draw(wnd);
 		m_child.draw(wnd);
 		// child will set it's own scissors
-		sfRenderWindow_setScissor(wnd.wnd, m_viewport.tosf);
+		sfRenderWindow_setScissor(wnd.wnd, viewport.tosf);
 		if (m_sbVisible)
 		{
 			sfRenderWindow_drawRectangleShape(wnd.wnd, m_sbBackgroundRect, &m_sfRst);

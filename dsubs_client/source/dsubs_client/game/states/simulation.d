@@ -84,7 +84,6 @@ private
 	enum int TAB_SIZE = 28;
 	enum int BIG_BTN_FONT = 25;
 	enum int BTN_FONT = 20;
-	enum sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
 	enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
 }
 
@@ -92,8 +91,12 @@ private
 final class SimulationGUI
 {
 
-	Label curCourse, curSpeed;
-	TextField tgtCourseField, tgtThrottleField;
+	private
+	{
+		Label curCourse, curSpeed;
+		TextField tgtCourseField, tgtThrottleField;
+		Waterfall psonarGui;
+	}
 
 	void handleSubKinematicRes(CICSubKinematicRes res)
 	{
@@ -128,15 +131,28 @@ final class SimulationGUI
 
 		Button tacticalTab = builder(new Button()).content("F1 Tactical").
 			fontSize(BIG_BTN_FONT).build;
-		Button passiveAcTab = builder(new Button()).content("F2 Broadband").
+		Button psonarTab = builder(new Button()).content("F2 Passive sonar").
 			fontSize(BIG_BTN_FONT).build;
-		Button activeAcTab = builder(new Button()).content("F3 Active").
+		Button asonarTab = builder(new Button()).content("F3 Active sonar").
 			fontSize(BIG_BTN_FONT).build;
+
+		Game.hotkeyManager.setHotkey(Hotkey(sfKeyF1), ()
+		{
+			tacticalTab.simulateClick();
+		});
+		Game.hotkeyManager.setHotkey(Hotkey(sfKeyF2), ()
+		{
+			psonarTab.simulateClick();
+		});
+		Game.hotkeyManager.setHotkey(Hotkey(sfKeyF3), ()
+		{
+			asonarTab.simulateClick();
+		});
 
 		Div tabDiv = builder(hDiv([
 			tacticalTab,
-			passiveAcTab,
-			activeAcTab
+			psonarTab,
+			asonarTab
 		])).fixedSize(vec2i(1, TAB_SIZE)).backgroundColor(DIV_BCKGROUND).
 		backgroundVisible(true).build;
 
@@ -253,11 +269,23 @@ final class SimulationGUI
 			).fixedSize(vec2i(1, (BTN_FONT + 6) * 2)).
 			backgroundColor(DIV_BCKGROUND).backgroundVisible(true).build;
 
+		GuiElement tabFiller = filler();
+		psonarGui = new Waterfall();
+
 		Div topLevelDiv = builder(vDiv([
 			tabDiv,
-			new Waterfall(),
+			tabFiller,
 			bottomDiv
 		])).build;
+
+		void setMiddlePane(GuiElement el)
+		{
+			topLevelDiv.setChild(el, 1);
+		}
+
+		tacticalTab.onClick += (btn) { setMiddlePane(tabFiller); };
+		psonarTab.onClick += (btn) { setMiddlePane(psonarGui); };
+		asonarTab.onClick += (btn) { setMiddlePane(tabFiller); };
 
 		Game.guiManager.addPanel(new Panel(topLevelDiv));
 	}
@@ -282,6 +310,8 @@ final class Waterfall: GuiElement
 		enum int WIDTH = 18;
 		enum int HEIGHT = 4;
 		enum float PXPERRAD = WIDTH / (PI * 2);
+		enum int COMPASS_HEADER_HEIGHT = 18;
+		enum int COMPASS_FONTSIZE = 14;
 	}
 
 	this()
@@ -297,6 +327,7 @@ final class Waterfall: GuiElement
 		m_camera = new Camera2D(vec2ui(WIDTH, HEIGHT), false);
 		m_camera.pan(vec2d(WIDTH * 0.5, HEIGHT * 0.5));
 		m_vertPos = -HEIGHT - 1;
+		// m_vertices form a rectanglular area to draw broadband data to
 		m_vertices[0] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
 		m_vertices[1] = sfVertex(sfVector2f(1, 0), sfWhite, sfVector2f(WIDTH - 1, 0));
 		m_vertices[2] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(WIDTH - 1, HEIGHT - 1));
@@ -304,7 +335,29 @@ final class Waterfall: GuiElement
 		m_vertices[4] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(WIDTH - 1, HEIGHT - 1));
 		m_vertices[5] = sfVertex(sfVector2f(0, 1), sfWhite, sfVector2f(0, HEIGHT - 1));
 		foreach (ref sfVertex v; m_vertices)
+		{
+			v.position.y = COMPASS_HEADER_HEIGHT;
 			v.texCoords.y -= m_vertPos;
+		}
+
+		// compass
+		m_compassRect = sfRectangleShape_create();
+		sfRectangleShape_setOutlineThickness(m_compassRect, 0.0f);
+		sfRectangleShape_setFillColor(m_compassRect, sfBlack);
+		sfRectangleShape_setPosition(m_compassRect, sfVector2f(0, 0));
+		for (int i = 0; i < 4; i++)
+		{
+			Label lbl = new Label();
+			lbl.fontSize = COMPASS_FONTSIZE;
+			lbl.size = vec2i(40, COMPASS_HEADER_HEIGHT);
+			lbl.fontColor = sfWhite;
+			lbl.htextAlign = HTextAlign.CENTER;
+			lbl.content = (i * 90).to!string;
+			m_compassLabels[i] = lbl;
+		}
+		m_underCursorLabel = builder(new Label()).fontSize(COMPASS_FONTSIZE).
+			size(vec2i(40, COMPASS_HEADER_HEIGHT)).fontColor(sfYellow).
+			htextAlign(HTextAlign.CENTER).build();
 
 		// test handlers
 		onMouseUp += (int x, int y, sfMouseButton btn)
@@ -327,11 +380,14 @@ final class Waterfall: GuiElement
 		onMouseUp += &processMouseUp;
 		onMouseMove += &processMouseMove;
 		onMouseScroll += &processMouseScroll;
+		onMouseEnter += () { m_cursorInside = true; };
+		onMouseLeave += () { m_cursorInside = false; };
 	}
 
 	~this()
 	{
 		sfRenderTexture_destroy(m_renderTexture);
+		sfRectangleShape_destroy(m_compassRect);
 	}
 
 	private
@@ -347,6 +403,11 @@ final class Waterfall: GuiElement
 
 		__gshared const sfRenderStates s_states =
 			sfRenderStates(sfBlendAlpha, sfTransform_Identity);
+
+		sfRectangleShape* m_compassRect; // compass background
+		Label[4] m_compassLabels;
+		Label m_underCursorLabel;
+		bool m_cursorInside;
 	}
 
 	/// draw data to current row
@@ -425,18 +486,26 @@ final class Waterfall: GuiElement
 		int prev_x, prev_y;
 	}
 
+	/// Y size of waterfall display in pixels
+	@property private int csizey() const
+	{
+		return size.y - COMPASS_HEADER_HEIGHT;
+	}
+
 	private void processMouseMove(int x, int y)
 	{
 		if (m_mouseFocused)
 		{
 			// we are panning
 			m_camera.pan(vec2d(double(prev_x - x) / size.x * WIDTH,
-				double(prev_y - y) / size.y * HEIGHT) / m_camera.zoom);
+				double(prev_y - y) / csizey * HEIGHT) / m_camera.zoom);
 			constraintCamera();
 			updateTexCoords();
+			updateCompassLabels();
 			prev_x = x;
 			prev_y = y;
 		}
+		updateCursorLabel(x - position.x);
 	}
 
 	private enum float ZOOM_SPD = 0.14f;
@@ -448,13 +517,15 @@ final class Waterfall: GuiElement
 		if (delta > 0)
 		{
 			float ux = WIDTH * ((x - position.x) / float(size.x) - 0.5f);
-			float uy = HEIGHT * ((y - position.y) / float(size.y) - 0.5f);
-			vec2d zoomPivot = vec2d(ux, uy);
+			float uy = HEIGHT * ((y - position.y - COMPASS_HEADER_HEIGHT) /
+				float(csizey) - 0.5f);
+			vec2d zoomPivot = 1.2f * vec2d(ux, uy);
 			vec2d topan = zoomPivot / oldZoom - zoomPivot / m_camera.zoom;
 			m_camera.pan(topan);
 		}
 		constraintCamera();
 		updateTexCoords();
+		updateCompassLabels();
 	}
 
 	private void constraintCamera()
@@ -467,13 +538,21 @@ final class Waterfall: GuiElement
 			m_camera.pan(vec2d(0, -underbot));
 	}
 
+	override void updatePosition()
+	{
+		super.updatePosition();
+		updateCompassLabels();
+	}
+
 	override void updateSize()
 	{
 		super.updateSize();
+		sfRectangleShape_setSize(m_compassRect, sfVector2f(size.x, COMPASS_HEADER_HEIGHT));
 		m_vertices[1].position.x = m_vertices[2].position.x =
 			m_vertices[4].position.x = size.x;
 		m_vertices[2].position.y = m_vertices[4].position.y =
 			m_vertices[5].position.y = size.y;
+		updateCompassLabels();
 	}
 
 	/// update texture coordinates from camera transform
@@ -491,10 +570,61 @@ final class Waterfall: GuiElement
 			m_vertices[5].texCoords.y = m_camera.transform2world(vec2d(0.0, HEIGHT)).y - m_vertPos;
 	}
 
+	// bearing to pixel in screen space
+	private float bearingToPixel(float bearing)
+	{
+		float txCoord = m_camera.transform2screen(
+			vec2d(WIDTH / 2.0f - PXPERRAD * bearing, 0)).x;
+		float screenWidthTx = WIDTH * m_camera.zoom;
+		if (txCoord < 0.0f)
+			txCoord = screenWidthTx + txCoord % screenWidthTx;
+		else
+			txCoord = txCoord % screenWidthTx;
+		return txCoord * size.x / WIDTH;
+	}
+
+	private float pixelToBearing(int px)
+	{
+		float tx = m_vertices[0].texCoords.x + (float(px) / size.x) *
+			(m_vertices[1].texCoords.x - m_vertices[0].texCoords.x);
+		return PI - tx / PXPERRAD;
+	}
+
+	private void updateCompassLabels()
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			float bearing = dgr2rad(-i * 90);
+			int lblPosX = lrint(bearingToPixel(bearing)).to!int -
+				m_compassLabels[i].size.x / 2;
+			m_compassLabels[i].position = vec2i(position.x + lblPosX, position.y);
+		}
+	}
+
+	private void updateCursorLabel(int relCoursorX)
+	{
+		import std.format;
+
+		float bearing = clampAnglePi(pixelToBearing(relCoursorX));
+		int lblPosX = lrint(bearingToPixel(bearing)).to!int -
+				m_underCursorLabel.size.x / 2;
+		m_underCursorLabel.position = vec2i(position.x + lblPosX, position.y);
+		dmutstring labelContent = m_underCursorLabel.content;
+		int bearingInt = lrint(-compassAngle(bearing).rad2dgr).to!int;
+		auto rw = mutstringRewriter(labelContent);
+		formattedWrite!"%d"(rw, bearingInt);
+		m_underCursorLabel.content = rw.get();
+	}
+
 	override void draw(Window wnd)
 	{
 		super.draw(wnd);
+		sfRenderWindow_drawRectangleShape(wnd.wnd, m_compassRect, &m_sfRst);
 		sfRenderWindow_drawPrimitives(wnd.wnd, m_vertices.ptr, 6, sfTriangles,
 			&m_sfRst);
+		foreach (l; m_compassLabels)
+			l.draw(wnd);
+		if (m_cursorInside)
+			m_underCursorLabel.draw(wnd);
 	}
 }

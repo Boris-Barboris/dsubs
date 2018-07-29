@@ -56,8 +56,8 @@ final class TextBox: GuiElement
 		m_content = rhs.replace("\t"d, "    "d);
 		updateText();
 		size = vec2i(size.x, m_textFullHeight);
-		if (m_parent)
-			m_parent.childChanged(this);
+		if (parent)
+			parent.childChanged(this);
 		return m_content;
 	}
 

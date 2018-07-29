@@ -67,8 +67,8 @@ final class Div: GuiElement
 		m_children = kids;
 		foreach (kid; m_children)
 		{
-			kid.m_parent = this;
-			kid.parentViewport = &m_viewport;
+			kid.parent = this;
+			kid.parentViewport = &viewport();
 		}
 		// borders between m_children, kids.length - 1 borders to be exact
 		foreach (ref brd; m_divBorders)
@@ -109,6 +109,20 @@ final class Div: GuiElement
 			sfRectangleShape_setFillColor(r, m_borderColor);
 	}
 
+	/// set idx child in children array to newChild and return
+	/// the old one.
+	GuiElement setChild(GuiElement newChild, size_t idx)
+	{
+		GuiElement old = m_children[idx];
+		old.parent = null;
+		old.parentViewport = null;
+		newChild.parent = this;
+		newChild.parentViewport = &viewport();
+		m_children[idx] = newChild;
+		updateChildren();
+		return old;
+	}
+
 	override void childChanged(GuiElement child)
 	{
 		// kids are expected to notify us on their property changes
@@ -126,7 +140,7 @@ final class Div: GuiElement
 
 	private @property bool extBordersHidden() const
 	{
-		return (cast(Div) m_parent || (m_parent is null && layoutType == LayoutType.GREEDY));
+		return (cast(Div) parent || (parent is null && layoutType == LayoutType.GREEDY));
 	}
 
 	// we don't display external border if our parent is div
