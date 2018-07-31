@@ -20,6 +20,11 @@ abstract class Propulsor: IForce
 		float m_mass = 0.0f;
 	}
 
+	private this()
+	{
+		m_transform = new Transform2D();
+	}
+
 	protected
 	{
 		/// current rotation speed, [-1.0, 1.0]
@@ -33,7 +38,8 @@ abstract class Propulsor: IForce
 	/// desired rotation speed, [-1.0, 1.0]
 	float targetRotSpd = 0.0f;
 
-	abstract void registerNoiseEmitters();
+	/// call to register stuff in component managers (sound etc...)
+	void bootstrap();
 }
 
 /// simple propulsor with linear thrust law
@@ -43,11 +49,13 @@ final class BasicPropulsor: Propulsor
 	{
 		/// how fast rotSpd can change
 		float rotAcceleration = 0.34f;
-		float posThrustK = 0.0f;
-		float negThrustK = 0.0f;
+		float posThrustK;
+		float negThrustK;
 
 		PropellerSound m_sound;
 	}
+
+	private this() {}
 
 	vec2d getForce(const RigidBody b, ref const Kinematics c)
 	{
@@ -64,15 +72,21 @@ final class BasicPropulsor: Propulsor
 	{
 		m_rotSpd = cmove(m_rotSpd, targetRotSpd, rotAcceleration, dt);
 	}
+
+	void bootstrap()
+	{
+		// register sound source in sound system
+	}
 }
 
 
-class PropulsorPrototype: PropulsorPrototype
+final class PropulsorFactory
 {
 	immutable PropulsorTemplate tmpl;
 	RolledF posThrustK;
 	RolledF negThrustK;
 	float mass;
+	PropellerSoundPrototype soundPrototype;
 
 	this(immutable PropulsorTemplate t)
 	{
@@ -86,6 +100,7 @@ class PropulsorPrototype: PropulsorPrototype
 		res.negThrustK = negThrustK;
 		res.m_prototypeName = tmpl.name;
 		res.m_mass = mass;
+		res.m_sound = new PropellerSound(res.transform, soundPrototype);
 		return res;
 	}
 
@@ -101,7 +116,7 @@ abstract class Rudder: IForce
 	Transform2D transform;
 	protected float rudderPos = 0.0f;
 
-	/// target course
+	/// target course, world-space
 	float targetCourse = 0.0f;
 }
 

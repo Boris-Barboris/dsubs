@@ -6,13 +6,77 @@ import dsubs_sound.common;
 import dsubs_sound.spectrum;
 
 
-/// DEMON component that modulates time-domain signal with a cascade of harmonics
-struct AmplitudeModulator
+interface IModulator
 {
-	float startFundFreq;	/// fundamental frequency at the beginning
-	float endFundFreq;		/// fundamental frequency at the end
-	float[] harmonics;		/// [fundFreq, 2 * fundFreq, 3 * fundFreq ...] amplitudes
+	void modulate(ref TimeDomainSignal dest) const;
+}
+
+
+final class ChainModulator: IModulator
+{
+	IModulator[] modulators;
+
+	this(IModulator[] mods)
+	{
+		modulators = mods;
+	}
+
+	void modulate(ref TimeDomainSignal dest) const
+	{
+		foreach (m; modulators)
+			m.modulate(dest);
+	}
+}
+
+/// Linearly interpolates intensity of the signal
+final class IntensityInterpolator: IModulator
+{
+	float startIntensityMult = 1.0f;
+	float endIntensityMult = 1.0f;
+
+	void modulate(ref TimeDomainSignal dest) const
+	{
+		assert(startIntensityMult >= 0.0f);
+		assert(endIntensityMult >= 0.0f);
+		assert(dest.samples.length > 1);
+		float mult = startIntensityMult;
+		float di = (endIntensityMult - startIntensityMult) / (dest.samples.length - 1);
+		for (size_t i = 0; i < dest.samples.length; i++)
+		{
+			dest.samples[i].re *= sqrt(mult);
+			mult += di;
+		}
+	}
+}
+
+struct AmplitudeModulatorParams
+{
+	/// [fundFreq, 2 * fundFreq, 3 * fundFreq ...] amplitudes
+	immutable(float)[] harmonics;
 	float startPhase = 0.0f;
+
+	/// move phase forward according to freq
+	void updatePhase(float time, float freq)
+	{
+		startPhase += time * 2 * PI * freq;
+		startPhase = fmod(startPhase, 2 * PI);
+	}
+}
+
+/// DEMON component that modulates time-domain signal with a cascade of harmonics
+final class AmplitudeModulator: IModulator
+{
+	this(AmplitudeModulatorParams params)
+	{
+		harmonics = params.harmonics;
+		startPhase = params.startPhase;
+	}
+
+	float startFundFreq = 0.0f;	/// fundamental frequency at the beginning
+	float endFundFreq = 0.0f;	/// fundamental frequency at the end
+
+	private immutable(float)[] harmonics;
+	private float startPhase = 0.0f;
 
 	/// move phase forward according to endFundFreq
 	void updatePhase(float time)
@@ -28,8 +92,9 @@ struct AmplitudeModulator
 
 		assert(harmonics.length > 0);
 		float dt = 1.0f / dest.samplingRate;
-		static float[] phases;
-		phases.length = harmonics.length;
+		static float[] s_phases;
+		s_phases.length = harmonics.length;
+		float[] phases = s_phases;	// optimize out TLS access
 		float DC = sqrt(1.0 - 0.5 * sum(harmonics.map!(a => a * a)));
 		assert(!isNaN(DC));
 		// main modulation loop
@@ -55,7 +120,10 @@ unittest
 
 	Fft fftCache = new Fft(4096);
 	TimeDomainSignal tds = whiteNoise(4096 * 4, 4096);
-	AmplitudeModulator am = AmplitudeModulator(0.5f, 2.0f, [0.2f, 0.01f, 0.25f, 0.01f, 0.06f], 0.0f);
+	AmplitudeModulator am = new AmplitudeModulator(
+		AmplitudeModulatorParams([0.2f, 0.01f, 0.25f, 0.01f, 0.06f], 0.0f));
+	am.startFundFreq = 0.5f;
+	am.endFundFreq = 2.0f;
 	am.modulate(tds);
 	writeWavFile("am_test.wav", tds.samples, 1.0f, tds.samplingRate);
 }

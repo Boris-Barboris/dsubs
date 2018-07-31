@@ -10,6 +10,7 @@ import dsubs_common.api.protocols.backend;
 import dsubs_common.math;
 
 import dsubs_sound.hydrophone;
+import dsubs_sound.modulation;
 import dsubs_sound.soundsource;
 import dsubs_sound.image;
 
@@ -30,10 +31,10 @@ final class EntityDb
 
 	private
 	{
-		/// map of all existing propulsor prototypes
-		PropulsorPrototype[string] g_propulsors;
-		/// global map of all existing submarine prototypes
-		SubmarinePrototype[string] g_submarines;
+		/// map of all existing propulsor factories
+		PropulsorFactory[string] g_propulsors;
+		/// global map of all existing submarine factories
+		SubmarineFactory[string] g_submarines;
 	}
 
 	this()
@@ -45,7 +46,6 @@ final class EntityDb
 			g_propulsors.values.map!(a => *a.getTemplate()).array,
 			g_submarines.values.map!(a => *a.getTemplate()).array,
 		);
-		// ugly hacks around immutable
 		marshalledCommonEntityDb = BackendProtocol.marshal(enititydb);
 		auto sha256 = new SHA256Digest();
 		sha256.put(marshalledCommonEntityDb);
@@ -56,9 +56,9 @@ final class EntityDb
 	/// Build submarine object from the Spawn request message
 	Submarine buildSubFromLoadout(const SpawnReq req, Player p)
 	{
-		SubmarinePrototype* sp = req.submarineName in g_submarines;
+		SubmarineFactory* sp = req.submarineName in g_submarines;
 		enforce(sp !is null, "Unknown submarine");
-		PropulsorPrototype* pp = req.propulsorName in g_propulsors;
+		PropulsorFactory* pp = req.propulsorName in g_propulsors;
 		enforce(pp !is null, "Unknown propulsor");
 		Submarine sub = sp.build(p);
 		sub.propulsor = pp.build();
@@ -70,10 +70,10 @@ private:
 
 	void buildPropulsorTemplates()
 	{
-		BasicPropulsorPrototype bp;
+		PropulsorFactory bp;
 
 		// Standard screw
-		bp = new BasicPropulsorPrototype(
+		bp = new PropulsorFactory(
 			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
 				"Five-blade screw",
 				"Five-blade screw with no outstanding traits, " ~
@@ -89,15 +89,23 @@ private:
 		bp.posThrustK = RolledF(2600.0f, 40.0f);
 		bp.negThrustK = RolledF(700.0f, 20.0f);
 		bp.mass = 50.0f;
+		bp.soundPrototype = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(
+				"../dsubs_sound/std_propeller.png", 1.0f).toIntensity,
+			loadSpectrumFromImageAndWarp(
+				"../dsubs_sound/std_propeller_cav.png", 1.0f).toIntensity,
+			AmplitudeModulatorParams(
+				[0.2f, 0.01f, 0.007f, 0.009f, 0.18f, 0.006f], 0.0f),
+			4.2f, dgr2rad(30), 8.0f, 0.03f
+		);
 		g_propulsors["Five-blade screw"] = bp;
 	}
 
 	void buildSubmarineTemplates()
 	{
-		SubmarinePrototype sp;
+		SubmarineFactory sp;
 
-		// Standard screw
-		sp = new SubmarinePrototype(
+		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Nautilus",
 `Light attack submarine "Nautilus" offers good balance of stealth, ` ~
@@ -107,7 +115,7 @@ Length: 70m
 Displacement: 2000t
 Top speed: 17m/s
 Hydrophones:
-  - passive 500-2kHz bow sphere array`,
+  Bow: passive 500-2kHz spherical array, 180 deg FoV`,
 				[
 					ConvexPolygon(xSymmetry([
 							0.0, 35.0,
@@ -164,10 +172,6 @@ Hydrophones:
 
 
 private:
-
-//
-// Submarines
-//
 
 /// build axially-symmetric mesh from it's half. 'coords' array should be in form
 /// [ x1, y1, x2, y2 ... ]

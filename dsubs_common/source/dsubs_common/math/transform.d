@@ -104,6 +104,13 @@ class Transform2D
 		propagate();
 	}
 
+	/// Eagerly rebuilds matrices from changed components
+	final void ensureNotDirty()
+	{
+		if (m_dirty)
+			rebuild();
+	}
+
 	/// transformation from local to parent (or world if no parent) reference frame
 	final @property ref const(mat3x3d) local()
 	{
@@ -118,6 +125,13 @@ class Transform2D
 		// lazy world transform recalculation
 		if (m_dirty)
 			rebuild();
+		return m_worldCache;
+	}
+
+	/// ditto
+	final @property ref const(mat3x3d) world() const
+	{
+		assert(!m_dirty);
 		return m_worldCache;
 	}
 
@@ -171,6 +185,14 @@ class Transform2D
 
 	/// returns world translation
 	final @property vec2d wposition()
+	{
+		if (m_parent is null)
+			return m_position;
+		return world.transformPoint(m_position);
+	}
+
+	/// ditto
+	final @property vec2d wposition() const
 	{
 		if (m_parent is null)
 			return m_position;

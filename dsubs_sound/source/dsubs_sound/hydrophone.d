@@ -25,6 +25,7 @@ struct HydrophonePrototype
 	float flowNoiseMult = 0.01f;
 }
 
+
 /// Hydrophone is a collection of identical antennaes
 final class Hydrophone
 {
@@ -45,11 +46,6 @@ final class Hydrophone
 		m_cellAngle = m_span / p.cellCount;
 		foreach (rot; p.antennaeRots)
 			m_ant ~= new Antennae(p.cellCount, rot);
-	}
-
-	static this()
-	{
-		s_fftCache = new Fft(4096);
 	}
 
 	private
@@ -78,7 +74,7 @@ final class Hydrophone
 		bool m_hasListener;
 		// world-space direction the player is listening to
 		double m_listenDir;
-		// false when no activ antenna has a cell for chosen listen Dir
+		// false when no active antenna has a cell for chosen listen Dir
 		bool m_listenDirValid;
 
 		// time domain signals that are generated for listening player
@@ -88,6 +84,14 @@ final class Hydrophone
 		static Spectrum s_stageSpectrum;
 		static TimeDomainSignal s_stageTds;
 		static Fft s_fftCache;
+	}
+
+	private void ensureTlsCache()
+	{
+		if (s_fftCache is null)
+		{
+			s_fftCache = new Fft(4096);
+		}
 	}
 
 	@property Transform2D transform() { return m_transform; }
@@ -155,7 +159,7 @@ final class Hydrophone
 			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
 			float intensity = (seaNoiseIL(freq) + rngm).toLinear;
 			res += intensity;
-			if (m_hasListener)
+			if (m_listenDirValid)
 				s_stageIspec.bins[freq - 1] += intensity;
 		}
 		res /= m_maxFreq + 1;
@@ -170,7 +174,7 @@ final class Hydrophone
 			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
 			float intensity = (flowNoise(freq, kts) + rngm).toLinear;
 			res += intensity;
-			if (m_hasListener)
+			if (m_listenDirValid)
 				s_stageIspec.bins[freq - 1] += intensity * m_flowNoiseMult;
 		}
 		res *= m_flowNoiseMult / (m_maxFreq + 1);
@@ -193,6 +197,7 @@ final class Hydrophone
 	private void applyStageIspec()
 	{
 		s_stageIspec.genSpectrum(s_stageSpectrum);
+		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		foreach (i, ref s; m_curTds.samples)
 			s += s_stageTds.samples[i];
@@ -200,11 +205,13 @@ final class Hydrophone
 	}
 
 	/// ditto
-	private void applyStageIspec(ref const AmplitudeModulator mod)
+	private void applyStageIspec(const(IModulator) mod)
 	{
 		s_stageIspec.genSpectrum(s_stageSpectrum);
+		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
-		mod.modulate(s_stageTds);
+		if (mod)
+			mod.modulate(s_stageTds);
 		foreach (i, ref s; m_curTds.samples)
 			s += s_stageTds.samples[i];
 		resetStageIspec();
@@ -229,7 +236,7 @@ final class Hydrophone
 		}
 		updateSeaIntensity();
 		updateFlowNoise(kts);
-		if (m_hasListener)
+		if (m_listenDirValid)
 		{
 			stageDirectivity();
 			applyStageIspec();
@@ -331,7 +338,8 @@ final class Hydrophone
 			{
 				float level = IntensityLevel(c.toDb + uniform(0.0f, m_baseNoise));
 				assert(!isNaN(level));
-				dest[i] = lrint(min(float(ushort.max), level / maxLevel * ushort.max)).to!ushort;
+				dest[i] = lrint(
+					min(float(ushort.max), level / maxLevel * ushort.max)).to!ushort;
 			}
 		}
 
@@ -353,8 +361,8 @@ final class Hydrophone
 				return;
 			cellStart = max(0, cellStart);
 			cellEnd = min(cells.length - 1, cellEnd);
-			s.getIntensitySpectrum(m_transform.wposition, s_stageIspec,
-				m_minFreq, m_maxFreq, 4.0f);
+			IModulator mod = s.getIntensitySpectrum(m_transform.wposition, s_stageIspec,
+				m_minFreq, m_maxFreq, m_listenDirValid, 4.0f);
 			float bandSum = s_stageIspec.bins.sum() / (m_maxFreq + 1);
 			for (int ci = cellStart; ci <= cellEnd; ci++)
 			{
@@ -366,7 +374,7 @@ final class Hydrophone
 				float powerPart = 0.5 * (erf(normRight) - erf(normLeft));
 				cells[ci] += bandSum * powerPart;
 				if (m_listenDirValid && listenCell == ci)
-					applyStageIspec(s.modulator);
+					applyStageIspec(mod);
 			}
 		}
 	}
@@ -449,15 +457,11 @@ unittest
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
 		h.resetAndIsotropic(spdKts);
-		if (i == 0)
-			writeln("std_propeller speed/freq/normalVel:");
 		foreach (j, float spd; speeds)
 		{
 			float freq = spd * freqPerMs;
 			prop.preUpdate(freq, spd);
-			if (i == 0)
-				writeln(spd, "\t", freq, "\t", prop.normalVel);
-			prop.postUpdate(freq, 1.0f);
+			prop.postUpdate(freq, spd, 1.0f);
 			propTrans.position = rotateVector(vec2d(0.0, (i + 1) * 200.0), relBearings[j]);
 			h.applySoundSource(prop);
 		}

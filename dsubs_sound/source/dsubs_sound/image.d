@@ -45,6 +45,14 @@ IntensityLevelSpectrum loadSpectrumFromImage(
 	return res;
 }
 
+IntensityLevelSpectrum loadSpectrumFromImageAndWarp(string filename, float noise,
+	float bottomLevel = 80.0f, float topLevel = 160.0f)
+{
+	IntensityLevelSpectrum res = loadSpectrumFromImage(filename, bottomLevel, topLevel);
+	res.addNumericNoise(noise);
+	return res;
+}
+
 unittest
 {
 	import std.array;
@@ -65,8 +73,9 @@ unittest
 	TimeDomainSignal tds;
 	pspec.toTimeDomain(fftCache, tds);
 	tds.samples = tds.samples.cycle.takeExactly(4096 * 5).array;
-	AmplitudeModulator am = AmplitudeModulator(2.0f, 2.0f,
-		[0.2f, 0.01f, 0.08f, 0.23f, 0.09f, 0.01f], 0.0f);
+	AmplitudeModulator am = new AmplitudeModulator(AmplitudeModulatorParams(
+		[0.2f, 0.01f, 0.08f, 0.23f, 0.09f, 0.01f], 0.0f));
+	am.startFundFreq = am.endFundFreq = 2.0f;
 	am.modulate(tds);
 	float maxp = tds.samples.map!(a => a.re).maxElement;
 	writeln("std_propeller maxp: ", maxp);

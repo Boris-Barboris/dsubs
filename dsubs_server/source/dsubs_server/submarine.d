@@ -125,7 +125,7 @@ final class Submarine
 }
 
 
-class SubmarinePrototype
+final class SubmarineFactory
 {
 	immutable SubmarineTemplate tmpl;
 	// physical characteristics
