@@ -163,6 +163,7 @@ class Transform2D
 	/// sets local rotation
 	final @property void rotation(double val)
 	{
+		assert(!isNaN(val));
 		m_rotation = clampAngle(val);
 		propagate();
 	}
@@ -181,6 +182,8 @@ class Transform2D
 	/// sets local translation
 	final @property void position(vec2d val)
 	{
+		assert(!isNaN(val.x));
+		assert(!isNaN(val.y));
 		m_position = val;
 		propagate();
 	}
@@ -218,6 +221,11 @@ class Transform2D
 	/// Initialize transform by individual components, applied in semantic order
 	final void fromComponents(vec2d scale, double rotation, vec2d position)
 	{
+		assert(!isNaN(scale.x));
+		assert(!isNaN(scale.y));
+		assert(!isNaN(position.x));
+		assert(!isNaN(position.y));
+		assert(!isNaN(rotation));
 		m_scale = scale;
 		m_rotation = rotation;
 		m_position = position;

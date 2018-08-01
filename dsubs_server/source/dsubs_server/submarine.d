@@ -78,6 +78,7 @@ final class Submarine
 		assert(m_propulsor !is null);
 
 		m_rigidBody.forces = [cast(IForce) m_rudder, cast(IForce) m_propulsor];
+		m_transform.addChild(m_propulsor.transform);
 		foreach (h; m_hydrophones)
 		{
 			h.onPreApply += () { h.resetAndIsotropic(mpsToKts(m_rigidBody.kinet.velLength)); };

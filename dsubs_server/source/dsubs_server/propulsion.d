@@ -62,8 +62,6 @@ final class BasicPropulsor: Propulsor
 	{
 		double absThrust = m_throttle * m_throttle * (m_throttle >= 0.0f ? posThrustK : -negThrustK);
 		assert(!isNaN(absThrust));
-		assert(!isNaN(transform.wforward.x));
-		assert(!isNaN(transform.wforward.y));
 		return transform.wforward * absThrust;
 	}
 
