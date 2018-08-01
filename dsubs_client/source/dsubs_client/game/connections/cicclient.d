@@ -50,7 +50,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 	{
 		Socket clientSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
 		scope(failure) clientSock.close();
-		auto addr = new InternetAddress(url, 17900);
+		auto addr = parseUrl(url);
 		info("Attempting to connect to CIC server ", addr);
 		clientSock.connect(addr);
 		auto con = new CICClientConnection(clientSock);
@@ -61,12 +61,12 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 
 	/// Asynchronously connect to CIC server in background thread.
 	/// Returns callback that can be used to abort the attempt to connect.
-	static void delegate() connectAsync(string hostName, string password,
+	static void delegate() connectAsync(string url, string password,
 		void delegate(CICClientConnection c) onSuccess,
 		void delegate(Exception ex) onFailure)
 	{
 		Socket clientSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
-		auto addr = new InternetAddress(hostName, 17900);
+		auto addr = parseUrl(url);
 		info("Attempting to connect to CIC server ", addr);
 		Thread thread = new Thread(()
 		{
@@ -175,12 +175,10 @@ private:
 		assert(res.data.length == 1);
 		assert(res.data[0].hydrophoneIdx == 0);
 		assert(res.data[0].antennaeIdx == 0);
-		ubyte[] convData = res.data[0].cells.map!(a =>
-			lrint(float(a) / ushort.max * ubyte.max).to!ubyte ).array;
 		synchronized(Game.mainMutex)
 		{
 			Game.simState.gui.sonarGui.drawData(
-				convData,
+				res.data[0].cells,
 				Game.simState.playerSub.tmpl.hydrophones[0].fov,
 				res.rotationAtTime);
 			Game.simState.gui.sonarGui.completeRow();

@@ -102,7 +102,7 @@ final class MainMenuState: GameState
 
 		Label cicIpLabel = builder(new Label()).content("coop IP:").
 			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).fraction(LOGIN_FRACT).build();
-		TextField cicIpField = builder(new TextField()).content("localhost").
+		TextField cicIpField = builder(new TextField()).content("localhost:17900").
 			fontSize(LOGIN_FONT_SIZE).build();
 
 		Div cicDiv = builder(hDiv([cicIpLabel, cicIpField, filler(LOGIN_FRACT)])).
@@ -119,7 +119,7 @@ final class MainMenuState: GameState
 				return;
 			}
 			cicConnectCancellator = CICClientConnection.connectAsync(
-				cicIpField.content.to!string, "",
+				cicIpField.content.str, "",
 				(CICClientConnection c)
 				{
 					synchronized(Game.mainMutex)
@@ -234,7 +234,8 @@ final class MainMenuState: GameState
 			info("starting CIC");
 			Game.cic.start();
 			info("connecting to local CIC");
-			Game.ciccon = CICClientConnection.connect("127.0.0.1", "");
+			ushort port = Game.cic.listener.port;
+			Game.ciccon = CICClientConnection.connect("127.0.0.1:" ~ port.to!string, "");
 			// send request for reconnection
 			Game.bconm.con.sendMessage(immutable ReconnectReq());
 			// CIC client connection will do the rest

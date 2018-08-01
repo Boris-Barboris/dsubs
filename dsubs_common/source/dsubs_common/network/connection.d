@@ -5,6 +5,7 @@ import std.exception;
 import std.concurrency;
 import std.conv: to;
 import std.socket;
+import std.range: retro;
 
 import core.stdc.errno;
 import core.atomic;
@@ -27,6 +28,16 @@ class ConnectionException: Exception
 private enum WriterMsg: byte
 {
 	TERMINATE
+}
+
+/// parse url of the type  IP:port
+InternetAddress parseUrl(string url)
+{
+	auto lastColIdx = url[].retro.countUntil(':');
+	if (lastColIdx < 0)
+		throw new Exception("must specify TCP port");
+	trace(url, ' ', lastColIdx);
+	return new InternetAddress(url[0..$-lastColIdx-1], url[$-lastColIdx..$].to!ushort);
 }
 
 private string generateRandomString()

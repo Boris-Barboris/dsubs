@@ -79,11 +79,10 @@ unittest
 /// band intensity level of flow noise
 IntensityLevel flowNoise(float freq, float kts)
 {
+	assert(freq > 0.0f);
 	assert(kts >= 0.0f, "kts is " ~ kts.to!string);
-	if (kts < 0.01f)
-		return IntensityLevel(0.0f);
-	float res = 90.0f;
-	// 18 db per knot
+	dB res = 90.0f;
+	// 18 db per knot doubling
 	res += log2(kts / 10.0f) * 18.0f;
 	// 9db per octave fall
 	res -= 9.0f * log2(fmax(freq, 100.0f) / 1000.0f);

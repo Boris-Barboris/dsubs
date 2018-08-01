@@ -196,7 +196,7 @@ final class Player
 		{
 			con.sendMessage(immutable SubKinematicRes(genSubSnapshot()));
 			immutable(AntennaeData)[] acdata;
-			foreach (i, h; s.hydrophones)
+			foreach (int i, h; s.hydrophones)
 			{
 				for (int j = 0; j < h.antennaCount; j++)
 				{

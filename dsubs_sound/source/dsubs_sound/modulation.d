@@ -37,7 +37,7 @@ final class IntensityInterpolator: IModulator
 	void modulate(ref TimeDomainSignal dest) const
 	{
 		assert(startIntensityMult >= 0.0f);
-		assert(endIntensityMult >= 0.0f);
+		assert(endIntensityMult >= 0.0f, endIntensityMult.to!string);
 		assert(dest.samples.length > 1);
 		float mult = startIntensityMult;
 		float di = (endIntensityMult - startIntensityMult) / (dest.samples.length - 1);

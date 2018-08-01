@@ -42,6 +42,8 @@ final class CICServer
 		m_listener.start();
 	}
 
+	@property CICListener listener() { return m_listener; }
+
 	void stop()
 	{
 		info("shutting CIC server down");

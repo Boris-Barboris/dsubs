@@ -413,7 +413,7 @@ final class Waterfall: GuiElement
 	}
 
 	/// draw data to current row
-	void drawData(ubyte[] data, float fov, float bearing)
+	void drawData(const(ushort)[] data, float fov, float bearing, float blackLevel = 0.1f)
 	{
 		m_stage.length = data.length * 2;
 		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : HEIGHT + 0.5f;
@@ -426,7 +426,9 @@ final class Waterfall: GuiElement
 			x -= WIDTH;
 		for (size_t i = 0, j = 0; i < data.length; i++, j += 2)
 		{
-			sfColor color = sfColor(data[i], data[i], data[i], 255);
+			float brightness = float(data[i]) / ushort.max - blackLevel;
+			ubyte brt = lrint(brightness / (1 - blackLevel) * ubyte.max).to!ubyte;
+			sfColor color = sfColor(brt, brt, brt, 255);
 			m_stage[j].position = sfVector2f(x, row);
 			m_stage[j].color = color;
 			x += dx;

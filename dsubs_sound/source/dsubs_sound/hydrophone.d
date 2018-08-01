@@ -23,7 +23,7 @@ struct HydrophonePrototype
 	float directivity;
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 0.001f;
-	float flowNoiseMult = 0.01f;
+	float flowNoiseMult = 0.001f;
 }
 
 
@@ -326,7 +326,7 @@ final class Hydrophone
 		void imprint(ref IntensityLevel[] dest) const
 		{
 			dest.length = cells.length;
-			foreach (i, ref const c; cells)
+			foreach (i, const c; cells)
 			{
 				dest[i] = IntensityLevel(c.toDb + uniform(0.0f, m_baseNoise));
 				assert(!isNaN(dest[i].val));
@@ -363,21 +363,26 @@ final class Hydrophone
 				return;
 			cellStart = max(0, cellStart);
 			cellEnd = min(cells.length - 1, cellEnd);
-			IModulator mod = s.getIntensitySpectrum(m_transform.wposition, s_stageIspec,
-				m_minFreq, m_maxFreq, m_listenDirValid, 4.0f);
-			float bandSum = s_stageIspec.bins.sum() / (m_maxFreq + 1);
-			for (int ci = cellStart; ci <= cellEnd; ci++)
+
+			void onBuilt(const IModulator mod)
 			{
-				float cellLeft = cell0Left - ci * m_cellAngle;
-				float cellRight = cellLeft - m_cellAngle;
-				float normLeft = (relBearing - cellLeft) / p.haloBase;
-				float normRight = (relBearing - cellRight) / p.haloBase;
-				assert(normRight >= normLeft);
-				float powerPart = 0.5 * (erf(normRight) - erf(normLeft));
-				cells[ci] += bandSum * powerPart;
-				if (m_listenDirValid && listenCell == ci)
-					applyStageIspec(mod);
+				float bandSum = s_stageIspec.bins.sum() / (m_maxFreq + 1);
+				for (int ci = cellStart; ci <= cellEnd; ci++)
+				{
+					float cellLeft = cell0Left - ci * m_cellAngle;
+					float cellRight = cellLeft - m_cellAngle;
+					float normLeft = (relBearing - cellLeft) / p.haloBase;
+					float normRight = (relBearing - cellRight) / p.haloBase;
+					assert(normRight >= normLeft);
+					float powerPart = 0.5 * (erf(normRight) - erf(normLeft));
+					cells[ci] += bandSum * powerPart;
+					if (m_listenDirValid && listenCell == ci)
+						applyStageIspec(mod);
+				}
 			}
+
+			s.getIntensitySpectrum(m_transform.wposition, s_stageIspec,
+				&onBuilt, m_minFreq, m_maxFreq, m_listenDirValid, 4.0f);
 		}
 	}
 }
@@ -417,19 +422,19 @@ unittest
 {
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2047, dgr2rad(180.0f), 90, 1.0f / 90.0f);
+		500, 2047, dgr2rad(180.0f), 181, 4 / 181.0f, 3.0f, 0.001f, 0.001f);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 90;
 	float spdKts = 0.0f;
-	float spdStep = 15.0f * 3.6 / 2 / ilevels.length;
+	float spdStep = 17.0f * 3.6 / 2 / ilevels.length;
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
 		h.resetAndIsotropic(spdKts);
 		h.m_ant[0].imprint(ilevels[i]);
 		spdKts += spdStep;
 	}
-	printToPng("std_hydrophone_0-15ms.png", ilevels, 0.0f, 90.0f);
+	printToPng("std_hydrophone_0-17ms.png", ilevels, 0.0f, 90.0f);
 }
 
 unittest
@@ -451,7 +456,7 @@ unittest
 
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2047, dgr2rad(180), 181, 4 / 181.0f);
+		500, 2047, dgr2rad(180.0f), 181, 4 / 181.0f, 3.0f, 0.001f, 0.001f);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 500;

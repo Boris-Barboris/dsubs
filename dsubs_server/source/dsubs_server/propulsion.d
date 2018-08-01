@@ -80,11 +80,11 @@ final class BasicPropulsor: Propulsor
 		m_vesselRb = vesselRb;
 		m_sound.onPreSimulation += ()
 		{
-			m_sound.preUpdate(fabs(m_throttle * shaftRotFreq), m_vesselRb.kinet.progradeSpeed);
+			m_sound.preUpdate(m_throttle * shaftRotFreq, m_vesselRb.kinet.progradeSpeed);
 		};
 		m_sound.onPostSimulation += (float dt)
 		{
-			m_sound.postUpdate(fabs(m_throttle * shaftRotFreq), m_vesselRb.kinet.progradeSpeed, dt);
+			m_sound.postUpdate(m_throttle * shaftRotFreq, m_vesselRb.kinet.progradeSpeed, dt);
 		};
 		Globals.acous.registerSource(m_sound);
 	}

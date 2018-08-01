@@ -204,7 +204,8 @@ final class LoadoutState: GameState
 			info("starting CIC");
 			Game.cic.start();
 			info("connecting to local CIC");
-			Game.ciccon = CICClientConnection.connect("127.0.0.1", "");
+			ushort port = Game.cic.listener.port;
+			Game.ciccon = CICClientConnection.connect("127.0.0.1:" ~ port.to!string, "");
 			// CIC client will perform simulator bootstrap from here
 			return;
 		}

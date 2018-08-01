@@ -21,6 +21,14 @@ void main(string[] argv)
 	runModuleTests();
 	//testGuiElements();
 	scope(failure) exit(1);
-	Game.start();
+	try
+	{
+		Game.start();
+	}
+	catch (Throwable t)
+	{
+		error(t.toString);
+		throw t;
+	}
 	exit(0);
 }

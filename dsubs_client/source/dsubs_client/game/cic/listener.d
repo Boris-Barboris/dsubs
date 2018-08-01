@@ -18,10 +18,13 @@ final class CICListener
 	{
 		Thread publicEpThread;
 		Socket publicSock;
+		ushort cicPort = 17900;
 		CICServerConnection[Object] allCons;
 		CICServer m_cicserv;
 		string m_password;
 	}
+
+	@property ushort port() const { return cicPort; }
 
 	this(CICServer cicserv, string password)
 	{
@@ -34,9 +37,22 @@ final class CICListener
 	{
 		synchronized(this)
 		{
-			TcpServer server = TcpServer("0.0.0.0", 17900);
-			publicSock = listenTcp(server);
-			publicEpThread.start();
+			while (cicPort < 17964)
+			{
+				try
+				{
+					TcpServer server = TcpServer("0.0.0.0", cicPort);
+					publicSock = listenTcp(server);
+					publicEpThread.start();
+					info("CIC listening on ", cicPort);
+					break;
+				}
+				catch (SocketOSException ex)
+				{
+					error("CIC listener start err: ", ex.msg);
+					cicPort++;
+				}
+			}
 		}
 	}
 

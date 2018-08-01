@@ -29,11 +29,10 @@ abstract class SoundSource
 	/// invoked by simulator right after kinematic update happens
 	Event!(void delegate(float dt)) onPostSimulation;
 
-	/// Generate intensity spectrum towards relative bearing. If asked to,
-	/// returns modulator that can be used to transform the spectrum to
-	/// time-domain signal.
-	IModulator getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
-		int minFreq, int maxFreq, bool needModulator, float dissMod = 1.0f) const;
+	/// Generate intensity spectrum towards relative bearing.
+	void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
+		void delegate(const(IModulator) mod) onSpectrumBuilt, int minFreq, int maxFreq,
+		bool needModulator, float dissMod = 1.0f) const;
 }
 
 
@@ -107,13 +106,40 @@ final class PropellerSound: SoundSource
 	{
 		assert(!isNaN(endShaftFreq));
 		assert(!isNaN(waterSpeedEnd));
-		m_shaftFreqStart = endShaftFreq;
+		m_shaftFreqEnd = endShaftFreq;
 		m_normalVelEnd = caclNormalVel(endShaftFreq, waterSpeedEnd);
 		m_am.updatePhase(dt, endShaftFreq);
 	}
 
-	override IModulator getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
-		int minFreq, int maxFreq, bool needModulator, float dissMod = 1.0f) const
+	private void genISpec(float range, ref IntensitySpectrum dest,
+		const IntensitySpectrum source, int minFreq, int maxFreq,
+		float kstart, float kend, float dissMod = 1.0f) const
+	{
+		float kavg = (kstart.fabs + kend.fabs) / 2;
+		for (int i = minFreq - 1; i < maxFreq; i++)
+		{
+			float output = source.bins[i] * kavg;
+			assert(!isNaN(output));
+			// apply linear-space randomization
+			output += output * uniform(-m_rngSpan, m_rngSpan);
+			// now we apply water sound loss
+			IntensityLevel outputDb = IntensityLevel(output.toDb());
+			outputDb = getILatRange(i + 1, outputDb, range, dissMod);
+			dest.bins[i] = outputDb.toLinear();
+		}
+	}
+
+	private IModulator genChainModulator(float kstart, float kend, AmplitudeModulator am) const
+	{
+		IntensityInterpolator ii = new IntensityInterpolator();
+		ii.startIntensityMult = kstart;
+		ii.endIntensityMult = kend;
+		return new ChainModulator(cast(IModulator[]) [am, ii]);
+	}
+
+	override void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
+		void delegate(const(IModulator) mod) onSpectrumBuilt, int minFreq, int maxFreq,
+		bool needModulator, float dissMod = 1.0f) const
 	{
 		assert(m_baseBBSpectrum.bins.length == m_baseCavSpectrum.bins.length);
 		assert(m_baseBBSpectrum.freqRes == m_baseCavSpectrum.freqRes);
@@ -122,40 +148,34 @@ final class PropellerSound: SoundSource
 		// first we fill cutoff bins with zeroes
 		for (int i = 0; i < minFreq - 1; i++)
 			dest.bins[i] = 0.0f;
+		float range = (listenerPos - m_transform.wposition).length;
 		// now actual power calculation
 		float freqCubeStart = pow(m_shaftFreqStart, 3);
+		assert(!isNaN(freqCubeStart));
+		float freqCubeEnd = pow(m_shaftFreqEnd, 3);
+		assert(!isNaN(freqCubeEnd));
 		bool cavitation = fabs(m_normalVelStart) > m_critNormalVel;
 		float cavSqrStart = cavitation ? pow(m_normalVelStart - m_critNormalVel, 2) : 0.0f;
-		float range = (listenerPos - m_transform.wposition).length;
-		for (int i = minFreq - 1; i < maxFreq; i++)
+		cavitation = fabs(m_normalVelEnd) > m_critNormalVel;
+		float cavSqrEnd = cavitation ? pow(m_normalVelEnd - m_critNormalVel, 2) : 0.0f;
+		// prepare common modulators
+		AmplitudeModulator am;
+		if (needModulator)
 		{
-			float output = m_baseBBSpectrum.bins[i] * freqCubeStart;
-			if (cavitation)
-			{
-				float cav = m_baseCavSpectrum.bins[i] * cavSqrStart;
-				output += cav;
-			}
-			// apply linear-space randomization
-			output += output * uniform(-m_rngSpan, m_rngSpan);
-			// now we apply water sound loss
-			IntensityLevel outputDb = IntensityLevel(output.toDb());
-			outputDb = getILatRange(i + 1, outputDb, range, dissMod);
-			dest.bins[i] = outputDb.toLinear();
-		}
-		if (!needModulator)
-			return null;
-		else
-		{
-			// calculate approximation for Intensity interpolator
-			float freqCubeEnd = pow(m_shaftFreqEnd, 3);
-			AmplitudeModulator am = new AmplitudeModulator(m_am);
+			am = new AmplitudeModulator(m_am);
 			am.startFundFreq = m_shaftFreqStart;
 			am.endFundFreq = m_shaftFreqEnd;
-			IntensityInterpolator ii = new IntensityInterpolator();
-			ii.startIntensityMult = 1.0f;
-			ii.endIntensityMult = freqCubeEnd / freqCubeStart;
-			return new ChainModulator(cast(IModulator[]) [am, ii]);
 		}
+		// broadband
+		genISpec(range, dest, m_baseBBSpectrum, minFreq, maxFreq,
+			freqCubeStart, freqCubeEnd, dissMod);
+		onSpectrumBuilt(needModulator ?
+			genChainModulator(freqCubeStart, freqCubeEnd, am) : null);
+		// cavitation
+		genISpec(range, dest, m_baseCavSpectrum, minFreq, maxFreq,
+			cavSqrStart, cavSqrEnd, dissMod);
+		onSpectrumBuilt(needModulator ?
+			genChainModulator(cavSqrStart, cavSqrEnd, am) : null);
 	}
 }
 
