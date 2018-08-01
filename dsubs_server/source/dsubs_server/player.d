@@ -175,8 +175,8 @@ final class Player
 	{
 		assert(m_submarine);
 		Submarine s = m_submarine;
-		vec2d shiftedPos = rotateVector(s.transform.position - coordShift, coordRot);
-		double shiftedRot = s.transform.rotation + coordRot;
+		vec2d shiftedPos = rotateVector(s.transform.wposition - coordShift, coordRot);
+		double shiftedRot = s.transform.wrotation + coordRot;
 		vec2d vel = rotateVector(s.rigidBody.kinet.vel, coordRot);
 		double angVel = s.rigidBody.kinet.angVel;
 		return KinematicSnapshot(
@@ -188,12 +188,24 @@ final class Player
 	}
 
 	// simMut.writer is held by the simulator
-	void sendKinematicsUpdate()
+	void sendUpdate()
 	{
 		Submarine s = m_submarine;
 		PlayerConnection con = m_connection;
 		if (con && con.isOpen && con.simulatorFlow && s)
+		{
 			con.sendMessage(immutable SubKinematicRes(genSubSnapshot()));
+			immutable(AntennaeData)[] acdata;
+			foreach (i, h; s.hydrophones)
+			{
+				for (int j = 0; j < h.antennaCount; j++)
+				{
+					acdata ~= immutable AntennaeData(i, j, h.getBroadbandData(j));
+				}
+			}
+			con.sendMessage(immutable AcousticStreamRes(
+				Globals.sim.worldTime + timeShift, acdata));
+		}
 	}
 
 	private static void randomizePosition(Submarine sub)
@@ -248,7 +260,7 @@ final class PlayerCollection
 	{
 		synchronized (this)
 		{
-			foreach (Player p; m_players.values)
+			foreach (Player p; Globals.taskPool.parallel(m_players.values, 2))
 				dlg(p);
 		}
 	}

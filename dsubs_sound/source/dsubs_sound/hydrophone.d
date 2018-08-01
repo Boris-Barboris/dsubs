@@ -4,6 +4,7 @@ import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
 
 import dsubs_common.math;
+import dsubs_common.event;
 import dsubs_common.api.entities;
 
 import dsubs_sound.common;
@@ -86,12 +87,13 @@ final class Hydrophone
 		static Fft s_fftCache;
 	}
 
+	Event!(void delegate()) onPreApply;
+
+	// makes sure TLS fft cache is constructed
 	private void ensureTlsCache()
 	{
 		if (s_fftCache is null)
-		{
 			s_fftCache = new Fft(4096);
-		}
 	}
 
 	@property Transform2D transform() { return m_transform; }
@@ -334,9 +336,9 @@ final class Hydrophone
 		void imprint(ref ushort[] dest, dB maxLevel = 90.0f) const
 		{
 			dest.length = cells.length;
-			foreach (i, ref const c; cells)
+			foreach (i, const c; cells)
 			{
-				float level = IntensityLevel(c.toDb + uniform(0.0f, m_baseNoise));
+				float level = max(0.0f, IntensityLevel(c.toDb + uniform(0.0f, m_baseNoise)));
 				assert(!isNaN(level));
 				dest[i] = lrint(
 					min(float(ushort.max), level / maxLevel * ushort.max)).to!ushort;

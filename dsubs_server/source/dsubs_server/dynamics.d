@@ -64,12 +64,20 @@ struct Kinematics
 	void updateCache()
 	{
 		AoA = angleDist(rotation, courseAngle(vel));
+		if (isNaN(AoA))
+			AoA = 0.0;
+		assert(!isNaN(AoA));
 		velSquaredLength = vel.squaredLength;
+		assert(!isNaN(velSquaredLength));
 		velLength = sqrt(velSquaredLength);
+		assert(!isNaN(velLength));
 		if (velLength > 0.0)
 		{
 			velNormalized = vel.normalized;
 			velRotation = courseAngle(velNormalized);
+			if (isNaN(velRotation))
+				velRotation = rotation;
+			assert(!isNaN(velRotation));
 		}
 		else
 		{
@@ -77,11 +85,18 @@ struct Kinematics
 			velRotation = 0.0;
 		}
 		double velLeftRotation = velRotation + PI_2;
+		assert(!isNaN(velLeftRotation));
 		velLeft = vec2d(-sin(velLeftRotation), cos(velLeftRotation));
 		forward = vec2d(-sin(rotation), cos(rotation));
 		double leftRotation = rotation + PI_2;
 		left = vec2d(-sin(leftRotation), cos(leftRotation));
 		//trace("updated kinematics: ", this);
+	}
+
+	/// world velocity, projected on forward vector
+	@property double progradeSpeed() const
+	{
+		return dot(vel, forward);
 	}
 }
 
@@ -151,7 +166,10 @@ final class RigidBody: PhysicalEntity
 	{
 		vec2d resultForce = vec2d(0.0, 0.0);
 		foreach (force; forces)
+		{
 			resultForce += force.getForce(this, c);
+			assert(!isNaN(resultForce.x) && !isNaN(resultForce.y), force.to!string);
+		}
 		resultForce -= hydroModel.drag(c.velSquaredLength, c.AoA) * c.velNormalized;
 		resultForce += hydroModel.lift(c.velSquaredLength, c.AoA) * c.velLeft;
 		assert(mass > 0.0);
@@ -185,14 +203,14 @@ final class PhysicalEnv
 {
 	private
 	{
-		PhysicalEntity[PhysicalEntity] m_entities;
+		PhysicalEntity[] m_entities;
 	}
 
 	void registerEntity(PhysicalEntity e)
 	{
 		synchronized(this)
 		{
-			m_entities[e] = e;
+			m_entities ~= e;
 		}
 	}
 
@@ -200,7 +218,7 @@ final class PhysicalEnv
 	{
 		synchronized(this)
 		{
-			m_entities.remove(e);
+			m_entities.removeFirstUnstable(e);
 		}
 	}
 
@@ -212,7 +230,7 @@ final class PhysicalEnv
 		float dt = fwd / stepCount;
 		for (int i = 0; i < stepCount; i++)
 		{
-			foreach (i, ref entity; Globals.taskPool.parallel(m_entities.values, 8))
+			foreach (i, ref entity; Globals.taskPool.parallel(m_entities, 8))
 				entity.integrate(dt);
 		}
 	}

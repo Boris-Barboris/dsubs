@@ -95,8 +95,10 @@ final class SimulationGUI
 	{
 		Label curCourse, curSpeed;
 		TextField tgtCourseField, tgtThrottleField;
-		Waterfall psonarGui;
+		Waterfall m_sonarGui;
 	}
+
+	@property Waterfall sonarGui() { return m_sonarGui; }
 
 	void handleSubKinematicRes(CICSubKinematicRes res)
 	{
@@ -270,7 +272,7 @@ final class SimulationGUI
 			backgroundColor(DIV_BCKGROUND).backgroundVisible(true).build;
 
 		GuiElement tabFiller = filler();
-		psonarGui = new Waterfall();
+		m_sonarGui = new Waterfall();
 
 		Div topLevelDiv = builder(vDiv([
 			tabDiv,
@@ -284,7 +286,7 @@ final class SimulationGUI
 		}
 
 		tacticalTab.onClick += (btn) { setMiddlePane(tabFiller); };
-		psonarTab.onClick += (btn) { setMiddlePane(psonarGui); };
+		psonarTab.onClick += (btn) { setMiddlePane(m_sonarGui); };
 		asonarTab.onClick += (btn) { setMiddlePane(tabFiller); };
 
 		Game.guiManager.addPanel(new Panel(topLevelDiv));
@@ -306,9 +308,9 @@ final class Waterfall: GuiElement
 	private
 	{
 		// directional resolution will be 1024 pixels, in time we save up to
-		// 60 rows. Such texture weighs 5 Mb.
-		enum int WIDTH = 18;
-		enum int HEIGHT = 4;
+		// 120 rows. Such texture weighs 5 Mb.
+		enum int WIDTH = 1024;
+		enum int HEIGHT = 120;
 		enum float PXPERRAD = WIDTH / (PI * 2);
 		enum int COMPASS_HEADER_HEIGHT = 18;
 		enum int COMPASS_FONTSIZE = 14;
@@ -360,20 +362,20 @@ final class Waterfall: GuiElement
 			htextAlign(HTextAlign.CENTER).build();
 
 		// test handlers
-		onMouseUp += (int x, int y, sfMouseButton btn)
-			{
-				if (btn != sfMouseLeft)
-					return;
-				import std.random;
-				static int t;
-				trace("debug waterfall data");
-				ubyte[] data = new ubyte[WIDTH / 2];
-				foreach (ref d; data)
-					d = uniform(ubyte(60), ubyte.max);
-				t++;
-				drawData(data, dgr2rad(90), dgr2rad(90 - 5 * t));
-				completeRow();
-			};
+		// onMouseUp += (int x, int y, sfMouseButton btn)
+		// 	{
+		// 		if (btn != sfMouseLeft)
+		// 			return;
+		// 		import std.random;
+		// 		static int t;
+		// 		trace("debug waterfall data");
+		// 		ubyte[] data = new ubyte[WIDTH / 2];
+		// 		foreach (ref d; data)
+		// 			d = uniform(ubyte(60), ubyte.max);
+		// 		t++;
+		// 		drawData(data, dgr2rad(90), dgr2rad(90 - 5 * t));
+		// 		completeRow();
+		// 	};
 
 		// mouse and keyboard handlers
 		onMouseDown += &processMouseDown;

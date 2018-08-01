@@ -79,7 +79,7 @@ unittest
 /// band intensity level of flow noise
 IntensityLevel flowNoise(float freq, float kts)
 {
-	assert(kts >= 0.0f);
+	assert(kts >= 0.0f, "kts is " ~ kts.to!string);
 	if (kts < 0.01f)
 		return IntensityLevel(0.0f);
 	float res = 90.0f;

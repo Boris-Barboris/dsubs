@@ -52,6 +52,8 @@ final class Submarine
 
 	@property int spawnId() const { return m_spawnId; }
 
+	@property const(Hydrophone)[] hydrophones() const { return m_hydrophones; }
+
 	/// creates transform and rigid body
 	this(Player owner, string prototypeName)
 	{
@@ -76,13 +78,14 @@ final class Submarine
 		assert(m_propulsor !is null);
 
 		m_rigidBody.forces = [cast(IForce) m_rudder, cast(IForce) m_propulsor];
-		// bind module transforms to submarine
-		m_rudder.transform = m_transform;
-		m_propulsor.transform.parent = m_transform;
 		foreach (h; m_hydrophones)
-			h.transform.parent = m_transform;
+		{
+			h.onPreApply += () { h.resetAndIsotropic(mpsToKts(m_rigidBody.kinet.velLength)); };
+			Globals.acous.registerHydrophone(h);
+		}
 		// add module masses to the hull
 		m_rigidBody.mass += m_propulsor.mass;
+		m_propulsor.bootstrap(m_rigidBody);
 		// calculate final MOI
 		m_rigidBody.moi = calcMoi();
 		assert(!isNaN(m_rigidBody.mass));
@@ -104,14 +107,14 @@ final class Submarine
 		}
 	}
 
-	@property float targetThrottle() const { return m_propulsor.targetRotSpd; }
+	@property float targetThrottle() const { return m_propulsor.targetThrottle; }
 
 	/// set propulsor's target throttle
 	@property void targetThrottle(float target)
 	{
 		enforce(!isNaN(target), "NaN target throttle");
 		enforce(target <= 1.0f && target >= -1.0f, "Throttle not in [-1, 1] interval");
-		m_propulsor.targetRotSpd = target;
+		m_propulsor.targetThrottle = target;
 	}
 
 	@property float targetCourse() const { return m_rudder.targetCourse; }
@@ -158,6 +161,7 @@ final class SubmarineFactory
 		res.m_rigidBody.hydroModel.Cl = Cl;
 		res.m_rigidBody.hydroModel.Cm = -Cm.roll();
 		auto brudder = new BasicRudder();
+		brudder.transform = res.transform;
 		// Cm * equilDrift = steeringK
 		brudder.steeringK = fabs(equilDrift * res.m_rigidBody.hydroModel.Cm);
 		res.m_rudder = brudder;
@@ -167,6 +171,7 @@ final class SubmarineFactory
 			Transform2D t = new Transform2D();
 			t.position = tmpl.hydrophones[i].mount.mountCenter.toGfm!double;
 			t.rotation = tmpl.hydrophones[i].mount.rotation;
+			res.transform.addChild(t);
 			res.m_hydrophones ~= new Hydrophone(t, hp);
 		}
 		return res;

@@ -98,7 +98,7 @@ class Transform2D
 
 	final @property Transform2D parent() { return m_parent; }
 
-	final @property void parent(Transform2D val)
+	private final @property void parent(Transform2D val)
 	{
 		m_parent = val;
 		propagate();
@@ -151,6 +151,8 @@ class Transform2D
 	/// sets local scale
 	final @property void scale(vec2d val)
 	{
+		assert(!isNaN(val.x));
+		assert(!isNaN(val.y));
 		m_scale = val;
 		propagate();
 	}

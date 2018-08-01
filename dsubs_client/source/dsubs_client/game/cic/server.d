@@ -93,4 +93,16 @@ final class CICServer
 			m_bcon.sendMessage(cast(immutable CourseReq) req);
 		}
 	}
+
+	void handleAcousticStreamRes(AcousticStreamRes res)
+	{
+		CICSubAcousticRes bdcst;
+		bdcst.data = res.data;
+		synchronized(this)
+		{
+			assert(res.atTime == m_state.recState.subSnap.atTime);
+			bdcst.rotationAtTime = m_state.recState.subSnap.rotation;
+		}
+		m_listener.broadcast(cast(immutable CICSubAcousticRes) bdcst);
+	}
 }

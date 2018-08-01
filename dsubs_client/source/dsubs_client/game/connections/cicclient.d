@@ -42,6 +42,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 		setHandler(&h_throttleReq);
 		setHandler(&h_courseReq);
 		setHandler(&h_entityDbRes);
+		setHandler(&h_acousticRes);
 	}
 
 	/// synchronous (in caller thread) connect to CIC server
@@ -163,6 +164,26 @@ private:
 		{
 			Game.simState.playerSub.targetCourse = req.target;
 			Game.simState.gui.updateTgtCourseDisplay(req.target);
+		}
+	}
+
+	void h_acousticRes(CICSubAcousticRes res)
+	{
+		import std.algorithm.iteration: map;
+		import std.array: array;
+
+		assert(res.data.length == 1);
+		assert(res.data[0].hydrophoneIdx == 0);
+		assert(res.data[0].antennaeIdx == 0);
+		ubyte[] convData = res.data[0].cells.map!(a =>
+			lrint(float(a) / ushort.max * ubyte.max).to!ubyte ).array;
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.gui.sonarGui.drawData(
+				convData,
+				Game.simState.playerSub.tmpl.hydrophones[0].fov,
+				res.rotationAtTime);
+			Game.simState.gui.sonarGui.completeRow();
 		}
 	}
 }

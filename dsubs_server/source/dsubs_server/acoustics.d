@@ -1,5 +1,7 @@
 module dsubs_server.acoustics;
 
+import dsubs_common.containers.array;
+
 import dsubs_sound.hydrophone;
 import dsubs_sound.soundsource;
 import dsubs_sound.spectrum;
@@ -11,50 +13,68 @@ final class AcousticEnv
 {
 	private
 	{
-		Hydrophone[Hydrophone] m_hydrophones;
-		SoundSource[SoundSource] m_sources;
+		Hydrophone[] m_hydrophones;
+		SoundSource[] m_sources;
 	}
 
-	void registerEntity(Hydrophone e)
+	// all register and unregister calls are supposed to
+	// be called while holding simMut
+
+	void registerHydrophone(Hydrophone e)
 	{
 		synchronized(this)
 		{
-			m_hydrophones[e] = e;
+			m_hydrophones ~= e;
 		}
 	}
 
-	void registerEntity(SoundSource e)
+	void registerSource(SoundSource e)
 	{
 		synchronized(this)
 		{
-			m_sources[e] = e;
+			m_sources ~= e;
 		}
 	}
 
-	void unregisterEntity(Hydrophone e)
+	void unregisterHydrophone(Hydrophone e)
 	{
 		synchronized(this)
 		{
-			m_hydrophones.remove(e);
+			m_hydrophones.removeFirstUnstable(e);
 		}
 	}
 
-	void unregisterEntity(SoundSource e)
+	void unregisterSource(SoundSource e)
 	{
 		synchronized(this)
 		{
-			m_sources.remove(e);
+			m_sources.removeFirstUnstable(e);
 		}
 	}
 
+	void preUpdateSources()
+	{
+		foreach (source; Globals.taskPool.parallel(m_sources, 8))
+			source.onPreSimulation();
+	}
+
+	void postUpdateSources(float dt)
+	{
+		foreach (source; Globals.taskPool.parallel(m_sources, 8))
+		{
+			source.onPostSimulation(dt);
+			source.transform.ensureNotDirty();
+		}
+	}
 
 	/// perform physics update for all entities
 	void applySourcesOnHydrophones()
 	{
-		foreach (hydrophone; Globals.taskPool.parallel(m_hydrophones.values, 2))
+		foreach (hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
-			foreach (source; m_sources.byValue)
-				hydrophone.applySound(source);
+			hydrophone.onPreApply();
+			foreach (source; m_sources)
+				hydrophone.applySoundSource(source);
 		}
 	}
 }

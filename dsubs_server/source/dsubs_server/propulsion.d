@@ -27,19 +27,18 @@ abstract class Propulsor: IForce
 
 	protected
 	{
-		/// current rotation speed, [-1.0, 1.0]
-		float m_rotSpd = 0.0f;
+		/// current thrust [-1.0, 1.0]
+		float m_throttle = 0.0f;
 	}
 
 	final @property Transform2D transform() { return m_transform; }
 	final @property string prototypeName() const { return m_prototypeName; }
 	final @property float mass() const { return m_mass; }
 
-	/// desired rotation speed, [-1.0, 1.0]
-	float targetRotSpd = 0.0f;
+	float targetThrottle = 0.0f;
 
 	/// call to register stuff in component managers (sound etc...)
-	void bootstrap();
+	void bootstrap(RigidBody vesselRb);
 }
 
 /// simple propulsor with linear thrust law
@@ -51,15 +50,20 @@ final class BasicPropulsor: Propulsor
 		float rotAcceleration = 0.34f;
 		float posThrustK;
 		float negThrustK;
+		float shaftRotFreq = 1.0f;
 
 		PropellerSound m_sound;
+		RigidBody m_vesselRb;
 	}
 
 	private this() {}
 
 	vec2d getForce(const RigidBody b, ref const Kinematics c)
 	{
-		double absThrust = m_rotSpd * m_rotSpd * (m_rotSpd >= 0.0f ? posThrustK : -negThrustK);
+		double absThrust = m_throttle * m_throttle * (m_throttle >= 0.0f ? posThrustK : -negThrustK);
+		assert(!isNaN(absThrust));
+		assert(!isNaN(transform.wforward.x));
+		assert(!isNaN(transform.wforward.y));
 		return transform.wforward * absThrust;
 	}
 
@@ -70,12 +74,21 @@ final class BasicPropulsor: Propulsor
 
 	void propagateInTime(float dt)
 	{
-		m_rotSpd = cmove(m_rotSpd, targetRotSpd, rotAcceleration, dt);
+		m_throttle = cmove(m_throttle, targetThrottle, rotAcceleration, dt);
 	}
 
-	void bootstrap()
+	override void bootstrap(RigidBody vesselRb)
 	{
-		// register sound source in sound system
+		m_vesselRb = vesselRb;
+		m_sound.onPreSimulation += ()
+		{
+			m_sound.preUpdate(fabs(m_throttle * shaftRotFreq), m_vesselRb.kinet.progradeSpeed);
+		};
+		m_sound.onPostSimulation += (float dt)
+		{
+			m_sound.postUpdate(fabs(m_throttle * shaftRotFreq), m_vesselRb.kinet.progradeSpeed, dt);
+		};
+		Globals.acous.registerSource(m_sound);
 	}
 }
 
@@ -86,6 +99,7 @@ final class PropulsorFactory
 	RolledF posThrustK;
 	RolledF negThrustK;
 	float mass;
+	float shaftRotFreq = 1.0f;
 	PropellerSoundPrototype soundPrototype;
 
 	this(immutable PropulsorTemplate t)
@@ -100,6 +114,7 @@ final class PropulsorFactory
 		res.negThrustK = negThrustK;
 		res.m_prototypeName = tmpl.name;
 		res.m_mass = mass;
+		res.shaftRotFreq = shaftRotFreq;
 		res.m_sound = new PropellerSound(res.transform, soundPrototype);
 		return res;
 	}

@@ -3,6 +3,7 @@ module dsubs_server.simulator;
 import std.datetime;
 
 import core.thread;
+import core.stdc.stdlib;
 
 import dsubs_server.common;
 import dsubs_server.dynamics;
@@ -41,11 +42,14 @@ final class Simulator
 				synchronized (Globals.simMut.writer)
 				{
 					lastLoopStart = MonoTime.currTime();
+					Globals.acous.preUpdateSources();
 					// physics integration. All rigid bodies are moved.
 					Globals.phys.integratePBodies(1.0f, 0.25f);
+					Globals.acous.postUpdateSources(1.0f);
+					Globals.acous.applySourcesOnHydrophones();
 					m_worldTime += 1000_000;
-					// need to send updated submarine coordinates to players
-					Globals.players.forEachPlayer((p) { p.sendKinematicsUpdate(); });
+					// stream updates to players
+					Globals.players.forEachPlayer((p) { p.sendUpdate(); });
 				}
 				auto now = MonoTime.currTime();
 				trace("Simulation step took ", (now - lastLoopStart).total!"usecs", "usecs");
@@ -58,7 +62,7 @@ final class Simulator
 		catch (Throwable t)
 		{
 			error("simulation thread has crashed: ", t.toString());
-			throw t;
+			exit(1);
 		}
 	}
 }

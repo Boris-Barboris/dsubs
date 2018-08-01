@@ -63,6 +63,13 @@ struct CICSubKinematicRes
 	KinematicSnapshot snap;
 }
 
+struct CICSubAcousticRes
+{
+	__gshared const int g_marshIdx;
+	double rotationAtTime;
+	AntennaeData[] data;
+}
+
 struct CICThrottleReq
 {
 	__gshared const int g_marshIdx;

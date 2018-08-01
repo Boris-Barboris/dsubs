@@ -1,5 +1,7 @@
 module dsubs_sound.soundsource;
 
+import dsubs_common.event;
+
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
 import dsubs_sound.water;
@@ -7,7 +9,6 @@ import dsubs_sound.modulation;
 import dsubs_sound.image;
 
 
-/// Anisotropic sound emitter
 abstract class SoundSource
 {
 	this(Transform2D t)
@@ -23,8 +24,14 @@ abstract class SoundSource
 	/// close distances.
 	@property float radius() const;
 
-	/// Generate intensity spectrum towards relative bearing. Returns modulator
-	/// that should be used to transform the spectrum to time-domain signal.
+	/// invoked by simulator before kinematic update happens
+	Event!(void delegate()) onPreSimulation;
+	/// invoked by simulator right after kinematic update happens
+	Event!(void delegate(float dt)) onPostSimulation;
+
+	/// Generate intensity spectrum towards relative bearing. If asked to,
+	/// returns modulator that can be used to transform the spectrum to
+	/// time-domain signal.
 	IModulator getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
 		int minFreq, int maxFreq, bool needModulator, float dissMod = 1.0f) const;
 }
@@ -44,7 +51,7 @@ struct PropellerSoundPrototype
 
 final class PropellerSound: SoundSource
 {
-	this(Transform2D t, PropellerSoundPrototype templ)
+	this(Transform2D t, const PropellerSoundPrototype templ)
 	{
 		super(t);
 		m_baseBBSpectrum = templ.baseBBSpectrum;
@@ -59,10 +66,10 @@ final class PropellerSound: SoundSource
 	private
 	{
 		// Base reference intensity spectrum of non-cavitating component on 1Hz
-		IntensitySpectrum m_baseBBSpectrum;
+		const IntensitySpectrum m_baseBBSpectrum;
 		// Base reference intensity spectrum of cavitation noise component on
 		// criticalNormalVel + 1m/s
-		IntensitySpectrum m_baseCavSpectrum;
+		const IntensitySpectrum m_baseCavSpectrum;
 
 		AmplitudeModulatorParams m_am;
 		float m_bladeRadius;
@@ -77,12 +84,12 @@ final class PropellerSound: SoundSource
 
 	override @property float radius() const { return 2.0f * m_bladeRadius; }
 
-	override @property const(IModulator) modulator() const { return m_modulator; }
-
 	/// Update state at the beginning of kinematic simulation. rotFreq is shaft rotation
 	/// frequency. waterSpeedStart is projection of water relative speed on shaft axis.
 	void preUpdate(float shaftFreqStart, float waterSpeedStart)
 	{
+		assert(!isNaN(shaftFreqStart));
+		assert(!isNaN(waterSpeedStart));
 		m_shaftFreqStart = shaftFreqStart;
 		m_normalVelStart = caclNormalVel(shaftFreqStart, waterSpeedStart);
 	}
@@ -98,6 +105,8 @@ final class PropellerSound: SoundSource
 	/// Modulator needs to know final rotation speed to simulate a smooth transition.
 	void postUpdate(float endShaftFreq, float waterSpeedEnd, float dt)
 	{
+		assert(!isNaN(endShaftFreq));
+		assert(!isNaN(waterSpeedEnd));
 		m_shaftFreqStart = endShaftFreq;
 		m_normalVelEnd = caclNormalVel(endShaftFreq, waterSpeedEnd);
 		m_am.updatePhase(dt, endShaftFreq);
@@ -113,24 +122,18 @@ final class PropellerSound: SoundSource
 		// first we fill cutoff bins with zeroes
 		for (int i = 0; i < minFreq - 1; i++)
 			dest.bins[i] = 0.0f;
-		// now actual power calculation;
-		float avgFreq = (m_am.startFundFreq + m_am.endFundFreq) / 2;
-		float freqCube = pow(avgFreq, 3);
-		float avgNormalVel = (m_normalVelStart + m_normalVelEnd) / 2;
-		bool cavitation = fabs(avgNormalVel) > m_critNormalVel;
-		float cavSqr = cavitation ? pow(avgNormalVel - m_critNormalVel, 2) : 0.0f;
+		// now actual power calculation
+		float freqCubeStart = pow(m_shaftFreqStart, 3);
+		bool cavitation = fabs(m_normalVelStart) > m_critNormalVel;
+		float cavSqrStart = cavitation ? pow(m_normalVelStart - m_critNormalVel, 2) : 0.0f;
 		float range = (listenerPos - m_transform.wposition).length;
-		float totalBB = 0.0f;
-		float totalCav = 0.0f;
 		for (int i = minFreq - 1; i < maxFreq; i++)
 		{
-			float output = m_baseBBSpectrum.bins[i] * freqCube;
-			totalBB += output;
+			float output = m_baseBBSpectrum.bins[i] * freqCubeStart;
 			if (cavitation)
 			{
-				float cav = m_baseCavSpectrum.bins[i] * cavSqr;
+				float cav = m_baseCavSpectrum.bins[i] * cavSqrStart;
 				output += cav;
-				totalCav += cav;
 			}
 			// apply linear-space randomization
 			output += output * uniform(-m_rngSpan, m_rngSpan);
@@ -139,19 +142,20 @@ final class PropellerSound: SoundSource
 			outputDb = getILatRange(i + 1, outputDb, range, dissMod);
 			dest.bins[i] = outputDb.toLinear();
 		}
-		// calculate approximation for Intensity interpolator
-		float edgeFreqCube = pow(m_am.startFundFreq, 3);
-		cavitation = fabs(m_normalVelStart) > m_critNormalVel;
-		float edgeCavSqr = cavitation ? pow(m_normalVelStart - m_critNormalVel, 2) : 0.0f;
-		m_iinterp.startIntensityMult =
-			(edgeFreqCube * totalBB + edgeCavSqr * totalCav) /
-			(freqCube * totalBB + cavSqr * totalCav);
-		edgeFreqCube = pow(m_am.endFundFreq, 3);
-		cavitation = fabs(m_normalVelEnd) > m_critNormalVel;
-		edgeCavSqr = cavitation ? pow(m_normalVelEnd - m_critNormalVel, 2) : 0.0f;
-		m_iinterp.endIntensityMult =
-			(edgeFreqCube * totalBB + edgeCavSqr * totalCav) /
-			(freqCube * totalBB + cavSqr * totalCav);
+		if (!needModulator)
+			return null;
+		else
+		{
+			// calculate approximation for Intensity interpolator
+			float freqCubeEnd = pow(m_shaftFreqEnd, 3);
+			AmplitudeModulator am = new AmplitudeModulator(m_am);
+			am.startFundFreq = m_shaftFreqStart;
+			am.endFundFreq = m_shaftFreqEnd;
+			IntensityInterpolator ii = new IntensityInterpolator();
+			ii.startIntensityMult = 1.0f;
+			ii.endIntensityMult = freqCubeEnd / freqCubeStart;
+			return new ChainModulator(cast(IModulator[]) [am, ii]);
+		}
 	}
 }
 

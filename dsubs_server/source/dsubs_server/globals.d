@@ -5,9 +5,11 @@ import core.sync.rwmutex;
 
 import dsubs_server.player: PlayerCollection;
 import dsubs_server.dynamics: PhysicalEnv;
+import dsubs_server.acoustics;
 import dsubs_server.entitydb: EntityDb;
 import dsubs_server.simulator: Simulator;
 import dsubs_server.connections.listener: ConListener;
+
 
 /// Global references to most objects that comprise the server state and are
 /// needed practically everywhere.
@@ -28,6 +30,8 @@ __gshared:
 	ConListener cons;
 	/// Physics engine
 	PhysicalEnv phys;
+	/// Acoustics engine
+	AcousticEnv acous;
 	/// Simulator
 	Simulator sim;
 
@@ -39,6 +43,7 @@ __gshared:
 		players = new PlayerCollection();
 		cons = new ConListener();
 		phys = new PhysicalEnv();
+		acous = new AcousticEnv();
 		sim = new Simulator();
 	}
 }
