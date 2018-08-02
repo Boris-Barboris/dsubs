@@ -52,6 +52,7 @@ final class Submarine
 
 	@property int spawnId() const { return m_spawnId; }
 
+	@property Hydrophone[] hydrophones() { return m_hydrophones; }
 	@property const(Hydrophone)[] hydrophones() const { return m_hydrophones; }
 
 	/// creates transform and rigid body
@@ -124,6 +125,7 @@ final class Submarine
 	@property void targetCourse(float target)
 	{
 		enforce(!isNaN(target), "NaN target course");
+		enforce(!isInfinity(target), "Infinite target course");
 		m_rudder.targetCourse = clampAngle(target);
 	}
 }

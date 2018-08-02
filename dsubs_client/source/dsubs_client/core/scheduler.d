@@ -5,6 +5,7 @@ import std.experimental.logger;
 
 public import core.time: Duration;
 import core.time;
+import core.stdc.stdlib;
 import core.atomic;
 import core.thread;
 import core.sync.condition;
@@ -50,7 +51,8 @@ final class Scheduler
 	{
 		if (!cas(&m_stop, false, true))
 			return;
-		m_cond.notify();
+		synchronized(m_cond.mutex)
+			m_cond.notify();
 		m_thread.join(false);
 	}
 
@@ -65,7 +67,8 @@ final class Scheduler
 		{
 			m_addQueue ~= DelayRecord(now + after, what, mutToHold);
 		}
-		m_cond.notify();
+		synchronized(m_cond.mutex)
+			m_cond.notify();
 	}
 
 	private void proc()
@@ -75,10 +78,16 @@ final class Scheduler
 		{
 			bool frontReached = false;
 			if (tillWakeup == Duration.zero)
-				m_cond.wait();
+			{
+				synchronized(m_cond.mutex)
+					m_cond.wait();
+			}
 			else
 				if (tillWakeup > Duration.zero)
-					frontReached = !m_cond.wait(tillWakeup);
+				{
+					synchronized(m_cond.mutex)
+						frontReached = !m_cond.wait(tillWakeup);
+				}
 				else
 					frontReached = true;
 			if (atomicLoad(m_stop))
@@ -98,18 +107,24 @@ final class Scheduler
 			{
 				DelayRecord firstRecord = m_records.front;
 				// actually run the code
-				if (firstRecord.lockToHold)
-					firstRecord.lockToHold.lock();
-				try
 				{
-					firstRecord.what();
+					if (firstRecord.lockToHold)
+						firstRecord.lockToHold.lock();
+					scope(exit)
+					{
+						if (firstRecord.lockToHold)
+							firstRecord.lockToHold.unlock();
+					}
+					try
+					{
+						firstRecord.what();
+					}
+					catch (Error e)
+					{
+						error(e);
+						exit(1);
+					}
 				}
-				catch (Exception e)
-				{
-					error(e);
-				}
-				if (firstRecord.lockToHold)
-					firstRecord.lockToHold.unlock();
 				m_records.removeFront();
 			}
 			// setup next wakeup

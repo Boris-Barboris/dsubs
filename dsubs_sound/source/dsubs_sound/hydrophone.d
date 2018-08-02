@@ -61,10 +61,9 @@ final class Hydrophone
 		dB m_baseNoise;
 
 		/// max size of sound halo
-		static immutable double MAX_HALO = dgr2rad(20);
-		static immutable double MAX_HALO_2 = MAX_HALO / 2;
-
-		static immutable float ISOTROPIC_VAR = 2.0;
+		enum float MAX_HALO = dgr2rad(20);
+		enum float MAX_HALO_2 = MAX_HALO / 2;
+		enum float ISOTROPIC_VAR = 2.0;
 
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
@@ -74,7 +73,7 @@ final class Hydrophone
 		// true when the player is listening signals from this hydrophone
 		bool m_hasListener;
 		// world-space direction the player is listening to
-		double m_listenDir;
+		float m_listenDir = 0.0f;
 		// false when no active antenna has a cell for chosen listen Dir
 		bool m_listenDirValid;
 
@@ -112,12 +111,14 @@ final class Hydrophone
 	}
 
 	/// set world-space direction the user wants to listen to
-	@property void listenDir(double rhs)
+	@property void listenDir(float rhs)
 	{
+		enforce(!isNaN(rhs), "Nan direction");
+		enforce(!isInfinity(rhs), "Infinity direction");
 		m_listenDir = clampAnglePi(rhs);
 	}
 
-	@property double listenDir() const { return m_listenDir; }
+	@property float listenDir() const { return m_listenDir; }
 
 	/// finalize m_curTds by overlapping it with m_prevTds and applying noise
 	const(TimeDomainSignal) finalizeListenTds()
@@ -129,6 +130,19 @@ final class Hydrophone
 		foreach (ref s; m_curTds.samples)
 			s.re += uniform(-linNoise, linNoise);
 		return m_curTds;
+	}
+
+	immutable(short)[] finalizePcbData(out int srate, float maxp = 1e5)
+	{
+		const(TimeDomainSignal) tds = finalizeListenTds();
+		srate = tds.samplingRate;
+		short[] res = new short[tds.samples.length];
+		for (size_t i = 0; i < res.length; i++)
+		{
+			res[i] = max(short.min, min(short.max,
+				lrint(tds.samples[i].re / maxp * short.max))).to!short;
+		}
+		return cast(immutable(short)[]) res;
 	}
 
 	// recalculate listening cell according to current transform rotation

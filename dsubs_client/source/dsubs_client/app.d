@@ -19,6 +19,7 @@ void main(string[] argv)
 	}
 	loadSfmlLibraries();
 	loadAudioLib();
+	scope(failure) unloadAudioLib();
 	loadGlobalFonts();
 	runModuleTests();
 	//testGuiElements();
@@ -26,6 +27,7 @@ void main(string[] argv)
 	try
 	{
 		Game.start();
+		unloadAudioLib();
 	}
 	catch (Throwable t)
 	{

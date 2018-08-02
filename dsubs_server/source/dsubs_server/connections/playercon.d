@@ -35,6 +35,7 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 		setHandler(&h_throttleReq);
 		setHandler(&h_courseReq);
 		setHandler(&h_reconnectReq);
+		setHandler(&h_listenDirReq);
 	}
 
 private:
@@ -97,17 +98,30 @@ private:
 		}
 	}
 
+	void enforceAuthAndSim(Player p)
+	{
+		enforce!AuthException(p, "unauthorized");
+		enforce!Exception(m_simulatorFlow, "not in simulator flow");
+	}
+
 	void h_throttleReq(ThrottleReq req)
 	{
 		Player p = m_player;
-		enforce!AuthException(p, "unauthorized");
+		enforceAuthAndSim(p);
 		p.handleThrottleRequest(req);
 	}
 
 	void h_courseReq(CourseReq req)
 	{
 		Player p = m_player;
-		enforce!AuthException(p, "unauthorized");
+		enforceAuthAndSim(p);
 		p.handleCourseRequest(req);
+	}
+
+	void h_listenDirReq(ListenDirReq req)
+	{
+		Player p = m_player;
+		enforceAuthAndSim(p);
+		p.handleListenDirRequest(req);
 	}
 }

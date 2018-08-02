@@ -36,12 +36,13 @@ final class Simulator
 	{
 		try
 		{
-			MonoTime lastLoopStart;
+			MonoTime loopStart = MonoTime.currTime();
+			MonoTime simStart;
 			while (true)
 			{
 				synchronized (Globals.simMut.writer)
 				{
-					lastLoopStart = MonoTime.currTime();
+					simStart = MonoTime.currTime();
 					Globals.acous.preUpdateSources();
 					// physics integration. All rigid bodies are moved.
 					Globals.phys.integratePBodies(1.0f, 0.25f);
@@ -52,8 +53,9 @@ final class Simulator
 					Globals.players.forEachPlayer((p) { p.sendUpdate(); });
 				}
 				auto now = MonoTime.currTime();
-				trace("Simulation step took ", (now - lastLoopStart).total!"usecs", "usecs");
-				Duration toSleep = seconds(1) - (MonoTime.currTime() - lastLoopStart);
+				trace("Simulation step took ", (now - simStart).total!"usecs", "usecs");
+				loopStart = loopStart + seconds(1);
+				Duration toSleep = loopStart - MonoTime.currTime();
 				if (toSleep < Duration.zero)
 					toSleep = Duration.zero;
 				Thread.sleep(toSleep);

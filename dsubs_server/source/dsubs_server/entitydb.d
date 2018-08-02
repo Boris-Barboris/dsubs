@@ -149,7 +149,7 @@ Hydrophones:
 					HydrophoneTemplate(
 						"bow", HydrophoneType.STANDARD,
 						MountPoint(Vector2f(0.0f, 14.2f)),
-						dgr2rad(180), [0.0f]
+						dgr2rad(210), [0.0f]
 					)
 				]
 			));
@@ -164,7 +164,7 @@ Hydrophones:
 		trace("dims: ", dims);
 		sp.hullLength = dims.y;
 		sp.hprots = [
-			HydrophonePrototype([0.0f], 500, 2047, dgr2rad(180), 181, 4 / 181.0f,
+			HydrophonePrototype([0.0f], 500, 2047, dgr2rad(210), 71, 2 / 71.0f,
 				3.0f, 0.001f, 0.001f)
 		];
 		g_submarines[sp.tmpl.name] = sp;

@@ -70,8 +70,10 @@ final class AcousticEnv
 	/// perform physics update for all entities
 	void applySourcesOnHydrophones()
 	{
-		foreach (hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
+		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
+			if (!hydrophone.hasListener)
+				continue;
 			hydrophone.onPreApply();
 			foreach (source; m_sources)
 				hydrophone.applySoundSource(source);

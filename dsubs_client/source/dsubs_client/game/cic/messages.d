@@ -55,6 +55,7 @@ struct CICReconnectStateRes
 	KinematicSnapshot subSnap;
 	float targetCourse;
 	float targetThrottle;
+	float[] listenDirs;
 }
 
 struct CICSubKinematicRes
@@ -68,6 +69,7 @@ struct CICSubAcousticRes
 	__gshared const int g_marshIdx;
 	double rotationAtTime;
 	AntennaeData[] data;
+	HydrophoneAudio[] audio;
 }
 
 struct CICThrottleReq
@@ -80,4 +82,11 @@ struct CICCourseReq
 {
 	__gshared const int g_marshIdx;
 	float target;
+}
+
+struct CICListenDirReq
+{
+	__gshared const int g_marshIdx;
+	int hydrophoneIdx;
+	float dir;
 }

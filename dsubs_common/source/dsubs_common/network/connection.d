@@ -252,8 +252,10 @@ class ProtocolConnection(alias Protocol)
 		}
 		catch (Throwable e)
 		{
+			import core.stdc.stdlib;
+
 			error(conId, " Throwable caught in reader thread: ", e.toString());
-			throw e;
+			exit(1);
 		}
 	}
 

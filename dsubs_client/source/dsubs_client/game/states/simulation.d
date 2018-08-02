@@ -26,7 +26,7 @@ import dsubs_client.game.cic.server;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cameracontroller;
 import dsubs_client.game.overlay;
-
+import dsubs_client.lib.openal;
 
 
 final class SimulatorState: GameState
@@ -45,6 +45,7 @@ final class SimulatorState: GameState
 	mixin Readonly!(Submarine, "playerSub");
 	mixin Readonly!(CameraController, "camController");
 	mixin Readonly!(SimulationGUI, "gui");
+	mixin Readonly!(StreamingSoundSource, "sonarSound");
 
 	override void setup()
 	{
@@ -64,6 +65,9 @@ final class SimulatorState: GameState
 
 		m_gui = new SimulationGUI();
 		Game.worldManager.components ~= new PlayerSubIcon(m_playerSub);
+		m_gui.sonarGui.listenDir = recState.listenDirs[0];
+
+		m_sonarSound = new StreamingSoundSource();
 	}
 
 	override void handleBackendDisconnect()
@@ -123,6 +127,11 @@ final class SimulationGUI
 	void updateTgtThrottleDisplay(float newTgt)
 	{
 		tgtThrottleField.content = format("%.1f", 100.0f * newTgt);
+	}
+
+	void handleCICListenDirReq(CICListenDirReq req)
+	{
+		m_sonarGui.listenDir = req.dir;
 	}
 
 	this()
@@ -286,9 +295,21 @@ final class SimulationGUI
 			Game.inputRouter.guiRouter.clearMouseCache();
 		}
 
-		tacticalTab.onClick += (btn) { setMiddlePane(tabFiller); };
-		psonarTab.onClick += (btn) { setMiddlePane(m_sonarGui); };
-		asonarTab.onClick += (btn) { setMiddlePane(tabFiller); };
+		tacticalTab.onClick += (btn)
+		{
+			setMiddlePane(tabFiller);
+			Game.simState.sonarSound.gain = 0.0f;
+		};
+		psonarTab.onClick += (btn)
+		{
+			setMiddlePane(m_sonarGui);
+			Game.simState.sonarSound.gain = 10.0f;
+		};
+		asonarTab.onClick += (btn)
+		{
+			setMiddlePane(tabFiller);
+			Game.simState.sonarSound.gain = 0.0f;
+		};
 
 		Game.guiManager.addPanel(new Panel(topLevelDiv));
 	}
@@ -424,7 +445,7 @@ final class Waterfall: GuiElement
 
 		// microphone director
 		sfCircleShape* m_directorCircle;
-		double m_directorBearing = 0.0;
+		float m_listenDir = 0.0;
 	}
 
 	/// draw data to current row
@@ -441,7 +462,7 @@ final class Waterfall: GuiElement
 			x -= WIDTH;
 		for (size_t i = 0, j = 0; i < data.length; i++, j += 2)
 		{
-			float brightness = float(data[i]) / ushort.max - blackLevel;
+			float brightness = min(1.0f, max(0.0f, float(data[i]) / ushort.max - blackLevel));
 			ubyte brt = lrint(brightness / (1 - blackLevel) * ubyte.max).to!ubyte;
 			sfColor color = sfColor(brt, brt, brt, 255);
 			m_stage[j].position = sfVector2f(x, row);
@@ -499,7 +520,10 @@ final class Waterfall: GuiElement
 		if (btn == sfMouseRight)
 			returnMouseFocus();
 		if (btn == sfMouseLeft && m_cursorInside)
+		{
 			updateDirectorElement(x - position.x);
+			Game.ciccon.sendMessage(immutable CICListenDirReq(0, m_listenDir));
+		}
 	}
 
 	private
@@ -622,14 +646,22 @@ final class Waterfall: GuiElement
 			m_compassLabels[i].position = vec2i(position.x + lblPosX, position.y);
 		}
 		// director
-		float dirX = bearingToPixel(m_directorBearing);
+		float dirX = bearingToPixel(m_listenDir);
+		sfCircleShape_setPosition(m_directorCircle,
+			sfVector2f(dirX, COMPASS_HEADER_HEIGHT + 2 + DIRECTOR_HEADER_HEIGHT / 2));
+	}
+
+	@property void listenDir(float rhs)
+	{
+		m_listenDir = rhs;
+		float dirX = bearingToPixel(m_listenDir);
 		sfCircleShape_setPosition(m_directorCircle,
 			sfVector2f(dirX, COMPASS_HEADER_HEIGHT + 2 + DIRECTOR_HEADER_HEIGHT / 2));
 	}
 
 	private void updateDirectorElement(int relCursorX)
 	{
-		m_directorBearing = pixelToBearing(relCursorX);
+		m_listenDir = pixelToBearing(relCursorX);
 		sfCircleShape_setPosition(m_directorCircle,
 			sfVector2f(relCursorX, COMPASS_HEADER_HEIGHT + 2 + DIRECTOR_HEADER_HEIGHT / 2));
 	}

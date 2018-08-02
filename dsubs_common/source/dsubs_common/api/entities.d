@@ -173,7 +173,7 @@ struct AntennaeData
 struct HydrophoneAudio
 {
 	int hydrophoneIdx;
-	double listenDir;
+	float listenDir;
 	short[] samples;	// 16-bit PCB mono
 	int samplingRate;
 }

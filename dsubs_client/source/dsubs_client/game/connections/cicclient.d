@@ -13,6 +13,7 @@ import dsubs_client.game.cic.messages;
 import dsubs_client.game.cic.protocol;
 import dsubs_client.common;
 import dsubs_client.core.utils;
+import dsubs_client.lib.openal;
 import dsubs_client.game;
 import dsubs_client.game.entities;
 import dsubs_client.game.gamestate;
@@ -43,6 +44,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 		setHandler(&h_courseReq);
 		setHandler(&h_entityDbRes);
 		setHandler(&h_acousticRes);
+		setHandler(&h_listenDirReq);
 	}
 
 	/// synchronous (in caller thread) connect to CIC server
@@ -167,6 +169,15 @@ private:
 		}
 	}
 
+	void h_listenDirReq(CICListenDirReq req)
+	{
+		assert(req.hydrophoneIdx == 0);
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.gui.sonarGui.listenDir = req.dir;
+		}
+	}
+
 	void h_acousticRes(CICSubAcousticRes res)
 	{
 		import std.algorithm.iteration: map;
@@ -175,6 +186,7 @@ private:
 		assert(res.data.length == 1);
 		assert(res.data[0].hydrophoneIdx == 0);
 		assert(res.data[0].antennaeIdx == 0);
+		StreamingSoundSource s;
 		synchronized(Game.mainMutex)
 		{
 			Game.simState.gui.sonarGui.drawData(
@@ -182,6 +194,19 @@ private:
 				Game.simState.playerSub.tmpl.hydrophones[0].fov,
 				res.rotationAtTime);
 			Game.simState.gui.sonarGui.completeRow();
+			s = Game.simState.sonarSound;
+		}
+		if (s && res.audio.length > 0)
+		{
+			trace("ready to append");
+			s.pullFinishedBuffers();
+			if (s.queuedCount)
+				s.append(res.audio[0].samples, res.audio[0].samplingRate);
+			else
+				Game.delay(
+					() {
+						s.append(res.audio[0].samples, res.audio[0].samplingRate);
+					}, msecs(500), null);
 		}
 	}
 }

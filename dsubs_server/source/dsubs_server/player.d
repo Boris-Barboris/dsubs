@@ -1,5 +1,8 @@
 module dsubs_server.player;
 
+import std.algorithm.iteration;
+import std.array: array;
+
 import core.atomic;
 
 import dsubs_common.math;
@@ -83,12 +86,18 @@ final class Player
 	{
 		assert(oldCon && !oldCon.isOpen);
 		oldCon.player = null;
-		synchronized(this)
+		synchronized(Globals.simMut.reader)
 		{
-			if (m_connection is oldCon)
+			synchronized(this)
 			{
-				m_connection = null;
-				atomicOp!"-="(s_playerCount, 1);
+				if (m_connection is oldCon)
+				{
+					if (m_submarine)
+						foreach (h; m_submarine.hydrophones)
+							h.hasListener = false;
+					m_connection = null;
+					atomicOp!"-="(s_playerCount, 1);
+				}
 			}
 		}
 	}
@@ -109,12 +118,18 @@ final class Player
 	/// set current
 	private void emplaceConnection(PlayerConnection con)
 	{
-		synchronized(this)
+		synchronized(Globals.simMut.reader)
 		{
-			closeConnection();
-			m_connection = con;
-			atomicOp!"+="(s_playerCount, 1);
-			con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
+			synchronized(this)
+			{
+				closeConnection();
+				m_connection = con;
+				atomicOp!"+="(s_playerCount, 1);
+				con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
+				if (m_submarine)
+					foreach (h; m_submarine.hydrophones)
+						h.hasListener = true;
+			}
 		}
 	}
 
@@ -130,7 +145,10 @@ final class Player
 		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
 		return immutable ReconnectStateRes(
 			s.spawnId, s.prototypeName, s.propulsor.prototypeName,
-			genSubSnapshot(), s.targetCourse + coordRot, s.targetThrottle);
+			genSubSnapshot(), s.targetCourse + coordRot, s.targetThrottle,
+			cast(immutable(float)[]) s.hydrophones.map!(
+				h => float(h.listenDir + coordRot)).array
+			);
 	}
 
 	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req)
@@ -146,6 +164,11 @@ final class Player
 				randomizePosition(s);
 				s.bootstrap();
 				m_submarine = s;
+				foreach (h; s.hydrophones)
+				{
+					h.hasListener = true;
+					h.listenDir = -coordRot;
+				}
 				return getReconnectState();
 			}
 		}
@@ -168,6 +191,18 @@ final class Player
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to set course");
 			s.targetCourse = req.target - coordRot;
+		}
+	}
+
+	void handleListenDirRequest(const ListenDirReq req)
+	{
+		synchronized(Globals.simMut.reader)
+		{
+			Submarine s = m_submarine;
+			enforce(s, "player has no submarine, unable to listenDir");
+			int hcount = s.hydrophones.length.to!int;
+			enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < hcount, "no such hydrophone");
+			s.hydrophones[req.hydrophoneIdx].listenDir = req.dir - coordRot;
 		}
 	}
 
@@ -196,15 +231,27 @@ final class Player
 		{
 			con.sendMessage(immutable SubKinematicRes(genSubSnapshot()));
 			immutable(AntennaeData)[] acdata;
-			foreach (int i, h; s.hydrophones)
+			foreach (int i, const h; s.hydrophones)
 			{
 				for (int j = 0; j < h.antennaCount; j++)
 				{
 					acdata ~= immutable AntennaeData(i, j, h.getBroadbandData(j));
 				}
 			}
+			immutable(HydrophoneAudio)[] haudio;
+			foreach (int i, h; s.hydrophones)
+			{
+				if (h.listenDirValid)
+				{
+					int srate;
+					auto samples = h.finalizePcbData(srate, 1e3);
+					trace("samples start: ", samples[0..5], " end: ", samples[$-5..$]);
+					haudio ~= immutable HydrophoneAudio(i, h.listenDir + coordRot,
+						samples, srate);
+				}
+			}
 			con.sendMessage(immutable AcousticStreamRes(
-				Globals.sim.worldTime + timeShift, acdata));
+				Globals.sim.worldTime + timeShift, acdata, haudio));
 		}
 	}
 

@@ -29,6 +29,7 @@ final class CICServerConnection: ProtocolConnection!CICProtocol
 		setHandler(&h_enterSimFlowReq);
 		setHandler(&h_throttleReq);
 		setHandler(&h_courseReq);
+		setHandler(&h_listenDirReq);
 	}
 
 	private
@@ -89,5 +90,11 @@ private:
 	{
 		enforce(m_inSimFlow, "not in simulator flow");
 		m_cicserv.handleCICCourseReq(req);
+	}
+
+	void h_listenDirReq(CICListenDirReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICListenDirReq(req);
 	}
 }

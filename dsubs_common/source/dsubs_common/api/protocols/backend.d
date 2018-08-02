@@ -110,6 +110,7 @@ struct ReconnectStateRes
 	KinematicSnapshot subSnap;
 	float targetCourse;
 	float targetThrottle;
+	float[] listenDirs;
 }
 
 /*
@@ -139,6 +140,14 @@ struct CourseReq
 {
 	__gshared const int g_marshIdx;
 	float target;
+}
+
+/// Sent by client in order to specify listening direction for a hydrophone
+struct ListenDirReq
+{
+	__gshared const int g_marshIdx;
+	int hydrophoneIdx;
+	float dir;
 }
 
 /// Server streams acoustic data to the player

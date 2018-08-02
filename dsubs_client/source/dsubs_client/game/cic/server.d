@@ -96,10 +96,24 @@ final class CICServer
 		}
 	}
 
+	void handleCICListenDirReq(CICListenDirReq req)
+	{
+		synchronized
+		{
+			synchronized(this)
+			{
+				m_state.handleListenDirReq(req);
+			}
+			m_listener.broadcast(cast(immutable CICListenDirReq) req);
+			m_bcon.sendMessage(cast(immutable ListenDirReq) req);
+		}
+	}
+
 	void handleAcousticStreamRes(AcousticStreamRes res)
 	{
 		CICSubAcousticRes bdcst;
 		bdcst.data = res.data;
+		bdcst.audio = res.audio;
 		synchronized(this)
 		{
 			assert(res.atTime == m_state.recState.subSnap.atTime);
