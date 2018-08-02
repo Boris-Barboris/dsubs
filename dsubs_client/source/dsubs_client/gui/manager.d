@@ -39,6 +39,11 @@ class Panel
 	/// previous mouse event reciever, for quick lookup
 	protected GuiElement m_mouseCache;
 
+	void clearMouseCache()
+	{
+		m_mouseCache = null;
+	}
+
 	this(GuiElement root)
 	{
 		assert(root);
@@ -119,6 +124,12 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 	void clearPanels()
 	{
 		panels.clear();
+	}
+
+	void clearMouseCache()
+	{
+		foreach(p; panels)
+			p.clearMouseCache();
 	}
 
 	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y)

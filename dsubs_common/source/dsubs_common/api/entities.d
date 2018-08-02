@@ -169,3 +169,11 @@ struct AntennaeData
 	/// ushort is performed to save network bandwidth.
 	ushort[] cells;
 }
+
+struct HydrophoneAudio
+{
+	int hydrophoneIdx;
+	double listenDir;
+	short[] samples;	// 16-bit PCB mono
+	int samplingRate;
+}

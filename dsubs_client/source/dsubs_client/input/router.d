@@ -58,6 +58,7 @@ interface IWindowEventSubrouter
 	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y);
 	RouteResult routeKeyboard(Window wnd, const sfEvent* evt);
 	void handleWindowResize(Window wnd, const sfSizeEvent* evt);
+	void clearMouseCache();
 }
 
 /// Window event router

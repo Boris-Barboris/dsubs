@@ -52,8 +52,6 @@ class GuiElement: IInputReciever
 
 		// if m_layoutType is FRACT, this is the fraction to use
 		float m_fraction = 0.0f;
-
-		bool m_skipNextMouseTest = false;
 	}
 
 	/// cached viewport rectangle
@@ -85,11 +83,6 @@ class GuiElement: IInputReciever
 	final @property GuiElement parent(GuiElement rhs)
 	{
 		return m_parent = rhs;
-	}
-
-	void skipNextMouseTest()
-	{
-		m_skipNextMouseTest = true;
 	}
 
 	// Called by child when it's layout-related parameters have changed
@@ -322,11 +315,6 @@ class GuiElement: IInputReciever
 	// element wich is placed under cursor.
 	package GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
-		if (m_skipNextMouseTest)
-		{
-			m_skipNextMouseTest = false;
-			return GuiRouteResult(null, true);
-		}
 		GuiElement interceptor = getFromPoint(evt, x, y);
 		if (interceptor)
 			return GuiRouteResult(interceptor, interceptor.mouseTransparent);

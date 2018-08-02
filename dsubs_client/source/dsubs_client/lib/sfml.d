@@ -34,7 +34,7 @@ void loadSfmlLibraries()
 	info("Loading CSFML shared libraries...");
 	DerelictSFML2System.load();
 	DerelictSFML2Window.load();
-	DerelictSFML2Audio.load();
+	// DerelictSFML2Audio.load();
 	DerelictSFML2Graphics.load();
 	// DerelictSFML2Network.load();
 	info("OK!");

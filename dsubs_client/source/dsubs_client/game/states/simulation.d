@@ -283,6 +283,7 @@ final class SimulationGUI
 		void setMiddlePane(GuiElement el)
 		{
 			topLevelDiv.setChild(el, 1);
+			Game.inputRouter.guiRouter.clearMouseCache();
 		}
 
 		tacticalTab.onClick += (btn) { setMiddlePane(tabFiller); };
@@ -313,6 +314,8 @@ final class Waterfall: GuiElement
 		enum int HEIGHT = 120;
 		enum float PXPERRAD = WIDTH / (PI * 2);
 		enum int COMPASS_HEADER_HEIGHT = 18;
+		enum int DIRECTOR_HEADER_HEIGHT = 12;
+		enum int HEADER_HEIGHT = COMPASS_HEADER_HEIGHT + DIRECTOR_HEADER_HEIGHT;
 		enum int COMPASS_FONTSIZE = 14;
 	}
 
@@ -322,7 +325,6 @@ final class Waterfall: GuiElement
 		m_renderTexture = sfRenderTexture_create(WIDTH, HEIGHT + 1, false);
 		sfRenderTexture_clear(m_renderTexture, sfBlack);
 		sfRenderTexture_setRepeated(m_renderTexture, sfTrue);
-		m_sfRst.texture = sfRenderTexture_getTexture(m_renderTexture);
 		bool ok = sfRenderTexture_setActive(m_renderTexture, false) == sfTrue;
 		assert(ok);
 		// camera is used to generate texture coordinates for m_vertices
@@ -338,15 +340,15 @@ final class Waterfall: GuiElement
 		m_vertices[5] = sfVertex(sfVector2f(0, 1), sfWhite, sfVector2f(0, HEIGHT - 1));
 		foreach (ref sfVertex v; m_vertices)
 		{
-			v.position.y = COMPASS_HEADER_HEIGHT;
+			v.position.y = HEADER_HEIGHT;
 			v.texCoords.y -= m_vertPos;
 		}
 
 		// compass
-		m_compassRect = sfRectangleShape_create();
-		sfRectangleShape_setOutlineThickness(m_compassRect, 0.0f);
-		sfRectangleShape_setFillColor(m_compassRect, sfBlack);
-		sfRectangleShape_setPosition(m_compassRect, sfVector2f(0, 0));
+		m_headerRect = sfRectangleShape_create();
+		sfRectangleShape_setOutlineThickness(m_headerRect, 0.0f);
+		sfRectangleShape_setFillColor(m_headerRect, sfBlack);
+		sfRectangleShape_setPosition(m_headerRect, sfVector2f(0, 0));
 		for (int i = 0; i < 4; i++)
 		{
 			Label lbl = new Label();
@@ -360,6 +362,14 @@ final class Waterfall: GuiElement
 		m_underCursorLabel = builder(new Label()).fontSize(COMPASS_FONTSIZE).
 			size(vec2i(40, COMPASS_HEADER_HEIGHT)).fontColor(sfYellow).
 			htextAlign(HTextAlign.CENTER).build();
+
+		// director
+		m_directorCircle = sfCircleShape_create();
+		sfCircleShape_setPointCount(m_directorCircle, 3);
+		sfCircleShape_setRotation(m_directorCircle, 180.0f);
+		sfCircleShape_setRadius(m_directorCircle, DIRECTOR_HEADER_HEIGHT / 2);
+		sfCircleShape_setFillColor(m_directorCircle, sfWhite);
+		sfCircleShape_setOutlineThickness(m_directorCircle, 0.0f);
 
 		// test handlers
 		// onMouseUp += (int x, int y, sfMouseButton btn)
@@ -389,7 +399,8 @@ final class Waterfall: GuiElement
 	~this()
 	{
 		sfRenderTexture_destroy(m_renderTexture);
-		sfRectangleShape_destroy(m_compassRect);
+		sfRectangleShape_destroy(m_headerRect);
+		sfCircleShape_destroy(m_directorCircle);
 	}
 
 	private
@@ -406,10 +417,14 @@ final class Waterfall: GuiElement
 		__gshared const sfRenderStates s_states =
 			sfRenderStates(sfBlendAlpha, sfTransform_Identity);
 
-		sfRectangleShape* m_compassRect; // compass background
+		sfRectangleShape* m_headerRect; // compass background
 		Label[4] m_compassLabels;
 		Label m_underCursorLabel;
 		bool m_cursorInside;
+
+		// microphone director
+		sfCircleShape* m_directorCircle;
+		double m_directorBearing = 0.0;
 	}
 
 	/// draw data to current row
@@ -483,6 +498,8 @@ final class Waterfall: GuiElement
 	{
 		if (btn == sfMouseRight)
 			returnMouseFocus();
+		if (btn == sfMouseLeft && m_cursorInside)
+			updateDirectorElement(x - position.x);
 	}
 
 	private
@@ -493,7 +510,7 @@ final class Waterfall: GuiElement
 	/// Y size of waterfall display in pixels
 	@property private int csizey() const
 	{
-		return size.y - COMPASS_HEADER_HEIGHT;
+		return size.y - HEADER_HEIGHT;
 	}
 
 	private void processMouseMove(int x, int y)
@@ -505,7 +522,7 @@ final class Waterfall: GuiElement
 				double(prev_y - y) / csizey * HEIGHT) / m_camera.zoom);
 			constraintCamera();
 			updateTexCoords();
-			updateCompassLabels();
+			updateHeaderElements();
 			prev_x = x;
 			prev_y = y;
 		}
@@ -521,7 +538,7 @@ final class Waterfall: GuiElement
 		if (delta > 0)
 		{
 			float ux = WIDTH * ((x - position.x) / float(size.x) - 0.5f);
-			float uy = HEIGHT * ((y - position.y - COMPASS_HEADER_HEIGHT) /
+			float uy = HEIGHT * ((y - position.y - HEADER_HEIGHT) /
 				float(csizey) - 0.5f);
 			vec2d zoomPivot = 1.2f * vec2d(ux, uy);
 			vec2d topan = zoomPivot / oldZoom - zoomPivot / m_camera.zoom;
@@ -529,7 +546,7 @@ final class Waterfall: GuiElement
 		}
 		constraintCamera();
 		updateTexCoords();
-		updateCompassLabels();
+		updateHeaderElements();
 	}
 
 	private void constraintCamera()
@@ -545,18 +562,18 @@ final class Waterfall: GuiElement
 	override void updatePosition()
 	{
 		super.updatePosition();
-		updateCompassLabels();
+		updateHeaderElements();
 	}
 
 	override void updateSize()
 	{
 		super.updateSize();
-		sfRectangleShape_setSize(m_compassRect, sfVector2f(size.x, COMPASS_HEADER_HEIGHT));
+		sfRectangleShape_setSize(m_headerRect, sfVector2f(size.x, HEADER_HEIGHT));
 		m_vertices[1].position.x = m_vertices[2].position.x =
 			m_vertices[4].position.x = size.x;
 		m_vertices[2].position.y = m_vertices[4].position.y =
 			m_vertices[5].position.y = size.y;
-		updateCompassLabels();
+		updateHeaderElements();
 	}
 
 	/// update texture coordinates from camera transform
@@ -594,8 +611,9 @@ final class Waterfall: GuiElement
 		return PI - tx / PXPERRAD;
 	}
 
-	private void updateCompassLabels()
+	private void updateHeaderElements()
 	{
+		// compass
 		for (int i = 0; i < 4; i++)
 		{
 			float bearing = dgr2rad(-i * 90);
@@ -603,6 +621,17 @@ final class Waterfall: GuiElement
 				m_compassLabels[i].size.x / 2;
 			m_compassLabels[i].position = vec2i(position.x + lblPosX, position.y);
 		}
+		// director
+		float dirX = bearingToPixel(m_directorBearing);
+		sfCircleShape_setPosition(m_directorCircle,
+			sfVector2f(dirX, COMPASS_HEADER_HEIGHT + 2 + DIRECTOR_HEADER_HEIGHT / 2));
+	}
+
+	private void updateDirectorElement(int relCursorX)
+	{
+		m_directorBearing = pixelToBearing(relCursorX);
+		sfCircleShape_setPosition(m_directorCircle,
+			sfVector2f(relCursorX, COMPASS_HEADER_HEIGHT + 2 + DIRECTOR_HEADER_HEIGHT / 2));
 	}
 
 	private void updateCursorLabel(int relCoursorX)
@@ -623,9 +652,12 @@ final class Waterfall: GuiElement
 	override void draw(Window wnd)
 	{
 		super.draw(wnd);
-		sfRenderWindow_drawRectangleShape(wnd.wnd, m_compassRect, &m_sfRst);
+		sfRenderWindow_drawRectangleShape(wnd.wnd, m_headerRect, &m_sfRst);
+		m_sfRst.texture = sfRenderTexture_getTexture(m_renderTexture);
 		sfRenderWindow_drawPrimitives(wnd.wnd, m_vertices.ptr, 6, sfTriangles,
 			&m_sfRst);
+		m_sfRst.texture = null;
+		sfRenderWindow_drawCircleShape(wnd.wnd, m_directorCircle, &m_sfRst);
 		foreach (l; m_compassLabels)
 			l.draw(wnd);
 		if (m_cursorInside)

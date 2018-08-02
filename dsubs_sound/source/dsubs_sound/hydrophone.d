@@ -117,6 +117,8 @@ final class Hydrophone
 		m_listenDir = clampAnglePi(rhs);
 	}
 
+	@property double listenDir() const { return m_listenDir; }
+
 	/// finalize m_curTds by overlapping it with m_prevTds and applying noise
 	const(TimeDomainSignal) finalizeListenTds()
 	{

@@ -137,6 +137,7 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 				if (isInfinity(__traits(getMember, ptr, field)))
 					throw new ProtocolException("Infinity poisoning");
 			}
+			enforce!ProtocolException(from.length >= MemberT.sizeof);
 			from = from[MemberT.sizeof .. $];
 		}
 		else static if (isArray!MemberT)
@@ -145,6 +146,7 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 			static if (!isStaticArray!MemberT)
 			{
 				arrLen = *(cast(int*) from.ptr);
+				enforce!ProtocolException(from.length >= 4);
 				from = from[4 .. $];
 				if (arrLen < 0)
 					throw new ProtocolException("Negative array length");
@@ -160,6 +162,7 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 				arrLen = __traits(getMember, ptr, field).length.to!int;
 			static if (isBasicType!(ArrayElementT!MemberT))
 			{
+				enforce!ProtocolException(from.length >= ArrayElementSize!MemberT * arrLen);
 				for (int i = 0; i < arrLen; i++)
 				{
 					static if (!isStaticArray!MemberT)

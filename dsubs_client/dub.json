@@ -7,6 +7,7 @@
 	],
 	"dependencies": {
 		"gfm:math": "~>6.2.7",
+		"derelict-al": "~>2.0.0-beta.2",
 		"derelict-sfml2": { "path": "../DerelictSFML2" },
 		"dsubs_common": { "path": "../dsubs_common" }
 	},

@@ -89,6 +89,8 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 		components.reserve(512);
 	}
 
+	void clearMouseCache() {}
+
 	void draw(Window wnd, long usecsDelta)
 	{
 		// TODO: maybe spread load on a thread pool

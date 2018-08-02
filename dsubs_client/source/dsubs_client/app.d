@@ -4,6 +4,7 @@ import core.stdc.stdlib;
 
 import dsubs_client.common;
 import dsubs_client.lib.sfml;
+import dsubs_client.lib.openal;
 import dsubs_client.lib.fonts;
 import dsubs_client.tests;
 import dsubs_client.game;
@@ -17,6 +18,7 @@ void main(string[] argv)
 		initXLib();
 	}
 	loadSfmlLibraries();
+	loadAudioLib();
 	loadGlobalFonts();
 	runModuleTests();
 	//testGuiElements();

@@ -83,6 +83,8 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 		return m_holdkeys.length = 0;
 	}
 
+	void clearMouseCache() {}
+
 	/// return true if hotkey was overwritten, false otherwise, throws
 	/// if the hotkey is invalid.
 	bool setHotkey(Hotkey hk, void delegate() onRelease)
