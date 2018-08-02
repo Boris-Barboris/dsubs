@@ -18,7 +18,7 @@ Socket listenTcp(TcpServer settings)
 	Address addr = parseAddress(settings.listenAddr, settings.port);
 	Socket listenSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
 	scope(failure) listenSock.close();
-	listenSock.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
+	listenSock.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, false);
 	version (Windows) { /* windows has socket buf size autotuning */ }
 	else
 	{
