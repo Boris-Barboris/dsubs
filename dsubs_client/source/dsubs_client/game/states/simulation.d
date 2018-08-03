@@ -391,6 +391,9 @@ final class Waterfall: GuiElement
 		sfCircleShape_setRadius(m_directorCircle, DIRECTOR_HEADER_HEIGHT / 2);
 		sfCircleShape_setFillColor(m_directorCircle, sfWhite);
 		sfCircleShape_setOutlineThickness(m_directorCircle, 0.0f);
+		sfFloatRect bounds = sfCircleShape_getLocalBounds(m_directorCircle);
+		sfCircleShape_setOrigin(m_directorCircle,
+			sfVector2f(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2));
 
 		// test handlers
 		// onMouseUp += (int x, int y, sfMouseButton btn)
@@ -622,9 +625,9 @@ final class Waterfall: GuiElement
 			vec2d(WIDTH / 2.0f - PXPERRAD * bearing, 0)).x;
 		float screenWidthTx = WIDTH * m_camera.zoom;
 		if (txCoord < 0.0f)
-			txCoord = screenWidthTx + txCoord % screenWidthTx;
+			txCoord = screenWidthTx + fmod(txCoord, screenWidthTx);
 		else
-			txCoord = txCoord % screenWidthTx;
+			txCoord = fmod(txCoord, screenWidthTx);
 		return txCoord * size.x / WIDTH;
 	}
 
@@ -648,7 +651,7 @@ final class Waterfall: GuiElement
 		// director
 		float dirX = bearingToPixel(m_listenDir);
 		sfCircleShape_setPosition(m_directorCircle,
-			sfVector2f(dirX, COMPASS_HEADER_HEIGHT + 2 + DIRECTOR_HEADER_HEIGHT / 2));
+			sfVector2f(dirX, COMPASS_HEADER_HEIGHT + DIRECTOR_HEADER_HEIGHT / 2));
 	}
 
 	@property void listenDir(float rhs)
@@ -656,14 +659,14 @@ final class Waterfall: GuiElement
 		m_listenDir = rhs;
 		float dirX = bearingToPixel(m_listenDir);
 		sfCircleShape_setPosition(m_directorCircle,
-			sfVector2f(dirX, COMPASS_HEADER_HEIGHT + 2 + DIRECTOR_HEADER_HEIGHT / 2));
+			sfVector2f(dirX, COMPASS_HEADER_HEIGHT + DIRECTOR_HEADER_HEIGHT / 2));
 	}
 
 	private void updateDirectorElement(int relCursorX)
 	{
 		m_listenDir = pixelToBearing(relCursorX);
 		sfCircleShape_setPosition(m_directorCircle,
-			sfVector2f(relCursorX, COMPASS_HEADER_HEIGHT + 2 + DIRECTOR_HEADER_HEIGHT / 2));
+			sfVector2f(relCursorX, COMPASS_HEADER_HEIGHT + DIRECTOR_HEADER_HEIGHT / 2));
 	}
 
 	private void updateCursorLabel(int relCoursorX)

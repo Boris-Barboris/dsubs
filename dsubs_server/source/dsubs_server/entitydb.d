@@ -164,8 +164,8 @@ Hydrophones:
 		trace("dims: ", dims);
 		sp.hullLength = dims.y;
 		sp.hprots = [
-			HydrophonePrototype([0.0f], 500, 2047, dgr2rad(210), 71, 2 / 71.0f,
-				3.0f, 0.001f, 0.001f)
+			HydrophonePrototype([0.0f], 500, 2047, dgr2rad(210), 91, 2 / 91.0f,
+				3.0f, 0.003f, 0.001f)
 		];
 		g_submarines[sp.tmpl.name] = sp;
 	}
