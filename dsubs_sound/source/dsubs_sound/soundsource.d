@@ -132,8 +132,12 @@ final class PropellerSound: SoundSource
 	private IModulator genChainModulator(float kstart, float kend, AmplitudeModulator am) const
 	{
 		IntensityInterpolator ii = new IntensityInterpolator();
-		ii.startIntensityMult = kstart;
-		ii.endIntensityMult = kend;
+		float kavg = (kstart.fabs + kend.fabs) / 2;
+		if (kavg != 0.0f)
+		{
+			ii.startIntensityMult = kstart / kavg;
+			ii.endIntensityMult = kend / kavg;
+		}
 		return new ChainModulator(cast(IModulator[]) [am, ii]);
 	}
 
@@ -155,9 +159,13 @@ final class PropellerSound: SoundSource
 		float freqCubeEnd = pow(m_shaftFreqEnd, 3);
 		assert(!isNaN(freqCubeEnd));
 		bool cavitation = fabs(m_normalVelStart) > m_critNormalVel;
-		float cavSqrStart = cavitation ? pow(m_normalVelStart - m_critNormalVel, 2) : 0.0f;
+		float cavSqrStart = cavitation ?
+			(m_normalVelStart - m_critNormalVel) * fabs(m_normalVelStart - m_critNormalVel) :
+			0.0f;
 		cavitation = fabs(m_normalVelEnd) > m_critNormalVel;
-		float cavSqrEnd = cavitation ? pow(m_normalVelEnd - m_critNormalVel, 2) : 0.0f;
+		float cavSqrEnd = cavitation ?
+			(m_normalVelEnd - m_critNormalVel) * fabs(m_normalVelEnd - m_critNormalVel) :
+			0.0f;
 		// prepare common modulators
 		AmplitudeModulator am;
 		if (needModulator)

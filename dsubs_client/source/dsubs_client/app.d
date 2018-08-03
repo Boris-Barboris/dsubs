@@ -19,11 +19,11 @@ void main(string[] argv)
 	}
 	loadSfmlLibraries();
 	loadAudioLib();
-	scope(failure) unloadAudioLib();
 	loadGlobalFonts();
 	runModuleTests();
 	//testGuiElements();
 	scope(failure) exit(1);
+	scope(failure) unloadAudioLib();
 	try
 	{
 		Game.start();

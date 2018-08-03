@@ -303,7 +303,7 @@ final class SimulationGUI
 		psonarTab.onClick += (btn)
 		{
 			setMiddlePane(m_sonarGui);
-			Game.simState.sonarSound.gain = 10.0f;
+			Game.simState.sonarSound.gain = 1.0f;
 		};
 		asonarTab.onClick += (btn)
 		{

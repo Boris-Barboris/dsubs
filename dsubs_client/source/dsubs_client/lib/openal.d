@@ -1,5 +1,6 @@
 module dsubs_client.lib.openal;
 
+import std.algorithm;
 import std.range;
 
 import derelict.openal.al;
@@ -10,8 +11,7 @@ void loadAudioLib()
 {
 	DerelictAL.load();
 	s_device = alcOpenDevice(null);
-	ALenum err;
-	alcGetError(&err);
+	ALenum err = alGetError();
 	if (s_device is null)
 	{
 		error("OpenAL unable to open audio device: ", err);
@@ -41,8 +41,7 @@ private
 pragma(inline)
 private void openalCheckErr(string msgStart)
 {
-	ALenum err;
-	alcGetError(&err);
+	ALenum err = alGetError();
 	enforce(err == AL_NO_ERROR, msgStart ~ err.to!string);
 }
 
@@ -56,7 +55,7 @@ final class StreamingSoundSource
 			return;
 		alGenSources(1, &source);
 		openalCheckErr("Unable to create audio source: ");
-		alSourcef(source, AL_MAX_GAIN, 100.0f);
+		alSourcef(source, AL_MAX_GAIN, 1.0f);
 		openalCheckErr("Cannot set max gain: ");
 		gain = 0.0f;
 	}
@@ -65,6 +64,9 @@ final class StreamingSoundSource
 	{
 		ALuint source;
 		int m_queuedCount;
+
+		enum float TARGET_MAX = short.max * 0.8f;
+		enum float MAX_GAIN = 1e3;	// 40 dB
 	}
 
 	@property int queuedCount() const { return m_queuedCount; }
@@ -74,16 +76,15 @@ final class StreamingSoundSource
 		if (s_noAudio)
 			return;
 		alSourceStop(source);
-		ALenum err;
-		alcGetError(&err);
+		ALenum err = alGetError();
 		alDeleteSources(1, &source);
-		alcGetError(&err);
+		err = alGetError();
 		if (err != AL_NO_ERROR)
 			error("error during source deletion: " ~ err.to!string);
 	}
 
 	/// append sound to the source
-	void append(const short[] samples, int srate)
+	void append(short[] samples, int srate)
 	{
 		if (s_noAudio)
 			return;
@@ -91,6 +92,12 @@ final class StreamingSoundSource
 		ALuint newBuf;
 		alGenBuffers(1, &newBuf);
 		openalCheckErr("Cannot create new buffer: ");
+		// short smax = samples.map!(s => abs(s).to!short).maxElement();
+		// float mgain = 1.0f;
+		// if (gain != 0.0f)
+		// 	mgain = min(MAX_GAIN, TARGET_MAX / smax);
+		// foreach (ref s; samples)
+		// 	s = lrint(float(s) * mgain).to!short;
 		alBufferData(newBuf, AL_FORMAT_MONO16, samples.ptr,
 			(samples.length * short.sizeof).to!int, srate);
 		openalCheckErr("Unable to fill audio buffer with data: ");
@@ -104,6 +111,7 @@ final class StreamingSoundSource
 	{
 		if (s_noAudio)
 			return;
+		enforce(rhs <= 1.0f && rhs >= 0.0f);
 		alSourcef(source, AL_GAIN, rhs);
 		openalCheckErr("Cannot set gain: ");
 	}

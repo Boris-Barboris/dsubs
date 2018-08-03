@@ -223,9 +223,11 @@ final class Hydrophone
 	}
 
 	/// ditto
-	private void applyStageIspec(const(IModulator) mod)
+	private void applyStageIspec(const(IModulator) mod, float powerPart = 1.0f)
 	{
 		s_stageIspec.genSpectrum(s_stageSpectrum);
+		foreach (ref bin; s_stageIspec.bins)
+			bin *= powerPart;
 		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		if (mod)
@@ -379,6 +381,7 @@ final class Hydrophone
 				return;
 			cellStart = max(0, cellStart);
 			cellEnd = min(cells.length - 1, cellEnd);
+			bool needModulator = cellStart <= listenCell && cellEnd >= listenCell;
 
 			void onBuilt(const IModulator mod)
 			{
@@ -393,12 +396,12 @@ final class Hydrophone
 					float powerPart = 0.5 * (erf(normRight) - erf(normLeft));
 					cells[ci] += bandSum * powerPart;
 					if (m_listenDirValid && listenCell == ci)
-						applyStageIspec(mod);
+						applyStageIspec(mod, powerPart);
 				}
 			}
 
 			s.getIntensitySpectrum(m_transform.wposition, s_stageIspec,
-				&onBuilt, m_minFreq, m_maxFreq, m_listenDirValid, 4.0f);
+				&onBuilt, m_minFreq, m_maxFreq, m_listenDirValid && needModulator, 4.0f);
 		}
 	}
 }
