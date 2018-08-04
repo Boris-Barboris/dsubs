@@ -201,7 +201,7 @@ version (unittest)
 		ilspec.addNumericNoise(0.5f);
 		tmpl.baseCavSpectrum = ilspec.toIntensity;
 		tmpl.am = AmplitudeModulatorParams(
-			[0.2f, 0.01f, 0.007f, 0.009f, 0.18f, 0.006f], 0.0f);
+			[0.01f, 0.01f, 0.005f, 0.001f, 0.6f, 0.0001f], 0.0f);
 		tmpl.bladeRadius = 4.2f;
 		tmpl.bladeAoA = dgr2rad(30.0);
 		tmpl.critNormalVel = 8.0f;

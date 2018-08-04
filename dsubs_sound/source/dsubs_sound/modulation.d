@@ -1,7 +1,5 @@
 module dsubs_sound.modulation;
 
-import std.math;
-
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
 
@@ -61,7 +59,10 @@ struct AmplitudeModulatorParams
 	}
 }
 
-/// DEMON component that modulates time-domain signal with a cascade of harmonics
+// DEMON - detection of envelope modulation on noise
+
+/// Sine harmonics cascade modulator, useful for shaft and blade pass
+/// frequency modulation.
 final class AmplitudeModulator: IModulator
 {
 	this(AmplitudeModulatorParams params)
@@ -89,14 +90,16 @@ final class AmplitudeModulator: IModulator
 		import std.algorithm.iteration: map, sum;
 
 		assert(harmonics.length > 0);
-		float dt = 1.0f / dest.samplingRate;
+		assert(dest.samples.length > 0);
+		float dt = 1.0f / (dest.samplingRate - 1);
+		assert(!isNaN(dt));
 		static float[] s_phases;
 		s_phases.length = harmonics.length;
 		float[] phases = s_phases;	// optimize out TLS access
-		float DC = sqrt(1.0 - 0.5 * sum(harmonics.map!(a => a * a)));
+		float DC = sqrt(1.0f - 0.5f * sum(harmonics.map!(a => a * a)));
 		assert(!isNaN(DC));
 		// main modulation loop
-		float dfreq = (endFundFreq - startFundFreq) / dest.samples.length;
+		float dfreq = (endFundFreq - startFundFreq) / (dest.samples.length - 1);
 		for (size_t i = 0; i < dest.samples.length; i++)
 		{
 			float freq = startFundFreq + dfreq * i;
@@ -110,6 +113,8 @@ final class AmplitudeModulator: IModulator
 		}
 	}
 }
+
+// 1.2 + sin(x + 3.14 / 2 + 0.6 * sin(x))
 
 // correctness test
 unittest

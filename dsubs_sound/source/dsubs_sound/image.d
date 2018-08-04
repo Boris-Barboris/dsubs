@@ -74,7 +74,7 @@ unittest
 	pspec.toTimeDomain(fftCache, tds);
 	tds.samples = tds.samples.cycle.takeExactly(4096 * 5).array;
 	AmplitudeModulator am = new AmplitudeModulator(AmplitudeModulatorParams(
-		[0.2f, 0.01f, 0.007f, 0.009f, 0.18f, 0.006f], 0.0f));
+		[0.23f, 0.01f, 0.005f, 0.001f, 0.18f, 0.0001f], 0.0f));
 	am.startFundFreq = am.endFundFreq = 2.0f;
 	am.modulate(tds);
 	float maxp = tds.samples.map!(a => a.re).maxElement;

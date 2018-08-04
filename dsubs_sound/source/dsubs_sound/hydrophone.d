@@ -125,7 +125,7 @@ final class Hydrophone
 	{
 		assert(m_listenDirValid);
 		if (m_prevTds.samples.length)
-			overlapTDS(m_prevTds, m_curTds, m_srate / 8);
+			overlapTDS(m_prevTds, m_curTds, m_srate / 2);
 		float linNoise = m_baseNoise.toLinear;
 		foreach (ref s; m_curTds.samples)
 			s.re += uniform(-linNoise, linNoise);
@@ -227,7 +227,7 @@ final class Hydrophone
 	{
 		s_stageIspec.genSpectrum(s_stageSpectrum);
 		foreach (ref bin; s_stageIspec.bins)
-			bin *= powerPart;
+			bin *= sqrt(powerPart);
 		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		if (mod)
@@ -254,6 +254,8 @@ final class Hydrophone
 			resetStageIspec();
 			updateListenCell();
 		}
+		else
+			m_prevTds.samples.length = 0;
 		updateSeaIntensity();
 		updateFlowNoise(kts);
 		if (m_listenDirValid)
@@ -284,9 +286,10 @@ final class Hydrophone
 		SourcePrecalc res;
 		res.dir = s.transform.wposition - m_transform.wposition;
 		res.range = res.dir.length;
-		res.worldBearing = courseAngle(res.dir) + uniform(-m_bearingErrNoise, m_bearingErrNoise);
+		res.worldBearing = courseAngle(res.dir) +
+			uniform(-m_bearingErrNoise, m_bearingErrNoise);
 		// half of halo size
-		res.haloBase = s.radius / res.range;
+		res.haloBase = s.radius / res.range + pointHaloAngle(res.range);
 		res.haloBound = fmin(3.0 * res.haloBase, MAX_HALO);
 		return res;
 	}
@@ -475,7 +478,7 @@ unittest
 
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2047, dgr2rad(180.0f), 181, 4 / 181.0f, 3.0f, 0.001f, 0.001f);
+		500, 2047, dgr2rad(210.0f), 210, 0 / 90.0f, 3.0f, 0.005f, 0.001f);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 500;
@@ -506,6 +509,7 @@ unittest
 	const(TimeDomainSignal) tds = h.finalizeListenTds();
 	float maxp = tds.samples.map!(a => a.re).maxElement;
 	writeln("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);
-	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav", tds.samples,
+	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav",
+		tds.samples.cycle.take(tds.samplingRate * 5),
 		0.9f / maxp, tds.samplingRate);
 }

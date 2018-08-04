@@ -11,7 +11,7 @@ void loadAudioLib()
 {
 	DerelictAL.load();
 	s_device = alcOpenDevice(null);
-	ALenum err = alGetError();
+	ALenum err = alcGetError(s_device);
 	if (s_device is null)
 	{
 		error("OpenAL unable to open audio device: ", err);
@@ -19,9 +19,9 @@ void loadAudioLib()
 		return;
 	}
 	s_context = alcCreateContext(s_device, null);
-	openalCheckErr("Unable to create audio context: ");
+	openalcCheckErr("Unable to create audio context: ");
 	alcMakeContextCurrent(s_context);
-	openalCheckErr("Unable to activate audio context: ");
+	openalcCheckErr("Unable to activate audio context: ");
 }
 
 void unloadAudioLib()
@@ -31,11 +31,18 @@ void unloadAudioLib()
 	alcCloseDevice(s_device);
 }
 
-private
+private __gshared
 {
 	ALCdevice* s_device = null;
 	ALCcontext* s_context = null;
 	bool s_noAudio;
+}
+
+pragma(inline)
+private void openalcCheckErr(string msgStart)
+{
+	ALenum err = alcGetError(s_device);
+	enforce(err == AL_NO_ERROR, msgStart ~ err.to!string);
 }
 
 pragma(inline)

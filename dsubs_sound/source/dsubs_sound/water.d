@@ -89,6 +89,11 @@ IntensityLevel flowNoise(float freq, float kts)
 	return IntensityLevel(res);
 }
 
+float pointHaloAngle(float range)
+{
+	return dgr2rad(1.0 + uniform(-0.05f, 0.05f));
+}
+
 unittest
 {
 	import std.algorithm;

@@ -203,10 +203,11 @@ private:
 			if (s.queuedCount)
 				s.append(res.audio[0].samples, res.audio[0].samplingRate);
 			else
-				Game.delay(
-					() {
-						s.append(res.audio[0].samples, res.audio[0].samplingRate);
-					}, msecs(500), null);
+			{
+				// we delay first buffer enqueing in order to reduce the risc of buffering
+				Game.delay(()
+					{ s.append(res.audio[0].samples, res.audio[0].samplingRate); }, msecs(200), null);
+			}
 		}
 	}
 }

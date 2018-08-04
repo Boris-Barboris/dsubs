@@ -116,7 +116,7 @@ Length: 70m
 Displacement: 2000t
 Top speed: 17m/s
 Hydrophones:
-  Bow: passive 500-2kHz spherical array, 180 deg FoV`,
+  Bow: passive 500-2kHz spherical array, 210 deg FoV`,
 				[
 					ConvexPolygon(xSymmetry([
 							0.0, 35.0,
@@ -164,8 +164,8 @@ Hydrophones:
 		trace("dims: ", dims);
 		sp.hullLength = dims.y;
 		sp.hprots = [
-			HydrophonePrototype([0.0f], 500, 2047, dgr2rad(210), 91, 1 / 91.0f,
-				3.0f, 0.003f, 0.001f)
+			HydrophonePrototype([0.0f], 500, 2047, dgr2rad(210), 210, 2 / 90.0f,
+				3.0f, 0.005f, 0.001f)
 		];
 		g_submarines[sp.tmpl.name] = sp;
 	}

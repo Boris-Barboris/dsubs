@@ -19,7 +19,7 @@ version(linux)
 		import core.stdc.stdlib;
 		import core.sys.posix.dlfcn;
 
-		info("Loading libX11 and initializinth thread support");
+		info("Loading libX11 and requesting thread support");
 		void *lh = dlopen("libX11.so", RTLD_NOW);
 		if (lh == null)
 			throw new Exception("failed to load libX11.so");

@@ -395,22 +395,6 @@ final class Waterfall: GuiElement
 		sfCircleShape_setOrigin(m_directorCircle,
 			sfVector2f(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2));
 
-		// test handlers
-		// onMouseUp += (int x, int y, sfMouseButton btn)
-		// 	{
-		// 		if (btn != sfMouseLeft)
-		// 			return;
-		// 		import std.random;
-		// 		static int t;
-		// 		trace("debug waterfall data");
-		// 		ubyte[] data = new ubyte[WIDTH / 2];
-		// 		foreach (ref d; data)
-		// 			d = uniform(ubyte(60), ubyte.max);
-		// 		t++;
-		// 		drawData(data, dgr2rad(90), dgr2rad(90 - 5 * t));
-		// 		completeRow();
-		// 	};
-
 		// mouse and keyboard handlers
 		onMouseDown += &processMouseDown;
 		onMouseUp += &processMouseUp;
