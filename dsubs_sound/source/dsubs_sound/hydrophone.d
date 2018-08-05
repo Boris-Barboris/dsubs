@@ -125,7 +125,7 @@ final class Hydrophone
 	{
 		assert(m_listenDirValid);
 		if (m_prevTds.samples.length)
-			overlapTDS(m_prevTds, m_curTds, m_srate / 2);
+			overlapTDS(m_prevTds, m_curTds, m_srate / 4);
 		float linNoise = m_baseNoise.toLinear;
 		foreach (ref s; m_curTds.samples)
 			s.re += uniform(-linNoise, linNoise);
@@ -250,7 +250,8 @@ final class Hydrophone
 	{
 		if (m_hasListener)
 		{
-			m_prevTds = m_curTds;
+			m_prevTds.samplingRate = m_curTds.samplingRate;
+			m_prevTds.samples = m_curTds.samples.dup;
 			resetCurTds();
 			resetStageIspec();
 			updateListenCell();
