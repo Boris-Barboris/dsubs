@@ -91,7 +91,7 @@ IntensityLevel flowNoise(float freq, float kts)
 
 float pointHaloAngle(float range)
 {
-	return dgr2rad(1.0 + uniform(-0.05f, 0.05f));
+	return dgr2rad(0.5 + uniform(-0.05f, 0.05f));
 }
 
 unittest

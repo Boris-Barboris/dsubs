@@ -95,8 +95,8 @@ private:
 				"../dsubs_sound/std_propeller.png", 1.0f).toIntensity,
 			loadSpectrumFromImageAndWarp(
 				"../dsubs_sound/std_propeller_cav.png", 1.0f).toIntensity,
-			AmplitudeModulatorParams(
-				[0.23f, 0.01f, 0.005f, 0.001f, 0.18f, 0.0001f], 0.0f),
+			ThrachioidModulatorParams([0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f],
+				0.5, 0.7, -0.4),
 			4.2f, dgr2rad(30), 8.0f, 0.03f
 		);
 		g_propulsors["Five-blade screw"] = bp;
@@ -165,7 +165,7 @@ Hydrophones:
 		sp.hullLength = dims.y;
 		sp.hprots = [
 			HydrophonePrototype([0.0f], 500, 2047, dgr2rad(210), 210, 2 / 90.0f,
-				3.0f, 0.005f, 0.001f)
+				3.0f, 0.002f, 0.001f)
 		];
 		g_submarines[sp.tmpl.name] = sp;
 	}

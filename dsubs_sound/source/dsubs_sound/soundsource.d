@@ -40,7 +40,8 @@ struct PropellerSoundPrototype
 {
 	IntensitySpectrum baseBBSpectrum;
 	IntensitySpectrum baseCavSpectrum;
-	AmplitudeModulatorParams am;
+	// AmplitudeModulatorParams am;
+	ThrachioidModulatorParams tm;
 	float bladeRadius;
 	float bladeAoA;
 	float critNormalVel;
@@ -50,16 +51,17 @@ struct PropellerSoundPrototype
 
 final class PropellerSound: SoundSource
 {
-	this(Transform2D t, const PropellerSoundPrototype templ)
+	this(Transform2D t, const PropellerSoundPrototype p)
 	{
 		super(t);
-		m_baseBBSpectrum = templ.baseBBSpectrum;
-		m_baseCavSpectrum = templ.baseCavSpectrum;
-		m_am = templ.am;
-		m_bladeRadius = templ.bladeRadius;
-		m_bladeAoA = templ.bladeAoA;
-		m_critNormalVel = templ.critNormalVel;
-		m_rngSpan = templ.rngSpan;
+		m_baseBBSpectrum = p.baseBBSpectrum;
+		m_baseCavSpectrum = p.baseCavSpectrum;
+		//m_am = templ.am;
+		m_tm = p.tm;
+		m_bladeRadius = p.bladeRadius;
+		m_bladeAoA = p.bladeAoA;
+		m_critNormalVel = p.critNormalVel;
+		m_rngSpan = p.rngSpan;
 	}
 
 	private
@@ -70,7 +72,8 @@ final class PropellerSound: SoundSource
 		// criticalNormalVel + 1m/s
 		const IntensitySpectrum m_baseCavSpectrum;
 
-		AmplitudeModulatorParams m_am;
+		// AmplitudeModulatorParams m_am;
+		ThrachioidModulatorParams m_tm;
 		float m_bladeRadius;
 		float m_bladeAoA;
 		float m_shaftFreqStart, m_shaftFreqEnd;
@@ -108,7 +111,7 @@ final class PropellerSound: SoundSource
 		assert(!isNaN(waterSpeedEnd));
 		m_shaftFreqEnd = endShaftFreq;
 		m_normalVelEnd = caclNormalVel(endShaftFreq, waterSpeedEnd);
-		m_am.updatePhase(dt, endShaftFreq);
+		m_tm.updateStartPhase(dt, endShaftFreq);
 	}
 
 	private void genISpec(float range, ref IntensitySpectrum dest,
@@ -129,7 +132,7 @@ final class PropellerSound: SoundSource
 		}
 	}
 
-	private IModulator genChainModulator(float kstart, float kend, AmplitudeModulator am) const
+	private IModulator genChainModulator(float kstart, float kend, IModulator mod) const
 	{
 		IntensityInterpolator ii = new IntensityInterpolator();
 		float kavg = (kstart.fabs + kend.fabs) / 2;
@@ -138,7 +141,7 @@ final class PropellerSound: SoundSource
 			ii.startIntensityMult = kstart / kavg;
 			ii.endIntensityMult = kend / kavg;
 		}
-		return new ChainModulator(cast(IModulator[]) [am, ii]);
+		return new ChainModulator(cast(IModulator[]) [mod, ii]);
 	}
 
 	override void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
@@ -167,23 +170,23 @@ final class PropellerSound: SoundSource
 			(m_normalVelEnd - m_critNormalVel) * fabs(m_normalVelEnd - m_critNormalVel) :
 			0.0f;
 		// prepare common modulators
-		AmplitudeModulator am;
+		ThrachioidModulator tm;
 		if (needModulator)
 		{
-			am = new AmplitudeModulator(m_am);
-			am.startFundFreq = m_shaftFreqStart;
-			am.endFundFreq = m_shaftFreqEnd;
+			tm = new ThrachioidModulator(m_tm);
+			tm.startFundFreq = m_shaftFreqStart;
+			tm.endFundFreq = m_shaftFreqEnd;
 		}
 		// broadband
 		genISpec(range, dest, m_baseBBSpectrum, minFreq, maxFreq,
 			freqCubeStart, freqCubeEnd, dissMod);
 		onSpectrumBuilt(needModulator ?
-			genChainModulator(freqCubeStart, freqCubeEnd, am) : null);
+			genChainModulator(freqCubeStart, freqCubeEnd, tm) : null);
 		// cavitation
-		genISpec(range, dest, m_baseCavSpectrum, minFreq, maxFreq,
-			cavSqrStart, cavSqrEnd, dissMod);
-		onSpectrumBuilt(needModulator ?
-			genChainModulator(cavSqrStart, cavSqrEnd, am) : null);
+		// genISpec(range, dest, m_baseCavSpectrum, minFreq, maxFreq,
+		// 	cavSqrStart, cavSqrEnd, dissMod);
+		// onSpectrumBuilt(needModulator ?
+		// 	genChainModulator(cavSqrStart, cavSqrEnd, am) : null);
 	}
 }
 
@@ -200,8 +203,10 @@ version (unittest)
 		ilspec = loadSpectrumFromImage("std_propeller_cav.png");
 		ilspec.addNumericNoise(0.5f);
 		tmpl.baseCavSpectrum = ilspec.toIntensity;
-		tmpl.am = AmplitudeModulatorParams(
-			[0.01f, 0.01f, 0.005f, 0.001f, 0.6f, 0.0001f], 0.0f);
+		//tmpl.am = AmplitudeModulatorParams(
+		//	[0.01f, 0.01f, 0.005f, 0.001f, 0.6f, 0.0001f], 0.0f);
+		tmpl.tm = ThrachioidModulatorParams([0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f],
+			0.5, 0.7, -0.4);
 		tmpl.bladeRadius = 4.2f;
 		tmpl.bladeAoA = dgr2rad(30.0);
 		tmpl.critNormalVel = 8.0f;

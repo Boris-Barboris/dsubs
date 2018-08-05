@@ -226,8 +226,9 @@ final class Hydrophone
 	private void applyStageIspec(const(IModulator) mod, float powerPart = 1.0f)
 	{
 		s_stageIspec.genSpectrum(s_stageSpectrum);
-		foreach (ref bin; s_stageIspec.bins)
-			bin *= sqrt(powerPart);
+		float linGain = sqrt(powerPart);
+		foreach (ref bin; s_stageSpectrum.bins)
+			bin *= linGain;
 		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		if (mod)
@@ -478,7 +479,7 @@ unittest
 
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2047, dgr2rad(210.0f), 210, 0 / 90.0f, 3.0f, 0.005f, 0.001f);
+		500, 2047, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 0.002f, 0.001f);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 500;
@@ -503,6 +504,10 @@ unittest
 	h.hasListener = true;
 	h.listenDir = 0.0;
 	h.resetAndIsotropic(mpsToKts(0));
+	float freq = 17.0f * freqPerMs;
+	writeln("fundamental shaft frequency = ", freq);
+	prop.preUpdate(freq, 17.0f);
+	prop.postUpdate(freq, 17.0f, 1.0f);
 	assert(h.m_listenDirValid);
 	assert(h.m_ant[0].listenCell >= 0);
 	h.applySoundSource(prop);

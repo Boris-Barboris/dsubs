@@ -50,7 +50,7 @@ final class PlayerSubIcon: OverlayEntity
 		CircleShape m_shape;
 		LineShape m_velLine;
 		Submarine m_sub;
-		static immutable sfColor BASE_COLOR = sfColor(51, 204, 255, 230);
+		enum sfColor BASE_COLOR = sfColor(51, 204, 255, 230);
 	}
 
 	this(Submarine sub)
@@ -83,7 +83,7 @@ final class PlayerSubIcon: OverlayEntity
 		if (m_sub.getInterpolatedSnapshot(snap))
 		{
 			double velRot = courseAngle(snap.velocity);
-			double velLen = 1.33 * snap.velocity.length;
+			double velLen = 2.0 * snap.velocity.length;
 			// LineShape is horizontal when transform rotation is zero, so we need
 			// to add PI_2 in order to match it with dsubs rotation frame
 			m_velLine.transform.rotation = -transform.rotation + velRot + PI_2;
