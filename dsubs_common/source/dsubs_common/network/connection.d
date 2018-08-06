@@ -15,6 +15,7 @@ import core.time: Duration, seconds, msecs;
 import dsubs_common.event;
 import dsubs_common.api.constants;
 import dsubs_common.api.utils: ProtocolException;
+import dsubs_common.api.encryption;
 import dsubs_common.utils;
 
 
@@ -330,12 +331,12 @@ unittest
 		bool msgReceived;
 		server.setHandler((LoginReq req)
 			{
-				assert(req.username == "test");
+				assert(cast(string) req.username == "test");
 				msgReceived = true;
 			});
 		server.start();
 		thread2.join();
-		client.sendMessage(immutable LoginReq("test"));
+		client.sendMessage(immutable LoginReq(cast(immutable(ubyte)[]) "test"));
 		Thread.sleep(msecs(100));
 		assert(msgReceived);
 		// some unknowm message

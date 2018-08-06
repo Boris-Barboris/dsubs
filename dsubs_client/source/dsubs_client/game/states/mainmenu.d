@@ -96,7 +96,7 @@ final class MainMenuState: GameState
 				cicConnectCancellator = null;
 			}
 			Game.bconm.con.sendMessage(
-				immutable LoginReq(loginField.content.str, pwField.content.str));
+				immutable LoginReq(loginField.content.str.encrypt, pwField.content.str.encrypt));
 			infoLabel.content = "Authorizing...";
 		};
 

@@ -6,7 +6,8 @@
 	],
 	"dependencies": {
 		"gfm:math": "~>6.2.7",
-		"painlesstraits": "0.3.0"
+		"painlesstraits": "0.3.0",
+		"crypto": "0.1.5"
 	},
 	"description": "Common library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
