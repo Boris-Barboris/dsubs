@@ -124,11 +124,11 @@ final class Hydrophone
 	const(TimeDomainSignal) finalizeListenTds()
 	{
 		assert(m_listenDirValid);
-		if (m_prevTds.samples.length)
-			overlapTDS(m_prevTds, m_curTds, m_srate / 4);
 		float linNoise = m_baseNoise.toLinear;
 		foreach (ref s; m_curTds.samples)
 			s.re += uniform(-linNoise, linNoise);
+		if (m_prevTds.samples.length)
+			overlapTDS(m_prevTds, m_curTds, m_srate / 4);
 		return m_curTds;
 	}
 
@@ -483,7 +483,7 @@ unittest
 		500, 2047, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 0.002f, 0.001f);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
-	ilevels.length = 500;
+	ilevels.length = 100;
 	float spdKts = 0.0f;
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
@@ -493,29 +493,37 @@ unittest
 			float freq = spd * freqPerMs;
 			prop.preUpdate(freq, spd);
 			prop.postUpdate(freq, spd, 1.0f);
-			propTrans.position = rotateVector(vec2d(0.0, (i + 1) * 200.0), relBearings[j]);
+			propTrans.position = rotateVector(vec2d(0.0, (i + 1) * 300.0), relBearings[j]);
 			h.applySoundSource(prop);
 		}
 		h.m_ant[0].imprint(ilevels[i]);
 	}
-	printToPng("std_hydrophone_vs_std_propeller_50km.png", ilevels, 0.0f, 90.0f);
+	printToPng("std_hydrophone_vs_std_propeller_30km.png", ilevels, 0.0f, 90.0f);
 
 	// generate sound sample of std_propeller on 1km range
 	propTrans.position = vec2d(0.0, 1000.0);
 	h.hasListener = true;
 	h.listenDir = 0.0;
-	h.resetAndIsotropic(mpsToKts(0));
-	float freq = 17.0f * freqPerMs;
+	float spd = 15.0f;
+	float freq = spd * freqPerMs;
 	writeln("fundamental shaft frequency = ", freq);
-	prop.preUpdate(freq, 17.0f);
-	prop.postUpdate(freq, 17.0f, 1.0f);
-	assert(h.m_listenDirValid);
-	assert(h.m_ant[0].listenCell >= 0);
-	h.applySoundSource(prop);
-	const(TimeDomainSignal) tds = h.finalizeListenTds();
+	prop.preUpdate(freq, spd);
+	prop.postUpdate(freq, spd, 1.0f);
+
+	TimeDomainSignal tds;
+	for (int i = 0; i < 1; i++)
+	{
+		h.resetAndIsotropic(mpsToKts(0));
+		assert(h.m_listenDirValid);
+		assert(h.m_ant[0].listenCell >= 0);
+		h.applySoundSource(prop);
+		const(TimeDomainSignal) tds1 = h.finalizeListenTds();
+		tds.samplingRate = tds1.samplingRate;
+		tds.samples ~= tds1.samples;
+	}
 	float maxp = tds.samples.map!(a => a.re).maxElement;
 	writeln("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);
 	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav",
-		tds.samples.cycle.take(tds.samplingRate * 5),
-		0.9f / maxp, tds.samplingRate);
+		tds.samples.cycle.take(6 * 4096),
+		0.8f / maxp, tds.samplingRate);
 }

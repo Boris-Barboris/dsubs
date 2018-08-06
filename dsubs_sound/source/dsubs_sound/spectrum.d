@@ -67,6 +67,70 @@ struct IntensitySpectrum
 }
 
 
+/// Sliding TDS generator
+struct SlidingGenerator
+{
+	private
+	{
+		float[] amplitudes;
+		float[] phases;
+		int minFreq;
+		int nychFreq;
+		float dt;
+	}
+
+	this(float[] amplitudes, int minFreq = 1)
+	{
+		this.amplitudes = amplitudes;
+		this.minFreq = minFreq;
+		nychFreq = minFreq + amplitudes.length;
+		dt = 0.5f / nychFreq;
+		phases.length = amplitudes.length;
+		for (int i = 0; i < amplitudes.length; i++)
+			phases[i] = randPhase();
+	}
+
+	private float roll()
+	{
+		float res = 0.0f;
+		float dphase = 2 * PI * dt;
+		for (int f = minFreq, i = 0; f < nychFreq; f++, i++)
+		{
+			phases[i] += f * dphase * uniform(0.95f, 1.05f);
+			res += amplitudes[i] * sin(phases[i]);
+		}
+		return res;
+	}
+
+	void toTimeDomain(ref TimeDomainSignal dest, int sampleCount)
+	{
+		dest.samplingRate = nychFreq * 2;
+		dest.samples.length = sampleCount;
+		foreach (ref s; dest.samples)
+			s = complex!float(roll());
+	}
+}
+
+unittest
+{
+	import std.algorithm;
+	import std.range;
+	import std.stdio;
+	import core.time;
+	import dsubs_sound.wav;
+
+	TimeDomainSignal tds;
+	SlidingGenerator sgen = SlidingGenerator(1.0f.repeat(1548).array, 500);
+	writeln("starting sliding generation, nychuist frequency: ", sgen.nychFreq);
+	auto start = MonoTime.currTime();
+	sgen.toTimeDomain(tds, 4096 * 2);
+	auto end = MonoTime.currTime();
+	writeln("sliding generation took ", end - start);
+	float maxp = tds.samples.map!(a => a.re).maxElement;
+	writeWavFile("sliding_whitenoise.wav", tds.samples, 0.7f / maxp, tds.samplingRate);
+}
+
+
 unittest
 {
 	import std.algorithm;

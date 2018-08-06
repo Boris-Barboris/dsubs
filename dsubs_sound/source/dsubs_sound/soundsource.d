@@ -191,10 +191,10 @@ final class PropellerSound: SoundSource
 		onSpectrumBuilt(needModulator ?
 			genChainModulator(freqCubeStart, freqCubeEnd, tm) : null);
 		// cavitation
-		// genISpec(range, dest, m_baseCavSpectrum, minFreq, maxFreq,
-		// 	cavSqrStart, cavSqrEnd, dissMod);
-		// onSpectrumBuilt(needModulator ?
-		// 	genChainModulator(cavSqrStart, cavSqrEnd, am) : null);
+		genISpec(range, relBearing, dest, m_baseCavSpectrum, minFreq, maxFreq,
+			cavSqrStart, cavSqrEnd, dissMod);
+		onSpectrumBuilt(needModulator ?
+			genChainModulator(cavSqrStart, cavSqrEnd, tm) : null);
 	}
 }
 
@@ -205,10 +205,10 @@ version (unittest)
 	PropellerSoundPrototype stdPropellerProto()
 	{
 		PropellerSoundPrototype tmpl;
-		auto ilspec = loadSpectrumFromImage("std_propeller.png");
+		auto ilspec = loadSpectrumFromImage("std_propeller.png", 80.0f, 140.0f);
 		ilspec.addNumericNoise(0.5f);
 		tmpl.baseBBSpectrum = ilspec.toIntensity;
-		ilspec = loadSpectrumFromImage("std_propeller_cav.png");
+		ilspec = loadSpectrumFromImage("std_propeller_cav.png", 60.0f, 140.0f);
 		ilspec.addNumericNoise(0.5f);
 		tmpl.baseCavSpectrum = ilspec.toIntensity;
 		//tmpl.am = AmplitudeModulatorParams(
@@ -217,7 +217,7 @@ version (unittest)
 			0.5, 0.7, -0.4);
 		tmpl.bladeRadius = 4.2f;
 		tmpl.bladeAoA = dgr2rad(30.0);
-		tmpl.critNormalVel = 8.0f;
+		tmpl.critNormalVel = 5.0f;
 		tmpl.rngSpan = 0.03f;
 		tmpl.aftIntensity = 0.4f;
 		return tmpl;
