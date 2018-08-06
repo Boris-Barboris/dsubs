@@ -75,7 +75,7 @@ struct SlidingGenerator
 		float[] amplitudes;
 		float[] phases;
 		int minFreq;
-		int nychFreq;
+		int nyqFreq;
 		float dt;
 	}
 
@@ -83,8 +83,8 @@ struct SlidingGenerator
 	{
 		this.amplitudes = amplitudes;
 		this.minFreq = minFreq;
-		nychFreq = minFreq + amplitudes.length;
-		dt = 0.5f / nychFreq;
+		nyqFreq = minFreq + amplitudes.length.to!int;
+		dt = 0.5f / nyqFreq;
 		phases.length = amplitudes.length;
 		for (int i = 0; i < amplitudes.length; i++)
 			phases[i] = randPhase();
@@ -94,7 +94,7 @@ struct SlidingGenerator
 	{
 		float res = 0.0f;
 		float dphase = 2 * PI * dt;
-		for (int f = minFreq, i = 0; f < nychFreq; f++, i++)
+		for (int f = minFreq, i = 0; f < nyqFreq; f++, i++)
 		{
 			phases[i] += f * dphase * uniform(0.95f, 1.05f);
 			res += amplitudes[i] * sin(phases[i]);
@@ -104,7 +104,7 @@ struct SlidingGenerator
 
 	void toTimeDomain(ref TimeDomainSignal dest, int sampleCount)
 	{
-		dest.samplingRate = nychFreq * 2;
+		dest.samplingRate = nyqFreq * 2;
 		dest.samples.length = sampleCount;
 		foreach (ref s; dest.samples)
 			s = complex!float(roll());
@@ -121,7 +121,7 @@ unittest
 
 	TimeDomainSignal tds;
 	SlidingGenerator sgen = SlidingGenerator(1.0f.repeat(1548).array, 500);
-	writeln("starting sliding generation, nychuist frequency: ", sgen.nychFreq);
+	writeln("starting sliding generation, nyquist frequency: ", sgen.nyqFreq);
 	auto start = MonoTime.currTime();
 	sgen.toTimeDomain(tds, 4096 * 2);
 	auto end = MonoTime.currTime();

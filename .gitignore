@@ -20,6 +20,8 @@ dsubs_common-test-library
 *.settings
 dsubs_server/dsubs_server-test-application
 *.png
+callgrind.out*
+id_dsubs*
 
 *dub.selections.json
 
