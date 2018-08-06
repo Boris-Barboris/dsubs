@@ -97,7 +97,7 @@ private:
 				"../dsubs_sound/std_propeller_cav.png", 1.0f).toIntensity,
 			ThrachioidModulatorParams([0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f],
 				0.5, 0.7, -0.4),
-			4.2f, dgr2rad(30), 8.0f, 0.03f
+			4.2f, dgr2rad(30), 8.0f, 0.03f, 0.4f
 		);
 		g_propulsors["Five-blade screw"] = bp;
 	}

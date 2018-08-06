@@ -46,6 +46,7 @@ struct PropellerSoundPrototype
 	float bladeAoA;
 	float critNormalVel;
 	float rngSpan = 0.0f;
+	float aftIntensity = 1.0f;
 }
 
 
@@ -62,6 +63,8 @@ final class PropellerSound: SoundSource
 		m_bladeAoA = p.bladeAoA;
 		m_critNormalVel = p.critNormalVel;
 		m_rngSpan = p.rngSpan;
+		m_aftIntensity = p.aftIntensity;
+		assert(m_aftIntensity >= 0.0f && m_aftIntensity <= 1.0f);
 	}
 
 	private
@@ -82,6 +85,7 @@ final class PropellerSound: SoundSource
 		// cavitation starts at this water normal velocity
 		float m_critNormalVel;
 		float m_rngSpan;
+		float m_aftIntensity;
 	}
 
 	override @property float radius() const { return 2.0f * m_bladeRadius; }
@@ -114,17 +118,20 @@ final class PropellerSound: SoundSource
 		m_tm.updateStartPhase(dt, endShaftFreq);
 	}
 
-	private void genISpec(float range, ref IntensitySpectrum dest,
+	private void genISpec(float range, float relBearing, ref IntensitySpectrum dest,
 		const IntensitySpectrum source, int minFreq, int maxFreq,
 		float kstart, float kend, float dissMod = 1.0f) const
 	{
 		float kavg = (kstart.fabs + kend.fabs) / 2;
+		float bearingK = 1.0f - 0.5f * (1.0f - m_aftIntensity) * (cos(2.0f * relBearing) + 1.0f);
 		for (int i = minFreq - 1; i < maxFreq; i++)
 		{
 			float output = source.bins[i] * kavg;
 			assert(!isNaN(output));
 			// apply linear-space randomization
 			output += output * uniform(-m_rngSpan, m_rngSpan);
+			// apply bearing multiplier
+			output *= bearingK;
 			// now we apply water sound loss
 			IntensityLevel outputDb = IntensityLevel(output.toDb());
 			outputDb = getILatRange(i + 1, outputDb, range, dissMod);
@@ -156,6 +163,7 @@ final class PropellerSound: SoundSource
 		for (int i = 0; i < minFreq - 1; i++)
 			dest.bins[i] = 0.0f;
 		float range = (listenerPos - m_transform.wposition).length;
+		float relBearing = courseAngle(listenerPos - m_transform.wposition) - m_transform.wrotation;
 		// now actual power calculation
 		float freqCubeStart = pow(m_shaftFreqStart, 3);
 		assert(!isNaN(freqCubeStart));
@@ -178,7 +186,7 @@ final class PropellerSound: SoundSource
 			tm.endFundFreq = m_shaftFreqEnd;
 		}
 		// broadband
-		genISpec(range, dest, m_baseBBSpectrum, minFreq, maxFreq,
+		genISpec(range, relBearing, dest, m_baseBBSpectrum, minFreq, maxFreq,
 			freqCubeStart, freqCubeEnd, dissMod);
 		onSpectrumBuilt(needModulator ?
 			genChainModulator(freqCubeStart, freqCubeEnd, tm) : null);
@@ -211,6 +219,7 @@ version (unittest)
 		tmpl.bladeAoA = dgr2rad(30.0);
 		tmpl.critNormalVel = 8.0f;
 		tmpl.rngSpan = 0.03f;
+		tmpl.aftIntensity = 0.4f;
 		return tmpl;
 	}
 

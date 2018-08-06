@@ -176,6 +176,13 @@ class Transform2D
 		return world.transformAngle(m_rotation);
 	}
 
+	final @property double wrotation() const
+	{
+		if (m_parent is null)
+			return m_rotation;
+		return world.transformAngle(m_rotation);
+	}
+
 	/// returns local translation
 	final @property vec2d position() const { return m_position; }
 
