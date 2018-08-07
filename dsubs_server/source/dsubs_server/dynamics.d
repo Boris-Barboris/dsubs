@@ -56,6 +56,7 @@ struct Kinematics
 	double velLength;
 	double velSquaredLength;
 	double velRotation;
+	double progradeSpeed;
 	vec2d velNormalized;
 	vec2d velLeft;
 	vec2d forward;
@@ -90,13 +91,8 @@ struct Kinematics
 		forward = vec2d(-sin(rotation), cos(rotation));
 		double leftRotation = rotation + PI_2;
 		left = vec2d(-sin(leftRotation), cos(leftRotation));
+		progradeSpeed = dot(vel, forward);
 		//trace("updated kinematics: ", this);
-	}
-
-	/// world velocity, projected on forward vector
-	@property double progradeSpeed() const
-	{
-		return dot(vel, forward);
 	}
 }
 

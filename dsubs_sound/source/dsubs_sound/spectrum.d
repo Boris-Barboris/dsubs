@@ -56,7 +56,7 @@ struct IntensitySpectrum
 	{
 		assert((bins.length + 1) % 2 == 0);
 		dest.freqRes = freqRes;
-		dest.bins.length = bins.length * 2 + 2;
+		dest.bins.length = (bins.length + 1) * 2;
 		for (size_t i = 0; i < bins.length; i++)
 		{
 			dest.bins[i + 1] = fromPolar(sqrt(bins[i]), randPhase());
@@ -181,7 +181,7 @@ struct TimeDomainSignal
 	{
 		samplingRate = srate;
 		samples.length = sampleCount;
-		samples[] = complex!float(0);
+		samples[] = Complex!float(0, 0);
 	}
 }
 

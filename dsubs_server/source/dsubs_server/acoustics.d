@@ -52,29 +52,32 @@ final class AcousticEnv
 		}
 	}
 
-	void preUpdateSources()
+	void preSimulation()
 	{
-		foreach (source; Globals.taskPool.parallel(m_sources, 8))
+		foreach (source; Globals.taskPool.parallel(m_sources, 16))
 			source.onPreSimulation();
+		foreach (h; m_hydrophones)
+			h.onPreSimulation();
 	}
 
-	void postUpdateSources(float dt)
+	void postSimulation(float dt)
 	{
 		foreach (source; Globals.taskPool.parallel(m_sources, 8))
 		{
 			source.onPostSimulation(dt);
 			source.transform.ensureNotDirty();
 		}
+		foreach (h; m_hydrophones)
+			h.onPostSimulation();
 	}
 
-	/// perform physics update for all entities
 	void applySourcesOnHydrophones()
 	{
 		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
 			if (!hydrophone.hasListener)
 				continue;
-			hydrophone.onPreApply();
+			hydrophone.resetAndIsotropic();
 			foreach (source; m_sources)
 				hydrophone.applySoundSource(source);
 		}

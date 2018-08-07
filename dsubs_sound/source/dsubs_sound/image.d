@@ -59,8 +59,10 @@ unittest
 	import std.range;
 	import std.algorithm;
 	import std.stdio;
+	import core.time;
 	import dsubs_sound.wav;
 	import dsubs_sound.modulation;
+	import dsubs_sound.filter;
 
 	writeSpectrumTemplateImage("2047bins.png", 2047, 1000);
 	auto ils = loadSpectrumFromImage("std_propeller.png");
@@ -76,7 +78,11 @@ unittest
 		[0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f], 0.5, 0.7, -0.4));
 	am.startFundFreq = am.endFundFreq = 2.0f;
 	am.modulate(tds);
-	float maxp = tds.samples.map!(a => a.re).maxElement;
+	TimeDomainSignal ftds = TimeDomainSignal(tds.samples.dup, tds.samplingRate);
+	auto filtStart = MonoTime.currTime;
+	highpass500.filter(tds.samples.cycled, ftds.samples);
+	writeln("filtration took ", MonoTime.currTime() - filtStart);
+	float maxp = ftds.samples.map!(a => a.re).maxElement;
 	writeln("std_propeller maxp: ", maxp);
-	writeWavFile("std_propeller_bb.wav", tds.samples, 0.8f / maxp, tds.samplingRate);
+	writeWavFile("std_propeller_bb.wav", ftds.samples, 0.8f / maxp, ftds.samplingRate);
 }

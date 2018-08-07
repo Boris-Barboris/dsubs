@@ -75,7 +75,7 @@ Unqual!F erf(F)(F x)
 }
 
 /// meters per second to knots
-double mpsToKts(double mps)
+double mps2kts(double mps)
 {
 	return mps * 1.94384;
 }

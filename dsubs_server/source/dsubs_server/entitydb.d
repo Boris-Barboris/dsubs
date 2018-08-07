@@ -87,7 +87,7 @@ private:
 				], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 			));
 		bp.posThrustK = RolledF(2600.0f, 40.0f);
-		bp.negThrustK = RolledF(700.0f, 20.0f);
+		bp.negThrustK = RolledF(900.0f, 20.0f);
 		bp.mass = 50.0f;
 		bp.shaftRotFreq = 2.0f;
 		bp.soundPrototype = PropellerSoundPrototype(

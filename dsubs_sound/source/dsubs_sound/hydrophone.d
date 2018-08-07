@@ -2,6 +2,7 @@ module dsubs_sound.hydrophone;
 
 import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
+import std.range: chain, cycle;
 
 import dsubs_common.math;
 import dsubs_common.event;
@@ -9,6 +10,7 @@ import dsubs_common.api.entities;
 
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
+import dsubs_sound.filter;
 import dsubs_sound.water;
 import dsubs_sound.soundsource;
 import dsubs_sound.modulation;
@@ -35,6 +37,7 @@ final class Hydrophone
 		assert(p.minFreq >= 20 && p.maxFreq >= p.minFreq);
 		m_transform = t;
 		m_minFreq = p.minFreq;
+		m_tdsFilter = highpass500;
 		m_maxFreq = p.maxFreq;
 		m_srate = (m_maxFreq + 1) * 2;
 		m_directivity = p.directivity;
@@ -47,12 +50,19 @@ final class Hydrophone
 		m_cellAngle = m_span / p.cellCount;
 		foreach (rot; p.antennaeRots)
 			m_ant ~= new Antennae(p.cellCount, rot);
+		m_flowNoiseInterp = new IntensityInterpolator();
 	}
+
+	/// invoked by simulator before kinematic update happens
+	Event!(void delegate()) onPreSimulation;
+	/// invoked by simulator right after kinematic update happens
+	Event!(void delegate()) onPostSimulation;
 
 	private
 	{
 		Transform2D m_transform;
 		Antennae[] m_ant;
+		immutable LinearFIR m_tdsFilter;
 		int m_minFreq, m_maxFreq, m_srate;
 		float m_span, m_cellAngle;
 		float m_directivity;
@@ -60,10 +70,16 @@ final class Hydrophone
 		float m_flowNoiseMult;
 		dB m_baseNoise;
 
+		/// speed in knots at the start of integration
+		float m_ktsStart = 0.0f;
+		float m_ktsEnd = 0.0f;
+		IntensityInterpolator m_flowNoiseInterp;
+
 		/// max size of sound halo
 		enum float MAX_HALO = dgr2rad(20);
 		enum float MAX_HALO_2 = MAX_HALO / 2;
 		enum float ISOTROPIC_VAR = 2.0;
+		enum int MIN_FREQ = 20;
 
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
@@ -77,7 +93,7 @@ final class Hydrophone
 		// false when no active antenna has a cell for chosen listen Dir
 		bool m_listenDirValid;
 
-		// time domain signals that are generated for listening player
+		// unfiltered time domain signals that are generated for listening player
 		TimeDomainSignal m_prevTds;
 		TimeDomainSignal m_curTds;
 		static IntensitySpectrum s_stageIspec;
@@ -88,7 +104,7 @@ final class Hydrophone
 
 	Event!(void delegate()) onPreApply;
 
-	// makes sure TLS fft cache is constructed
+	// makes sure fft cache is constructed for this thread
 	private void ensureTlsCache()
 	{
 		if (s_fftCache is null)
@@ -120,16 +136,17 @@ final class Hydrophone
 
 	@property float listenDir() const { return m_listenDir; }
 
-	/// finalize m_curTds by overlapping it with m_prevTds and applying noise
+	/// finalize m_curTds by overlapping it with m_prevTds
 	const(TimeDomainSignal) finalizeListenTds()
 	{
 		assert(m_listenDirValid);
-		float linNoise = m_baseNoise.toLinear;
-		foreach (ref s; m_curTds.samples)
-			s.re += uniform(-linNoise, linNoise);
 		if (m_prevTds.samples.length)
-			overlapTDS(m_prevTds, m_curTds, m_srate / 4);
-		return m_curTds;
+			overlapTDS(m_prevTds, m_curTds, m_srate / 8);
+		s_stageTds.samplingRate = m_srate;
+		s_stageTds.samples.length = m_srate;
+		m_tdsFilter.filter(chain(m_curTds.samples, m_prevTds.samples).cycled,
+			s_stageTds.samples);
+		return s_stageTds;
 	}
 
 	immutable(short)[] finalizePcbData(out int srate, float maxp = 1e5)
@@ -169,34 +186,63 @@ final class Hydrophone
 		}
 	}
 
-	private void updateSeaIntensity()
+	private void applySeaNoise()
 	{
 		float res = 0;
-		for (int freq = m_minFreq; freq <= m_maxFreq; freq++)
+		for (int freq = MIN_FREQ; freq <= m_maxFreq; freq++)
 		{
 			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
 			float intensity = (seaNoiseIL(freq) + rngm).toLinear;
-			res += intensity;
 			if (m_listenDirValid)
-				s_stageIspec.bins[freq - 1] += intensity;
+				s_stageIspec.bins[freq - 1] = intensity * m_directivity;
+			if (freq >= m_minFreq)
+				res += intensity;
 		}
 		res /= m_maxFreq + 1;
 		m_baseSeaNoise = Intensity(res * m_directivity);
+		if (m_listenDirValid)
+			applyStageIspec();
 	}
 
-	private void updateFlowNoise(float kts)
+	private void applyFlowNoise()
 	{
-		float res = 0;
-		for (int freq = m_minFreq; freq <= m_maxFreq; freq++)
+		float resStart = 0.0f;
+		float resEnd = 0.0f;
+		float ktsStartAbs = m_ktsStart.abs;
+		float ktsEndAbs = m_ktsEnd.abs;
+		for (int freq = MIN_FREQ; freq <= m_maxFreq; freq++)
 		{
 			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
-			float intensity = (flowNoise(freq, kts) + rngm).toLinear;
-			res += intensity;
+			float intensityStart = (flowNoise(freq, ktsStartAbs) + rngm).toLinear;
+			float intensityEnd = (flowNoise(freq, ktsEndAbs) + rngm).toLinear;
+			float iavg = 0.5f * (intensityStart + intensityEnd);
 			if (m_listenDirValid)
-				s_stageIspec.bins[freq - 1] += intensity * m_flowNoiseMult;
+				s_stageIspec.bins[freq - 1] = iavg * m_flowNoiseMult * m_directivity;
+			if (freq >= m_minFreq)
+			{
+				resStart += intensityStart;
+				resEnd += intensityEnd;
+			}
 		}
-		res *= m_flowNoiseMult / (m_maxFreq + 1);
-		m_baseFlowNoise = Intensity(res * m_directivity);
+		float mult = m_flowNoiseMult / (m_maxFreq + 1);
+		resStart *= mult;
+		resEnd *= mult;
+		float resAvg = 0.5f * (resStart + resEnd);
+		m_baseFlowNoise = Intensity(resAvg * m_directivity);
+		if (m_listenDirValid)
+		{
+			if (resAvg != 0.0f)
+			{
+				m_flowNoiseInterp.startIntensityMult = resStart * sgn(m_ktsStart) / resAvg;
+				m_flowNoiseInterp.endIntensityMult = resEnd * sgn(m_ktsEnd) / resAvg;
+			}
+			else
+			{
+				m_flowNoiseInterp.startIntensityMult = 0.0f;
+				m_flowNoiseInterp.endIntensityMult = 0.0f;
+			}
+			applyStageIspec(m_flowNoiseInterp);
+		}
 	}
 
 	private void resetStageIspec()
@@ -218,7 +264,7 @@ final class Hydrophone
 		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		foreach (i, ref s; m_curTds.samples)
-			s += s_stageTds.samples[i];
+			s.re += s_stageTds.samples[i].re;
 		resetStageIspec();
 	}
 
@@ -228,44 +274,54 @@ final class Hydrophone
 		s_stageIspec.genSpectrum(s_stageSpectrum);
 		float linGain = sqrt(powerPart);
 		foreach (ref bin; s_stageSpectrum.bins)
-			bin *= linGain;
+			bin.re *= linGain;
 		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		if (mod)
 			mod.modulate(s_stageTds);
 		foreach (i, ref s; m_curTds.samples)
-			s += s_stageTds.samples[i];
+			s.re += s_stageTds.samples[i].re;
 		resetStageIspec();
 	}
 
-	/// apply directivity to s_stageSpectrum
-	private void stageDirectivity()
+	/// set speed at the start of integration
+	@property float ktsStart(float rhs)
 	{
-		foreach (ref bin; s_stageSpectrum.bins)
-			bin *= m_directivity;
+		return m_ktsStart = rhs;
 	}
 
-	/// reset antennaes and apply isotropic noises
-	void resetAndIsotropic(float kts)
+	/// set speed at the end of integration
+	@property float ktsEnd(float rhs)
+	{
+		return m_ktsEnd = rhs;
+	}
+
+	private void swapTdses()
+	{
+		if (m_prevTds.samples.length == 0)
+		{
+			m_prevTds.samplingRate = m_curTds.samplingRate;
+			m_prevTds.samples.length = m_curTds.samples.length;
+		}
+		auto prev = m_prevTds.samples;
+		m_prevTds.samples = m_curTds.samples;
+		m_curTds.samples = prev;
+	}
+
+	/// reset antennaes and apply isotropic noises (sea and flow)
+	void resetAndIsotropic()
 	{
 		if (m_hasListener)
 		{
-			m_prevTds.samplingRate = m_curTds.samplingRate;
-			m_prevTds.samples = m_curTds.samples.dup;
+			swapTdses();
 			resetCurTds();
 			resetStageIspec();
 			updateListenCell();
 		}
 		else
 			m_prevTds.samples.length = 0;
-		updateSeaIntensity();
-		updateFlowNoise(kts);
-		if (m_listenDirValid)
-		{
-			stageDirectivity();
-			applyStageIspec();
-			// water and flow noises now reach m_curTds
-		}
+		applySeaNoise();
+		applyFlowNoise();
 		foreach (a; m_ant)
 		{
 			a.reset();
@@ -390,7 +446,7 @@ final class Hydrophone
 
 			void onBuilt(const IModulator mod)
 			{
-				float bandSum = s_stageIspec.bins.sum() / (m_maxFreq + 1);
+				float bandSum = s_stageIspec.bins[m_minFreq - 1 .. $].sum() / (m_maxFreq + 1);
 				for (int ci = cellStart; ci <= cellEnd; ci++)
 				{
 					float cellLeft = cell0Left - ci * m_cellAngle;
@@ -406,7 +462,7 @@ final class Hydrophone
 			}
 
 			s.getIntensitySpectrum(m_transform.wposition, s_stageIspec,
-				&onBuilt, m_minFreq, m_maxFreq, m_listenDirValid && needModulator, 4.0f);
+				&onBuilt, MIN_FREQ, m_maxFreq, m_listenDirValid && needModulator, 4.0f);
 		}
 	}
 }
@@ -451,10 +507,11 @@ unittest
 	IntensityLevel[][] ilevels;
 	ilevels.length = 90;
 	float spdKts = 0.0f;
-	float spdStep = 17.0f * 3.6 / 2 / ilevels.length;
+	float spdStep = mps2kts(17) / ilevels.length;
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
-		h.resetAndIsotropic(spdKts);
+		h.ktsStart = h.ktsEnd = spdKts;
+		h.resetAndIsotropic();
 		h.m_ant[0].imprint(ilevels[i]);
 		spdKts += spdStep;
 	}
@@ -484,10 +541,11 @@ unittest
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 200;
-	float spdKts = 0.0f;
+	float spdKts = mps2kts(0);
+	h.ktsStart = h.ktsEnd = spdKts;
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
-		h.resetAndIsotropic(spdKts);
+		h.resetAndIsotropic();
 		foreach (j, float spd; speeds)
 		{
 			float freq = spd * freqPerMs;
@@ -504,26 +562,28 @@ unittest
 	propTrans.position = vec2d(0.0, 1000.0);
 	h.hasListener = true;
 	h.listenDir = 0.0;
-	float spd = 15.0f;
+	float spd = 0.0f;
 	float freq = spd * freqPerMs;
 	writeln("fundamental shaft frequency = ", freq);
-	prop.preUpdate(freq, spd);
-	prop.postUpdate(freq, spd, 1.0f);
+	h.ktsStart = h.ktsEnd = mps2kts(15);
 
 	TimeDomainSignal tds;
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < 10; i++)
 	{
-		h.resetAndIsotropic(mpsToKts(0));
+		prop.preUpdate(freq, spd);
+		prop.postUpdate(freq, spd, 1.0f);
+		h.resetAndIsotropic();
 		assert(h.m_listenDirValid);
 		assert(h.m_ant[0].listenCell >= 0);
 		h.applySoundSource(prop);
 		const(TimeDomainSignal) tds1 = h.finalizeListenTds();
+		assert(tds1.samples.length == 4096);
 		tds.samplingRate = tds1.samplingRate;
 		tds.samples ~= tds1.samples;
+		tds.samples ~= repeat(Complex!float(0.0f, 0.0f)).take(128).array;
 	}
-	float maxp = tds.samples.map!(a => a.re).maxElement;
+	float maxp = tds.samples.map!(a => a.re.abs).maxElement;
 	writeln("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);
 	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav",
-		tds.samples.cycle.take(6 * 4096),
-		0.8f / maxp, tds.samplingRate);
+		tds.samples, 0.8f / maxp, tds.samplingRate);
 }

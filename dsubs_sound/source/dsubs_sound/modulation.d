@@ -108,6 +108,22 @@ final class AmplitudeModulator: IModulator
 }
 
 
+// correctness test
+unittest
+{
+	import dsubs_sound.wav;
+
+	Fft fftCache = new Fft(4096);
+	TimeDomainSignal tds = whiteNoise(4096 * 4, 4096);
+	AmplitudeModulator am = new AmplitudeModulator(
+		AmplitudeModulatorParams([0.2f, 0.01f, 0.25f, 0.01f, 0.06f], 0.0f));
+	am.startFundFreq = 0.5f;
+	am.endFundFreq = 2.0f;
+	am.modulate(tds);
+	writeWavFile("am_test.wav", tds.samples, 1.0f, tds.samplingRate);
+}
+
+
 /// 1.0 + A * sin(x + PI_2 + B * sin(x) + C)
 struct ThrachioidModulatorParams
 {
@@ -202,19 +218,4 @@ final class ThrachioidModulator: IModulator
 			dest.samples[i].re *= modk * linGain;
 		}
 	}
-}
-
-// correctness test
-unittest
-{
-	import dsubs_sound.wav;
-
-	Fft fftCache = new Fft(4096);
-	TimeDomainSignal tds = whiteNoise(4096 * 4, 4096);
-	AmplitudeModulator am = new AmplitudeModulator(
-		AmplitudeModulatorParams([0.2f, 0.01f, 0.25f, 0.01f, 0.06f], 0.0f));
-	am.startFundFreq = 0.5f;
-	am.endFundFreq = 2.0f;
-	am.modulate(tds);
-	writeWavFile("am_test.wav", tds.samples, 1.0f, tds.samplingRate);
 }

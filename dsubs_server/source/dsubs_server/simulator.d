@@ -43,10 +43,10 @@ final class Simulator
 				synchronized (Globals.simMut.writer)
 				{
 					simStart = MonoTime.currTime();
-					Globals.acous.preUpdateSources();
+					Globals.acous.preSimulation();
 					// physics integration. All rigid bodies are moved.
 					Globals.phys.integratePBodies(1.0f, 0.25f);
-					Globals.acous.postUpdateSources(1.0f);
+					Globals.acous.postSimulation(1.0f);
 					Globals.acous.applySourcesOnHydrophones();
 					m_worldTime += 1000_000;
 					// stream updates to players

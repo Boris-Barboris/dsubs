@@ -198,7 +198,6 @@ private:
 		}
 		if (s && res.audio.length > 0)
 		{
-			trace("ready to append");
 			s.pullFinishedBuffers();
 			if (s.queuedCount)
 				s.append(res.audio[0].samples, res.audio[0].samplingRate);

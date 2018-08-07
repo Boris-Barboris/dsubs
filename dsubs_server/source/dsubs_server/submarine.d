@@ -82,7 +82,8 @@ final class Submarine
 		m_transform.addChild(m_propulsor.transform);
 		foreach (h; m_hydrophones)
 		{
-			h.onPreApply += () { h.resetAndIsotropic(mpsToKts(m_rigidBody.kinet.velLength)); };
+			h.onPreSimulation += () { h.ktsStart = m_rigidBody.kinet.progradeSpeed.mps2kts; };
+			h.onPostSimulation += () { h.ktsEnd = m_rigidBody.kinet.progradeSpeed.mps2kts; };
 			Globals.acous.registerHydrophone(h);
 		}
 		// add module masses to the hull

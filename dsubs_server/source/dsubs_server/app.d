@@ -7,6 +7,7 @@ import dsubs_server.globals;
 
 void main(string[] argv)
 {
+	scope(failure) exit(1);
 	Globals.build();
 	Globals.cons.bindSockets();
 	Globals.sim.start();
