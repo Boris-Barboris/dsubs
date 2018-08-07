@@ -580,7 +580,7 @@ unittest
 		assert(tds1.samples.length == 4096);
 		tds.samplingRate = tds1.samplingRate;
 		tds.samples ~= tds1.samples;
-		tds.samples ~= repeat(Complex!float(0.0f, 0.0f)).take(128).array;
+		//tds.samples ~= repeat(Complex!float(0.0f, 0.0f)).take(128).array;
 	}
 	float maxp = tds.samples.map!(a => a.re.abs).maxElement;
 	writeln("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);

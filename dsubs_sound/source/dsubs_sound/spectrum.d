@@ -195,7 +195,7 @@ void overlapTDS(const TimeDomainSignal prev, TimeDomainSignal onto, int sampleCo
 		// power factor
 		float factor = float(i + 1) / (sampleCount + 1);
 		onto.samples[i].re = onto.samples[i].re * sqrt(factor) +
-			sqrt(1.0f - factor) * prev.samples[$ - sampleCount + i].re;
+			sqrt(1.0f - factor) * prev.samples[i].re;
 	}
 }
 
