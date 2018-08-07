@@ -65,19 +65,18 @@ unittest
 	writeSpectrumTemplateImage("2047bins.png", 2047, 1000);
 	auto ils = loadSpectrumFromImage("std_propeller.png");
 	ils.addNumericNoise(0.5f);
-	writeln("loaded spectrum from std_propeller.png: ", ils.bins[0..8]);
-	writeln("std_propeller.png in linear scale: ", ils.toIntensity.bins[0..8]);
 	Spectrum pspec;
+	ils.bins[0..20] = IntensityLevel(0.0f);
 	ils.genSpectrum(pspec);
 	Fft fftCache = new Fft(4096);
 	TimeDomainSignal tds;
 	pspec.toTimeDomain(fftCache, tds);
 	tds.samples = tds.samples.cycle.takeExactly(4096 * 5).array;
-	AmplitudeModulator am = new AmplitudeModulator(AmplitudeModulatorParams(
-		[0.23f, 0.01f, 0.005f, 0.001f, 0.18f, 0.0001f], 0.0f));
+	ThrachioidModulator am = new ThrachioidModulator(ThrachioidModulatorParams(
+		[0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f], 0.5, 0.7, -0.4));
 	am.startFundFreq = am.endFundFreq = 2.0f;
 	am.modulate(tds);
 	float maxp = tds.samples.map!(a => a.re).maxElement;
 	writeln("std_propeller maxp: ", maxp);
-	writeWavFile("std_propeller_bb.wav", tds.samples, 0.9f / maxp, tds.samplingRate);
+	writeWavFile("std_propeller_bb.wav", tds.samples, 0.8f / maxp, tds.samplingRate);
 }

@@ -5,13 +5,13 @@ public import std.exception: enforce;
 public import std.numeric;
 public import std.complex;
 public import std.math;
-import std.random;
+public import std.random;
 
 public import dsubs_common.math;
 
 public import dsubs_sound.units;
 
-
+/*
 private static Xorshift64 rngen;
 
 static this()
@@ -30,3 +30,4 @@ auto uniform01(T)()
 {
 	return std.random.uniform01!T(rngen);
 }
+*/

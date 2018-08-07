@@ -483,7 +483,7 @@ unittest
 		500, 2047, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 0.002f, 0.001f);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
-	ilevels.length = 100;
+	ilevels.length = 200;
 	float spdKts = 0.0f;
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
@@ -493,7 +493,7 @@ unittest
 			float freq = spd * freqPerMs;
 			prop.preUpdate(freq, spd);
 			prop.postUpdate(freq, spd, 1.0f);
-			propTrans.position = rotateVector(vec2d(0.0, (i + 1) * 300.0), relBearings[j]);
+			propTrans.position = rotateVector(vec2d(0.0, (i + 1) * 150.0), relBearings[j]);
 			h.applySoundSource(prop);
 		}
 		h.m_ant[0].imprint(ilevels[i]);

@@ -111,24 +111,24 @@ struct SlidingGenerator
 	}
 }
 
-unittest
-{
-	import std.algorithm;
-	import std.range;
-	import std.stdio;
-	import core.time;
-	import dsubs_sound.wav;
+// unittest
+// {
+// 	import std.algorithm;
+// 	import std.range;
+// 	import std.stdio;
+// 	import core.time;
+// 	import dsubs_sound.wav;
 
-	TimeDomainSignal tds;
-	SlidingGenerator sgen = SlidingGenerator(1.0f.repeat(1548).array, 500);
-	writeln("starting sliding generation, nyquist frequency: ", sgen.nyqFreq);
-	auto start = MonoTime.currTime();
-	sgen.toTimeDomain(tds, 4096 * 2);
-	auto end = MonoTime.currTime();
-	writeln("sliding generation took ", end - start);
-	float maxp = tds.samples.map!(a => a.re).maxElement;
-	writeWavFile("sliding_whitenoise.wav", tds.samples, 0.7f / maxp, tds.samplingRate);
-}
+// 	TimeDomainSignal tds;
+// 	SlidingGenerator sgen = SlidingGenerator(1.0f.repeat(1548).array, 500);
+// 	writeln("starting sliding generation, nyquist frequency: ", sgen.nyqFreq);
+// 	auto start = MonoTime.currTime();
+// 	sgen.toTimeDomain(tds, 4096 * 2);
+// 	auto end = MonoTime.currTime();
+// 	writeln("sliding generation took ", end - start);
+// 	float maxp = tds.samples.map!(a => a.re).maxElement;
+// 	writeWavFile("sliding_whitenoise.wav", tds.samples, 0.7f / maxp, tds.samplingRate);
+// }
 
 
 unittest
