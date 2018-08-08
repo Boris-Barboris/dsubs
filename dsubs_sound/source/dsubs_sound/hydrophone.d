@@ -2,6 +2,7 @@ module dsubs_sound.hydrophone;
 
 import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
+import std.array: array;
 import std.range: chain, cycle;
 
 import dsubs_common.math;
@@ -568,7 +569,7 @@ unittest
 	h.ktsStart = h.ktsEnd = mps2kts(15);
 
 	TimeDomainSignal tds;
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < 1; i++)
 	{
 		prop.preUpdate(freq, spd);
 		prop.postUpdate(freq, spd, 1.0f);

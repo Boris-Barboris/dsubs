@@ -70,8 +70,8 @@ struct LinearFIR
 		}
 		else
 		{
-			for (size_t i = 0; i < destSignal.length; i++)
-				destSignal[i].re = iota(0, taps.length).map!(
+			for (ptrdiff_t i = 0; i < destSignal.length; i++)
+				destSignal[i].re = iota!(ptrdiff_t, ptrdiff_t)(0, taps.length).map!(
 					j => sourceSignal[i - j].re * taps[j]).sum;
 		}
 	}
