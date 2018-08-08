@@ -80,7 +80,7 @@ final class Hydrophone
 		enum float MAX_HALO = dgr2rad(20);
 		enum float MAX_HALO_2 = MAX_HALO / 2;
 		enum float ISOTROPIC_VAR = 2.0;
-		enum int MIN_FREQ = 20;
+		enum int MIN_FREQ = 500;
 
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
@@ -569,7 +569,7 @@ unittest
 	h.ktsStart = h.ktsEnd = mps2kts(15);
 
 	TimeDomainSignal tds;
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < 8; i++)
 	{
 		prop.preUpdate(freq, spd);
 		prop.postUpdate(freq, spd, 1.0f);
