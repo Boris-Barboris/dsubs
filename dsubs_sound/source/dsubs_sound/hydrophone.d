@@ -80,7 +80,7 @@ final class Hydrophone
 		enum float MAX_HALO = dgr2rad(20);
 		enum float MAX_HALO_2 = MAX_HALO / 2;
 		enum float ISOTROPIC_VAR = 2.0;
-		enum int MIN_FREQ = 500;
+		enum int MIN_FREQ = 20;
 
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
@@ -141,8 +141,8 @@ final class Hydrophone
 	const(TimeDomainSignal) finalizeListenTds()
 	{
 		assert(m_listenDirValid);
-		if (m_prevTds.samples.length)
-			overlapTDS(m_prevTds, m_curTds, m_srate / 8);
+		// if (m_prevTds.samples.length)
+		// 	overlapTDS(m_prevTds, m_curTds, m_srate / 8);
 		s_stageTds.samplingRate = m_srate;
 		s_stageTds.samples.length = m_srate;
 		m_tdsFilter.filter(chain(m_curTds.samples, m_prevTds.samples).cycled,
@@ -190,7 +190,7 @@ final class Hydrophone
 	private void applySeaNoise()
 	{
 		float res = 0;
-		for (int freq = MIN_FREQ; freq <= m_maxFreq; freq++)
+		for (int freq = m_minFreq; freq <= m_maxFreq; freq++)
 		{
 			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
 			float intensity = (seaNoiseIL(freq) + rngm).toLinear;
@@ -211,7 +211,7 @@ final class Hydrophone
 		float resEnd = 0.0f;
 		float ktsStartAbs = m_ktsStart.abs;
 		float ktsEndAbs = m_ktsEnd.abs;
-		for (int freq = MIN_FREQ; freq <= m_maxFreq; freq++)
+		for (int freq = m_minFreq; freq <= m_maxFreq; freq++)
 		{
 			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
 			float intensityStart = (flowNoise(freq, ktsStartAbs) + rngm).toLinear;
@@ -463,7 +463,7 @@ final class Hydrophone
 			}
 
 			s.getIntensitySpectrum(m_transform.wposition, s_stageIspec,
-				&onBuilt, MIN_FREQ, m_maxFreq, m_listenDirValid && needModulator, 4.0f);
+				&onBuilt, m_minFreq, m_maxFreq, m_listenDirValid && needModulator, 4.0f);
 		}
 	}
 }
@@ -563,10 +563,10 @@ unittest
 	propTrans.position = vec2d(0.0, 1000.0);
 	h.hasListener = true;
 	h.listenDir = 0.0;
-	float spd = 0.0f;
+	float spd = 15.0f;
 	float freq = spd * freqPerMs;
 	writeln("fundamental shaft frequency = ", freq);
-	h.ktsStart = h.ktsEnd = mps2kts(15);
+	h.ktsStart = h.ktsEnd = mps2kts(0);
 
 	TimeDomainSignal tds;
 	for (int i = 0; i < 8; i++)
