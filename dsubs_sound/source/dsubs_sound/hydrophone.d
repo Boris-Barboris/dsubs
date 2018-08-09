@@ -456,9 +456,9 @@ final class Hydrophone
 		}
 
 		static PowerIntegr integrateBetweenBeams(float left, float right,
-			float brngStart, float brngEnd, float halo, int integrPoints = 3)
+			float brngStart, float brngEnd, float halo, int integrPoints = 2)
 		{
-			assert(integrPoints >= 2);
+			assert(integrPoints >= 1);
 			float relBearing = brngStart;
 			PowerIntegr res;
 			float drx = (brngEnd - brngStart) / (integrPoints - 1);
@@ -513,7 +513,7 @@ final class Hydrophone
 					float cellLeft = cell0Left - ci * m_cellAngle;
 					float cellRight = cellLeft - m_cellAngle;
 					float powerPart = integrateBetweenBeams(cellLeft, cellRight,
-						relBearing1, relBearing2, p.haloBase).totalPart;
+						relBearing1, relBearing2, p.haloBase, 3).totalPart;
 					cells[ci] += bandSum * powerPart;
 				}
 
@@ -643,6 +643,24 @@ unittest
 		h.m_ant[0].imprint(ilevels[i]);
 	}
 	printToPng("std_hydrophone_vs_std_propeller_30km.png", ilevels, 0.0f, 90.0f);
+
+	// test own speed vs detection capability
+	float dspd = mps2kts(17) / ilevels.length;
+	for (size_t i = 0; i < ilevels.length; i++)
+	{
+		h.ktsStart = h.ktsEnd = spdKts + dspd * i;
+		h.resetAndIsotropic();
+		foreach (j, float spd; speeds)
+		{
+			float freq = spd * freqPerMs;
+			propTrans.position = rotateVector(vec2d(0.0, 1000.0), relBearings[j]);
+			prop.preUpdate(freq, spd);
+			prop.postUpdate(freq, spd, 1.0f);
+			h.applySoundSource(prop);
+		}
+		h.m_ant[0].imprint(ilevels[i]);
+	}
+	printToPng("std_hydrophone_0-17ms.png", ilevels, 0.0f, 90.0f);
 
 	// generate sound sample of std_propeller on 1km range
 	propTrans.position = vec2d(0.0, 1000.0).rotateVector(dgr2rad(3));
