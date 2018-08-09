@@ -537,8 +537,8 @@ final class Hydrophone
 						p.worldBearingStart, p.worldBearingEnd, p.haloBase);
 					if (integr.totalPart != 0.0f)
 					{
-						m_iinterp.startIntensityMult = integr.startPart / integr.totalPart;
-						m_iinterp.endIntensityMult = integr.endPart / integr.totalPart;
+						m_iinterp.startIntensityMult = integr.startPart;
+						m_iinterp.endIntensityMult = integr.endPart;
 					}
 					else
 						return;
