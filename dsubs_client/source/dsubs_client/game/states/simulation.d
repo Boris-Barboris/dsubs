@@ -420,6 +420,7 @@ final class Waterfall: GuiElement
 		sfVertex[6] m_vertices;
 		// m_renderTexture is perpetually streamed from
 		int m_vertPos;
+		long m_vertShifts;
 		sfVertex[] m_stage;
 
 		__gshared const sfRenderStates s_states =
@@ -482,6 +483,7 @@ final class Waterfall: GuiElement
 	{
 		sfRenderTexture_display(m_renderTexture);
 		m_vertPos++;
+		m_vertShifts++;
 		if (m_vertPos > 0)
 			m_vertPos -= HEIGHT + 1;
 		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : HEIGHT + 0.5f;

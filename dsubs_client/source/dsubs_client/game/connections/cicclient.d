@@ -178,6 +178,14 @@ private:
 		}
 	}
 
+	private
+	{
+		bool m_firstAcousticsData = true;
+		// we delay visual information for 1 second to
+		// synchronize audio and visual information on the waterfall
+		CICSubAcousticRes m_tapAcoustics;
+	}
+
 	void h_acousticRes(CICSubAcousticRes res)
 	{
 		import std.algorithm.iteration: map;
@@ -189,18 +197,32 @@ private:
 		StreamingSoundSource s;
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.gui.sonarGui.drawData(
-				res.data[0].cells,
-				Game.simState.playerSub.tmpl.hydrophones[0].fov,
-				res.rotationAtTime);
-			Game.simState.gui.sonarGui.completeRow();
+			if (m_firstAcousticsData)
+			{
+				m_firstAcousticsData = false;
+				m_tapAcoustics = res;
+			}
+			else
+			{
+				Game.simState.gui.sonarGui.drawData(
+					m_tapAcoustics.data[0].cells,
+					Game.simState.playerSub.tmpl.hydrophones[0].fov,
+					m_tapAcoustics.rotationAtTime);
+				Game.simState.gui.sonarGui.completeRow();
+				m_tapAcoustics = res;
+			}
 			s = Game.simState.sonarSound;
 		}
 		if (s && res.audio.length > 0)
 		{
 			s.pullFinishedBuffers();
-			if (s.queuedCount)
-				s.append(res.audio[0].samples, res.audio[0].samplingRate);
+			if (s.queuedCount > 0)
+			{
+				if (s.queuedCount == 1)
+					s.append(res.audio[0].samples, res.audio[0].samplingRate);
+				// if there are more sample buffered queued, we just drop
+				// the new one
+			}
 			else
 			{
 				// we delay first buffer enqueing in order to reduce the risc of buffering

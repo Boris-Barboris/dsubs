@@ -12,7 +12,7 @@ FIR filter designed with
 http://t-filter.appspot.com
 */
 
-static immutable float[] tapsHp500 = [
+private immutable float[] tapsHp500 = [
 	-0.016233494320316448,
 	0.06120383335803086,
 	-0.053661059585354366,
@@ -52,27 +52,60 @@ static immutable float[] tapsHp500 = [
 	-0.016233494320316448,
 ];
 
-immutable LinearFIR highpass500 = immutable LinearFIR(tapsHp500);
+private immutable float[] octaveHp500 =
+	[  0.00112812,  0.00120991,  0.00043872, -0.00121064, -0.00295939, -0.00311903, -0.00023075,  0.00504615,  0.00908985,  0.00714533, -0.00259118 ,
+  -0.01557452, -0.02179484, -0.01205388,  0.01360779,  0.04151048,  0.04879799,  0.01605565, -0.05887064, -0.15509111, -0.23615412,  0.73308645 ,
+  -0.23615412, -0.15509111, -0.05887064,  0.01605565,  0.04879799,  0.04151048,  0.01360779, -0.01205388, -0.02179484, -0.01557452, -0.00259118 ,
+   0.00714533,  0.00908985,  0.00504615, -0.00023075, -0.00311903, -0.00295939, -0.00121064,  0.00043872,  0.00120991,  0.00112812 ];
+
+immutable LinearFIR highpass500 = immutable LinearFIR(octaveHp500);
 
 
 struct LinearFIR
 {
 	private immutable(float)[] taps;
 
-	void filter(RU, RD)(RU sourceSignal, RD destSignal) const
-		if (is(Unqual!(ElementType!RU) == Complex!float) &&
-			isRandomAccessRange!RD && is(Unqual!(ElementType!RD) == Complex!float))
+	void filter(RS, RD)(RS sourceSignal, RD destSignal) const
+		if (is(Unqual!(ElementType!RS) == Complex!float) &&
+			is(Unqual!(ElementType!RD) == Complex!float))
 	{
-		if (taps.length == 0)
+		for (ptrdiff_t i = 0; i < destSignal.length; i++)
+			destSignal[i].re = iota(0, ptrdiff_t(taps.length)).map!(
+				j => sourceSignal[i - j].re * taps[j]).sum;
+	}
+}
+
+
+
+private immutable float[] butter500HPa =
+	[1.000000000, -6.202556958, 19.331798969, -39.380932123, 58.041558721,
+	-65.106911798, 57.136128940, -39.792788938, 22.108417386, -9.774701341,
+	3.404040204, -0.915399188, 0.183730793, -0.025950583, 0.002303776, -0.000096808 ];
+private immutable float[] butter500HPb =
+	[0.0098391, -0.1475864, 1.0331045, -4.4767862, 13.4303585, -29.5467887,
+	49.2446478, -63.3145472, 63.3145472, -49.2446478, 29.5467887, -13.4303585,
+	4.4767862, -1.0331045, 0.1475864, -0.0098391 ];
+
+immutable LinearIIR highpass500butter = immutable LinearIIR(butter500HPa, butter500HPb);
+
+
+struct LinearIIR
+{
+	private immutable(float)[] a;
+	private immutable(float)[] b;
+
+	void filter(RS, RD)(RS sourceSignal, RD destSignal, ptrdiff_t len) const
+		if (is(Unqual!(ElementType!RS) == Complex!float) &&
+			is(Unqual!(ElementType!RD) == Complex!float))
+	{
+		for (ptrdiff_t i = 0; i < len; i++)
 		{
-			for (size_t i = 0; i < destSignal.length; i++)
-				destSignal[i] = sourceSignal[i];
-		}
-		else
-		{
-			for (ptrdiff_t i = 0; i < destSignal.length; i++)
-				destSignal[i].re = iota!(ptrdiff_t, ptrdiff_t)(0, taps.length).map!(
-					j => sourceSignal[i - j].re * taps[j]).sum;
+			destSignal[i].re =
+				(iota(0, ptrdiff_t(b.length)).map!(
+					j => sourceSignal[i - j].re * b[j]).sum -
+				iota(1, ptrdiff_t(a.length)).map!(
+					j => destSignal[i - j].re * a[j]).sum) / a[0];
+			assert(!isNaN(destSignal[i].re));
 		}
 	}
 }

@@ -17,8 +17,15 @@ abstract class SoundSource
 	}
 
 	private Transform2D m_transform;
+	private vec2d m_prevPos;
 
 	final @property Transform2D transform() { return m_transform; }
+
+	/// return source position before kinematics integration
+	final @property vec2d prevPos() const { return m_prevPos; }
+
+	/// save current position of transform to m_prevPos
+	final void savePrevPos() { m_prevPos = m_transform.wposition; }
 
 	/// Physical radius of emitting area. Affects tha halo size on
 	/// close distances.
@@ -98,6 +105,7 @@ final class PropellerSound: SoundSource
 		assert(!isNaN(waterSpeedStart));
 		m_shaftFreqStart = shaftFreqStart;
 		m_normalVelStart = caclNormalVel(shaftFreqStart, waterSpeedStart);
+		savePrevPos();
 	}
 
 	private float caclNormalVel(float freq, float waterSpeed) const

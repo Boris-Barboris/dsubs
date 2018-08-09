@@ -22,7 +22,8 @@ final class ChainModulator: IModulator
 	void modulate(ref TimeDomainSignal dest) const
 	{
 		foreach (m; modulators)
-			m.modulate(dest);
+			if (m)
+				m.modulate(dest);
 	}
 }
 
