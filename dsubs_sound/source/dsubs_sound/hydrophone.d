@@ -164,6 +164,8 @@ final class Hydrophone
 		s_stageTds.samples.length = m_srate;
 		m_tdsFilter.filter(chain(m_curTds.samples, m_prevTds.samples).cycled,
 			s_stageTds.samples);
+		// m_tdsFilter.filter(m_prevTds.samples ~ m_curTds.samples,
+		// 	s_stageTds.samples, m_srate);
 		return s_stageTds;
 	}
 
@@ -623,7 +625,7 @@ unittest
 
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2047, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 0.002f, 0.001f);
+		500, 2047, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 2e-3, 2e-4);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 200;

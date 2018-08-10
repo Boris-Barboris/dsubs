@@ -3,6 +3,9 @@ module dsubs_sound.filter;
 import std.algorithm;
 import std.range;
 import std.traits;
+import std.stdio: writeln;
+
+import core.time;
 
 import dsubs_sound.common;
 
@@ -69,9 +72,12 @@ struct LinearFIR
 		if (is(Unqual!(ElementType!RS) == Complex!float) &&
 			is(Unqual!(ElementType!RD) == Complex!float))
 	{
+		auto before = MonoTime.currTime;
 		for (ptrdiff_t i = 0; i < destSignal.length; i++)
 			destSignal[i].re = iota(0, ptrdiff_t(taps.length)).map!(
 				j => sourceSignal[i - j].re * taps[j]).sum;
+		auto after = MonoTime.currTime;
+		writeln("FIR filtering performed in ", after - before);
 	}
 }
 

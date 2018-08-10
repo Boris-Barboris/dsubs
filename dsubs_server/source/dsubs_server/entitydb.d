@@ -165,7 +165,7 @@ Hydrophones:
 		sp.hullLength = dims.y;
 		sp.hprots = [
 			HydrophonePrototype([0.0f], 500, 2047, dgr2rad(210), 210, 2 / 90.0f,
-				3.0f, 0.002f, 0.001f)
+				3.0f, 2e-3, 2e-4)
 		];
 		g_submarines[sp.tmpl.name] = sp;
 	}

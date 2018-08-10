@@ -1,5 +1,8 @@
 module dsubs_sound.spectrum;
 
+import core.time;
+import std.stdio: writeln;
+
 import dsubs_sound.common;
 import dsubs_sound.wav;
 
@@ -162,7 +165,10 @@ struct Spectrum
 	{
 		dest.samplingRate = bins.length.to!int * freqRes;
 		dest.samples.length = bins.length;
+		auto beforeIfft = MonoTime.currTime;
 		fftCache.inverseFft(bins, dest.samples);
+		auto afterIfft = MonoTime.currTime;
+		writeln("ifft performed in ", afterIfft - beforeIfft);
 	}
 }
 
