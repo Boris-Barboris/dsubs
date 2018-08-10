@@ -18,20 +18,20 @@ unittest
 	import dsubs_sound.wav;
 
 	IntensitySpectrum ispec;
-	ispec.bins.length = 2047;
+	ispec.bins.length = 2049;
 	foreach (i, ref b; ispec.bins)
 	{
-		if (i > 39)
-			b = seaNoiseIL(i + 1) + 3.0f * uniform01!float;
+		if (i >= 40 && i < 2048)
+			b = seaNoiseIL(i) + 3.0f * uniform01!float;
 		else
 			b = 0.0f;
 	}
 	Spectrum pspec;
 	ispec.genSpectrum(pspec);
-	Fft fftCache = new Fft(4096);
+	Fft fftCache = new Fft(2048);
 	TimeDomainSignal tds;
 	pspec.toTimeDomain(fftCache, tds);
-	float maxp = tds.samples.map!(a => a.re).maxElement;
+	float maxp = tds.samples.maxElement;
 	writeln("background sea noise max pressure: ", maxp);
 	writeWavFile("seanoise.wav", tds.samples, 0.75f / maxp, tds.samplingRate);
 }
@@ -101,21 +101,21 @@ unittest
 	import dsubs_sound.wav;
 
 	IntensitySpectrum ispec;
-	ispec.bins.length = 2047;
+	ispec.bins.length = 2049;
 	foreach (i, ref b; ispec.bins)
 	{
-		if (i >= 19)
-			b = flowNoise(i + 1, 10.0f) + uniform(0.0f, 3.0f);
+		if (i >= 20 && i < 2048)
+			b = flowNoise(i, 10.0f) + uniform(0.0f, 3.0f);
 		else
 			b = 0.0f;
 	}
 	writeln("flow noise: ", ispec.bins[19], " ", ispec.bins[$-1]);
 	Spectrum pspec;
 	ispec.genSpectrum(pspec);
-	Fft fftCache = new Fft(4096);
+	Fft fftCache = new Fft(2048);
 	TimeDomainSignal tds;
 	pspec.toTimeDomain(fftCache, tds);
-	float maxp = tds.samples.map!(a => a.re).maxElement;
+	float maxp = tds.samples.maxElement;
 	writeln("flow noise max pressure: ", maxp);
 	writeWavFile("turbulence-flow-noise.wav", tds.samples, 0.75f / maxp, tds.samplingRate);
 }

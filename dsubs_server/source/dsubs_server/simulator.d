@@ -3,6 +3,7 @@ module dsubs_server.simulator;
 import std.datetime;
 
 import core.thread;
+import core.memory;
 import core.stdc.stdlib;
 
 import dsubs_server.common;
@@ -42,6 +43,7 @@ final class Simulator
 			{
 				synchronized (Globals.simMut.writer)
 				{
+					GC.disable();
 					simStart = MonoTime.currTime();
 					Globals.acous.preSimulation();
 					// physics integration. All rigid bodies are moved.
@@ -53,11 +55,17 @@ final class Simulator
 					Globals.players.forEachPlayer((p) { p.sendUpdate(); });
 				}
 				auto now = MonoTime.currTime();
+				GC.enable();
 				trace("Simulation step took ", (now - simStart).total!"usecs", "usecs");
 				loopStart = loopStart + seconds(1);
-				Duration toSleep = loopStart - MonoTime.currTime();
+				now = MonoTime.currTime();
+				Duration toSleep = loopStart - now;
 				if (toSleep < Duration.zero)
-					toSleep = Duration.zero;
+				{
+					error("simulator stalling");
+					loopStart = now + msecs(100);
+					toSleep = msecs(100);
+				}
 				Thread.sleep(toSleep);
 			}
 		}

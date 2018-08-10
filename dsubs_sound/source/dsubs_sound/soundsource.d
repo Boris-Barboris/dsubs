@@ -132,7 +132,7 @@ final class PropellerSound: SoundSource
 	{
 		float kavg = (kstart.fabs + kend.fabs) / 2;
 		float bearingK = 1.0f - 0.5f * (1.0f - m_aftIntensity) * (cos(2.0f * relBearing) + 1.0f);
-		for (int i = minFreq - 1; i < maxFreq; i++)
+		for (int i = minFreq; i < maxFreq; i++)
 		{
 			float output = source.bins[i] * kavg;
 			assert(!isNaN(output));
@@ -142,7 +142,7 @@ final class PropellerSound: SoundSource
 			output *= bearingK;
 			// now we apply water sound loss
 			IntensityLevel outputDb = IntensityLevel(output.toDb());
-			outputDb = getILatRange(i + 1, outputDb, range, dissMod);
+			outputDb = getILatRange(i, outputDb, range, dissMod);
 			dest.bins[i] = outputDb.toLinear();
 		}
 	}
@@ -166,10 +166,11 @@ final class PropellerSound: SoundSource
 		assert(m_baseBBSpectrum.bins.length == m_baseCavSpectrum.bins.length);
 		assert(m_baseBBSpectrum.freqRes == m_baseCavSpectrum.freqRes);
 		dest.freqRes = m_baseBBSpectrum.freqRes;
-		dest.bins.length = maxFreq;
+		dest.bins.length = maxFreq + 1;
 		// first we fill cutoff bins with zeroes
-		for (int i = 0; i < minFreq - 1; i++)
+		for (int i = 0; i < minFreq; i++)
 			dest.bins[i] = 0.0f;
+		dest.bins[$-1] = 0.0f;
 		float range = (listenerPos - m_transform.wposition).length;
 		float relBearing = courseAngle(listenerPos - m_transform.wposition) - m_transform.wrotation;
 		// now actual power calculation
@@ -216,9 +217,11 @@ version (unittest)
 		auto ilspec = loadSpectrumFromImage("std_propeller.png", 80.0f, 140.0f);
 		ilspec.addNumericNoise(0.5f);
 		tmpl.baseBBSpectrum = ilspec.toIntensity;
+		assert(tmpl.baseBBSpectrum.bins.length == 2049);
 		ilspec = loadSpectrumFromImage("std_propeller_cav.png", 60.0f, 140.0f);
 		ilspec.addNumericNoise(0.5f);
 		tmpl.baseCavSpectrum = ilspec.toIntensity;
+		assert(tmpl.baseCavSpectrum.bins.length == 2049);
 		//tmpl.am = AmplitudeModulatorParams(
 		//	[0.01f, 0.01f, 0.005f, 0.001f, 0.6f, 0.0001f], 0.0f);
 		tmpl.tm = ThrachioidModulatorParams([0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f],

@@ -69,13 +69,13 @@ struct LinearFIR
 	private immutable(float)[] taps;
 
 	void filter(RS, RD)(RS sourceSignal, RD destSignal) const
-		if (is(Unqual!(ElementType!RS) == Complex!float) &&
-			is(Unqual!(ElementType!RD) == Complex!float))
+		if (is(Unqual!(ElementType!RS) == float) &&
+			is(Unqual!(ElementType!RD) == float))
 	{
 		auto before = MonoTime.currTime;
 		for (ptrdiff_t i = 0; i < destSignal.length; i++)
-			destSignal[i].re = iota(0, ptrdiff_t(taps.length)).map!(
-				j => sourceSignal[i - j].re * taps[j]).sum;
+			destSignal[i] = iota(0, ptrdiff_t(taps.length)).map!(
+				j => sourceSignal[i - j] * taps[j]).sum;
 		auto after = MonoTime.currTime;
 		writeln("FIR filtering performed in ", after - before);
 	}
@@ -101,17 +101,17 @@ struct LinearIIR
 	private immutable(float)[] b;
 
 	void filter(RS, RD)(RS sourceSignal, RD destSignal, ptrdiff_t len) const
-		if (is(Unqual!(ElementType!RS) == Complex!float) &&
-			is(Unqual!(ElementType!RD) == Complex!float))
+		if (is(Unqual!(ElementType!RS) == float) &&
+			is(Unqual!(ElementType!RD) == float))
 	{
 		for (ptrdiff_t i = 0; i < len; i++)
 		{
-			destSignal[i].re =
+			destSignal[i] =
 				(iota(0, ptrdiff_t(b.length)).map!(
-					j => sourceSignal[i - j].re * b[j]).sum -
+					j => sourceSignal[i - j] * b[j]).sum -
 				iota(1, ptrdiff_t(a.length)).map!(
-					j => destSignal[i - j].re * a[j]).sum) / a[0];
-			assert(!isNaN(destSignal[i].re));
+					j => destSignal[i - j] * a[j]).sum) / a[0];
+			assert(!isNaN(destSignal[i]));
 		}
 	}
 }

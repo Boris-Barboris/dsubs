@@ -20,7 +20,8 @@ IntensityLevelSpectrum loadSpectrumFromImage(
 	enforce(img.c == ColFmt.Y, "unexpected color format " ~ img.c.to!string);
 	enforce(img.h > 0 && img.w > 0, "strange image dimensions");
 	IntensityLevelSpectrum res;
-	res.bins.length = img.w;
+	res.bins.length = img.w + 2;
+	assert(res.bins.length % 2 == 1);
 
 	ubyte getPixel(int row, int column)
 	{
@@ -39,8 +40,10 @@ IntensityLevelSpectrum loadSpectrumFromImage(
 	for (int col = 0; col < img.w; col++)
 	{
 		int fromTop = getFirstNonwhite(col);
-		res.bins[col] = topLevel - dy * fromTop;
+		res.bins[col + 1] = topLevel - dy * fromTop;
 	}
+	// DC and nyquist always zero
+	res.bins[0] = res.bins[$-1] = 0.0f;
 
 	return res;
 }
@@ -70,9 +73,11 @@ unittest
 	Spectrum pspec;
 	ils.bins[0..20] = IntensityLevel(0.0f);
 	ils.genSpectrum(pspec);
-	Fft fftCache = new Fft(4096);
+	Fft fftCache = new Fft(2048);
 	TimeDomainSignal tds;
 	pspec.toTimeDomain(fftCache, tds);
+	assert(tds.samplingRate == 4096);
+	assert(tds.samples.length == 4096);
 	tds.samples = tds.samples.cycle.takeExactly(4096 * 5).array;
 	ThrachioidModulator am = new ThrachioidModulator(ThrachioidModulatorParams(
 		[0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f], 0.5, 0.7, -0.4));

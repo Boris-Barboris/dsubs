@@ -41,7 +41,7 @@ final class Hydrophone
 		m_minFreq = p.minFreq;
 		m_tdsFilter = highpass500;
 		m_maxFreq = p.maxFreq;
-		m_srate = (m_maxFreq + 1) * 2;
+		m_srate = m_maxFreq * 2;
 		m_directivity = p.directivity;
 		m_baseNoise = p.baseNoise;
 		m_span = p.antennaeSpan;
@@ -119,7 +119,7 @@ final class Hydrophone
 	private void ensureTlsCache()
 	{
 		if (s_fftCache is null)
-			s_fftCache = new Fft(4096);
+			s_fftCache = new Fft(2048);
 	}
 
 	/// save current position of transform to m_prevPos
@@ -209,15 +209,15 @@ final class Hydrophone
 	private void applySeaNoise()
 	{
 		float res = 0;
-		for (int freq = m_minFreq; freq <= m_maxFreq; freq++)
+		for (int freq = m_minFreq; freq < m_maxFreq; freq++)
 		{
 			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
 			float intensity = (seaNoiseIL(freq) + rngm).toLinear;
 			if (m_listenDirValid)
-				s_stageIspec.bins[freq - 1] = intensity * m_directivity * m_listenToCellR;
+				s_stageIspec.bins[freq] = intensity * m_directivity * m_listenToCellR;
 			res += intensity;
 		}
-		res /= m_maxFreq + 1;
+		res /= m_maxFreq;
 		m_baseSeaNoise = Intensity(res * m_directivity);
 		if (m_listenDirValid)
 			applyStageIspec();
@@ -229,19 +229,19 @@ final class Hydrophone
 		float resEnd = 0.0f;
 		float ktsStartAbs = m_ktsStart.abs;
 		float ktsEndAbs = m_ktsEnd.abs;
-		for (int freq = m_minFreq; freq <= m_maxFreq; freq++)
+		for (int freq = m_minFreq; freq < m_maxFreq; freq++)
 		{
 			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
 			float intensityStart = (flowNoise(freq, ktsStartAbs) + rngm).toLinear;
 			float intensityEnd = (flowNoise(freq, ktsEndAbs) + rngm).toLinear;
 			float iavg = 0.5f * (intensityStart + intensityEnd);
 			if (m_listenDirValid)
-				s_stageIspec.bins[freq - 1] = iavg * m_flowNoiseMult *
+				s_stageIspec.bins[freq] = iavg * m_flowNoiseMult *
 					m_directivity * m_listenToCellR;
 			resStart += intensityStart;
 			resEnd += intensityEnd;
 		}
-		float mult = m_flowNoiseMult / (m_maxFreq + 1);
+		float mult = m_flowNoiseMult / m_maxFreq;
 		resStart *= mult;
 		resEnd *= mult;
 		float resAvg = 0.5f * (resStart + resEnd);
@@ -264,7 +264,7 @@ final class Hydrophone
 
 	private void resetStageIspec()
 	{
-		s_stageIspec.bins.length = m_maxFreq;
+		s_stageIspec.bins.length = m_maxFreq + 1;
 		s_stageIspec.bins[] = Intensity(0.0f);
 	}
 
@@ -280,24 +280,23 @@ final class Hydrophone
 		s_stageIspec.genSpectrum(s_stageSpectrum);
 		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
-		foreach (i, ref s; m_curTds.samples)
-			s.re += s_stageTds.samples[i].re;
+		for (size_t i = 0; i < m_curTds.samples.length; i++)
+			m_curTds.samples[i] += s_stageTds.samples[i];
 		resetStageIspec();
 	}
 
 	/// ditto
 	private void applyStageIspec(const(IModulator) mod, float powerPart = 1.0f)
 	{
+		for (size_t i = 0; i < s_stageIspec.bins.length; i++)
+			s_stageIspec.bins[i] *= powerPart;
 		s_stageIspec.genSpectrum(s_stageSpectrum);
-		float linGain = sqrt(powerPart);
-		foreach (ref bin; s_stageSpectrum.bins)
-			bin.re *= linGain;
 		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		if (mod)
 			mod.modulate(s_stageTds);
-		foreach (i, ref s; m_curTds.samples)
-			s.re += s_stageTds.samples[i].re;
+		for (size_t i = 0; i < m_curTds.samples.length; i++)
+			m_curTds.samples[i] += s_stageTds.samples[i];
 		resetStageIspec();
 	}
 
@@ -590,7 +589,7 @@ unittest
 {
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2047, dgr2rad(180.0f), 181, 4 / 181.0f, 3.0f, 0.001f, 0.001f);
+		500, 2048, dgr2rad(180.0f), 181, 4 / 181.0f, 3.0f, 0.001f, 0.001f);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 90;
@@ -625,7 +624,7 @@ unittest
 
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2047, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 2e-3, 2e-4);
+		500, 2048, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 2e-3, 2e-4);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 200;
@@ -690,7 +689,7 @@ unittest
 		tds.samples ~= tds1.samples;
 		//tds.samples ~= repeat(Complex!float(0.0f, 0.0f)).take(128).array;
 	}
-	float maxp = tds.samples.map!(a => a.re.abs).maxElement;
+	float maxp = tds.samples.map!(a => a.abs).maxElement;
 	writeln("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);
 	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav",
 		tds.samples, 0.8f / maxp, tds.samplingRate);

@@ -40,7 +40,7 @@ final class IntensityInterpolator: IModulator
 		float di = (endIntensityMult - startIntensityMult) / (dest.samples.length - 1);
 		for (size_t i = 0; i < dest.samples.length; i++)
 		{
-			dest.samples[i].re *= sqrt(mult.abs);
+			dest.samples[i] *= sqrt(mult.abs);
 			mult += di;
 		}
 	}
@@ -103,7 +103,7 @@ final class AmplitudeModulator: IModulator
 			float modk = DC;
 			for (size_t j = 0; j < harmonics.length; j++)
 				modk += harmonics[j] * sin(phases[j]);
-			dest.samples[i].re *= modk;
+			dest.samples[i] *= modk;
 		}
 	}
 }
@@ -114,7 +114,6 @@ unittest
 {
 	import dsubs_sound.wav;
 
-	Fft fftCache = new Fft(4096);
 	TimeDomainSignal tds = whiteNoise(4096 * 4, 4096);
 	AmplitudeModulator am = new AmplitudeModulator(
 		AmplitudeModulatorParams([0.2f, 0.01f, 0.25f, 0.01f, 0.06f], 0.0f));
@@ -216,7 +215,7 @@ final class ThrachioidModulator: IModulator
 				float phase = (params.startPhase + phaseCommon) * (j + 1);
 				modk += params.harmonics[j] * params.get(phase);
 			}
-			dest.samples[i].re *= modk * linGain;
+			dest.samples[i] *= modk * linGain;
 		}
 	}
 }

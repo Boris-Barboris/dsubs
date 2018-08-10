@@ -40,10 +40,10 @@ void writeWavFile(SR)(string filename, SR samples, int srate = 4096)
 	f.rawWrite([(sampleCount * short.sizeof).to!int]);
 }
 
-void writeWavFile(CSR)(string filename, CSR samples, float norm, int srate = 4096)
-	if (isInputRange!CSR && is(Unqual!(ElementType!CSR) == Complex!float))
+void writeWavFile(SR)(string filename, SR samples, float norm, int srate = 4096)
+	if (isInputRange!SR && is(Unqual!(ElementType!SR) == float))
 {
 	writeWavFile(filename,
-		samples.map!(s => ((fmax(-1.0f, fmin(1.0f, s.re * norm))) * short.max).to!short),
+		samples.map!(s => ((fmax(-1.0f, fmin(1.0f, s * norm))) * short.max).to!short),
 		srate);
 }

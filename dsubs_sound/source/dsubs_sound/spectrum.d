@@ -2,15 +2,19 @@ module dsubs_sound.spectrum;
 
 import core.time;
 import std.stdio: writeln;
+alias expi = std.complex.expi;
 
 import dsubs_sound.common;
 import dsubs_sound.wav;
 
 
-/// Right half of spectrum. If desired spectrum size is 4096, this must be 4096 / 2 - 1.
+
+private float[] g_phasesRandBuf;
+
+/// Right half of spectrum.
 struct IntensityLevelSpectrum
 {
-	// first bin is 1Hz
+	// first bin is DC, last is nyquist
 	IntensityLevel[] bins;
 	int freqRes = 1;	/// frequency resolution (Hz / bin)
 
@@ -18,15 +22,25 @@ struct IntensityLevelSpectrum
 	/// create random phases.
 	void genSpectrum(ref Spectrum dest) const
 	{
-		assert((bins.length + 1) % 2 == 0);
+		assert(bins.length % 2 == 1);
 		dest.freqRes = freqRes;
-		dest.bins.length = bins.length * 2 + 2;
-		for (size_t i = 0; i < bins.length; i++)
+		dest.bins.length = bins.length - 1;
+		size_t N = dest.bins.length * 2;
+		Complex!float j = Complex!float(0.0f, 1.0f);
+		g_phasesRandBuf.length = bins.length;
+		float[] phases = g_phasesRandBuf;
+		for (size_t i = 0; i < phases.length; i++)
+			phases[i] = randPhase();
+		// read fftoptim.m octave file for demonstration
+		// https://dsp.stackexchange.com/a/28712
+		for (size_t k = 0; k < N / 2; k++)
 		{
-			dest.bins[i + 1] = fromPolar((bins[i] / 2).toLinear, randPhase());
-			dest.bins[$ - 1 - i] = dest.bins[i + 1].conj;
+			Complex!float Xk1 = fromPolar((bins[k] / 2).toLinear, phases[k]);
+			size_t conjk = bins.length - 1 - k;
+			Complex!float Xk2 = fromPolar((bins[conjk] / 2).toLinear, -phases[conjk]);
+			Complex!float jw = j * expi(float(2) * PI * k / N);
+			dest.bins[k] = 0.5f * (Xk1 * (1.0f + jw) + Xk2 * (1.0f - jw));
 		}
-		dest.bins[0] = dest.bins[$/2] = complex!float(0);
 	}
 
 	IntensitySpectrum toIntensity() const
@@ -36,20 +50,22 @@ struct IntensityLevelSpectrum
 		res.bins.length = bins.length;
 		foreach (i, ref b; res.bins)
 			b = this.bins[i].toLinear;
+		assert(res.bins.length % 2 == 1);
 		return res;
 	}
 
 	void addNumericNoise(float amplitude)
 	{
-		foreach (ref bin; bins)
-			bin = IntensityLevel(bin.val + uniform01!float * amplitude);
+		// skip DC and nyquist
+		for (size_t i = 1; i < bins.length - 1; i++)
+			bins[i] = IntensityLevel(bins[i].val + uniform01!float * amplitude);
 	}
 }
 
-/// Right half of spectrum. If desired spectrum size is 4096, this must be 4096 / 2 - 1.
+/// Right half of spectrum.
 struct IntensitySpectrum
 {
-	// first bin is 1Hz
+	// first bin is DC, last is nyquist
 	Intensity[] bins;
 	int freqRes = 1;	/// frequency resolution (Hz / bin)
 
@@ -57,15 +73,25 @@ struct IntensitySpectrum
 	/// create random phases.
 	void genSpectrum(ref Spectrum dest) const
 	{
-		assert((bins.length + 1) % 2 == 0);
+		assert(bins.length % 2 == 1, bins.length.to!string);
 		dest.freqRes = freqRes;
-		dest.bins.length = (bins.length + 1) * 2;
-		for (size_t i = 0; i < bins.length; i++)
+		dest.bins.length = bins.length - 1;
+		size_t N = dest.bins.length * 2;
+		Complex!float j = Complex!float(0.0f, 1.0f);
+		g_phasesRandBuf.length = bins.length;
+		float[] phases = g_phasesRandBuf;
+		for (size_t i = 0; i < phases.length; i++)
+			phases[i] = randPhase();
+		// read fftoptim.m octave file for demonstration
+		// https://dsp.stackexchange.com/a/28712
+		for (size_t k = 0; k < N / 2; k++)
 		{
-			dest.bins[i + 1] = fromPolar(sqrt(bins[i]), randPhase());
-			dest.bins[$ - 1 - i] = dest.bins[i + 1].conj;
+			Complex!float Xk1 = fromPolar(sqrt(bins[k]), phases[k]);
+			size_t conjk = bins.length - 1 - k;
+			Complex!float Xk2 = fromPolar(sqrt(bins[$ - 1 - k]), -phases[conjk]);
+			Complex!float jw = j * expi(float(2) * PI * k / N);
+			dest.bins[k] = 0.5f * (Xk1 * (1.0f + jw) + Xk2 * (1.0f - jw));
 		}
-		dest.bins[0] = dest.bins[$/2] = complex!float(0);
 	}
 }
 
@@ -109,8 +135,8 @@ struct SlidingGenerator
 	{
 		dest.samplingRate = nyqFreq * 2;
 		dest.samples.length = sampleCount;
-		foreach (ref s; dest.samples)
-			s = complex!float(roll());
+		for (size_t i = 0; i < sampleCount; i++)
+			dest.samples[i] = roll();
 	}
 }
 
@@ -137,19 +163,21 @@ struct SlidingGenerator
 unittest
 {
 	import std.algorithm;
+	import std.range;
 	import std.stdio;
 	import dsubs_sound.wav;
 
 	IntensityLevelSpectrum ispec;
-	ispec.bins.length = 2047;
-	ispec.bins.each!((ref IntensityLevel il) => il.val = 82.0f - 4 * uniform01!float);
+	ispec.bins.length = 2049;
+	iota(1,2047).map!(i => ispec.bins[i].val = 82.0f - 4 * uniform01!float);
 	Spectrum pspec;
 	ispec.genSpectrum(pspec);
-	assert(pspec.bins.length == 4096);
-	Fft fftCache = new Fft(4096);
+	assert(pspec.bins.length == 2048);
+	Fft fftCache = new Fft(2048);
 	TimeDomainSignal tds;
 	pspec.toTimeDomain(fftCache, tds);
-	float maxp = tds.samples.map!(a => a.re).maxElement;
+	assert(tds.samples.length == 4096);
+	float maxp = tds.samples.maxElement;
 	writeln("IntensityLevelSpectrum test result: ", tds.samples[0 .. 6],
 		", max pressure: ", maxp);
 	writeWavFile("ispec_whitenoise.wav", tds.samples, 0.5f / maxp, tds.samplingRate);
@@ -163,10 +191,11 @@ struct Spectrum
 
 	void toTimeDomain(Fft fftCache, ref TimeDomainSignal dest) const
 	{
-		dest.samplingRate = bins.length.to!int * freqRes;
-		dest.samples.length = bins.length;
+		dest.samplingRate = bins.length.to!int * freqRes * 2;
+		dest.samples.length = bins.length * 2;
 		auto beforeIfft = MonoTime.currTime;
-		fftCache.inverseFft(bins, dest.samples);
+		// smart trick with butterfly, consult octave fftoptim.m
+		fftCache.inverseFft(bins, dest.reinterpret);
 		auto afterIfft = MonoTime.currTime;
 		writeln("ifft performed in ", afterIfft - beforeIfft);
 	}
@@ -180,14 +209,20 @@ float randPhase()
 
 struct TimeDomainSignal
 {
-	Complex!float[] samples;
+	float[] samples;
 	int samplingRate;
+
+	pragma(inline)
+	Complex!(float)[] reinterpret()
+	{
+		return (cast(Complex!(float)*) samples.ptr)[0 .. samples.length / 2];
+	}
 
 	void zeroOut(int sampleCount, int srate)
 	{
 		samplingRate = srate;
 		samples.length = sampleCount;
-		samples[] = Complex!float(0, 0);
+		samples[] = 0.0f;
 	}
 }
 
@@ -200,8 +235,8 @@ void overlapTDS(const TimeDomainSignal prev, TimeDomainSignal onto, int sampleCo
 	{
 		// power factor
 		float factor = float(i + 1) / (sampleCount + 1);
-		onto.samples[i].re = onto.samples[i].re * sqrt(factor) +
-			sqrt(1.0f - factor) * prev.samples[i].re;
+		onto.samples[i] = onto.samples[i] * sqrt(factor) +
+			sqrt(1.0f - factor) * prev.samples[i];
 	}
 }
 
@@ -215,17 +250,14 @@ unittest
 	writeWavFile("overlap.wav", chain(tds1.samples, tds2.samples), 1.0f, tds1.samplingRate);
 }
 
-Spectrum whiteNoiseSpectrum(int bins = 4096, int freqRes = 1)
+IntensityLevelSpectrum whiteNoiseSpectrum(int maxFreq = 2048, int freqRes = 1)
 {
-	Spectrum s;
+	IntensityLevelSpectrum s;
 	s.freqRes = freqRes;
-	s.bins.length = bins;
-	for (int i = 1; i < bins / 2; i++)
-	{
-		s.bins[i] = fromPolar(1.25f - 0.5f * uniform01!float(), randPhase());
-		s.bins[$ - i] = s.bins[i].conj;
-	}
-	s.bins[0] = s.bins[$/2] = complex!float(0);
+	s.bins.length = maxFreq + 1;
+	for (int i = 1; i < maxFreq; i++)
+		s.bins[i] = 1.25f - 0.5f * uniform01!float();
+	s.bins[0] = s.bins[$-1] = 0.0f;
 	return s;
 }
 
@@ -235,7 +267,7 @@ TimeDomainSignal whiteNoise(int sampleCount, int samplingRate, float level = 0.2
 	res.samplingRate = samplingRate;
 	res.samples.length = sampleCount;
 	for (size_t i = 0; i < sampleCount; i++)
-		res.samples[i] = Complex!float(2 * level * (uniform01!float() - 0.5f), 0.0f);
+		res.samples[i] = 2 * level * (uniform01!float() - 0.5f);
 	return res;
 }
 
@@ -246,38 +278,25 @@ unittest
 	import std.stdio;
 	import std.range: repeat;
 
-	Spectrum s = whiteNoiseSpectrum(4096, 1);
-	Fft fftCache = new Fft(4096);
+	IntensityLevelSpectrum ss = whiteNoiseSpectrum(2048, 1);
+	Spectrum s;
+	Fft fftCache = new Fft(2048);
 	TimeDomainSignal tds;
+	assert(ss.bins.length == 2049);
+	ss.genSpectrum(s);
 	s.toTimeDomain(fftCache, tds);
 	assert(!isNaN(tds.samples[0].re));
 	assert(!isNaN(tds.samples[0].im));
 	writeln("ifft test tds sample rate: ", tds.samplingRate);
 	writeWavFile("ifft_test_1bphz.wav", tds.samples.repeat(2).joiner(), 16.0f, tds.samplingRate);
 
-	s = whiteNoiseSpectrum(2048, 2);
+	ss = whiteNoiseSpectrum(1024, 2);
+	ss.genSpectrum(s);
 	s.toTimeDomain(fftCache, tds);
 	writeWavFile("ifft_test_2bphz.wav", tds.samples.repeat(4).joiner(), 12.0f, tds.samplingRate);
 
-	s = whiteNoiseSpectrum(1024, 4);
+	ss = whiteNoiseSpectrum(512, 4);
+	ss.genSpectrum(s);
 	s.toTimeDomain(fftCache, tds);
 	writeWavFile("ifft_test_4bphz.wav", tds.samples.repeat(8).joiner(), 8.0f, tds.samplingRate);
-}
-
-void runIfftBenchmark()
-{
-	import core.time;
-	import std.stdio;
-
-	Spectrum s = whiteNoiseSpectrum(4096);
-	Fft fftCache = new Fft(4096);
-	TimeDomainSignal tds;
-	tds.samples.length = 4096;
-
-	writeln("starting ifft benchmark");
-	auto start = MonoTime.currTime();
-	for (int i = 0; i < 2000; i++)
-		s.toTimeDomain(fftCache, tds);
-	auto end = MonoTime.currTime;
-	writeln("1 ifft takes ", (end - start) / 2000);
 }
