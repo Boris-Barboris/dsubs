@@ -2,12 +2,13 @@ module dsubs_common.math;
 
 public import std.math;
 import std.traits: isNumeric, isFloatingPoint, Unqual;
+import std.conv: to;
 
 public import dsubs_common.math.angles;
 public import dsubs_common.math.transform;
 
 
-@safe @nogc:
+@safe:
 
 double lerp(double a, double b, double x)
 {
@@ -68,12 +69,13 @@ Unqual!F erf(F)(F x)
 {
 	bool neg = x < 0.0;
 	x = abs(x);
-	if (x > 5)
-		return neg ? -1 : 1;
+	// if (x > 10)
+	// 	return neg ? -1 : 1;
 	F res = 1.0 - 1.0 /
 		pow(1.0 + 0.278393 * x + 0.230389 * pow(x, 2) +
 		0.000972 * pow(x, 3) + 0.078108 * pow(x, 4), 4);
-	res = fmax(-1, fmin(1, res));
+	assert(res >= 0 && res < 1, res.to!string ~ " on " ~ x.to!string);
+	// res = fmax(-1, fmin(1, res));
 	return neg ? -res : res;
 }
 

@@ -4,6 +4,7 @@ import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
 import std.array: array;
 import std.range;
+import std.stdio;
 
 import dsubs_common.math;
 import dsubs_common.event;
@@ -536,6 +537,7 @@ final class Hydrophone
 					float right = m_listenDir - m_listenSpan / 2;
 					PowerIntegr integr = integrateBetweenBeams(left, right,
 						p.worldBearingStart, p.worldBearingEnd, p.haloBase);
+					//writeln("integrateBetweenBeams result: ", integr, " for ", p.worldBearingStart, " ", p.worldBearingEnd, " bearings");
 					if (integr.totalPart != 0.0f)
 					{
 						m_iinterp.startIntensityMult = integr.startPart;
@@ -544,7 +546,7 @@ final class Hydrophone
 					else
 						return;
 					m_chainMod.modulators[1] = cast(IModulator) mod;
-					applyStageIspec(m_chainMod, integr.totalPart);
+					applyStageIspec(m_chainMod, 1.0f);
 				}
 			}
 
@@ -560,8 +562,6 @@ import imageformats;
 /// print passive sonar data to PNG image
 private void printToPng(string filename, IntensityLevel[][] data, dB zeroLevel, dB maxLvl)
 {
-	import std.stdio;
-
 	long width = data[0].length.to!long;
 	long height = data.length;
 	ubyte[] pixels;
