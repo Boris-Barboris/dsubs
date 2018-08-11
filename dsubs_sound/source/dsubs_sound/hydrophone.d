@@ -587,26 +587,6 @@ private void printToPng(string filename, IntensityLevel[][] data, dB zeroLevel, 
 
 unittest
 {
-	HydrophonePrototype hp = HydrophonePrototype(
-		[0.0f],
-		500, 2048, dgr2rad(180.0f), 181, 4 / 181.0f, 3.0f, 0.001f, 0.001f);
-	Hydrophone h = new Hydrophone(new Transform2D(), hp);
-	IntensityLevel[][] ilevels;
-	ilevels.length = 90;
-	float spdKts = 0.0f;
-	float spdStep = mps2kts(17) / ilevels.length;
-	for (size_t i = 0; i < ilevels.length; i++)
-	{
-		h.ktsStart = h.ktsEnd = spdKts;
-		h.resetAndIsotropic();
-		h.m_ant[0].imprint(ilevels[i]);
-		spdKts += spdStep;
-	}
-	printToPng("std_hydrophone_0-17ms.png", ilevels, 0.0f, 90.0f);
-}
-
-unittest
-{
 	import std.array;
 	import std.algorithm: map, maxElement;
 	import std.range;
@@ -624,7 +604,7 @@ unittest
 
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2048, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 2e-3, 2e-4);
+		500, 2048, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 2e-3, 2e-5);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	IntensityLevel[][] ilevels;
 	ilevels.length = 200;
@@ -654,7 +634,7 @@ unittest
 		foreach (j, float spd; speeds)
 		{
 			float freq = spd * freqPerMs;
-			propTrans.position = rotateVector(vec2d(0.0, 1000.0), relBearings[j]);
+			propTrans.position = rotateVector(vec2d(0.0, 5000.0), relBearings[j]);
 			prop.preUpdate(freq, spd);
 			prop.postUpdate(freq, spd, 1.0f);
 			h.applySoundSource(prop);
