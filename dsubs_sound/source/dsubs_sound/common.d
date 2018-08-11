@@ -19,7 +19,7 @@ static this()
 }
 
 pragma(inline)
-auto uniform(string boundaries = "[)", T1, T2)(T1 a, T2 b)
+auto uniform(string boundaries = "[]", T1, T2)(T1 a, T2 b)
 {
 	return std.random.uniform!(boundaries, T1, T2)(a, b, rngen);
 }
