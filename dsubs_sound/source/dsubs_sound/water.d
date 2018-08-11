@@ -67,6 +67,12 @@ IntensityLevel getILatRange(int freq, IntensityLevel il, float range, float diss
 	return IntensityLevel(il - toDb(range * range) - wrdk[freq - 1] * range * dissMod);
 }
 
+IntensityLevel getILatRange2(int freq, IntensityLevel il, float range, float rangeDb, float dissMod = 1.0f)
+{
+	assert(freq > 0 && freq <= 4096);
+	return IntensityLevel(il - rangeDb - wrdk[freq - 1] * range * dissMod);
+}
+
 unittest
 {
 	IntensityLevel il = IntensityLevel(100.0f);

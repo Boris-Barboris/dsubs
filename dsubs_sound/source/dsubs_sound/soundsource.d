@@ -132,6 +132,7 @@ final class PropellerSound: SoundSource
 	{
 		float kavg = (kstart.fabs + kend.fabs) / 2;
 		float bearingK = 1.0f - 0.5f * (1.0f - m_aftIntensity) * (cos(2.0f * relBearing) + 1.0f);
+		float rangeDb = toDb(range * range);
 		for (int i = minFreq; i < maxFreq; i++)
 		{
 			float output = source.bins[i] * kavg;
@@ -142,7 +143,7 @@ final class PropellerSound: SoundSource
 			output *= bearingK;
 			// now we apply water sound loss
 			IntensityLevel outputDb = IntensityLevel(output.toDb());
-			outputDb = getILatRange(i, outputDb, range, dissMod);
+			outputDb = getILatRange2(i, outputDb, range, rangeDb, dissMod);
 			dest.bins[i] = outputDb.toLinear();
 		}
 	}

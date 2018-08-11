@@ -1,6 +1,7 @@
 module dsubs_sound.units;
 
 import std.math;
+import core.stdc.math: powf, log10f;
 
 
 /// Sound intensity (relative to reference intensity)
@@ -27,14 +28,16 @@ struct IntensityLevel
 	}
 }
 
+pragma(inline, true)
 float toDb(float linear)
 {
-	return 10.0 * log10(linear);
+	return 10.0f * log10f(linear);
 }
 
+pragma(inline, true)
 float toLinear(float db)
 {
-	return pow(10.0, db / 10.0);
+	return powf(10.0f, db / 10.0f);
 }
 
 alias dB = float;
