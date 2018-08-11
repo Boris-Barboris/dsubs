@@ -176,10 +176,7 @@ final class Hydrophone
 		srate = tds.samplingRate;
 		short[] res = new short[tds.samples.length];
 		for (size_t i = 0; i < res.length; i++)
-		{
-			res[i] = max(short.min, min(short.max,
-				lrint(tds.samples[i].re / maxp * short.max))).to!short;
-		}
+			res[i] = (fmax(-1.0f, fmin(1.0f, tds.samples[i] / maxp)) * short.max).to!short;
 		return cast(immutable(short)[]) res;
 	}
 
