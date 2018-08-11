@@ -2,16 +2,24 @@ module dsubs_server.app;
 
 import core.stdc.stdlib;
 
+import dsubs_server.common;
 import dsubs_server.globals;
 
 
 void main(string[] argv)
 {
-	scope(failure) exit(1);
-	Globals.build();
-	Globals.cons.bindSockets();
-	Globals.sim.start();
-	Globals.cons.startListeners();
-	Globals.sim.join();		// blocks forever
+	try
+	{
+		Globals.build();
+		Globals.cons.bindSockets();
+		Globals.sim.start();
+		Globals.cons.startListeners();
+		Globals.sim.join();		// blocks forever
+	}
+	catch (Throwable e)
+	{
+		error("main thread has crashed: ", e.toString);
+		exit(1);
+	}
 	exit(0);
 }
