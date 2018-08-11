@@ -148,7 +148,7 @@ auto cycled(R)(R r)
 
 		void popFront()
 		{
-			idx = (idx + 1) % _r.length;
+			idx = (idx + 1) % len;
 		}
 
 		ref auto opIndex(ptrdiff_t n)

@@ -186,21 +186,8 @@ class ProtocolConnection(alias Protocol)
 	// first int - message type, second - body size.
 	private int[2] recvHeader()
 	{
-	read_start:
 		int[2] header;
-		auto received = m_sock.receive(header);
-		enforce!ConnectionException(received != 0, "Socket was closed");
-		if (received == Socket.ERROR)
-		{
-			version(Posix)
-			{
-				if (errno == EINTR)
-					goto read_start;
-			}
-			throw new ConnectionException(lastSocketError());
-		}
-		enforce!ConnectionException(received == 8, "Error during receive, partial read: " ~
-			received.to!string ~ " <> 8");
+		recvBody(8, cast(ubyte[]) header);
 		enforce!ProtocolException(header[0] >= -1 &&
 			header[0] < m_handlers.length.to!int, "Unknown message " ~ header[0].to!string);
 		enforce!ProtocolException(header[1] >= 0 &&
@@ -213,11 +200,27 @@ class ProtocolConnection(alias Protocol)
 		return header;
 	}
 
-	private ubyte[] recvBody(int size)
+	private ubyte[] recvBody(int size, ubyte[] res = null)
 	{
-		ubyte[] res = new ubyte[size];
-		auto received = m_sock.receive(res);
-		enforce!ConnectionException(received == size, "Error during receive");
+		if (res.length == 0)
+			res = new ubyte[size];
+		size_t toReceive = size;
+		while (toReceive != 0)
+		{
+			auto received = m_sock.receive(res[$-toReceive .. $]);
+			if (received == Socket.ERROR)
+			{
+				version(Posix)
+				{
+					if (errno == EINTR)
+						continue;
+				}
+				throw new ConnectionException(lastSocketError());
+			} else if (received == 0)
+				throw new ConnectionException("remote peer closed connection");
+			else
+				toReceive -= received;
+		}
 		return res;
 	}
 
