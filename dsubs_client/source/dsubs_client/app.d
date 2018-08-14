@@ -20,8 +20,6 @@ void main(string[] argv)
 	loadSfmlLibraries();
 	loadAudioLib();
 	StreamingSoundSource sound = new StreamingSoundSource();
-	sound.gain = 1.0f;
-	sound.appendWav("../dsubs_sound/std_hydrophone_vs_std_propeller_1km.wav");
 	loadGlobalFonts();
 	// runModuleTests();
 	// testGuiElements();
