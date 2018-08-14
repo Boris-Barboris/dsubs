@@ -5,6 +5,7 @@ import std.range;
 import std.stdio;
 
 import derelict.openal.al;
+// library needs resampler=bsinc in config
 
 import dsubs_client.common;
 
@@ -19,8 +20,7 @@ void loadAudioLib()
 		s_noAudio = true;
 		return;
 	}
-	int[] ctxAttrs = [ALC_FREQUENCY, 4096, 0];
-	s_context = alcCreateContext(s_device, ctxAttrs.ptr);
+	s_context = alcCreateContext(s_device, null);
 	openalcCheckErr("Unable to create audio context: ");
 	alcMakeContextCurrent(s_context);
 	openalcCheckErr("Unable to activate audio context: ");

@@ -13,7 +13,7 @@ import dsubs_client.game.cic.messages;
 import dsubs_client.game.cic.protocol;
 import dsubs_client.common;
 import dsubs_client.core.utils;
-import dsubs_client.lib.soundio;
+import dsubs_client.lib.openal;
 import dsubs_client.game;
 import dsubs_client.game.entities;
 import dsubs_client.game.gamestate;
@@ -215,6 +215,7 @@ private:
 		}
 		if (s && res.audio.length > 0)
 		{
+			s.pullFinishedBuffers();
 			if (s.queuedCount > 0)
 				s.append(res.audio[0].samples, res.audio[0].samplingRate);
 			else
