@@ -1,6 +1,7 @@
 module dsubs_client.game.connections.backend;
 
 import std.socket;
+import std.process;
 
 import core.atomic;
 import core.thread;
@@ -124,7 +125,8 @@ final class BackendConMaintainer
 			try
 			{
 				Socket clientSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
-				auto addr = new InternetAddress("127.0.0.1", 17855);
+				auto addr = new InternetAddress(
+					environment.get("DSUBS_BACKEND_HOST", "127.0.0.1"), 17855);
 				info("Attempting to connect to backend ", addr);
 				clientSock.connect(addr);
 				m_con = new BackendConnection(clientSock);
