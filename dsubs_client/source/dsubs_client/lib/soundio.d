@@ -59,7 +59,6 @@ final class StreamingSoundSource
 			return;
 		m_ostream = soundio_outstream_create(s_device);
 		m_ostream.format = SoundIoFormat.SoundIoFormatS16LE;
-		m_ostream.sample_rate = 4096;
 		m_ostream.layout = *soundio_channel_layout_get_builtin(
 			SoundIoChannelLayoutId.SoundIoChannelLayoutIdMono);
 		m_ostream.userdata = cast(void*) this;
@@ -74,6 +73,7 @@ final class StreamingSoundSource
 		short[] m_curSamples;
 		short[] m_nextSamples;
 		int m_queuedCount;
+		float m_time = 0.0f;
 	}
 
 	@property int queuedCount() const { return m_queuedCount; }
@@ -85,15 +85,19 @@ final class StreamingSoundSource
 		soundio_outstream_destroy(m_ostream);
 	}
 
+	// need resampler: http://www.mega-nerd.com/SRC/
+
 	private extern(C) static void writeCallback(SoundIoOutStream* outstream,
 		int frame_count_min, int frame_count_max)
 	{
 		StreamingSoundSource source = cast(StreamingSoundSource) outstream.userdata;
+		int srate = outstream.sample_rate;
+		float srateRat = srate / float(4096);
 		SoundIoChannelArea* areas;
 		int toWrite = frame_count_max;
 		while (toWrite > 0 && source.m_curSamples.length > 0)
 		{
-			int frameCount = min(frame_count_max, source.m_curSamples.length);
+			int frameCount = min(frame_count_max, floor((source.m_curSamples.length / float(4096) - source.m_time) * srate).to!int);
 			auto err = soundio_outstream_begin_write(source.m_ostream, &areas,
 				&frameCount);
 			if (err != 0)
@@ -104,7 +108,8 @@ final class StreamingSoundSource
 			for (int i = 0; i < frameCount; i++)
 			{
 				short* ptr = cast(short*) areas[0].ptr + areas[0].step * i;
-				*ptr = source.m_curSamples[i];
+				size_t idx = round(source.m_time * 4096 + i / srateRat).to!size_t;
+				*ptr = source.m_curSamples[idx];
 			}
 			err = soundio_outstream_end_write(source.m_ostream);
 			if (err != 0)
@@ -112,8 +117,8 @@ final class StreamingSoundSource
 				error(soundio_strerror(err).fromStringz);
 				assert(0);
 			}
-			source.m_curSamples = source.m_curSamples[frameCount .. $];
-			if (source.m_curSamples.length == 0)
+			source.m_time += frameCount / float(srate);
+			if (source.m_time >= source.m_curSamples.length / float(4096))
 				source.swapBufs();
 			toWrite -= frameCount;
 		}
@@ -128,8 +133,11 @@ final class StreamingSoundSource
 		assert(srate == 4096);
 		synchronized(this)
 		{
-			if (m_queuedCount > 0)
+			if (m_queuedCount >= 1)
+			{
 				m_nextSamples = samples;
+				m_queuedCount = 2;
+			}
 			else
 			{
 				m_curSamples = samples;
@@ -143,6 +151,7 @@ final class StreamingSoundSource
 	{
 		synchronized(this)
 		{
+			m_time -= m_curSamples.length / float(4096);
 			m_curSamples = m_nextSamples;
 			m_nextSamples.length = 0;
 			m_queuedCount--;
