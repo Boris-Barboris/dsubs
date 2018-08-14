@@ -131,7 +131,7 @@ final class Render
 					// 60 frames were rendered
 					long totalMsecs = (curTime - lastFpsMark).total!"msecs";
 					m_avgFps = FPS_UPDATE_FREQ * 1000.0f / totalMsecs;
-					trace("FPS: ", m_avgFps);
+					// trace("FPS: ", m_avgFps);
 					frameCounter = 0;
 					lastFpsMark = curTime;
 				}

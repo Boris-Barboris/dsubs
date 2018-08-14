@@ -26,7 +26,7 @@ import dsubs_client.game.cic.server;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cameracontroller;
 import dsubs_client.game.overlay;
-import dsubs_client.lib.openal;
+import dsubs_client.lib.soundio;
 
 
 final class SimulatorState: GameState

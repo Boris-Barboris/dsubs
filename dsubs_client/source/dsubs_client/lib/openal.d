@@ -2,6 +2,7 @@ module dsubs_client.lib.openal;
 
 import std.algorithm;
 import std.range;
+import std.stdio;
 
 import derelict.openal.al;
 
@@ -18,10 +19,13 @@ void loadAudioLib()
 		s_noAudio = true;
 		return;
 	}
-	s_context = alcCreateContext(s_device, null);
+	int[] ctxAttrs = [ALC_FREQUENCY, 4096, 0];
+	s_context = alcCreateContext(s_device, ctxAttrs.ptr);
 	openalcCheckErr("Unable to create audio context: ");
 	alcMakeContextCurrent(s_context);
 	openalcCheckErr("Unable to activate audio context: ");
+	alDistanceModel(AL_NONE);
+	openalcCheckErr("Unable to set distance model: ");
 }
 
 void unloadAudioLib()
@@ -33,8 +37,8 @@ void unloadAudioLib()
 
 private __gshared
 {
-	ALCdevice* s_device = null;
-	ALCcontext* s_context = null;
+	ALCdevice* s_device;
+	ALCcontext* s_context;
 	bool s_noAudio;
 }
 
@@ -114,6 +118,16 @@ final class StreamingSoundSource
 		ensurePlaying();
 	}
 
+	void appendWav(string path)
+	{
+		if (s_noAudio)
+			return;
+		short[] samples;
+		int srate, byteCount;
+		loadWavFile(path, samples, byteCount, srate);
+		append(samples, srate);
+	}
+
 	@property void gain(float rhs)
 	{
 		if (s_noAudio)
@@ -165,4 +179,23 @@ final class StreamingSoundSource
 			processed--;
 		}
 	}
+}
+
+
+/// load mono
+void loadWavFile(string filename, out short[] samples, out int byteCount, out int srate)
+{
+	File f = File(filename, "rb");
+	f.seek(4 + 4 + 4 + 4 + 4 + 2 + 2);
+	int[] srateArr = f.rawRead(new int[1]);
+	enforce(srateArr.length == 1, "unexpected eof in wav file");
+	srate = srateArr[0];
+	f.seek(40);
+	int[] byteLen = f.rawRead(new int[1]);
+	enforce(byteLen.length == 1, "unexpected eof in wav file");
+	byteCount = byteLen[0];
+	enforce(byteCount % 2 == 0, "not 16-bit PCB?");
+	int sampleCount = (byteCount / short.sizeof).to!int;
+	f.seek(44);
+	samples = f.rawRead(new short[sampleCount]);
 }

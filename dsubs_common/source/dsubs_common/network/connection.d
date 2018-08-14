@@ -137,19 +137,23 @@ class ProtocolConnection(alias Protocol)
 	/// send raw bytes to the peer
 	private void sendBytesSync(const(ubyte)[] msgBody)
 	{
-	before_send:
-		auto sent = m_sock.send(msgBody);
-		if (sent == Socket.ERROR)
+		size_t toSend = msgBody.length;
+		while (toSend != 0)
 		{
-			version(Posix)
+			auto sent = m_sock.send(msgBody[$-toSend .. $]);
+			if (sent == Socket.ERROR)
 			{
-				if (errno == EINTR)
-					goto before_send;
-			}
-			throw new ConnectionException(m_sock.getErrorText());
+				version(Posix)
+				{
+					if (errno == EINTR)
+						continue;
+				}
+				throw new ConnectionException(lastSocketError());
+			} else if (sent == 0)
+				throw new ConnectionException("remote peer closed connection");
+			else
+				toSend -= sent;
 		}
-		enforce!ConnectionException(sent == msgBody.length, "Partial send: " ~
-			sent.to!string ~ " <> " ~ msgBody.length.to!string);
 	}
 
 	/// Set handler for protocol message of type MsgT. Should only be called once.
@@ -187,7 +191,7 @@ class ProtocolConnection(alias Protocol)
 	private int[2] recvHeader()
 	{
 		int[2] header;
-		recvBody(8, cast(ubyte[]) header);
+		recvBytes(8, cast(ubyte[]) header);
 		enforce!ProtocolException(header[0] >= -1 &&
 			header[0] < m_handlers.length.to!int, "Unknown message " ~ header[0].to!string);
 		enforce!ProtocolException(header[1] >= 0 &&
@@ -200,7 +204,7 @@ class ProtocolConnection(alias Protocol)
 		return header;
 	}
 
-	private ubyte[] recvBody(int size, ubyte[] res = null)
+	private ubyte[] recvBytes(int size, ubyte[] res = null)
 	{
 		if (res.length == 0)
 			res = new ubyte[size];
@@ -238,7 +242,7 @@ class ProtocolConnection(alias Protocol)
 				}
 				void delegate(ubyte[]) handler = m_handlers[header[0]];
 				if (handler)
-					handler(recvBody(header[1]));
+					handler(recvBytes(header[1]));
 				else
 					throw new ProtocolException("No handler for message " ~
 						Protocol.msgTypeNames[header[0]]);

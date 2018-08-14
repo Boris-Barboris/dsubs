@@ -4,7 +4,7 @@ import core.stdc.stdlib;
 
 import dsubs_client.common;
 import dsubs_client.lib.sfml;
-import dsubs_client.lib.openal;
+import dsubs_client.lib.soundio;
 import dsubs_client.lib.fonts;
 import dsubs_client.tests;
 import dsubs_client.game;
@@ -19,9 +19,12 @@ void main(string[] argv)
 	}
 	loadSfmlLibraries();
 	loadAudioLib();
+	StreamingSoundSource sound = new StreamingSoundSource();
+	sound.gain = 1.0f;
+	sound.appendWav("../dsubs_sound/std_hydrophone_vs_std_propeller_1km.wav");
 	loadGlobalFonts();
-	runModuleTests();
-	//testGuiElements();
+	// runModuleTests();
+	// testGuiElements();
 	scope(failure) exit(1);
 	scope(failure) unloadAudioLib();
 	try
