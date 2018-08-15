@@ -106,3 +106,23 @@ unittest
 {
 	assert((vec2d(-1.0, 0.0) - rotateVector(vec2d(0.0, 1.0), PI_2)).length < 0.001);
 }
+
+/// Sector consists of two beams and area between them.
+struct Sector
+{
+	float left;
+	float right;
+}
+
+/// Sector intersection is zero, one or two sectors
+struct SectorIntersection
+{
+	int count = 0;
+	Sector[2] subsectors;
+}
+
+SectorIntersection intersect(Sector a, Sector b)
+{
+	SectorIntersection res;
+	return res;
+}

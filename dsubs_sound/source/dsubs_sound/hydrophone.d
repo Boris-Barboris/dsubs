@@ -244,18 +244,10 @@ final class Hydrophone
 		resEnd *= mult;
 		float resAvg = 0.5f * (resStart + resEnd);
 		m_baseFlowNoise = Intensity(resAvg * m_directivity);
-		if (m_listenDirValid)
+		if (m_listenDirValid && resAvg != 0.0f)
 		{
-			if (resAvg != 0.0f)
-			{
-				m_iinterp.startIntensityMult = resStart * sgn(m_ktsStart) / resAvg;
-				m_iinterp.endIntensityMult = resEnd * sgn(m_ktsEnd) / resAvg;
-			}
-			else
-			{
-				m_iinterp.startIntensityMult = 0.0f;
-				m_iinterp.endIntensityMult = 0.0f;
-			}
+			m_iinterp.startIntensityMult = resStart * sgn(m_ktsStart) / resAvg;
+			m_iinterp.endIntensityMult = resEnd * sgn(m_ktsEnd) / resAvg;
 			applyStageIspec(m_iinterp);
 		}
 	}
@@ -444,7 +436,7 @@ final class Hydrophone
 
 		int relBearingToCell(double relBearing)
 		{
-			return floor((cell0Left - relBearing) / m_cellAngle).to!int;
+			return floor((cell0Left - relBearing) / m_cellAngle).lrint.to!int;
 		}
 
 		struct PowerIntegr
@@ -458,9 +450,10 @@ final class Hydrophone
 			float brngStart, float brngEnd, float halo, int integrPoints = 2)
 		{
 			assert(integrPoints >= 1);
+			assert(right <= left);
 			float relBearing = brngStart;
 			PowerIntegr res;
-			float drx = (brngEnd - brngStart) / (integrPoints - 1);
+			float drx = angleDist(brngEnd, brngStart) / (integrPoints - 1);
 			for (int i = 0; i < integrPoints; i++)
 			{
 				float normLeft = clampAnglePi(relBearing - left) / halo;
@@ -480,6 +473,12 @@ final class Hydrophone
 			return res;
 		}
 
+		// sectors can intersect
+		struct SectorIntersect
+		{
+			int areaCount;
+		}
+
 		void applySoundSource(SoundSource s, SourcePrecalc p)
 		{
 			float bearingErr = uniform(-m_bearingErrNoise, m_bearingErrNoise);
@@ -494,8 +493,8 @@ final class Hydrophone
 			// last cell we'll add energy to
 			int cellEnd1 = relBearingToCell(relBearing1 - p.haloBound);
 			int cellEnd2 = relBearingToCell(relBearing2 - p.haloBound);
-			// let's care only about start time slice
-			if (cellStart1 >= cells.length || cellEnd1 < 0)
+			if ((cellStart1 >= cells.length || cellEnd1 < 0) &&
+					(cellStart2 >= cells.length || cellEnd2 < 0))
 				return;
 			int cellStart = max(0, min(cellStart1, cellStart2));
 			int cellEnd = min(cells.length - 1, max(cellEnd1, cellEnd2));
@@ -519,17 +518,17 @@ final class Hydrophone
 				// apply time-domain stuff
 				if (m_listenDirValid && listenCell)
 				{
-					// let's run a simplified halo check
-					double listenRelBearing = clampAnglePi(
-						m_listenDir - m_transform.wrotation - rot);
-					int listenDirCell = relBearingToCell(listenRelBearing);
-					int cellHaloBound = ceil(p.haloBound / m_cellAngle).to!int;
-					if (listenDirCell + cellHaloBound < cellStart ||
-						listenDirCell - cellHaloBound > cellEnd)
-					{
-						// we are obviously too far from listenDir
-						return;
-					}
+					// // let's run a simplified halo check
+					// double listenRelBearing = clampAnglePi(
+					// 	m_listenDir - m_transform.wrotation - rot);
+					// int listenDirCell = relBearingToCell(listenRelBearing);
+					// int cellHaloBound = ceil(p.haloBound / m_cellAngle).to!int;
+					// if (listenDirCell + cellHaloBound < cellStart ||
+					// 	listenDirCell - cellHaloBound > cellEnd)
+					// {
+					// 	// we are obviously too far from listenDir
+					// 	return;
+					// }
 					float left = m_listenDir + m_listenSpan / 2;
 					float right = m_listenDir - m_listenSpan / 2;
 					PowerIntegr integr = integrateBetweenBeams(left, right,
@@ -539,11 +538,9 @@ final class Hydrophone
 					{
 						m_iinterp.startIntensityMult = integr.startPart;
 						m_iinterp.endIntensityMult = integr.endPart;
+						m_chainMod.modulators[1] = cast(IModulator) mod;
+						applyStageIspec(m_chainMod, 1.0f);
 					}
-					else
-						return;
-					m_chainMod.modulators[1] = cast(IModulator) mod;
-					applyStageIspec(m_chainMod, 1.0f);
 				}
 			}
 
@@ -603,17 +600,21 @@ unittest
 		[0.0f],
 		500, 2048, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 2e-3, 2e-5);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
+	h.transform.rotation = PI; // good corner case
+	h.onPreSimulation();
 	IntensityLevel[][] ilevels;
 	ilevels.length = 200;
 	float spdKts = mps2kts(0);
 	h.ktsStart = h.ktsEnd = spdKts;
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
+		// h.onPreSimulation();
+		// h.transform.rotation = i * dgr2rad(0.5);
 		h.resetAndIsotropic();
 		foreach (j, float spd; speeds)
 		{
 			float freq = spd * freqPerMs;
-			propTrans.position = rotateVector(vec2d(0.0, (i + 1) * 150.0), relBearings[j]);
+			propTrans.position = rotateVector(vec2d(0.0, (i + 1) * -150.0), relBearings[j]);
 			prop.preUpdate(freq, spd);
 			prop.postUpdate(freq, spd, 1.0f);
 			h.applySoundSource(prop);
@@ -631,7 +632,7 @@ unittest
 		foreach (j, float spd; speeds)
 		{
 			float freq = spd * freqPerMs;
-			propTrans.position = rotateVector(vec2d(0.0, 5000.0), relBearings[j]);
+			propTrans.position = rotateVector(vec2d(0.0, -5000.0), relBearings[j]);
 			prop.preUpdate(freq, spd);
 			prop.postUpdate(freq, spd, 1.0f);
 			h.applySoundSource(prop);
@@ -641,9 +642,9 @@ unittest
 	printToPng("std_hydrophone_0-17ms.png", ilevels, 0.0f, 90.0f);
 
 	// generate sound sample of std_propeller on 1km range
-	propTrans.position = vec2d(0.0, 1000.0).rotateVector(dgr2rad(3));
+	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
 	h.hasListener = true;
-	h.listenDir = 0.0;
+	h.listenDir = PI;
 	float spd = 15.0f;
 	float freq = spd * freqPerMs;
 	writeln("fundamental shaft frequency = ", freq);
@@ -653,7 +654,7 @@ unittest
 	for (int i = 0; i < 8; i++)
 	{
 		prop.preUpdate(freq, spd);
-		propTrans.position = vec2d(0.0, 1000.0).rotateVector(
+		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
 			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
 		prop.postUpdate(freq, spd, 1.0f);
 		h.resetAndIsotropic();

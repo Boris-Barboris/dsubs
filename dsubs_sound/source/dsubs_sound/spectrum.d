@@ -197,7 +197,7 @@ struct Spectrum
 		// smart trick with butterfly, consult octave fftoptim.m
 		fftCache.inverseFft(bins, dest.reinterpret);
 		auto afterIfft = MonoTime.currTime;
-		writeln("ifft performed in ", afterIfft - beforeIfft);
+		// writeln("ifft performed in ", afterIfft - beforeIfft);
 	}
 }
 

@@ -76,12 +76,12 @@ struct LinearFIR
 		if (is(Unqual!(ElementType!RS) == float) &&
 			is(Unqual!(ElementType!RD) == float))
 	{
-		auto before = MonoTime.currTime;
+		// auto before = MonoTime.currTime;
 		for (ptrdiff_t i = 0; i < destSignal.length; i++)
 			destSignal[i] = iota(0, ptrdiff_t(taps.length)).map!(
 				j => sourceSignal[i - j] * taps[j]).sum;
-		auto after = MonoTime.currTime;
-		writeln("FIR filtering performed in ", after - before);
+		// auto after = MonoTime.currTime;
+		// writeln("FIR filtering performed in ", after - before);
 	}
 }
 
