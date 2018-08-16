@@ -92,6 +92,7 @@ final class Hydrophone
 		/// max size of sound halo
 		enum float MAX_HALO = dgr2rad(20);
 		enum float MAX_HALO_2 = MAX_HALO / 2;
+		enum float HALO_GAIN = 3.0f;
 		enum float ISOTROPIC_VAR = 2.0;
 		enum int MIN_FREQ = 20;
 
@@ -357,8 +358,8 @@ final class Hydrophone
 		res.worldBearingStart = courseAngle(res.dirStart);
 		res.worldBearingEnd = courseAngle(res.dirEnd);
 		// half of halo size
-		res.haloBase = s.radius / res.range + pointHaloAngle(res.range);
-		res.haloBound = fmin(3.0 * res.haloBase, MAX_HALO);
+		res.haloBase = (s.radius / res.range + pointHaloAngle(res.range)) * (1 + uniform(-0.06f, 0.06f));
+		res.haloBound = fmin(HALO_GAIN * res.haloBase, MAX_HALO);
 		return res;
 	}
 
@@ -439,6 +440,11 @@ final class Hydrophone
 			return floor((cell0Left - relBearing) / m_cellAngle).lrint.to!int;
 		}
 
+		int sectorNormToCell(float norm)
+		{
+			return max(0, min(cells.length - 1, floor(norm * cells.length).lrint)).to!int;
+		}
+
 		struct PowerIntegr
 		{
 			float totalPart = 0.0f;
@@ -451,32 +457,35 @@ final class Hydrophone
 		{
 			assert(integrPoints >= 1);
 			assert(right <= left);
+			halo *= HALO_GAIN;
 			float relBearing = brngStart;
 			PowerIntegr res;
 			float drx = angleDist(brngEnd, brngStart) / (integrPoints - 1);
+			Sector beamSector = Sector(left, right);
 			for (int i = 0; i < integrPoints; i++)
 			{
-				float normLeft = clampAnglePi(relBearing - left) / halo;
-				float normRight = clampAnglePi(relBearing - right) / halo;
-				assert(normRight >= normLeft);
-				float part = 0.5f * (erf(normRight) - erf(normLeft));
-				assert(part >= 0.0f);
+				SectorProjection sp = projectSectorsIntersect(beamSector,
+					Sector(relBearing + halo, relBearing - halo));
+				assert(sp.count < 2);
+				float part = 0.0f;
+				if (sp.count == 1)
+				{
+					float normLeft = (sp.proj[0].left - 0.5f) * 2 * HALO_GAIN;
+					float normRight = (sp.proj[0].right - 0.5f) * 2 * HALO_GAIN;
+					assert(normRight >= normLeft);
+					part = 0.5f * (erf(normRight) - erf(normLeft));
+					assert(part >= 0.0f);
+					res.totalPart += part;
+				}
 				if (i == 0)
 					res.startPart = part;
 				else if (i == integrPoints - 1)
 					res.endPart = part;
-				res.totalPart += part;
 				relBearing += drx;
 			}
 			res.totalPart /= integrPoints;
 			assert(!isNaN(res.totalPart));
 			return res;
-		}
-
-		// sectors can intersect
-		struct SectorIntersect
-		{
-			int areaCount;
 		}
 
 		void applySoundSource(SoundSource s, SourcePrecalc p)
@@ -487,17 +496,28 @@ final class Hydrophone
 			double relBearing2 = clampAnglePi(
 				p.worldBearingEnd + bearingErr - m_transform.wrotation - rot);
 
-			// first cell we'll add energy to
-			int cellStart1 = relBearingToCell(relBearing1 + p.haloBound);
-			int cellStart2 = relBearingToCell(relBearing2 + p.haloBound);
-			// last cell we'll add energy to
-			int cellEnd1 = relBearingToCell(relBearing1 - p.haloBound);
-			int cellEnd2 = relBearingToCell(relBearing2 - p.haloBound);
-			if ((cellStart1 >= cells.length || cellEnd1 < 0) &&
-					(cellStart2 >= cells.length || cellEnd2 < 0))
+			Sector allCellsSect = Sector(cell0Left, -cell0Left);
+			SectorProjection sectProj1 = projectSectorsIntersect(
+				Sector(relBearing1 + p.haloBound, relBearing1 - p.haloBound), allCellsSect);
+			assert(sectProj1.count < 2);
+			SectorProjection sectProj2 = projectSectorsIntersect(
+				Sector(relBearing2 + p.haloBound, relBearing2 - p.haloBound), allCellsSect);
+			assert(sectProj2.count < 2);
+			if (sectProj1.count == 0 && sectProj2.count == 0)
 				return;
-			int cellStart = max(0, min(cellStart1, cellStart2));
-			int cellEnd = min(cells.length - 1, max(cellEnd1, cellEnd2));
+			// first cell we'll add energy to
+			int cellStart = cells.length.to!int;
+			int cellEnd = -1;
+			if (sectProj1.count)
+			{
+				cellStart = min(cellStart, sectorNormToCell(sectProj1.proj[0].left));
+				cellEnd = max(cellEnd, sectorNormToCell(sectProj1.proj[0].right));
+			}
+			if (sectProj2.count)
+			{
+				cellStart = min(cellStart, sectorNormToCell(sectProj2.proj[0].left));
+				cellEnd = max(cellEnd, sectorNormToCell(sectProj2.proj[0].right));
+			}
 
 			bool needModulator = listenCell;
 
@@ -518,22 +538,10 @@ final class Hydrophone
 				// apply time-domain stuff
 				if (m_listenDirValid && listenCell)
 				{
-					// // let's run a simplified halo check
-					// double listenRelBearing = clampAnglePi(
-					// 	m_listenDir - m_transform.wrotation - rot);
-					// int listenDirCell = relBearingToCell(listenRelBearing);
-					// int cellHaloBound = ceil(p.haloBound / m_cellAngle).to!int;
-					// if (listenDirCell + cellHaloBound < cellStart ||
-					// 	listenDirCell - cellHaloBound > cellEnd)
-					// {
-					// 	// we are obviously too far from listenDir
-					// 	return;
-					// }
 					float left = m_listenDir + m_listenSpan / 2;
 					float right = m_listenDir - m_listenSpan / 2;
 					PowerIntegr integr = integrateBetweenBeams(left, right,
 						p.worldBearingStart, p.worldBearingEnd, p.haloBase);
-					//writeln("integrateBetweenBeams result: ", integr, " for ", p.worldBearingStart, " ", p.worldBearingEnd, " bearings");
 					if (integr.totalPart != 0.0f)
 					{
 						m_iinterp.startIntensityMult = integr.startPart;

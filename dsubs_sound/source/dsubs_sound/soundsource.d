@@ -95,7 +95,7 @@ final class PropellerSound: SoundSource
 		float m_aftIntensity;
 	}
 
-	override @property float radius() const { return 2.0f * m_bladeRadius; }
+	override @property float radius() const { return 1.5f * m_bladeRadius; }
 
 	/// Update state at the beginning of kinematic simulation. rotFreq is shaft rotation
 	/// frequency. waterSpeedStart is projection of water relative speed on shaft axis.
