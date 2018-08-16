@@ -68,6 +68,7 @@ final class PropellerSound: SoundSource
 		m_baseCavSpectrum = p.baseCavSpectrum;
 		//m_am = templ.am;
 		m_tm = p.tm;
+		m_tm.randomizePhase();
 		m_bladeRadius = p.bladeRadius;
 		m_bladeAoA = p.bladeAoA;
 		m_critNormalVel = p.critNormalVel;

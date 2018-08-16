@@ -179,6 +179,12 @@ struct ThrachioidModulatorParams
 		startPhase += time * 2 * PI * freq;
 		startPhase = fmod(startPhase, 2 * PI);
 	}
+
+	void randomizePhase()
+	{
+		startPhase = uniform(0.0f, float(2 * PI));
+		startPhase = fmod(startPhase, 2 * PI);
+	}
 }
 
 
