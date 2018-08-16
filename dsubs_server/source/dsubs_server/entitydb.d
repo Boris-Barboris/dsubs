@@ -159,13 +159,13 @@ Hydrophones:
 		sp.Cl = RolledF(40.0, 0.4f);
 		sp.Cr = RolledF(1.2e6, 1e2);
 		sp.Cm = RolledF(250.0f, 4.0f);
-		sp.equilDrift = dgr2rad(15);		// ~15 deg
+		sp.equilDrift = dgr2rad(16);
 		vec2f dims = getHullDims(sp.tmpl.hullModel);
 		trace("dims: ", dims);
 		sp.hullLength = dims.y;
 		sp.hprots = [
 			HydrophonePrototype([0.0f], 500, 2048, dgr2rad(210), 210, 2 / 90.0f,
-				3.0f, 2e-3, 2e-5)
+				3.0f, 4e-3, 2e-5, 1e-3)
 		];
 		g_submarines[sp.tmpl.name] = sp;
 	}

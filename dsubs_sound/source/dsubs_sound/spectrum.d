@@ -271,6 +271,24 @@ TimeDomainSignal whiteNoise(int sampleCount, int samplingRate, float level = 0.2
 	return res;
 }
 
+
+// Shared TLS data for sound calculations
+public
+{
+	static IntensitySpectrum s_stageIspec;
+	static Spectrum s_stageSpectrum;
+	static TimeDomainSignal s_stageTds;
+	static Fft s_fftCache;
+}
+
+/// ensure that fft cache is constructed for this thread
+void ensureTlsCache()
+{
+	if (s_fftCache is null)
+		s_fftCache = new Fft(2048);
+}
+
+
 // correctness test
 unittest
 {

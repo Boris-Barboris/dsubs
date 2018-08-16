@@ -1,5 +1,7 @@
 module dsubs_sound.soundsource;
 
+import std.algorithm;
+
 import dsubs_common.event;
 
 import dsubs_sound.common;
@@ -36,10 +38,10 @@ abstract class SoundSource
 	/// invoked by simulator right after kinematic update happens
 	Event!(void delegate(float dt)) onPostSimulation;
 
-	/// Generate intensity spectrum towards relative bearing.
-	void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
-		void delegate(const(IModulator) mod) onSpectrumBuilt, int minFreq, int maxFreq,
-		bool needModulator, float dissMod = 1.0f) const;
+	/// Generate band intensity and time-domain signal(s) for a listener
+	void buildSignals(vec2d listenerPos,
+		void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
+		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const;
 }
 
 
@@ -126,7 +128,7 @@ final class PropellerSound: SoundSource
 		m_tm.updateStartPhase(dt, endShaftFreq);
 	}
 
-	private void genISpec(float range, float relBearing, ref IntensitySpectrum dest,
+	private void genISpec(float range, float relBearing, IntensitySpectrum dest,
 		const IntensitySpectrum source, int minFreq, int maxFreq,
 		float kstart, float kend, float dissMod = 1.0f) const
 	{
@@ -148,6 +150,16 @@ final class PropellerSound: SoundSource
 		}
 	}
 
+	private TimeDomainSignal genTds(IntensitySpectrum ispec, IModulator modulator) const
+	{
+		ensureTlsCache();
+		s_stageIspec.genSpectrum(s_stageSpectrum);
+		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
+		if (modulator)
+			modulator.modulate(s_stageTds);
+		return s_stageTds;
+	}
+
 	private IModulator genChainModulator(float kstart, float kend, IModulator mod) const
 	{
 		IntensityInterpolator ii = new IntensityInterpolator();
@@ -160,18 +172,20 @@ final class PropellerSound: SoundSource
 		return new ChainModulator(cast(IModulator[]) [mod, ii]);
 	}
 
-	override void getIntensitySpectrum(vec2d listenerPos, ref IntensitySpectrum dest,
-		void delegate(const(IModulator) mod) onSpectrumBuilt, int minFreq, int maxFreq,
-		bool needModulator, float dissMod = 1.0f) const
+	override void buildSignals(vec2d listenerPos,
+		void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
+		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const
 	{
 		assert(m_baseBBSpectrum.bins.length == m_baseCavSpectrum.bins.length);
 		assert(m_baseBBSpectrum.freqRes == m_baseCavSpectrum.freqRes);
-		dest.freqRes = m_baseBBSpectrum.freqRes;
-		dest.bins.length = maxFreq + 1;
+		s_stageIspec.freqRes = m_baseBBSpectrum.freqRes;
+		s_stageIspec.bins.length = maxFreq + 1;
+		// prevent further TLS guard overhead
+		IntensitySpectrum stageIspec = s_stageIspec;
 		// first we fill cutoff bins with zeroes
 		for (int i = 0; i < minFreq; i++)
-			dest.bins[i] = 0.0f;
-		dest.bins[$-1] = 0.0f;
+			stageIspec.bins[i] = 0.0f;
+		stageIspec.bins[$-1] = 0.0f;
 		float range = (listenerPos - m_transform.wposition).length;
 		float relBearing = courseAngle(listenerPos - m_transform.wposition) - m_transform.wrotation;
 		// now actual power calculation
@@ -189,22 +203,26 @@ final class PropellerSound: SoundSource
 			0.0f;
 		// prepare common modulators
 		ThrachioidModulator tm;
-		if (needModulator)
+		if (needTds)
 		{
 			tm = new ThrachioidModulator(m_tm);
 			tm.startFundFreq = m_shaftFreqStart;
 			tm.endFundFreq = m_shaftFreqEnd;
 		}
 		// broadband
-		genISpec(range, relBearing, dest, m_baseBBSpectrum, minFreq, maxFreq,
+		genISpec(range, relBearing, stageIspec, m_baseBBSpectrum, minFreq, maxFreq,
 			freqCubeStart, freqCubeEnd, dissMod);
-		onSpectrumBuilt(needModulator ?
-			genChainModulator(freqCubeStart, freqCubeEnd, tm) : null);
+		float bandSum = stageIspec.bins[minFreq - 1 .. $].sum() / (maxFreq + 1);
+		onSignalReady(bandSum, needTds ?
+			genTds(stageIspec, genChainModulator(freqCubeStart, freqCubeEnd, tm)) :
+			TimeDomainSignal.init);
 		// cavitation
-		genISpec(range, relBearing, dest, m_baseCavSpectrum, minFreq, maxFreq,
+		genISpec(range, relBearing, stageIspec, m_baseCavSpectrum, minFreq, maxFreq,
 			cavSqrStart, cavSqrEnd, dissMod);
-		onSpectrumBuilt(needModulator ?
-			genChainModulator(cavSqrStart, cavSqrEnd, tm) : null);
+		bandSum = stageIspec.bins[minFreq - 1 .. $].sum() / (maxFreq + 1);
+		onSignalReady(bandSum, needTds ?
+			genTds(stageIspec, genChainModulator(cavSqrStart, cavSqrEnd, tm)) :
+			TimeDomainSignal.init);
 	}
 }
 

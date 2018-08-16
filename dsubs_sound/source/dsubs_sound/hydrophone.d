@@ -28,6 +28,7 @@ struct HydrophonePrototype
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 0.001f;
 	float flowNoiseMult = 0.001f;
+	float selfNoiseMult = 1e-3f;
 	float listenSpan = dgr2rad(2);
 }
 
@@ -49,6 +50,7 @@ final class Hydrophone
 		m_listenSpan = p.listenSpan;
 		m_bearingErrNoise = p.bearingErrNoise;
 		m_flowNoiseMult = p.flowNoiseMult;
+		m_selfNoiseMult = p.selfNoiseMult;
 		assert(m_span > 0.0f && m_span < 2 * PI - MAX_HALO);
 		assert(p.cellCount > 0);
 		m_cellAngle = m_span / p.cellCount;
@@ -56,7 +58,6 @@ final class Hydrophone
 		foreach (rot; p.antennaeRots)
 			m_ant ~= new Antennae(p.cellCount, rot);
 		m_iinterp = new IntensityInterpolator();
-		m_chainMod = new ChainModulator(cast(IModulator[]) [m_iinterp, null]);
 		onPreSimulation += &savePrevPos;
 		savePrevPos();
 	}
@@ -81,20 +82,20 @@ final class Hydrophone
 		float m_directivity;
 		float m_bearingErrNoise;
 		float m_flowNoiseMult;
+		float m_selfNoiseMult;
 		dB m_baseNoise;
 
 		/// speed in knots at the start of integration
 		float m_ktsStart = 0.0f;
 		float m_ktsEnd = 0.0f;
 		IntensityInterpolator m_iinterp;
-		ChainModulator m_chainMod;
 
-		/// max size of sound halo
 		enum float MAX_HALO = dgr2rad(20);
 		enum float MAX_HALO_2 = MAX_HALO / 2;
 		enum float HALO_GAIN = 3.0f;
 		enum float ISOTROPIC_VAR = 2.0;
 		enum int MIN_FREQ = 20;
+		enum float LOCAL_NOISE_RANGE = 100.0f;
 
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
@@ -111,17 +112,6 @@ final class Hydrophone
 		// unfiltered time domain signals that are generated for listening player
 		TimeDomainSignal m_prevTds;
 		TimeDomainSignal m_curTds;
-		static IntensitySpectrum s_stageIspec;
-		static Spectrum s_stageSpectrum;
-		static TimeDomainSignal s_stageTds;
-		static Fft s_fftCache;
-	}
-
-	// makes sure fft cache is constructed for this thread
-	private void ensureTlsCache()
-	{
-		if (s_fftCache is null)
-			s_fftCache = new Fft(2048);
 	}
 
 	/// save current position of transform to m_prevPos
@@ -277,7 +267,7 @@ final class Hydrophone
 	}
 
 	/// ditto
-	private void applyStageIspec(const(IModulator) mod, float powerPart = 1.0f)
+	private void applyStageIspec(const IModulator mod, float powerPart = 1.0f)
 	{
 		for (size_t i = 0; i < s_stageIspec.bins.length; i++)
 			s_stageIspec.bins[i] *= powerPart;
@@ -289,6 +279,15 @@ final class Hydrophone
 		for (size_t i = 0; i < m_curTds.samples.length; i++)
 			m_curTds.samples[i] += s_stageTds.samples[i];
 		resetStageIspec();
+	}
+
+	/// modulate tds and add it to m_curTds
+	private void applyTdsAdditive(TimeDomainSignal tds, const IModulator mod)
+	{
+		if (mod)
+			mod.modulate(tds);
+		for (size_t i = 0; i < m_curTds.samples.length; i++)
+			m_curTds.samples[i] += tds.samples[i];
 	}
 
 	/// set speed at the start of integration
@@ -503,8 +502,16 @@ final class Hydrophone
 			SectorProjection sectProj2 = projectSectorsIntersect(
 				Sector(relBearing2 + p.haloBound, relBearing2 - p.haloBound), allCellsSect);
 			assert(sectProj2.count < 2);
+
+			bool localSource = p.range <= LOCAL_NOISE_RANGE;
+			bool isSelfNoise;
 			if (sectProj1.count == 0 && sectProj2.count == 0)
-				return;
+			{
+				if (localSource)
+					isSelfNoise = true;
+				else
+					return;
+			}
 			// first cell we'll add energy to
 			int cellStart = cells.length.to!int;
 			int cellEnd = -1;
@@ -519,41 +526,50 @@ final class Hydrophone
 				cellEnd = max(cellEnd, sectorNormToCell(sectProj2.proj[0].right));
 			}
 
-			bool needModulator = listenCell;
+			bool needTds = listenCell;
 
-			void onBuilt(const IModulator mod)
+			void onBuilt(float bandSum, TimeDomainSignal tds)
 			{
-				float bandSum = s_stageIspec.bins[m_minFreq - 1 .. $].sum() / (m_maxFreq + 1);
-
-				// apply broadband power to cells
-				for (int ci = cellStart; ci <= cellEnd; ci++)
+				if (isSelfNoise)
 				{
-					float cellLeft = cell0Left - ci * m_cellAngle;
-					float cellRight = cellLeft - m_cellAngle;
-					float powerPart = integrateBetweenBeams(cellLeft, cellRight,
-						relBearing1, relBearing2, p.haloBase, 3).totalPart;
-					cells[ci] += bandSum * powerPart;
+					float mult = m_directivity * m_selfNoiseMult;
+					foreach (ref cell; cells)
+						cell += bandSum * mult;
+					m_iinterp.startIntensityMult = mult;
+					m_iinterp.endIntensityMult = mult;
+					applyTdsAdditive(tds, m_iinterp);
 				}
-
-				// apply time-domain stuff
-				if (m_listenDirValid && listenCell)
+				else
 				{
-					float left = m_listenDir + m_listenSpan / 2;
-					float right = m_listenDir - m_listenSpan / 2;
-					PowerIntegr integr = integrateBetweenBeams(left, right,
-						p.worldBearingStart, p.worldBearingEnd, p.haloBase);
-					if (integr.totalPart != 0.0f)
+					// apply broadband power to cells
+					for (int ci = cellStart; ci <= cellEnd; ci++)
 					{
-						m_iinterp.startIntensityMult = integr.startPart;
-						m_iinterp.endIntensityMult = integr.endPart;
-						m_chainMod.modulators[1] = cast(IModulator) mod;
-						applyStageIspec(m_chainMod, 1.0f);
+						float cellLeft = cell0Left - ci * m_cellAngle;
+						float cellRight = cellLeft - m_cellAngle;
+						float powerPart = integrateBetweenBeams(cellLeft, cellRight,
+							relBearing1, relBearing2, p.haloBase, 3).totalPart;
+						cells[ci] += bandSum * powerPart;
+					}
+
+					// apply time-domain stuff
+					if (m_listenDirValid && listenCell)
+					{
+						float left = m_listenDir + m_listenSpan / 2;
+						float right = m_listenDir - m_listenSpan / 2;
+						PowerIntegr integr = integrateBetweenBeams(left, right,
+							p.worldBearingStart, p.worldBearingEnd, p.haloBase);
+						if (integr.totalPart != 0.0f)
+						{
+							m_iinterp.startIntensityMult = integr.startPart;
+							m_iinterp.endIntensityMult = integr.endPart;
+							applyTdsAdditive(tds, m_iinterp);
+						}
 					}
 				}
 			}
 
-			s.getIntensitySpectrum(m_transform.wposition, s_stageIspec,
-				&onBuilt, m_minFreq, m_maxFreq, m_listenDirValid && needModulator, 4.0f);
+			s.buildSignals(m_transform.wposition, &onBuilt, m_minFreq, m_maxFreq,
+				m_listenDirValid && needTds, 4.0f);
 		}
 	}
 }
@@ -606,7 +622,7 @@ unittest
 
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2048, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 2e-3, 2e-5);
+		500, 2048, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 4e-3, 2e-5);
 	Hydrophone h = new Hydrophone(new Transform2D(), hp);
 	h.transform.rotation = PI; // good corner case
 	h.onPreSimulation();

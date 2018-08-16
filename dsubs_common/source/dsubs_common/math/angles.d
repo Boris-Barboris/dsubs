@@ -160,8 +160,16 @@ SectorProjection projectSectorsIntersect(Sector what, Sector onto)
 	rays[1] = Ray(0, what.right);
 	rays[2] = Ray(1, onto.left);
 	rays[3] = Ray(1, onto.right);
-	rays[4] = Ray(1, onto.left - 2 * PI);
-	rays[5] = Ray(1, onto.right - 2 * PI);
+	if (onto.left > what.left)
+	{
+		rays[4] = Ray(1, onto.left - 2 * PI);
+		rays[5] = Ray(1, onto.right - 2 * PI);
+	}
+	else
+	{
+		rays[4] = Ray(0, what.left - 2 * PI);
+		rays[5] = Ray(0, what.right - 2 * PI);
+	}
 
 	sort!"a.dir > b.dir"(rays[]);
 
