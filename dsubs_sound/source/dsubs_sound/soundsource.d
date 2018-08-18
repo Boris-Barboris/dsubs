@@ -40,7 +40,7 @@ abstract class SoundSource
 
 	/// Generate band intensity and time-domain signal(s) for a listener
 	void buildSignals(vec2d listenerPos,
-		void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
+		scope void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const;
 }
 
@@ -174,7 +174,7 @@ final class PropellerSound: SoundSource
 	}
 
 	override void buildSignals(vec2d listenerPos,
-		void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
+		scope void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const
 	{
 		assert(m_baseBBSpectrum.bins.length == m_baseCavSpectrum.bins.length);

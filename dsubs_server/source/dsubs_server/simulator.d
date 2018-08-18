@@ -41,9 +41,9 @@ final class Simulator
 			MonoTime simStart;
 			while (true)
 			{
+				GC.disable();
 				synchronized (Globals.simMut.writer)
 				{
-					GC.disable();
 					simStart = MonoTime.currTime();
 					Globals.acous.preSimulation();
 					// physics integration. All rigid bodies are moved.
