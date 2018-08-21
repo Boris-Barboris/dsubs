@@ -535,9 +535,12 @@ final class Hydrophone
 					float mult = m_directivity * m_selfNoiseMult;
 					foreach (ref cell; cells)
 						cell += bandSum * mult;
-					m_iinterp.startIntensityMult = mult;
-					m_iinterp.endIntensityMult = mult;
-					applyTdsAdditive(tds, m_iinterp);
+					if (needTds)
+					{
+						m_iinterp.startIntensityMult = mult;
+						m_iinterp.endIntensityMult = mult;
+						applyTdsAdditive(tds, m_iinterp);
+					}
 				}
 				else
 				{
@@ -552,7 +555,7 @@ final class Hydrophone
 					}
 
 					// apply time-domain stuff
-					if (m_listenDirValid && listenCell)
+					if (needTds)
 					{
 						float left = m_listenDir + m_listenSpan / 2;
 						float right = m_listenDir - m_listenSpan / 2;

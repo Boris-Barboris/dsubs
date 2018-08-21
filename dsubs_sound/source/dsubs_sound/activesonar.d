@@ -52,4 +52,9 @@ struct ActiveSonarPrototype
 final class SonarPing: SoundSource
 {
 	float timeSince = 0.0f;
+
+	this(Transform2D t)
+	{
+		super(t);
+	}
 }

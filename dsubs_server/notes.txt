@@ -38,3 +38,6 @@ For active systems the change in frequency is 0.69 Hz per knot per kHz and half 
 
 	http://sites.music.columbia.edu/cmc/MusicAndComputers/chapter4/04_02.php
 	frequency = binNumber * sampleRate / numBins;
+	
+	
+https://ccrma.stanford.edu/~jos/pasp/Freeverb.html

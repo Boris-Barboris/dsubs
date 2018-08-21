@@ -41,7 +41,7 @@ final class Simulator
 			MonoTime simStart;
 			while (true)
 			{
-				GC.disable();
+				// GC.disable();
 				synchronized (Globals.simMut.writer)
 				{
 					simStart = MonoTime.currTime();
@@ -55,7 +55,7 @@ final class Simulator
 					Globals.players.forEachPlayer((p) { p.sendUpdate(); });
 				}
 				auto now = MonoTime.currTime();
-				GC.enable();
+				// GC.enable();
 				trace("Simulation step took ", (now - simStart).total!"usecs", "usecs");
 				loopStart = loopStart + seconds(1);
 				now = MonoTime.currTime();
