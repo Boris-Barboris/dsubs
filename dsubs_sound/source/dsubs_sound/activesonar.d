@@ -38,19 +38,18 @@ final class Reflector
 
 	@property float area() const { return m_area; }
 
-	private vec2f m_reflectivity;
+	// reflectivities of front, sides and rear
+	private vec3f m_reflect;
 }
-
 
 struct ActiveSonarPrototype
 {
-	int dirRes = 90;			/// directional resolution
-	float radRes = 100.0f;		/// radial resolution
-	float
+	float radRes = 50.0f;		/// radial resolution, meters
+	int freqBandStart;
+	int freqBandEnd;
 }
 
-/// Module that pings and receives echoes
-final class ActiveSonar: SoundSource
+final class SonarPing: SoundSource
 {
-
+	float timeSince = 0.0f;
 }

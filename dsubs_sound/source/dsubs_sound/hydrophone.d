@@ -352,7 +352,7 @@ final class Hydrophone
 		SourcePrecalc res;
 		res.dirStart = s.prevPos - m_prevPos;
 		res.dirEnd = s.transform.wposition - m_transform.wposition;
-		res.range = res.dirEnd.length;
+		res.range = max(5.0, res.dirEnd.length);
 		assert(res.range > 0.0);
 		res.worldBearingStart = courseAngle(res.dirStart);
 		res.worldBearingEnd = courseAngle(res.dirEnd);
