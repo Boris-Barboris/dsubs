@@ -136,7 +136,8 @@ final class SubmarineFactory
 {
 	immutable SubmarineTemplate tmpl;
 	// physical characteristics
-	RolledF mass, Cd0, Cd1, Cr, Cl, Cm;
+	RolledF mass, Cd0, Cd1, Cr0, Cr1, Cl, Cm;
+	double Cda;
 
 	// MOI-related stuff
 	float moiK = 1.0f;
@@ -161,9 +162,12 @@ final class SubmarineFactory
 		res.m_rigidBody.mass = mass;
 		res.m_rigidBody.hydroModel.Cd0 = Cd0;
 		res.m_rigidBody.hydroModel.Cd1 = Cd1;
-		res.m_rigidBody.hydroModel.Cr = Cr;
+		res.m_rigidBody.hydroModel.Cda = Cda;
+		res.m_rigidBody.hydroModel.Cr0 = Cr0;
+		res.m_rigidBody.hydroModel.Cr1 = Cr1;
 		res.m_rigidBody.hydroModel.Cl = Cl;
 		res.m_rigidBody.hydroModel.Cm = -Cm.roll();
+		// res.m_rigidBody.kinet.angVel = 1.0;
 		auto brudder = new BasicRudder();
 		brudder.transform = res.transform;
 		// Cm * equilDrift = steeringK

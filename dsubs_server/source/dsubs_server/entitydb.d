@@ -154,10 +154,12 @@ Hydrophones:
 				]
 			));
 		sp.mass = RolledF(2000.0f, 10.0f);
-		sp.Cd0 = RolledF(9.0, 0.05f);
-		sp.Cd1 = RolledF(16.0, 0.1f);
+		sp.Cd0 = RolledF(10.0, 0.25f);
+		sp.Cd1 = RolledF(8.6, 0.1f);
+		sp.Cda = 0.8;
 		sp.Cl = RolledF(40.0, 0.4f);
-		sp.Cr = RolledF(1.2e6, 1e2);
+		sp.Cr0 = RolledF(1e5, 100);
+		sp.Cr1 = RolledF(1.1e6, 1e2);
 		sp.Cm = RolledF(250.0f, 4.0f);
 		sp.equilDrift = dgr2rad(16);
 		vec2f dims = getHullDims(sp.tmpl.hullModel);

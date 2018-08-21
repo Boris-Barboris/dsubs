@@ -41,3 +41,5 @@ For active systems the change in frequency is 0.69 Hz per knot per kHz and half 
 	
 	
 https://ccrma.stanford.edu/~jos/pasp/Freeverb.html
+
+First is that Johannen's Cd (which in Naval Arch is usually named Ct since it would correspond to the total drag coefficient) is actually described as Ct=f1(V2gL)+f2(VLv), where f1 and f2 represent the wave-making (residuary) resistance coefficient (Cr) and frictional resistance coefficient (Cf) accordingly, V is the ship's speed, L is the ship's length, g is gravitational acceleration, and v is water's viscosity.

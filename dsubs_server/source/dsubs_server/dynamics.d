@@ -10,11 +10,13 @@ import dsubs_server.common;
 
 struct HydroForceModel
 {
-	// drag model: drag = v^2 * (Cd0 + Cd1 * sin(AoA))
+	// drag model: drag = (Cd0 * v + Cd1 * v^2) * (1 + Cda * abs(sin(AoA)))
 	double Cd0 = 0.0;
 	double Cd1 = 0.0;
-	// rotational drag model: torque = -angV^2 * Cr
-	double Cr = 0.0;
+	double Cda = 0.0;
+	// rotational drag model: torque = -angV^2 * Cr1 - angV * Cr0
+	double Cr0 = 0.0;
+	double Cr1 = 0.0;
 	// lift model: lift = v^2 * sin(2 * AoA) * Cl
 	double Cl = 0.0;
 	// torque model: torque = v^2 * Cm * sin(AoA)
@@ -22,15 +24,15 @@ struct HydroForceModel
 	double Cm = 0.0;
 
 	/// magnitude of drag force
-	double drag(double velSqr, double aoa)
+	double drag(double velMagn, double velSqr, double aoa)
 	{
-		return velSqr * (Cd0 + fabs(sin(aoa)) * Cd1);
+		return (Cd0 * velMagn + Cd1 * velSqr) * (1.0 + fabs(sin(aoa)) * Cda);
 	}
 
 	/// magnitude of torque
 	double torque(double velSqr, double angVel, double aoa)
 	{
-		double drag_tq = - sgn(angVel) * angVel * angVel * Cr;
+		double drag_tq = - sgn(angVel) * angVel * angVel * Cr1 - angVel * Cr0;
 		double stabil_tq = velSqr * sin(aoa) * Cm;
 		return drag_tq + stabil_tq;
 	}
@@ -166,7 +168,7 @@ final class RigidBody: PhysicalEntity
 			resultForce += force.getForce(this, c);
 			assert(!isNaN(resultForce.x) && !isNaN(resultForce.y), force.to!string);
 		}
-		resultForce -= hydroModel.drag(c.velSquaredLength, c.AoA) * c.velNormalized;
+		resultForce -= hydroModel.drag(c.velLength, c.velSquaredLength, c.AoA) * c.velNormalized;
 		resultForce += hydroModel.lift(c.velSquaredLength, c.AoA) * c.velLeft;
 		assert(mass > 0.0);
 		return resultForce / mass;
