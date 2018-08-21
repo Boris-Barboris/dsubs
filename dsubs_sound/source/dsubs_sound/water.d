@@ -4,6 +4,15 @@ import dsubs_sound.spectrum;
 import dsubs_sound.common;
 
 
+/// Underwater speed of sound
+__gshared float SOUND_SPD;
+
+shared static this()
+{
+	SOUND_SPD = 1498 + uniform(-20.0f, 20.0f);
+}
+
+
 /// Get reference sea background noise band level
 IntensityLevel seaNoiseIL(float freq)
 {

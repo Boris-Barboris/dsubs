@@ -156,6 +156,7 @@ struct ThrachioidModulatorParams
 
 	private void calculateIntegral(int resolution = 40)
 	{
+		assert(resolution > 0);
 		energyIntegral = 0.0f;
 		float dt = PI * 2 / resolution;
 		for (int i = 0; i < resolution; i++)

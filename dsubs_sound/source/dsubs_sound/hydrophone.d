@@ -23,7 +23,7 @@ struct HydrophonePrototype
 	float[] antennaeRots;
 	int minFreq, maxFreq;
 	float antennaeSpan;
-	int cellCount;
+	int beamCount;
 	float directivity;
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 0.001f;
@@ -52,11 +52,11 @@ final class Hydrophone
 		m_flowNoiseMult = p.flowNoiseMult;
 		m_selfNoiseMult = p.selfNoiseMult;
 		assert(m_span > 0.0f && m_span < 2 * PI - MAX_HALO);
-		assert(p.cellCount > 0);
-		m_cellAngle = m_span / p.cellCount;
-		m_listenToCellR = m_listenSpan / m_cellAngle;
+		assert(p.beamCount > 0);
+		m_beamAngle = m_span / p.beamCount;
+		m_listenToCellR = m_listenSpan / m_beamAngle;
 		foreach (rot; p.antennaeRots)
-			m_ant ~= new Antennae(p.cellCount, rot);
+			m_ant ~= new Antennae(p.beamCount, rot);
 		m_iinterp = new IntensityInterpolator();
 		onPreSimulation += &savePrevPos;
 		savePrevPos();
@@ -76,7 +76,7 @@ final class Hydrophone
 		immutable LinearFIR m_tdsFilter;
 		int m_minFreq, m_maxFreq, m_srate;
 		float m_span;
-		float m_cellAngle;
+		float m_beamAngle;
 		float m_listenSpan;
 		float m_listenToCellR;
 		float m_directivity;
@@ -106,7 +106,7 @@ final class Hydrophone
 		bool m_hasListener;
 		// world-space direction the player is listening to
 		float m_listenDir = 0.0f;
-		// false when no active antenna has a cell for chosen listen Dir
+		// false when no active antenna has a beam for chosen listen Dir
 		bool m_listenDirValid;
 
 		// unfiltered time domain signals that are generated for listening player
@@ -171,7 +171,7 @@ final class Hydrophone
 		return cast(immutable(short)[]) res;
 	}
 
-	// recalculate listening cell according to current transform rotation
+	// recalculate listening beam according to current transform rotation
 	private void updateListenCell()
 	{
 		m_listenDirValid = false;
@@ -351,7 +351,7 @@ final class Hydrophone
 	{
 		SourcePrecalc res;
 		res.dirStart = s.prevPos - m_prevPos;
-		res.dirEnd = s.transform.wposition - m_transform.wposition;
+		res.dirEnd = s.position - m_transform.wposition;
 		res.range = max(5.0, res.dirEnd.length);
 		assert(res.range > 0.0);
 		res.worldBearingStart = courseAngle(res.dirStart);
@@ -379,43 +379,43 @@ final class Hydrophone
 	/// Continuous block of hydrophone elements
 	private final class Antennae
 	{
-		this(int cellCount, float mainAxisRot)
+		this(int beamCount, float mainAxisRot)
 		{
-			assert(cellCount > 0);
+			assert(beamCount > 0);
 			rot = mainAxisRot;
-			cells.length = cellCount;
-			cell0Left = m_span / 2;
+			beams.length = beamCount;
+			beam0Left = m_span / 2;
 		}
 
 		private
 		{
-			Intensity[] cells;
+			Intensity[] beams;
 			float rot;	// rotation relative to hydrophone transform
 			// true if listenDir belongs to this antenna
 			bool listenCell;
-			// relative bearing of left edge of first cell from the left
-			float cell0Left;
+			// relative bearing of left edge of first beam from the left
+			float beam0Left;
 		}
 
-		/// reset cells array to zero energies
+		/// reset beams array to zero energies
 		void reset()
 		{
-			foreach (ref c; cells)
+			foreach (ref c; beams)
 				c = Intensity(0.0f);
 		}
 
 		/// apply backround sea noise and flow noises
 		void applyIsotropic()
 		{
-			foreach (ref c; cells)
+			foreach (ref c; beams)
 				c += m_baseSeaNoise + m_baseFlowNoise;
 		}
 
-		/// sample cells random distribution and convert to intensity levels
+		/// sample beams random distribution and convert to intensity levels
 		void imprint(ref IntensityLevel[] dest) const
 		{
-			dest.length = cells.length;
-			foreach (i, const c; cells)
+			dest.length = beams.length;
+			foreach (i, const c; beams)
 			{
 				dest[i] = IntensityLevel(c.toDb + uniform(0.0f, m_baseNoise));
 				assert(!isNaN(dest[i].val));
@@ -424,8 +424,8 @@ final class Hydrophone
 
 		void imprint(ref ushort[] dest, dB maxLevel = 90.0f) const
 		{
-			dest.length = cells.length;
-			foreach (i, const c; cells)
+			dest.length = beams.length;
+			foreach (i, const c; beams)
 			{
 				float level = max(0.0f, IntensityLevel(c.toDb + uniform(0.0f, m_baseNoise)));
 				assert(!isNaN(level));
@@ -436,12 +436,12 @@ final class Hydrophone
 
 		int relBearingToCell(double relBearing)
 		{
-			return floor((cell0Left - relBearing) / m_cellAngle).lrint.to!int;
+			return floor((beam0Left - relBearing) / m_beamAngle).lrint.to!int;
 		}
 
 		int sectorNormToCell(float norm)
 		{
-			return max(0, min(cells.length - 1, floor(norm * cells.length).lrint)).to!int;
+			return max(0, min(beams.length - 1, floor(norm * beams.length).lrint)).to!int;
 		}
 
 		struct PowerIntegr
@@ -495,7 +495,7 @@ final class Hydrophone
 			double relBearing2 = clampAnglePi(
 				p.worldBearingEnd + bearingErr - m_transform.wrotation - rot);
 
-			Sector allCellsSect = Sector(cell0Left, -cell0Left);
+			Sector allCellsSect = Sector(beam0Left, -beam0Left);
 			SectorProjection sectProj1 = projectSectorsIntersect(
 				Sector(relBearing1 + p.haloBound, relBearing1 - p.haloBound), allCellsSect);
 			assert(sectProj1.count < 2);
@@ -512,18 +512,18 @@ final class Hydrophone
 				else
 					return;
 			}
-			// first cell we'll add energy to
-			int cellStart = cells.length.to!int;
-			int cellEnd = -1;
+			// first beam we'll add energy to
+			int beamStart = beams.length.to!int;
+			int beamEnd = -1;
 			if (sectProj1.count)
 			{
-				cellStart = min(cellStart, sectorNormToCell(sectProj1.proj[0].left));
-				cellEnd = max(cellEnd, sectorNormToCell(sectProj1.proj[0].right));
+				beamStart = min(beamStart, sectorNormToCell(sectProj1.proj[0].left));
+				beamEnd = max(beamEnd, sectorNormToCell(sectProj1.proj[0].right));
 			}
 			if (sectProj2.count)
 			{
-				cellStart = min(cellStart, sectorNormToCell(sectProj2.proj[0].left));
-				cellEnd = max(cellEnd, sectorNormToCell(sectProj2.proj[0].right));
+				beamStart = min(beamStart, sectorNormToCell(sectProj2.proj[0].left));
+				beamEnd = max(beamEnd, sectorNormToCell(sectProj2.proj[0].right));
 			}
 
 			bool needTds = listenCell;
@@ -533,8 +533,8 @@ final class Hydrophone
 				if (isSelfNoise)
 				{
 					float mult = m_directivity * m_selfNoiseMult;
-					foreach (ref cell; cells)
-						cell += bandSum * mult;
+					foreach (ref beam; beams)
+						beam += bandSum * mult;
 					if (needTds)
 					{
 						m_iinterp.startIntensityMult = mult;
@@ -544,14 +544,14 @@ final class Hydrophone
 				}
 				else
 				{
-					// apply broadband power to cells
-					for (int ci = cellStart; ci <= cellEnd; ci++)
+					// apply broadband power to beams
+					for (int ci = beamStart; ci <= beamEnd; ci++)
 					{
-						float cellLeft = cell0Left - ci * m_cellAngle;
-						float cellRight = cellLeft - m_cellAngle;
-						float powerPart = integrateBetweenBeams(cellLeft, cellRight,
+						float beamLeft = beam0Left - ci * m_beamAngle;
+						float beamRight = beamLeft - m_beamAngle;
+						float powerPart = integrateBetweenBeams(beamLeft, beamRight,
 							relBearing1, relBearing2, p.haloBase, 3).totalPart;
-						cells[ci] += bandSum * powerPart;
+						beams[ci] += bandSum * powerPart;
 					}
 
 					// apply time-domain stuff

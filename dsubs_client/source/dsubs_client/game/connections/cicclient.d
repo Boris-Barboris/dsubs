@@ -205,7 +205,7 @@ private:
 			else
 			{
 				Game.simState.gui.sonarGui.drawData(
-					m_tapAcoustics.data[0].cells,
+					m_tapAcoustics.data[0].beams,
 					Game.simState.playerSub.tmpl.hydrophones[0].fov,
 					m_tapAcoustics.rotationAtTime);
 				Game.simState.gui.sonarGui.completeRow();

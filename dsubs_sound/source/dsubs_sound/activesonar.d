@@ -42,19 +42,52 @@ final class Reflector
 	private vec3f m_reflect;
 }
 
-struct ActiveSonarPrototype
+
+struct Chirp
 {
-	float radRes = 50.0f;		/// radial resolution, meters
-	int freqBandStart;
-	int freqBandEnd;
+	int startFreq;
+	int endFreq;
+	float duration;
 }
+
+struct PingParameters
+{
+	/// radial (range) resolution, meters
+	float radRes = 50.0f;
+	/// number of radial slices. Determines max range.
+	int radCount = 10000 / 50;
+	float lifeTime = 3.0f;
+	Chirp[] chirps;
+	float effectiveFreq;	/// abstracted away "main" frequency
+	dB pingLevel;
+	/// reference reflection intensity that corrensponds to full white color in the image
+	dB refMaxLevel = 140.0f;
+}
+
 
 final class SonarPing: SoundSource
 {
-	float timeSince = 0.0f;
-
-	this(Transform2D t)
+	this(vec2d position, PingParameters params)
 	{
-		super(t);
+		m_position = position;
+		m_params = params;
+	}
+
+	private
+	{
+		// time passed since ping creation
+		float m_timeSince = 0.0f;
+		vec2d m_position;
+		PingParameters m_params;
+		TimeDomainSignal m_tds;
+		ubyte[][] m_image;
+	}
+
+	override @property vec2d position() { return m_position; }
+
+	/// build tds and stuff
+	private void precalculate()
+	{
+
 	}
 }

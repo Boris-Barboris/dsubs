@@ -164,10 +164,9 @@ struct AntennaeData
 {
 	int hydrophoneIdx;	// index of the sub's hydrophone
 	int antennaeIdx;	// index of the antennae on that hydrophone
-	/// Each sample corresponds to one antennae "cell" - directional virtual sensor.
-	/// Units are decibells, scaled to [0, ushort.max] interval. Conversion to
-	/// ushort is performed to save network bandwidth.
-	ushort[] cells;
+	/// Each sample corresponds to one antennae beam.
+	/// Units are decibells, scaled to [0, ushort.max] interval.
+	ushort[] beams;
 }
 
 struct HydrophoneAudio

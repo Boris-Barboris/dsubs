@@ -13,21 +13,16 @@ import dsubs_sound.image;
 
 abstract class SoundSource
 {
-	this(Transform2D t)
-	{
-		m_transform = t;
-	}
-
-	private Transform2D m_transform;
 	private vec2d m_prevPos;
 
-	final @property Transform2D transform() { return m_transform; }
+	/// world-space position
+	@property vec2d position();
 
 	/// return source position before kinematics integration
 	final @property vec2d prevPos() const { return m_prevPos; }
 
 	/// save current position of transform to m_prevPos
-	final void savePrevPos() { m_prevPos = m_transform.wposition; }
+	final void savePrevPos() { m_prevPos = position; }
 
 	/// Physical radius of emitting area. Affects tha halo size on
 	/// close distances.
@@ -63,7 +58,7 @@ final class PropellerSound: SoundSource
 {
 	this(Transform2D t, const PropellerSoundPrototype p)
 	{
-		super(t);
+		m_transform = t;
 		m_baseBBSpectrum = p.baseBBSpectrum;
 		m_baseCavSpectrum = p.baseCavSpectrum;
 		//m_am = templ.am;
@@ -79,6 +74,8 @@ final class PropellerSound: SoundSource
 
 	private
 	{
+		Transform2D m_transform;
+
 		// Base reference intensity spectrum of non-cavitating component on 1Hz
 		const IntensitySpectrum m_baseBBSpectrum;
 		// Base reference intensity spectrum of cavitation noise component on
@@ -97,6 +94,8 @@ final class PropellerSound: SoundSource
 		float m_rngSpan;
 		float m_aftIntensity;
 	}
+
+	override @property vec2d position() { return m_transform.wposition; }
 
 	override @property float radius() const { return 1.5f * m_bladeRadius; }
 
@@ -127,6 +126,7 @@ final class PropellerSound: SoundSource
 		m_shaftFreqEnd = endShaftFreq;
 		m_normalVelEnd = caclNormalVel(endShaftFreq, waterSpeedEnd);
 		m_tm.updateStartPhase(dt, endShaftFreq);
+		m_transform.ensureNotDirty();
 	}
 
 	private void genISpec(float range, float relBearing, IntensitySpectrum dest,

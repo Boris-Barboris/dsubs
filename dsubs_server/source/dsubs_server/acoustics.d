@@ -63,10 +63,7 @@ final class AcousticEnv
 	void postSimulation(float dt)
 	{
 		foreach (source; Globals.taskPool.parallel(m_sources, 8))
-		{
 			source.onPostSimulation(dt);
-			source.transform.ensureNotDirty();
-		}
 		foreach (h; m_hydrophones)
 			h.onPostSimulation();
 	}
