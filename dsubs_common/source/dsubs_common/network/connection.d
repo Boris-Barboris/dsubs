@@ -119,12 +119,16 @@ class ProtocolConnection(alias Protocol)
 
 	final void sendMessage(MsgT)(immutable MsgT msg)
 	{
+		if (m_closed)
+			return;
 		sendBytes(Protocol.marshal(msg));
 	}
 
 	/// send asynchroniously (caller thread does not block)
 	final void sendBytes(immutable(ubyte)[] data)
 	{
+		if (m_closed)
+			return;
 		if (atomicOp!"+="(m_writeQueueSize, 1) > 32)
 		{
 			error(conId, " write queue overflow, closing");

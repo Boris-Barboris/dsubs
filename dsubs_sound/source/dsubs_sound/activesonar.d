@@ -8,6 +8,7 @@ import dsubs_sound.common;
 import dsubs_sound.spectrum;
 import dsubs_sound.soundsource;
 import dsubs_sound.water;
+import dsubs_sound.wav;
 
 
 
@@ -23,9 +24,7 @@ final class Reflector
 
 	final @property Transform2D transform() { return m_transform; }
 
-	// rectangle size...
 	private vec2f m_size;
-	// and area
 	private float m_area;
 
 	@property vec2f size() const { return m_size; }
@@ -38,7 +37,7 @@ final class Reflector
 
 	@property float area() const { return m_area; }
 
-	// reflectivities of front, sides and rear
+	// reflectivities of front, sides (axial symmetry assumed) and rear
 	private vec3f m_reflect;
 }
 
@@ -65,12 +64,58 @@ struct PingParameters
 }
 
 
+private TimeDomainSignal genPingSound(float lifeTime, const Chirp[] chirps, int srate = 4096)
+{
+	assert(srate > 0);
+	assert(chirps.length > 0);
+	float phase = uniform(-3.0f, 3.0f);
+	float time = 0.0f;
+	float dt = 1.0f / srate;
+	TimeDomainSignal res;
+	res.samplingRate = srate;
+	res.samples.length = lrint(srate * lifeTime).to!size_t;
+	int curChirp = 0;
+	float freq = chirps[curChirp].startFreq;
+	float chirpDur = chirps[curChirp].duration;
+	float dfreq = (chirps[curChirp].endFreq - freq) / chirps[curChirp].duration * dt;
+	for (size_t i = 0; i < res.samples.length; i++)
+	{
+		res.samples[i] = sin(phase);
+		phase += freq * dt * 2 * PI;
+		if (phase > 2 * PI)
+			phase -= 2 * PI;
+		freq += dfreq;
+		time += dt;
+		if (time > chirpDur)
+		{
+			time -= chirpDur;
+			curChirp++;
+			if (curChirp >= chirps.length)
+			{
+				res.samples[i+1..$] = 0.0f;
+				break;
+			}
+			freq = chirps[curChirp].startFreq;
+			dfreq = (chirps[curChirp].endFreq - freq) / chirps[curChirp].duration * dt;
+		}
+	}
+	return res;
+}
+
+unittest
+{
+	TimeDomainSignal tds = genPingSound(3.0f, [Chirp(1100, 1300, 0.3f)]);
+	writeWavFile("midfreq-chirp.wav", tds.samples, 0.7f, tds.samplingRate);
+}
+
+
 final class SonarPing: SoundSource
 {
 	this(vec2d position, PingParameters params)
 	{
 		m_position = position;
 		m_params = params;
+		savePrevPos();
 	}
 
 	private
@@ -85,8 +130,11 @@ final class SonarPing: SoundSource
 
 	override @property vec2d position() { return m_position; }
 
-	/// build tds and stuff
-	private void precalculate()
+	override @property float radius() const { return 30.0f; }
+
+	override void buildSignals(vec2d listenerPos,
+		scope void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
+		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const
 	{
 
 	}
