@@ -9,6 +9,7 @@ import dsubs_sound.spectrum;
 import dsubs_sound.soundsource;
 import dsubs_sound.water;
 import dsubs_sound.wav;
+import dsubs_sound.reverb;
 
 
 
@@ -63,6 +64,14 @@ struct PingParameters
 	dB refMaxLevel = 140.0f;
 }
 
+private __gshared TyGverb g_reverbator;
+
+shared static this()
+{
+	GverbParams params = GverbParams(4096, 50.0f, 50.0f, 2.0f, 0.1f, 0.0f, 0.01f, 0.6f, 20.0f);
+	g_reverbator = TyGverb(params);
+}
+
 
 private TimeDomainSignal genPingSound(float lifeTime, const Chirp[] chirps, int srate = 4096)
 {
@@ -99,13 +108,17 @@ private TimeDomainSignal genPingSound(float lifeTime, const Chirp[] chirps, int 
 			dfreq = (chirps[curChirp].endFreq - freq) / chirps[curChirp].duration * dt;
 		}
 	}
+	float[] reverb;
+	g_reverbator.applyToBuf(res.samples, reverb);
+	g_reverbator.flush();
+	res.samples = reverb;
 	return res;
 }
 
 unittest
 {
-	TimeDomainSignal tds = genPingSound(3.0f, [Chirp(1100, 1300, 0.3f)]);
-	writeWavFile("midfreq-chirp.wav", tds.samples, 0.7f, tds.samplingRate);
+	TimeDomainSignal tds = genPingSound(2.0f, [Chirp(1100, 1300, 0.3f)]);
+	writeWavFile("midfreq-chirp.wav", tds.samples, 0.6f, tds.samplingRate);
 }
 
 

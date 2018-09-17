@@ -15,6 +15,7 @@ private Xorshift64 rngen;
 
 static this()
 {
+	// let's use xorshift since it's much cheaper
 	rngen = Xorshift64();
 }
 
