@@ -133,7 +133,7 @@ struct TyGverb
 		tapdelay = TyFixeddelay(rate);
 	}
 
-	private void set_roomsize(float a)
+	void set_roomsize(float a)
 	{
 		uint i;
 
@@ -161,8 +161,11 @@ struct TyGverb
 	}
 
 
-	private void set_revtime(float a)
+	void set_revtime(float a)
 	{
+		if (a == revtime)
+			return;
+
 		float ga, gt;
 		double n;
 		uint i;

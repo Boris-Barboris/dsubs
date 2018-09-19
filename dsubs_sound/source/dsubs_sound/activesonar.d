@@ -39,7 +39,14 @@ final class Reflector
 	@property float area() const { return m_area; }
 
 	// reflectivities of front, sides (axial symmetry assumed) and rear
-	private vec3f m_reflect;
+	private vec3f m_reflectivity;
+
+	@property vec3f reflectivity() const { return m_reflectivity; }
+
+	@property void reflectivity(vec3f rhs)
+	{
+		m_reflectivity = rhs;
+	}
 }
 
 
@@ -52,24 +59,26 @@ struct Chirp
 
 struct PingParameters
 {
-	/// radial (range) resolution, meters
-	float radRes = 50.0f;
-	/// number of radial slices. Determines max range.
-	int radCount = 10000 / 50;
-	float lifeTime = 3.0f;
 	Chirp[] chirps;
+	/// tds length is needed for reverb
+	float tdsLength = 2.0f;
 	float effectiveFreq;	/// abstracted away "main" frequency
-	dB pingLevel;
+	/// max ping intensity level
+	IntensityLevel pingILevel;
 	/// reference reflection intensity that corrensponds to full white color in the image
 	dB refMaxLevel = 140.0f;
 }
 
-private __gshared TyGverb g_reverbator;
+private TyGverb* g_reverbator;
 
-shared static this()
+private void ensureReverberatorBuilt()
 {
-	GverbParams params = GverbParams(4096, 50.0f, 50.0f, 2.0f, 0.1f, 0.0f, 0.01f, 0.6f, 20.0f);
-	g_reverbator = TyGverb(params);
+	if (g_reverbator is null)
+	{
+		GverbParams params = GverbParams(4096, 50.0f, 50.0f, 2.0f,
+			0.1f, 0.0f, 0.01f, 0.6f, 20.0f);
+		g_reverbator = new TyGverb(params);
+	}
 }
 
 
@@ -108,10 +117,12 @@ private TimeDomainSignal genPingSound(float lifeTime, const Chirp[] chirps, int 
 			dfreq = (chirps[curChirp].endFreq - freq) / chirps[curChirp].duration * dt;
 		}
 	}
-	float[] reverb;
-	g_reverbator.applyToBuf(res.samples, reverb);
+	float[] reverbed;
+	ensureReverberatorBuilt();
+	g_reverbator.set_revtime(lifeTime);
+	g_reverbator.applyToBuf(res.samples, reverbed);
 	g_reverbator.flush();
-	res.samples = reverb;
+	res.samples = reverbed;
 	return res;
 }
 

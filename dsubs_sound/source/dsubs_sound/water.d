@@ -4,8 +4,8 @@ import dsubs_sound.spectrum;
 import dsubs_sound.common;
 
 
-/// Underwater speed of sound
-__gshared float SOUND_SPD;
+/// Speed of sound
+__gshared immutable float SOUND_SPD;
 
 shared static this()
 {
@@ -76,6 +76,7 @@ IntensityLevel getILatRange(int freq, IntensityLevel il, float range, float diss
 	return IntensityLevel(il - toDb(range * range) - wrdk[freq - 1] * range * dissMod);
 }
 
+/// Same but with toDb(range * range) precalculated
 IntensityLevel getILatRange2(int freq, IntensityLevel il, float range, float rangeDb, float dissMod = 1.0f)
 {
 	assert(freq > 0 && freq <= 4096);
@@ -92,9 +93,9 @@ unittest
 }
 
 /// band intensity level of flow noise
-IntensityLevel flowNoise(float freq, float kts)
+IntensityLevel flowNoise(int freq, float kts)
 {
-	assert(freq > 0.0f);
+	assert(freq > 0);
 	assert(kts >= 0.0f, "kts is " ~ kts.to!string);
 	dB res = 90.0f;
 	// 18 db per knot doubling
@@ -120,7 +121,7 @@ unittest
 	foreach (i, ref b; ispec.bins)
 	{
 		if (i >= 20 && i < 2048)
-			b = flowNoise(i, 10.0f) + uniform(0.0f, 3.0f);
+			b = flowNoise(cast(int) i, 10.0f) + uniform(0.0f, 3.0f);
 		else
 			b = 0.0f;
 	}

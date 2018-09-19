@@ -261,8 +261,7 @@ final class Hydrophone
 		s_stageIspec.genSpectrum(s_stageSpectrum);
 		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
-		for (size_t i = 0; i < m_curTds.samples.length; i++)
-			m_curTds.samples[i] += s_stageTds.samples[i];
+		m_curTds.samples[] += s_stageTds.samples[];
 		resetStageIspec();
 	}
 
@@ -276,8 +275,7 @@ final class Hydrophone
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		if (mod)
 			mod.modulate(s_stageTds);
-		for (size_t i = 0; i < m_curTds.samples.length; i++)
-			m_curTds.samples[i] += s_stageTds.samples[i];
+		m_curTds.samples[] += s_stageTds.samples[];
 		resetStageIspec();
 	}
 
@@ -286,8 +284,7 @@ final class Hydrophone
 	{
 		if (mod)
 			mod.modulate(tds);
-		for (size_t i = 0; i < m_curTds.samples.length; i++)
-			m_curTds.samples[i] += tds.samples[i];
+		m_curTds.samples[] += tds.samples[];
 	}
 
 	/// set speed at the start of integration
