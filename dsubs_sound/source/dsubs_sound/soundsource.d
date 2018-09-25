@@ -153,7 +153,6 @@ final class PropellerSound: SoundSource
 
 	private TimeDomainSignal genTds(IntensitySpectrum ispec, IModulator modulator) const
 	{
-		ensureTlsCache();
 		s_stageIspec.genSpectrum(s_stageSpectrum);
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		if (modulator)

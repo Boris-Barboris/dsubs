@@ -259,7 +259,6 @@ final class Hydrophone
 	private void applyStageIspec()
 	{
 		s_stageIspec.genSpectrum(s_stageSpectrum);
-		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		m_curTds.samples[] += s_stageTds.samples[];
 		resetStageIspec();
@@ -271,7 +270,6 @@ final class Hydrophone
 		for (size_t i = 0; i < s_stageIspec.bins.length; i++)
 			s_stageIspec.bins[i] *= powerPart;
 		s_stageIspec.genSpectrum(s_stageSpectrum);
-		ensureTlsCache();
 		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
 		if (mod)
 			mod.modulate(s_stageTds);

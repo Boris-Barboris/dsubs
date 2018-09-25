@@ -57,16 +57,12 @@ struct Chirp
 	float duration;
 }
 
+/// Parameters than uniquely identify reference time domain ping signal
 struct PingParameters
 {
 	Chirp[] chirps;
-	/// tds length is needed for reverb
-	float tdsLength = 2.0f;
+	float tdsLength = 2.0f;	/// tds length is needed for reverb
 	float effectiveFreq;	/// abstracted away "main" frequency
-	/// max ping intensity level
-	IntensityLevel pingILevel;
-	/// reference reflection intensity that corrensponds to full white color in the image
-	dB refMaxLevel = 140.0f;
 }
 
 private TyGverb* g_reverbator;
@@ -80,6 +76,60 @@ private void ensureReverberatorBuilt()
 		g_reverbator = new TyGverb(params);
 	}
 }
+
+
+/// Cache for reference Tds ping signals of unity amplitude
+struct PingTdsCache
+{
+	private
+	{
+		TimeDomainSignal[PingParameters*] m_cache;
+	}
+
+	void put(const PingParameters* params)
+	{
+		m_cache[params] = genPingSound(params.tdsLength, params.chirps);
+	}
+
+	immutable(TimeDomainSignal)* get(const PingParameters* params) immutable
+	{
+		return params in m_cache;
+	}
+}
+
+
+final class SonarPing: SoundSource
+{
+	this(vec2d position, PingParameters params)
+	{
+		m_position = position;
+		m_params = params;
+		savePrevPos();
+	}
+
+	private
+	{
+		// time passed since ping creation
+		float m_timeSince = 0.0f;
+		vec2d m_position;
+		PingParameters m_params;
+		TimeDomainSignal m_tds;
+		ubyte[][] m_image;
+	}
+
+	override @property vec2d position() { return m_position; }
+
+	override @property float radius() const { return 30.0f; }
+
+	override void buildSignals(vec2d listenerPos,
+		scope void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
+		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const
+	{
+
+	}
+}
+
+
 
 
 private TimeDomainSignal genPingSound(float lifeTime, const Chirp[] chirps, int srate = 4096)
@@ -130,36 +180,4 @@ unittest
 {
 	TimeDomainSignal tds = genPingSound(2.0f, [Chirp(1100, 1300, 0.3f)]);
 	writeWavFile("midfreq-chirp.wav", tds.samples, 0.6f, tds.samplingRate);
-}
-
-
-final class SonarPing: SoundSource
-{
-	this(vec2d position, PingParameters params)
-	{
-		m_position = position;
-		m_params = params;
-		savePrevPos();
-	}
-
-	private
-	{
-		// time passed since ping creation
-		float m_timeSince = 0.0f;
-		vec2d m_position;
-		PingParameters m_params;
-		TimeDomainSignal m_tds;
-		ubyte[][] m_image;
-	}
-
-	override @property vec2d position() { return m_position; }
-
-	override @property float radius() const { return 30.0f; }
-
-	override void buildSignals(vec2d listenerPos,
-		scope void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
-		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const
-	{
-
-	}
 }

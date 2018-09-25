@@ -224,6 +224,13 @@ struct TimeDomainSignal
 		samples.length = sampleCount;
 		samples[] = 0.0f;
 	}
+
+	void copyTo(ref TimeDomainSignal dest) immutable
+	{
+		dest.samples.length = samples.length;
+		dest.samples[] = samples[];
+		dest.samplingRate = samplingRate;
+	}
 }
 
 /// Create smooth transition from prev to onto. onto samples will be changed.
@@ -278,14 +285,27 @@ public
 	static IntensitySpectrum s_stageIspec;
 	static Spectrum s_stageSpectrum;
 	static TimeDomainSignal s_stageTds;
-	static Fft s_fftCache;
 }
 
-/// ensure that fft cache is constructed for this thread
-void ensureTlsCache()
+private
 {
-	if (s_fftCache is null)
-		s_fftCache = new Fft(2048);
+	static Fft sl_fftCache;
+	static Fft function() sl_fftCache_getter;
+}
+
+static this()
+{
+	sl_fftCache_getter = () {
+		sl_fftCache = new Fft(2048);
+		sl_fftCache_getter = () { return sl_fftCache; };
+		return sl_fftCache;
+	};
+}
+
+/// this thread's Fft cache
+pragma(inline) @property Fft s_fftCache()
+{
+	return sl_fftCache_getter();
 }
 
 
