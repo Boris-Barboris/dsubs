@@ -244,7 +244,7 @@ final class Player
 				if (h.listenDirValid)
 				{
 					int srate;
-					auto samples = h.finalizePcbData(srate, 1e2);
+					auto samples = h.finalizePcbData(srate, 0.2f);
 					trace("samples start: ", samples[0..5], " end: ", samples[$-5..$]);
 					haudio ~= immutable HydrophoneAudio(i, h.listenDir + coordRot,
 						samples, srate);

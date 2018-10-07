@@ -66,7 +66,7 @@ final class StreamingSoundSource
 			return;
 		alGenSources(1, &source);
 		openalCheckErr("Unable to create audio source: ");
-		alSourcef(source, AL_MAX_GAIN, 1.0f);
+		alSourcef(source, AL_MAX_GAIN, MAX_GAIN);
 		openalCheckErr("Cannot set max gain: ");
 		gain = 0.0f;
 	}
@@ -77,7 +77,7 @@ final class StreamingSoundSource
 		int m_queuedCount;
 
 		enum float TARGET_MAX = short.max * 0.8f;
-		enum float MAX_GAIN = 1e3;	// 40 dB
+		enum float MAX_GAIN = 1e3;	// +30 dB
 	}
 
 	@property int queuedCount() const { return m_queuedCount; }
@@ -132,7 +132,7 @@ final class StreamingSoundSource
 	{
 		if (s_noAudio)
 			return;
-		enforce(rhs <= 1.0f && rhs >= 0.0f);
+		enforce(rhs <= MAX_GAIN && rhs >= 0.0f);
 		alSourcef(source, AL_GAIN, rhs);
 		openalCheckErr("Cannot set gain: ");
 	}

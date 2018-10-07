@@ -35,9 +35,12 @@ struct IntensityLevelSpectrum
 		// https://dsp.stackexchange.com/a/28712
 		for (size_t k = 0; k < N / 2; k++)
 		{
-			Complex!float Xk1 = fromPolar((bins[k] / 2).toLinear, phases[k]);
+			float freqFactor = k > 0 ? 1.0f / k / freqRes : 0.0f;
+			Complex!float Xk1 = fromPolar((bins[k] / 2).toLinear * freqFactor, phases[k]);
 			size_t conjk = bins.length - 1 - k;
-			Complex!float Xk2 = fromPolar((bins[conjk] / 2).toLinear, -phases[conjk]);
+			freqFactor = conjk > 0 ? 1.0f / conjk / freqRes : 0.0f;
+			Complex!float Xk2 = fromPolar((bins[conjk] / 2).toLinear * freqFactor,
+				-phases[conjk]);
 			Complex!float jw = j * expi(float(2) * PI * k / N);
 			dest.bins[k] = 0.5f * (Xk1 * (1.0f + jw) + Xk2 * (1.0f - jw));
 		}
@@ -86,9 +89,11 @@ struct IntensitySpectrum
 		// https://dsp.stackexchange.com/a/28712
 		for (size_t k = 0; k < N / 2; k++)
 		{
-			Complex!float Xk1 = fromPolar(sqrt(bins[k]), phases[k]);
+			float freqFactor = k > 0 ? 1.0f / k / freqRes : 0.0f;
+			Complex!float Xk1 = fromPolar(sqrt(bins[k]) * freqFactor, phases[k]);
 			size_t conjk = bins.length - 1 - k;
-			Complex!float Xk2 = fromPolar(sqrt(bins[$ - 1 - k]), -phases[conjk]);
+			freqFactor = conjk > 0 ? 1.0f / conjk / freqRes : 0.0f;
+			Complex!float Xk2 = fromPolar(sqrt(bins[$ - 1 - k]) * freqFactor, -phases[conjk]);
 			Complex!float jw = j * expi(float(2) * PI * k / N);
 			dest.bins[k] = 0.5f * (Xk1 * (1.0f + jw) + Xk2 * (1.0f - jw));
 		}
@@ -193,10 +198,10 @@ struct Spectrum
 	{
 		dest.samplingRate = bins.length.to!int * freqRes * 2;
 		dest.samples.length = bins.length * 2;
-		auto beforeIfft = MonoTime.currTime;
+		// auto beforeIfft = MonoTime.currTime;
 		// smart trick with butterfly, consult octave fftoptim.m
 		fftCache.inverseFft(bins, dest.reinterpret);
-		auto afterIfft = MonoTime.currTime;
+		// auto afterIfft = MonoTime.currTime;
 		// writeln("ifft performed in ", afterIfft - beforeIfft);
 	}
 }

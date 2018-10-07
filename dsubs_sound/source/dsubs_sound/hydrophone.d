@@ -161,7 +161,7 @@ final class Hydrophone
 		return s_stageTds;
 	}
 
-	immutable(short)[] finalizePcbData(out int srate, float maxp = 1e5)
+	immutable(short)[] finalizePcbData(out int srate, float maxp = 1.0f)
 	{
 		const(TimeDomainSignal) tds = finalizeListenTds();
 		srate = tds.samplingRate;
