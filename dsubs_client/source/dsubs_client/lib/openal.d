@@ -3,6 +3,7 @@ module dsubs_client.lib.openal;
 import std.algorithm;
 import std.range;
 import std.stdio;
+import std.process;
 
 import derelict.openal.al;
 // library needs resampler=bsinc in config
@@ -11,6 +12,7 @@ import dsubs_client.common;
 
 void loadAudioLib()
 {
+	environment["ALSOFT_CONF"] = "alsoft.ini";
 	DerelictAL.load();
 	s_device = alcOpenDevice(null);
 	ALenum err = alcGetError(s_device);

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-set -eux
+set -eu
 dub build -b debug
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./arch_libs/"
-export ALSOFT_CONF="./alsoft.ini"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${0%/*}/arch_libs/"
+#export ALSOFT_CONF="./alsoft.ini"
 ./dsubs_client

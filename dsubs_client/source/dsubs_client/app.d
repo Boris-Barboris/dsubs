@@ -19,7 +19,6 @@ void main(string[] argv)
 	}
 	loadSfmlLibraries();
 	loadAudioLib();
-	StreamingSoundSource sound = new StreamingSoundSource();
 	loadGlobalFonts();
 	// runModuleTests();
 	// testGuiElements();

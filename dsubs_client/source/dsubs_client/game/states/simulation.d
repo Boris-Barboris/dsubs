@@ -329,10 +329,9 @@ final class Waterfall: GuiElement
 
 	private
 	{
-		// directional resolution will be 1024 pixels, in time we save up to
-		// 120 rows. Such texture weighs 5 Mb.
+		// directional resolution will be 1024 pixels
 		enum int WIDTH = 1024;
-		enum int HEIGHT = 120;
+		enum int HEIGHT = 300;
 		enum float PXPERRAD = WIDTH / (PI * 2);
 		enum int COMPASS_HEADER_HEIGHT = 18;
 		enum int DIRECTOR_HEADER_HEIGHT = 12;
