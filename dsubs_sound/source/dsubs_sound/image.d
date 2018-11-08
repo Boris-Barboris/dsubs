@@ -79,7 +79,7 @@ unittest
 	assert(tds.samplingRate == 4096);
 	assert(tds.samples.length == 4096);
 	tds.samples = tds.samples.cycle.takeExactly(4096 * 5).array;
-	ThrachioidModulator am = new ThrachioidModulator(ThrachioidModulatorParams(
+	TrochoidModulator am = new TrochoidModulator(TrochoidModulatorParams(
 		[0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f], 0.5, 0.7, -0.4));
 	am.startFundFreq = am.endFundFreq = 2.0f;
 	am.modulate(tds);

@@ -125,7 +125,7 @@ unittest
 
 
 /// 1.0 + A * sin(x + PI_2 + B * sin(x) + C)
-struct ThrachioidModulatorParams
+struct TrochoidModulatorParams
 {
 	private
 	{
@@ -189,9 +189,9 @@ struct ThrachioidModulatorParams
 }
 
 
-final class ThrachioidModulator: IModulator
+final class TrochoidModulator: IModulator
 {
-	this(ThrachioidModulatorParams params)
+	this(TrochoidModulatorParams params)
 	{
 		this.params = params;
 	}
@@ -199,7 +199,7 @@ final class ThrachioidModulator: IModulator
 	float startFundFreq = 0.0f;
 	float endFundFreq = 0.0f;
 
-	private ThrachioidModulatorParams params;
+	private TrochoidModulatorParams params;
 
 	/// modulate time-domain signal
 	void modulate(ref TimeDomainSignal dest) const
