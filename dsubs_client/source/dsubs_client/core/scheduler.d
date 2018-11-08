@@ -51,6 +51,7 @@ final class Scheduler
 	{
 		if (!cas(&m_stop, false, true))
 			return;
+		trace("stopping Scheduler");
 		synchronized(m_cond.mutex)
 			m_cond.notify();
 		m_thread.join(false);

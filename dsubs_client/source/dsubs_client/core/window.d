@@ -93,18 +93,19 @@ final class Window
 		sfEvent event;
 		while (!m_stopFlag && sfRenderWindow_waitEvent(m_wnd, &event))
 		{
-			mutex.lock();
-			scope(exit) mutex.unlock();
-			// special case: window close event
-			if (event.type == sfEvtClosed)
+			synchronized(mutex)
 			{
-				m_eventHandlers[event.type](this, &event);
-				// actually close the window
-				info("Standard window close event caught");
-				m_stopFlag = true;
+				// special case: window close event
+				if (event.type == sfEvtClosed)
+				{
+					m_eventHandlers[event.type](this, &event);
+					// actually close the window
+					info("Standard window close event caught");
+					m_stopFlag = true;
+				}
+				else
+					m_eventHandlers[event.type](this, &event);
 			}
-			else
-				m_eventHandlers[event.type](this, &event);
 		}
 	}
 

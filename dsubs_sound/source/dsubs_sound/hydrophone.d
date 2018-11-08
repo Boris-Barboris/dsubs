@@ -20,15 +20,20 @@ import dsubs_sound.modulation;
 
 struct HydrophonePrototype
 {
+	/// antennae rotations, relative to hydrophone transform
 	float[] antennaeRots;
+	/// frequency passband
 	int minFreq, maxFreq;
+	/// each antennae spans the sector of this size
 	float antennaeSpan;
+	/// number of beams, formed by each antennae
 	int beamCount;
 	float directivity;
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 0.001f;
 	float flowNoiseMult = 0.001f;
 	float selfNoiseMult = 1e-3f;
+	/// client listens to beam of this size
 	float listenSpan = dgr2rad(2);
 }
 

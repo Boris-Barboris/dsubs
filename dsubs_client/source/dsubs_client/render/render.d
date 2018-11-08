@@ -69,7 +69,10 @@ final class Render
 	{
 		m_stopFlag = true;
 		if (m_worker && m_worker.isRunning)
+		{
+			trace("joining render thread");
 			m_worker.join(false);
+		}
 	}
 
 	// these events are fired while holding render lock
@@ -88,7 +91,7 @@ final class Render
 	private float m_avgFps = 0.0f;
 	@property float avgFps() const { return m_avgFps; }
 
-	private enum int FPS_UPDATE_FREQ = 60;
+	private enum int FPS_UPDATE_FREQ = 300;
 
 	/// Thread function
 	private void render(scope Mutex mutex)
@@ -131,7 +134,7 @@ final class Render
 					// 60 frames were rendered
 					long totalMsecs = (curTime - lastFpsMark).total!"msecs";
 					m_avgFps = FPS_UPDATE_FREQ * 1000.0f / totalMsecs;
-					// trace("FPS: ", m_avgFps);
+					trace("FPS: ", m_avgFps);
 					frameCounter = 0;
 					lastFpsMark = curTime;
 				}
