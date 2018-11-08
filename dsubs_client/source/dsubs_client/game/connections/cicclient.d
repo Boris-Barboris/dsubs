@@ -220,9 +220,9 @@ private:
 				s.append(res.audio[0].samples, res.audio[0].samplingRate);
 			else
 			{
-				// we delay first buffer enqueing in order to reduce the risc of buffering
+				// we delay first sample enqueing in order to reduce the risk of buffering
 				Game.delay(()
-					{ s.append(res.audio[0].samples, res.audio[0].samplingRate); }, msecs(200), null);
+					{ s.append(res.audio[0].samples, res.audio[0].samplingRate); }, msecs(250), null);
 			}
 		}
 	}
