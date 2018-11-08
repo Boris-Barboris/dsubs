@@ -95,7 +95,7 @@ private:
 				"../dsubs_sound/std_propeller.png", 1.0f, 80, 140).toIntensity,
 			loadSpectrumFromImageAndWarp(
 				"../dsubs_sound/std_propeller_cav.png", 1.0f, 60, 140).toIntensity,
-			ThrachioidModulatorParams([0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f],
+			TrochoidModulatorParams([0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f],
 				0.5, 0.7, -0.4),
 			4.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
 		);
