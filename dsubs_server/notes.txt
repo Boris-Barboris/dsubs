@@ -51,3 +51,5 @@ First is that Johannen's Cd (which in Naval Arch is usually named Ct since it wo
 4. multiply this sequence with the square root of the PSD
 5 take the ifft of the product
 6. repeat 2->5 and concatenate the newer sequences.
+
+https://openacs.org/
