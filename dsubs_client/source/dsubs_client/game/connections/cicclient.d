@@ -180,14 +180,6 @@ private:
 		}
 	}
 
-	private
-	{
-		bool m_firstAcousticsData = true;
-		// we delay visual information for 1 second to
-		// synchronize audio and visual information on the waterfall
-		CICSubAcousticRes m_tapAcoustics;
-	}
-
 	void h_acousticRes(CICSubAcousticRes res)
 	{
 		import std.algorithm.iteration: map;
@@ -199,20 +191,11 @@ private:
 		StreamingSoundSource s;
 		synchronized(Game.mainMutex)
 		{
-			if (m_firstAcousticsData)
-			{
-				m_firstAcousticsData = false;
-				m_tapAcoustics = res;
-			}
-			else
-			{
-				Game.simState.gui.sonarGui.drawData(
-					m_tapAcoustics.data[0].beams,
-					Game.simState.playerSub.tmpl.hydrophones[0].fov,
-					m_tapAcoustics.rotationAtTime);
-				Game.simState.gui.sonarGui.completeRow();
-				m_tapAcoustics = res;
-			}
+			Game.simState.gui.sonarGui.drawData(
+				res.data[0].beams,
+				Game.simState.playerSub.tmpl.hydrophones[0].fov,
+				res.rotationAtTime);
+			Game.simState.gui.sonarGui.completeRow();
 			s = Game.simState.sonarSound;
 		}
 		if (s && res.audio.length > 0)

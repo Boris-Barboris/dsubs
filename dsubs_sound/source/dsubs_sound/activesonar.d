@@ -68,14 +68,14 @@ struct Chirp
 {
 	int startFreq;
 	int endFreq;
-	float duration;
+	float duration;		/// chirp duration in seconds
 }
 
 /// Parameters than uniquely identify reference time domain ping signal
 struct PingParameters
 {
 	Chirp[] chirps;
-	float tdsLength = 2.0f;	/// tds length is needed for reverb
+	int tdsLength = 2;		/// tds length in seconds
 	float effectiveFreq;	/// abstracted away "main" frequency.
 }
 
@@ -85,15 +85,15 @@ struct PingTdsCache
 {
 	private
 	{
-		TimeDomainSignal[const PingParameters*] m_cache;
+		TimeDomainSignal[immutable PingParameters*] m_cache;
 	}
 
-	void put(const PingParameters* params)
+	void put(immutable PingParameters* params)
 	{
 		m_cache[params] = genPingSound(params.tdsLength, params.chirps);
 	}
 
-	immutable(TimeDomainSignal)* get(const PingParameters* params) immutable
+	immutable(TimeDomainSignal)* get(immutable PingParameters* params) immutable
 	{
 		return params in m_cache;
 	}
@@ -103,14 +103,15 @@ struct PingTdsCache
 struct ActiveSonarPrototype
 {
 	/// form of the ping chirp, wich will be used to synthesize time domain signal
-	const PingParameters* pingParams;
+	immutable(PingParameters)* pingParams;
 	/// number of beams, formed by transducer
-	int beamCount = 120;
+	int beamCount = 210;
 	/// Sonar is capable of scanning sector of this size
 	float span = 210.0f;
-	/// time resolution
-	float timeRes = 0.1f;
-	float maxRange = 30000.0f;
+	/// rows in image per second
+	int rowsPerSec = 10;
+	/// max ping duration (seconds)
+	int maxSec = 60;
 	/// minimum ping power
 	dB minIlevel = 60.0f;
 	/// maximum ping power
@@ -118,15 +119,63 @@ struct ActiveSonarPrototype
 	dB baseNoise = 1.0f;
 	/// position is more imprecise, the furthere away the target is
 	float positionErrorK = 0.03f;
+	/// visible size of target is larger than it should be with
+	/// the distance (reflected signal is less concentrated)
+	float sizeErrorK = 1e-4f;
 	float flowNoiseMult = 0.001f;
 }
 
 
 final class ActiveSonar
 {
+	this(Transform2D trans, const ActiveSonarPrototype proto,
+		immutable(PingTdsCache)* pingCache)
+	{
+		m_transform = trans;
+		m_proto = proto;
+		m_tds = pingCache.get(m_proto.pingParams);
+	}
+
 	private
 	{
 		Transform2D m_transform;
+		const ActiveSonarPrototype m_proto;
+		immutable(TimeDomainSignal)* m_tds;
+		bool m_hasListener;
+		SonarPing m_trackedPing;
+
+		/// speed in knots at the start of integration
+		float m_ktsStart = 0.0f;
+		float m_ktsEnd = 0.0f;
+	}
+
+	/// invoked by simulator before kinematic update happens
+	Event!(void delegate()) onPreSimulation;
+	/// invoked by simulator right after kinematic update happens
+	Event!(void delegate()) onPostSimulation;
+
+	/// set speed at the start of integration
+	@property float ktsStart(float rhs)
+	{
+		return m_ktsStart = rhs;
+	}
+
+	/// set speed at the end of integration
+	@property float ktsEnd(float rhs)
+	{
+		return m_ktsEnd = rhs;
+	}
+
+	/// currently tracked ping. Null if none.
+	@property SonarPing trackedPing() { return m_trackedPing; }
+
+	@property bool hasListener() const { return m_hasListener; }
+
+	@property void hasListener(bool rhs)
+	{
+		m_hasListener = rhs;
+		if (!rhs)
+			m_trackedPing = null;
 	}
 }
 
@@ -134,7 +183,7 @@ final class ActiveSonar
 /// Immovable sonar ping source.
 final class SonarPing: SoundSource
 {
-	this(vec2d position, const PingParameters* params, IntensityLevel power)
+	this(vec2d position, immutable(PingParameters)* params, IntensityLevel power)
 	{
 		m_position = position;
 		m_params = params;
@@ -177,7 +226,8 @@ private void ensureReverberatorBuilt()
 	}
 }
 
-private TimeDomainSignal genPingSound(float lifeTime, const Chirp[] chirps, int srate = 4096)
+private TimeDomainSignal genPingSound(int lifeTime, immutable Chirp[] chirps,
+	int srate = 4096)
 {
 	assert(srate > 0);
 	assert(chirps.length > 0);
@@ -223,6 +273,6 @@ private TimeDomainSignal genPingSound(float lifeTime, const Chirp[] chirps, int 
 
 unittest
 {
-	TimeDomainSignal tds = genPingSound(2.0f, [Chirp(1100, 1300, 0.3f)]);
+	TimeDomainSignal tds = genPingSound(2, [Chirp(1100, 1300, 0.3f)]);
 	writeWavFile("midfreq-chirp.wav", tds.samples, 0.6f, tds.samplingRate);
 }

@@ -25,6 +25,8 @@ final class BackendConnection: ProtocolConnection!BackendProtocol
 		super(sock);
 		onClose += (con)
 			{
+				if (Game.shuttingDown)
+					return;
 				synchronized(Game.mainMutex)
 					Game.activeState.handleBackendDisconnect();
 			};

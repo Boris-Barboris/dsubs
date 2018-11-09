@@ -169,10 +169,11 @@ struct AntennaeData
 	ushort[] beams;
 }
 
+/// hydrophone time-domain sound signal
 struct HydrophoneAudio
 {
 	int hydrophoneIdx;
-	float listenDir;
+	float listenDir;	// world-space direction of the beam
 	short[] samples;	// 16-bit PCB mono
-	int samplingRate;
+	int samplingRate;	// usually 4096 Hz
 }

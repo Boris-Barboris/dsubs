@@ -147,7 +147,7 @@ struct ListenDirReq
 {
 	__gshared const int g_marshIdx;
 	int hydrophoneIdx;
-	float dir;
+	float dir;		/// world-space listen-direction
 }
 
 /// Server streams acoustic data to the player
