@@ -612,6 +612,7 @@ unittest
 	import std.algorithm: map, maxElement;
 	import std.range;
 	import std.stdio;
+	import core.time: MonoTime;
 	import dsubs_sound.image;
 	import dsubs_sound.wav;
 
@@ -684,11 +685,25 @@ unittest
 		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
 			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
 		prop.postUpdate(freq, spd, 1.0f);
+		typeof(MonoTime.currTime()) timeStart;
+		if (i == 0)
+			timeStart = MonoTime.currTime;
 		h.resetAndIsotropic();
+		if (i == 0)
+			writeln("resetAndIsotropic took ", MonoTime.currTime() - timeStart);
 		assert(h.m_listenDirValid);
 		assert(h.m_ant[0].listenCell >= 0);
+		if (i == 0)
+			timeStart = MonoTime.currTime;
 		h.applySoundSource(prop);
+		if (i == 0)
+		{
+			writeln("applySoundSource took ", MonoTime.currTime() - timeStart);
+			timeStart = MonoTime.currTime;
+		}
 		const(TimeDomainSignal) tds1 = h.finalizeListenTds();
+		if (i == 0)
+			writeln("finalizeListenTds took ", MonoTime.currTime() - timeStart);
 		assert(tds1.samples.length == 4096);
 		tds.samplingRate = tds1.samplingRate;
 		tds.samples ~= tds1.samples;

@@ -7,6 +7,9 @@ import dsubs_sound.spectrum;
 interface IModulator
 {
 	void modulate(ref TimeDomainSignal dest) const;
+
+	/// signals must be of same length
+	void modulate(TimeDomainSignal[] signals) const;
 }
 
 
@@ -25,6 +28,14 @@ final class ChainModulator: IModulator
 			if (m)
 				m.modulate(dest);
 	}
+
+	/// signals must be of same length
+	void modulate(TimeDomainSignal[] signals) const
+	{
+		foreach (m; modulators)
+			if (m)
+				m.modulate(signals);
+	}
 }
 
 /// Linearly interpolates intensity of the signal
@@ -35,12 +46,29 @@ final class IntensityInterpolator: IModulator
 
 	void modulate(ref TimeDomainSignal dest) const
 	{
-		assert(dest.samples.length > 1);
+		size_t tdsLen = dest.samples.length;
+		assert(tdsLen > 1);
 		float mult = startIntensityMult;
-		float di = (endIntensityMult - startIntensityMult) / (dest.samples.length - 1);
-		for (size_t i = 0; i < dest.samples.length; i++)
+		float di = (endIntensityMult - startIntensityMult) / (tdsLen - 1);
+		for (size_t i = 0; i < tdsLen; i++)
 		{
 			dest.samples[i] *= sqrt(mult.abs);
+			mult += di;
+		}
+	}
+
+	void modulate(TimeDomainSignal[] signals) const
+	{
+		assert(signals.length > 0);
+		size_t tdsLen = signals[0].samples.length;
+		assert(tdsLen > 1);
+		float mult = startIntensityMult;
+		float di = (endIntensityMult - startIntensityMult) / (tdsLen - 1);
+		for (size_t i = 0; i < tdsLen; i++)
+		{
+			float k = sqrt(mult.abs);
+			for (size_t j = 0; j < signals.length; j++)
+				signals[j].samples[i] *= k;
 			mult += di;
 		}
 	}
@@ -97,14 +125,20 @@ final class AmplitudeModulator: IModulator
 		for (size_t i = 0; i < dest.samples.length; i++)
 		{
 			float freq = startFundFreq + dfreq * i;
-			float phaseCommon = dt * i * 2 * PI * freq;
+			float fundPhase = dt * i * 2 * PI * freq;
 			for (size_t j = 0; j < harmonics.length; j++)
-				phases[j] = (startPhase + phaseCommon) * (j + 1);
+				phases[j] = (startPhase + fundPhase) * (j + 1);
 			float modk = DC;
 			for (size_t j = 0; j < harmonics.length; j++)
 				modk += harmonics[j] * sin(phases[j]);
 			dest.samples[i] *= modk;
 		}
+	}
+
+	void modulate(TimeDomainSignal[] signals) const
+	{
+		foreach (ref sig; signals)
+			modulate(sig);
 	}
 }
 
@@ -201,28 +235,59 @@ final class TrochoidModulator: IModulator
 
 	private TrochoidModulatorParams params;
 
+	// https://en.wikipedia.org/wiki/Chirp
+
 	/// modulate time-domain signal
 	void modulate(ref TimeDomainSignal dest) const
 	{
 		assert(dest.samples.length > 0);
-		float dt = 1.0f / dest.samplingRate;
+		float t = 0.0f;
+		const float dt = 1.0f / dest.samplingRate;
 		assert(!isNaN(dt));
-		float linGain = 1.0f / sqrt(params.energyIntegral);
+		const float linGain = 1.0f / sqrt(params.energyIntegral);
 		assert(!isNaN(linGain));
 
 		// main modulation loop
 		float dfreq = (endFundFreq - startFundFreq) / (dest.samples.length - 1);
 		for (size_t i = 0; i < dest.samples.length; i++)
 		{
-			float freq = startFundFreq + dfreq * i;
-			float phaseCommon = dt * i * 2 * PI * freq;
+			float fundPhase = 2 * PI * (startFundFreq * t + 0.5 * dfreq * t * t);
 			float modk = 1.0f;
 			for (size_t j = 0; j < params.harmonics.length; j++)
 			{
-				float phase = (params.startPhase + phaseCommon) * (j + 1);
+				float phase = (params.startPhase + fundPhase) * (j + 1);
 				modk += params.harmonics[j] * params.get(phase);
 			}
 			dest.samples[i] *= modk * linGain;
+		}
+	}
+
+	override void modulate(TimeDomainSignal[] signals) const
+	{
+		assert(signals.length > 0);
+		size_t tdsLen = signals[0].samples.length;
+		assert(tdsLen > 0);
+		float t = 0.0f;
+		const float dt = 1.0f / signals[0].samplingRate;
+		assert(!isNaN(dt));
+		const float linGain = 1.0f / sqrt(params.energyIntegral);
+		assert(!isNaN(linGain));
+
+		// main modulation loop
+		const float dfreq = (endFundFreq - startFundFreq) / (tdsLen - 1);
+		for (size_t i = 0; i < tdsLen; i++)
+		{
+			float fundPhase = 2 * PI * (startFundFreq * t + 0.5 * dfreq * t * t);
+			float modk = 1.0f;
+			for (size_t j = 0; j < params.harmonics.length; j++)
+			{
+				float phase = (params.startPhase + fundPhase) * (j + 1);
+				modk += params.harmonics[j] * params.get(phase);
+			}
+			modk *= linGain;
+			for (size_t j = 0; j < signals.length; j++)
+				signals[j].samples[i] *= modk;
+			t += dt;
 		}
 	}
 }

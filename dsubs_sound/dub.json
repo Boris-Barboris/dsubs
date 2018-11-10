@@ -8,6 +8,10 @@
 		"imageformats": "~>7.0.0",
 		"dsubs_common": { "path": "../dsubs_common" }
 	},
+	"dflags-ldc": [
+		"-mattr=+sse2,+mmx",
+		"-ffast-math"
+	],
 	"description": "Server-side acoustics library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
 	"targetType": "library"

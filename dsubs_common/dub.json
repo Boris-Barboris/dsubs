@@ -9,6 +9,10 @@
 		"painlesstraits": "0.3.0",
 		"crypto": "0.1.5"
 	},
+	"dflags-ldc": [
+		"-mattr=+sse2,+mmx",
+		"-ffast-math"
+	],
 	"description": "Common library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
 	"targetType": "library"

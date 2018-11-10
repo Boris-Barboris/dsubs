@@ -151,16 +151,7 @@ final class PropellerSound: SoundSource
 		}
 	}
 
-	private TimeDomainSignal genTds(IntensitySpectrum ispec, IModulator modulator) const
-	{
-		s_stageIspec.genSpectrum(s_stageSpectrum);
-		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
-		if (modulator)
-			modulator.modulate(s_stageTds);
-		return s_stageTds;
-	}
-
-	private IModulator genChainModulator(float kstart, float kend, IModulator mod) const
+	private IntensityInterpolator getImodulator(float kstart, float kend) const
 	{
 		IntensityInterpolator ii = new IntensityInterpolator();
 		float kavg = (kstart.fabs + kend.fabs) / 2;
@@ -169,7 +160,7 @@ final class PropellerSound: SoundSource
 			ii.startIntensityMult = kstart / kavg;
 			ii.endIntensityMult = kend / kavg;
 		}
-		return new ChainModulator(cast(IModulator[]) [mod, ii]);
+		return ii;
 	}
 
 	override void buildSignals(vec2d listenerPos,
@@ -209,20 +200,36 @@ final class PropellerSound: SoundSource
 			tm.startFundFreq = m_shaftFreqStart;
 			tm.endFundFreq = m_shaftFreqEnd;
 		}
+		IntensityInterpolator ii;
 		// broadband
 		genISpec(range, relBearing, stageIspec, m_baseBBSpectrum, minFreq, maxFreq,
 			freqCubeStart, freqCubeEnd, dissMod);
 		float bandSum = stageIspec.bins[minFreq - 1 .. $].sum() / (maxFreq + 1);
-		onSignalReady(bandSum, needTds ?
-			genTds(stageIspec, genChainModulator(freqCubeStart, freqCubeEnd, tm)) :
-			TimeDomainSignal.init);
+		if (needTds)
+		{
+			stageIspec.genSpectrum(s_stageSpectrum);
+			s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
+			ii = getImodulator(freqCubeStart, freqCubeEnd);
+			ii.modulate(s_stageTds);
+		}
 		// cavitation
 		genISpec(range, relBearing, stageIspec, m_baseCavSpectrum, minFreq, maxFreq,
 			cavSqrStart, cavSqrEnd, dissMod);
-		bandSum = stageIspec.bins[minFreq - 1 .. $].sum() / (maxFreq + 1);
-		onSignalReady(bandSum, needTds ?
-			genTds(stageIspec, genChainModulator(cavSqrStart, cavSqrEnd, tm)) :
-			TimeDomainSignal.init);
+		bandSum += stageIspec.bins[minFreq - 1 .. $].sum() / (maxFreq + 1);
+		if (needTds)
+		{
+			stageIspec.genSpectrum(s_stageSpectrum);
+			s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds2);
+			ii = getImodulator(cavSqrStart, cavSqrEnd);
+			ii.modulate(s_stageTds2);
+			// modulate both signals with one trochoid
+			tm.modulate([s_stageTds, s_stageTds2]);
+			// collapse both tds to one
+			s_stageTds.samples[] += s_stageTds2.samples[];
+		}
+
+		// callback hydrophone
+		onSignalReady(bandSum, needTds ? s_stageTds : TimeDomainSignal.init);
 	}
 }
 
@@ -243,7 +250,7 @@ version (unittest)
 		assert(tmpl.baseCavSpectrum.bins.length == 2049);
 		//tmpl.am = AmplitudeModulatorParams(
 		//	[0.01f, 0.01f, 0.005f, 0.001f, 0.6f, 0.0001f], 0.0f);
-		tmpl.tm = TrochoidModulatorParams([0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f],
+		tmpl.tm = TrochoidModulatorParams([0.2f, 0.05f, 0.01f, 0.001f, 0.8f],
 			0.5, 0.7, -0.4);
 		tmpl.bladeRadius = 4.2f;
 		tmpl.bladeAoA = dgr2rad(30.0);

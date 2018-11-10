@@ -290,6 +290,7 @@ public
 	static IntensitySpectrum s_stageIspec;
 	static Spectrum s_stageSpectrum;
 	static TimeDomainSignal s_stageTds;
+	static TimeDomainSignal s_stageTds2;
 }
 
 private
@@ -320,6 +321,7 @@ unittest
 	import std.algorithm.iteration;
 	import std.stdio;
 	import std.range: repeat;
+	import core.time;
 
 	IntensityLevelSpectrum ss = whiteNoiseSpectrum(2048, 1);
 	Spectrum s;
@@ -327,7 +329,9 @@ unittest
 	TimeDomainSignal tds;
 	assert(ss.bins.length == 2049);
 	ss.genSpectrum(s);
+	auto ifftStart = MonoTime.currTime;
 	s.toTimeDomain(fftCache, tds);
+	writeln("ifft took ", MonoTime.currTime() - ifftStart);
 	assert(!isNaN(tds.samples[0].re));
 	assert(!isNaN(tds.samples[0].im));
 	writeln("ifft test tds sample rate: ", tds.samplingRate);

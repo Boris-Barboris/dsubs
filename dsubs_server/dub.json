@@ -10,6 +10,10 @@
 		"dsubs_common": { "path": "../dsubs_common" },
 		"dsubs_sound": { "path": "../dsubs_sound" }
 	},
+	"dflags-ldc": [
+		"-mattr=+sse2,+mmx",
+		"-ffast-math"
+	],
 	"description": "dsubs server",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin"
 }
