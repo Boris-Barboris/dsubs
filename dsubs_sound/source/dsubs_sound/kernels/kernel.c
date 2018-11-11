@@ -5,7 +5,7 @@
 
 float toDb(const float linear)
 {
-	return 10.0f * log10f(linear);
+	return 10.0f * log10(linear);
 }
 
 float toLinear(const dB db)

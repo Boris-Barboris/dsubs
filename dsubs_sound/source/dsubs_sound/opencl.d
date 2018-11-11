@@ -316,8 +316,9 @@ final class DsubsSoundOpenclCtx
 		err.clError();
 		scope(failure) release();
 		clGetContextInfo(m_ctx, CL_CONTEXT_DEVICES, m_dev.sizeof, &m_dev, null).clError;
+		// CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
 		m_cq = clCreateCommandQueue(m_ctx, m_dev,
-			CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
+			0, &err);
 		err.clError();
 		trace("OpenCL context successfully created, compiling kernels");
 		m_prog = new Program(this, import("pyopencl-complex.h") ~ import("kernel.c"));
