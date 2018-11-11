@@ -30,3 +30,6 @@ auto uniform01(T)()
 {
 	return std.random.uniform01!T(rngen);
 }
+
+/// dsubs_sound operates only on time-domain signals with this sampling-rate
+enum GLOBAL_SRATE = 4096;

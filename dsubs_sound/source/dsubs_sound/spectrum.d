@@ -6,7 +6,28 @@ alias expi = std.complex.expi;
 
 import dsubs_sound.common;
 import dsubs_sound.wav;
+import dsubs_sound.opencl;
 
+
+/// OpenCL-backed intensity spectrum
+final class IntensitySpectrumCl: Buffer
+{
+	this(DsubsSoundOpenclCtx ctx)
+	{
+		super(ctx, GLOBAL_SRATE * float.sizeof);
+	}
+
+	AsyncEvent startRead(ref float[GLOBAL_SRATE] dest,
+		const (AsyncEvent)* onlyAfter = null)
+	{
+		return enqueueFullRead(&dest[0], onlyAfter);
+	}
+
+	void fullRead(ref float[GLOBAL_SRATE] dest, const (AsyncEvent)* onlyAfter = null)
+	{
+		super.fullRead(&dest[0], onlyAfter);
+	}
+}
 
 
 private float[] g_phasesRandBuf;

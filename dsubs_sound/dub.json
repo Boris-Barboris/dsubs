@@ -9,6 +9,9 @@
 		"dsubs_common": { "path": "../dsubs_common" },
 		"derelict-cl": "~>3.2.0"
 	},
+	"dflags": [
+		"-J source/dsubs_sound/kernels/"
+	],
 	"dflags-ldc": [
 		"-mattr=+sse2,+mmx",
 		"-ffast-math"

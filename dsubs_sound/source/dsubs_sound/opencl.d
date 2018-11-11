@@ -1,7 +1,6 @@
 module dsubs_sound.opencl;
 
 import std.experimental.logger: trace;
-import std.conv: to;
 import std.traits: isPointer;
 import std.string: toStringz;
 
@@ -16,18 +15,19 @@ class OpenCLException: Exception
 	mixin ExceptionConstructors;
 }
 
-union AsyncEvent
+/// Handle to asynchronous event completion
+struct AsyncEvent
 {
 	cl_event cl;
 }
 
-private void release(AsyncEvent evt)
+void release(AsyncEvent evt)
 {
 	clReleaseEvent(evt.cl);
 }
 
 /// wait for and release event
-private void waitFor(AsyncEvent evt)
+void waitFor(AsyncEvent evt)
 {
 	clWaitForEvents(1, &evt.cl).clError();
 	cl_int execStatus;
@@ -38,7 +38,7 @@ private void waitFor(AsyncEvent evt)
 		throw new OpenCLException("command failed with code " ~ execStatus.to!string);
 }
 
-private void clError(cl_int err)
+void clError(cl_int err)
 {
 	if (err != CL_SUCCESS)
 		throw new OpenCLException("Opencl error code " ~ err.to!string);
@@ -91,17 +91,20 @@ private Platform loadOpenclLibrary()
 
 class Buffer
 {
-	private this(DsubsSoundOpenclCtx ctx, void[] data,
-		cl_mem_flags flags = CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR)
+	this(DsubsSoundOpenclCtx ctx, void[] data,
+		cl_mem_flags flags = CL_MEM_READ_WRITE)
 	{
 		m_ctx = ctx;
 		cl_int err;
 		m_size = data.length;
-		m_mem = clCreateBuffer(ctx.m_ctx, flags, m_size, data.ptr, &err);
+		m_mem = clCreateBuffer(ctx.m_ctx, flags, m_size, null, &err);
 		err.clError();
+		scope(failure) release();
+		clEnqueueWriteBuffer(ctx.m_cq, m_mem, true, 0, m_size, data.ptr, 0,
+			null, null).clError;
 	}
 
-	private this(DsubsSoundOpenclCtx ctx, size_t size,
+	this(DsubsSoundOpenclCtx ctx, size_t size,
 		cl_mem_flags flags = CL_MEM_READ_WRITE)
 	{
 		m_ctx = ctx;
@@ -113,27 +116,73 @@ class Buffer
 
 	~this()
 	{
-		clReleaseMemObject(m_mem);
+		release();
+	}
+
+	void release() nothrow @nogc
+	{
+		if (!m_released)
+		{
+			clReleaseMemObject(m_mem);
+			m_released = true;
+		}
 	}
 
 	private
 	{
+		bool m_released;
 		size_t m_size;
 		DsubsSoundOpenclCtx m_ctx;
 		cl_mem m_mem;
 	}
 
-	private @property size_t size() const { return m_size; }
+	/// buffer data size in bytes
+	final @property size_t size() const { return m_size; }
+
+
+protected final:
+
+	AsyncEvent enqueueFullWrite(void[] source, const(AsyncEvent)* onlyAfter)
+	{
+		assert(source.length == m_size);
+		AsyncEvent evt;
+		if (onlyAfter is null)
+		{
+			clEnqueueWriteBuffer(m_ctx.m_cq, m_mem, false, 0, m_size, source.ptr,
+				0, null, &evt.cl).clError;
+		}
+		else
+		{
+			clEnqueueWriteBuffer(m_ctx.m_cq, m_mem, false, 0, m_size, source.ptr,
+				1, &onlyAfter.cl, &evt.cl).clError;
+		}
+		return evt;
+	}
+
+	void fullWrite(void[] source, const(AsyncEvent)* onlyAfter)
+	{
+		assert(source.length == m_size);
+		if (onlyAfter is null)
+		{
+			clEnqueueWriteBuffer(m_ctx.m_cq, m_mem, true, 0, m_size, source.ptr,
+				0, null, null).clError;
+		}
+		else
+		{
+			clEnqueueWriteBuffer(m_ctx.m_cq, m_mem, true, 0, m_size, source.ptr,
+				1, &onlyAfter.cl, null).clError;
+		}
+	}
 
 	AsyncEvent enqueueFullRead(void* dest, const(AsyncEvent)* onlyAfter)
 	{
 		AsyncEvent evt;
 		if (onlyAfter is null)
-			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, false, 0, m_size, dest, 0, null, &evt.cl);
+			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, false, 0, m_size, dest, 0, null, &evt.cl).clError;
 		else
 		{
 			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, false, 0, m_size, dest,
-				1, &onlyAfter.cl, &evt.cl);
+				1, &onlyAfter.cl, &evt.cl).clError;
 		}
 		return evt;
 	}
@@ -141,11 +190,14 @@ class Buffer
 	void fullRead(void* dest, const(AsyncEvent)* onlyAfter)
 	{
 		if (onlyAfter is null)
-			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, true, 0, m_size, dest, 0, null, null);
+		{
+			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, true, 0, m_size, dest,
+				0, null, null).clError;
+		}
 		else
 		{
 			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, true, 0, m_size, dest,
-				1, &onlyAfter.cl, null);
+				1, &onlyAfter.cl, null).clError;
 		}
 	}
 }
@@ -161,7 +213,7 @@ private final class Program
 		m_prog = clCreateProgramWithSource(ctx.m_ctx, 1, &ptr,
 			[source.length].ptr, &err);
 		err.clError();
-		err = clBuildProgram(m_prog, 0, null, "-cl-std=CL1.2".toStringz, null, null);
+		err = clBuildProgram(m_prog, 0, null, "-cl-std=CL1.2 -Werror".toStringz, null, null);
 		if (err == CL_BUILD_PROGRAM_FAILURE)
 		{
 			size_t len = 0;
@@ -186,7 +238,7 @@ private final class Program
 }
 
 
-private final class Kernel
+final class Kernel
 {
 	this(Program prog, string name)
 	{
@@ -212,8 +264,11 @@ private final class Kernel
 		clSetKernelArg(m_kern, idx, T.sizeof, &arg).clError;
 	}
 
-	Program m_prog;
-	cl_kernel m_kern;
+	private
+	{
+		Program m_prog;
+		cl_kernel m_kern;
+	}
 
 	AsyncEvent enqueue(cl_uint workDim, const size_t[] global_work_offset,
 		const size_t[] global_work_size, const size_t[] local_work_size,
@@ -239,7 +294,14 @@ final class DsubsSoundOpenclCtx
 		/// device of this context
 		cl_device_id m_dev;
 		cl_command_queue m_cq;
+		bool m_released;
+		Program m_prog;
+
+		// kernels
+		Kernel mk_firTds;
 	}
+
+	package @property Kernel firTds() { return mk_firTds; }
 
 	this()
 	{
@@ -252,11 +314,31 @@ final class DsubsSoundOpenclCtx
 		m_ctx = clCreateContextFromType(ctx_props.ptr, CL_DEVICE_TYPE_DEFAULT,
 			null, null, &err);
 		err.clError();
+		scope(failure) release();
 		clGetContextInfo(m_ctx, CL_CONTEXT_DEVICES, m_dev.sizeof, &m_dev, null).clError;
 		m_cq = clCreateCommandQueue(m_ctx, m_dev,
 			CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
 		err.clError();
-		trace("OpenCL context successfully created");
+		trace("OpenCL context successfully created, compiling kernels");
+		m_prog = new Program(this, import("pyopencl-complex.h") ~ import("kernel.c"));
+		mk_firTds = new Kernel(m_prog, "firTds");
+		trace("OpenCL kernels loaded");
+	}
+
+	~this()
+	{
+		release();
+	}
+
+	void release() nothrow @nogc
+	{
+		if (!m_released)
+		{
+			clReleaseContext(m_ctx);
+			if (m_cq != cl_command_queue.init)
+				clReleaseCommandQueue(m_cq);
+			m_released = true;
+		}
 	}
 
 	AsyncEvent insertMarker()
@@ -266,50 +348,34 @@ final class DsubsSoundOpenclCtx
 		return res;
 	}
 
+	/// block until all commands in queue succeeded
 	void finish()
 	{
 		clFinish(m_cq).clError;
 	}
 }
 
-private string filterKernel = `
-void __kernel fir500(
-	__global const float *curSource,
-	__global const float *prevSource,
-	__constant float *taps,
-	const int tapCount,
-	__global float *dest)
-{
-	const int tdsSize = get_global_size(0);
-	const int idx = get_global_id(0);
-	float outVal = 0.0;
-	int i = 0;
 
-	for (i = 0; i < tapCount; i++)
+version (unittest)
+{
+	__gshared DsubsSoundOpenclCtx s_clCtx;
+
+	shared static this()
 	{
-		const int curIdx = idx - i;
-		float sourceVal;
-		if (curIdx >= 0)
-			sourceVal = curSource[curIdx];
-		else
-			sourceVal = prevSource[tdsSize + curIdx];
-		outVal += sourceVal * taps[i];
+		s_clCtx = new DsubsSoundOpenclCtx();
 	}
-	dest[idx] = outVal;
 }
-`;
 
 unittest
 {
 	import std.stdio;
 	import std.range: chain;
-	import core.time;
+	import core.time: MonoTime;
 	import dsubs_sound.filter;
 	import dsubs_sound.wav;
 
-	DsubsSoundOpenclCtx ctx = new DsubsSoundOpenclCtx();
-	Program filtProg = new Program(ctx, filterKernel);
-	Kernel filtKern = new Kernel(filtProg, "fir500");
+	DsubsSoundOpenclCtx ctx = s_clCtx;
+	Kernel filtKern = ctx.firTds;
 
 	float[] prevSource = new float[4096 * 5];
 	float[] curSource = new float[4096 * 5];
@@ -319,11 +385,10 @@ unittest
 		curSource[i] = uniform(-1.0f, 1.0f);
 	}
 
-	Buffer prevTds = new Buffer(ctx, prevSource, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR);
-	Buffer curTds = new Buffer(ctx, curSource, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR);
+	Buffer prevTds = new Buffer(ctx, prevSource, CL_MEM_READ_ONLY);
+	Buffer curTds = new Buffer(ctx, curSource, CL_MEM_READ_ONLY);
 	Buffer dest = new Buffer(ctx, 4096 * 5 * float.sizeof, CL_MEM_WRITE_ONLY);
-	Buffer filterTaps = new Buffer(ctx, cast(float[]) octaveHp500,
-		CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR);
+	Buffer filterTaps = new Buffer(ctx, cast(float[]) octaveHp500, CL_MEM_READ_ONLY);
 
 	auto startAt = MonoTime.currTime();
 	int filtCount = 256;
@@ -334,11 +399,10 @@ unittest
 		filtKern.setArg(2, &filterTaps.m_mem);
 		filtKern.setArg(3, octaveHp500.length.to!int);
 		filtKern.setArg(4, &dest.m_mem);
-		auto evt = filtKern.enqueue(1, null, [4096 * 5], null, null);
-		release(evt);
+		filtKern.enqueue(1, null, [4096 * 5], null, null).release();
 	}
 	ctx.finish();
-	writeln(filtCount, " filtrations took ", MonoTime.currTime - startAt, " on OpenCL");
+	writeln(filtCount, " FIR passes took ", MonoTime.currTime - startAt, " on OpenCL");
 
 	dest.fullRead(prevSource.ptr, null);
 	writeWavFile("opencl_filter.wav", chain(curSource, prevSource), 0.7f, 4096);
