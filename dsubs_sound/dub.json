@@ -6,7 +6,8 @@
 	],
 	"dependencies": {
 		"imageformats": "~>7.0.0",
-		"dsubs_common": { "path": "../dsubs_common" }
+		"dsubs_common": { "path": "../dsubs_common" },
+		"derelict-cl": "~>3.2.0"
 	},
 	"dflags-ldc": [
 		"-mattr=+sse2,+mmx",

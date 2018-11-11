@@ -6,6 +6,7 @@ import core.thread;
 import core.memory;
 import core.stdc.stdlib;
 
+import dsubs_common.proftimer;
 import dsubs_server.common;
 import dsubs_server.dynamics;
 
@@ -38,25 +39,36 @@ final class Simulator
 		try
 		{
 			MonoTime loopStart = MonoTime.currTime();
-			MonoTime simStart;
+			ProfTimer profiler = new ProfTimer();
 			while (true)
 			{
 				// GC.disable();
 				synchronized (Globals.simMut.writer)
 				{
-					simStart = MonoTime.currTime();
+					profiler.start();
+					profiler.start("acous.preSimulation");
 					Globals.acous.preSimulation();
+					profiler.stopLast();
 					// physics integration. All rigid bodies are moved.
+					profiler.start("phys.integratePBodies");
 					Globals.phys.integratePBodies(1.0f, 0.25f);
+					profiler.stopLast();
+					profiler.start("acous.postSimulation");
 					Globals.acous.postSimulation(1.0f);
+					profiler.stopLast();
+					profiler.start("acous.applySourcesOnHydrophones");
 					Globals.acous.applySourcesOnHydrophones();
+					profiler.stopLast();
 					m_worldTime += 1000_000;
 					// stream updates to players
+					profiler.start("players.forEachPlayer.sendUpdate");
 					Globals.players.forEachPlayer((p) { p.sendUpdate(); });
+					profiler.stopLast();
 				}
+				profiler.stop();
+				profiler.printResult();
 				auto now = MonoTime.currTime();
 				// GC.enable();
-				trace("Simulation step took ", (now - simStart).total!"usecs", "usecs");
 				loopStart = loopStart + seconds(1);
 				now = MonoTime.currTime();
 				Duration toSleep = loopStart - now;
