@@ -3,6 +3,7 @@ module dsubs_sound.opencl;
 import std.experimental.logger: trace;
 import std.traits: isPointer;
 import std.string: toStringz;
+import std.parallelism: totalCPUs;
 
 import derelict.opencl.cl;
 
@@ -91,16 +92,16 @@ private Platform loadOpenclLibrary()
 
 class Buffer
 {
-	this(DsubsSoundOpenclCtx ctx, void[] data,
+	this(CommandQueue q, void[] data,
 		cl_mem_flags flags = CL_MEM_READ_WRITE)
 	{
-		m_ctx = ctx;
+		m_ctx = q.m_ctx;
 		cl_int err;
 		m_size = data.length;
-		m_mem = clCreateBuffer(ctx.m_ctx, flags, m_size, null, &err);
+		m_mem = clCreateBuffer(m_ctx.m_ctx, flags, m_size, null, &err);
 		err.clError();
 		scope(failure) release();
-		clEnqueueWriteBuffer(ctx.m_cq, m_mem, true, 0, m_size, data.ptr, 0,
+		clEnqueueWriteBuffer(q.m_q, m_mem, true, 0, m_size, data.ptr, 0,
 			null, null).clError;
 	}
 
@@ -142,61 +143,61 @@ class Buffer
 
 protected final:
 
-	AsyncEvent enqueueFullWrite(void[] source, const(AsyncEvent)* onlyAfter)
+	AsyncEvent enqueueFullWrite(CommandQueue q, void[] source, const(AsyncEvent)* onlyAfter)
 	{
 		assert(source.length == m_size);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
-			clEnqueueWriteBuffer(m_ctx.m_cq, m_mem, false, 0, m_size, source.ptr,
+			clEnqueueWriteBuffer(q.m_q, m_mem, false, 0, m_size, source.ptr,
 				0, null, &evt.cl).clError;
 		}
 		else
 		{
-			clEnqueueWriteBuffer(m_ctx.m_cq, m_mem, false, 0, m_size, source.ptr,
+			clEnqueueWriteBuffer(q.m_q, m_mem, false, 0, m_size, source.ptr,
 				1, &onlyAfter.cl, &evt.cl).clError;
 		}
 		return evt;
 	}
 
-	void fullWrite(void[] source, const(AsyncEvent)* onlyAfter)
+	void fullWrite(CommandQueue q, void[] source, const(AsyncEvent)* onlyAfter)
 	{
 		assert(source.length == m_size);
 		if (onlyAfter is null)
 		{
-			clEnqueueWriteBuffer(m_ctx.m_cq, m_mem, true, 0, m_size, source.ptr,
+			clEnqueueWriteBuffer(q.m_q, m_mem, true, 0, m_size, source.ptr,
 				0, null, null).clError;
 		}
 		else
 		{
-			clEnqueueWriteBuffer(m_ctx.m_cq, m_mem, true, 0, m_size, source.ptr,
+			clEnqueueWriteBuffer(q.m_q, m_mem, true, 0, m_size, source.ptr,
 				1, &onlyAfter.cl, null).clError;
 		}
 	}
 
-	AsyncEvent enqueueFullRead(void* dest, const(AsyncEvent)* onlyAfter)
+	AsyncEvent enqueueFullRead(CommandQueue q, void* dest, const(AsyncEvent)* onlyAfter)
 	{
 		AsyncEvent evt;
 		if (onlyAfter is null)
-			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, false, 0, m_size, dest, 0, null, &evt.cl).clError;
+			clEnqueueReadBuffer(q.m_q, m_mem, false, 0, m_size, dest, 0, null, &evt.cl).clError;
 		else
 		{
-			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, false, 0, m_size, dest,
+			clEnqueueReadBuffer(q.m_q, m_mem, false, 0, m_size, dest,
 				1, &onlyAfter.cl, &evt.cl).clError;
 		}
 		return evt;
 	}
 
-	void fullRead(void* dest, const(AsyncEvent)* onlyAfter)
+	void fullRead(CommandQueue q, void* dest, const(AsyncEvent)* onlyAfter)
 	{
 		if (onlyAfter is null)
 		{
-			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, true, 0, m_size, dest,
+			clEnqueueReadBuffer(q.m_q, m_mem, true, 0, m_size, dest,
 				0, null, null).clError;
 		}
 		else
 		{
-			clEnqueueReadBuffer(m_ctx.m_cq, m_mem, true, 0, m_size, dest,
+			clEnqueueReadBuffer(q.m_q, m_mem, true, 0, m_size, dest,
 				1, &onlyAfter.cl, null).clError;
 		}
 	}
@@ -270,17 +271,60 @@ final class Kernel
 		cl_kernel m_kern;
 	}
 
-	AsyncEvent enqueue(cl_uint workDim, const size_t[] global_work_offset,
+	AsyncEvent enqueue(CommandQueue q, cl_uint workDim, const size_t[] global_work_offset,
 		const size_t[] global_work_size, const size_t[] local_work_size,
 		const AsyncEvent* onlyAfter)
 	{
 		AsyncEvent res;
-		clEnqueueNDRangeKernel(m_prog.m_ctx.m_cq, m_kern, workDim,
+		clEnqueueNDRangeKernel(q.m_q, m_kern, workDim,
 			global_work_offset.ptr, global_work_size.ptr, local_work_size.ptr,
 			onlyAfter is null ? 0 : 1,
 			onlyAfter is null ? null : &onlyAfter.cl,
 			&res.cl).clError;
 		return res;
+	}
+}
+
+
+final class CommandQueue
+{
+	this(DsubsSoundOpenclCtx ctx)
+	{
+		m_ctx = ctx;
+		// CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
+		cl_int err;
+		m_q = clCreateCommandQueue(ctx.m_ctx, ctx.m_dev, 0, &err);
+		err.clError();
+	}
+
+	private
+	{
+		cl_command_queue m_q;
+		DsubsSoundOpenclCtx m_ctx;
+	}
+
+	~this()
+	{
+		release();
+	}
+
+	void release() @nogc nothrow
+	{
+		if (m_q !is cl_command_queue.init)
+			clReleaseCommandQueue(m_q);
+	}
+
+	AsyncEvent insertMarker()
+	{
+		AsyncEvent res;
+		clEnqueueMarker(m_q, &res.cl).clError;
+		return res;
+	}
+
+	/// block until all commands in queue succeeded
+	void finish()
+	{
+		clFinish(m_q).clError;
 	}
 }
 
@@ -293,17 +337,20 @@ final class DsubsSoundOpenclCtx
 		cl_context m_ctx;
 		/// device of this context
 		cl_device_id m_dev;
-		cl_command_queue m_cq;
 		bool m_released;
 		Program m_prog;
+		CommandQueue[] m_queues;
 
-		// kernels
+		// precompiled kernels
 		Kernel mk_firTds;
 	}
 
-	package @property Kernel firTds() { return mk_firTds; }
+	package @property
+	{
+		Kernel firTds() { return mk_firTds; }
+	}
 
-	this()
+	this(int queueCount = totalCPUs)
 	{
 		m_plat = loadOpenclLibrary();
 		cl_context_properties[] ctx_props;
@@ -316,10 +363,9 @@ final class DsubsSoundOpenclCtx
 		err.clError();
 		scope(failure) release();
 		clGetContextInfo(m_ctx, CL_CONTEXT_DEVICES, m_dev.sizeof, &m_dev, null).clError;
-		// CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
-		m_cq = clCreateCommandQueue(m_ctx, m_dev,
-			0, &err);
-		err.clError();
+		m_queues.length = queueCount;
+		for (int i = 0; i < queueCount; i++)
+			m_queues[i] = new CommandQueue(this);
 		trace("OpenCL context successfully created, compiling kernels");
 		m_prog = new Program(this, import("pyopencl-complex.h") ~ import("kernel.c"));
 		mk_firTds = new Kernel(m_prog, "firTds");
@@ -336,24 +382,15 @@ final class DsubsSoundOpenclCtx
 		if (!m_released)
 		{
 			clReleaseContext(m_ctx);
-			if (m_cq != cl_command_queue.init)
-				clReleaseCommandQueue(m_cq);
+			foreach (cq; m_queues)
+				cq.release();
 			m_released = true;
 		}
 	}
 
-	AsyncEvent insertMarker()
-	{
-		AsyncEvent res;
-		clEnqueueMarker(m_cq, &res.cl).clError;
-		return res;
-	}
+	CommandQueue queue(int queueIdx) { return m_queues[queueIdx]; }
 
-	/// block until all commands in queue succeeded
-	void finish()
-	{
-		clFinish(m_cq).clError;
-	}
+	@property size_t queueCount() const { return m_queues.length; }
 }
 
 
@@ -386,25 +423,39 @@ unittest
 		curSource[i] = uniform(-1.0f, 1.0f);
 	}
 
-	Buffer prevTds = new Buffer(ctx, prevSource, CL_MEM_READ_ONLY);
-	Buffer curTds = new Buffer(ctx, curSource, CL_MEM_READ_ONLY);
-	Buffer dest = new Buffer(ctx, 4096 * 5 * float.sizeof, CL_MEM_WRITE_ONLY);
-	Buffer filterTaps = new Buffer(ctx, cast(float[]) octaveHp500, CL_MEM_READ_ONLY);
+	CommandQueue mainQueue = ctx.queue(0);
+	struct FiltrationCtx
+	{
+		Buffer prevTds, curTds, dest, filterTaps;
+	}
+	FiltrationCtx[] expCtxs = new FiltrationCtx[ctx.queueCount];
+	foreach (ref exp; expCtxs)
+	{
+		exp.prevTds = new Buffer(mainQueue, prevSource, CL_MEM_READ_ONLY);
+		exp.curTds = new Buffer(mainQueue, curSource, CL_MEM_READ_ONLY);
+		exp.dest = new Buffer(ctx, 4096 * 5 * float.sizeof, CL_MEM_WRITE_ONLY);
+		exp.filterTaps = new Buffer(mainQueue, cast(float[]) octaveHp500, CL_MEM_READ_ONLY);
+	}
+	mainQueue.finish();
 
 	auto startAt = MonoTime.currTime();
 	int filtCount = 256;
 	for (int i = 0; i < filtCount; i++)
 	{
-		filtKern.setArg(0, &prevTds.m_mem);
-		filtKern.setArg(1, &curTds.m_mem);
-		filtKern.setArg(2, &filterTaps.m_mem);
+		FiltrationCtx exp = expCtxs[i % ctx.queueCount];
+		filtKern.setArg(0, &exp.prevTds.m_mem);
+		filtKern.setArg(1, &exp.curTds.m_mem);
+		filtKern.setArg(2, &exp.filterTaps.m_mem);
 		filtKern.setArg(3, octaveHp500.length.to!int);
-		filtKern.setArg(4, &dest.m_mem);
-		filtKern.enqueue(1, null, [4096 * 5], null, null).release();
+		filtKern.setArg(4, &exp.dest.m_mem);
+		CommandQueue q = ctx.queue(i % ctx.queueCount);
+		filtKern.enqueue(q, 1, null, [4096 * 5], null, null).release();
 	}
-	ctx.finish();
-	writeln(filtCount, " FIR passes took ", MonoTime.currTime - startAt, " on OpenCL");
+	for (int i = 0; i < ctx.queueCount; i++)
+		ctx.queue(i).finish();
+	writeln(filtCount, " FIR passes took ", MonoTime.currTime - startAt, " on ",
+		ctx.queueCount, " OpenCL queues");
 
-	dest.fullRead(prevSource.ptr, null);
+	expCtxs[0].dest.fullRead(mainQueue, prevSource.ptr, null);
 	writeWavFile("opencl_filter.wav", chain(curSource, prevSource), 0.7f, 4096);
 }

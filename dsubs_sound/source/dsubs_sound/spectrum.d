@@ -17,15 +17,15 @@ final class IntensitySpectrumCl: Buffer
 		super(ctx, GLOBAL_SRATE * float.sizeof);
 	}
 
-	AsyncEvent startRead(ref float[GLOBAL_SRATE] dest,
+	AsyncEvent startRead(CommandQueue q, ref float[GLOBAL_SRATE] dest,
 		const (AsyncEvent)* onlyAfter = null)
 	{
-		return enqueueFullRead(&dest[0], onlyAfter);
+		return enqueueFullRead(q, &dest[0], onlyAfter);
 	}
 
-	void fullRead(ref float[GLOBAL_SRATE] dest, const (AsyncEvent)* onlyAfter = null)
+	void fullRead(CommandQueue q, ref float[GLOBAL_SRATE] dest, const (AsyncEvent)* onlyAfter = null)
 	{
-		super.fullRead(&dest[0], onlyAfter);
+		super.fullRead(q, &dest[0], onlyAfter);
 	}
 }
 

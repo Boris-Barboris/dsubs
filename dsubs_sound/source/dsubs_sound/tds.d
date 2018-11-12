@@ -4,22 +4,24 @@ import dsubs_sound.common;
 import dsubs_sound.opencl;
 
 
-/// OpenCL-backed time-domain signal of one second length
-final class TdsSecond: Buffer
+/// OpenCL-backed time-domain signal sample of fixed length
+final class Tds(int len): Buffer
 {
 	this(DsubsSoundOpenclCtx ctx)
 	{
-		super(ctx, GLOBAL_SRATE * float.sizeof);
+		super(ctx, len * float.sizeof);
 	}
 
-	AsyncEvent startRead(ref float[GLOBAL_SRATE] dest,
+	AsyncEvent startRead(CommandQueue q, ref float[len] dest,
 		const (AsyncEvent)* onlyAfter = null)
 	{
-		return enqueueFullRead(&dest[0], onlyAfter);
+		return enqueueFullRead(q, &dest[0], onlyAfter);
 	}
 
-	void fullRead(ref float[GLOBAL_SRATE] dest, const (AsyncEvent)* onlyAfter = null)
+	void fullRead(CommandQueue q, ref float[len] dest, const (AsyncEvent)* onlyAfter = null)
 	{
-		super.fullRead(&dest[0], onlyAfter);
+		super.fullRead(q, &dest[0], onlyAfter);
 	}
 }
+
+alias TdsSecond = Tds!GLOBAL_SRATE;
