@@ -388,7 +388,7 @@ final class DsubsSoundOpenclCtx
 		}
 	}
 
-	CommandQueue queue(int queueIdx) { return m_queues[queueIdx]; }
+	CommandQueue queue(size_t queueIdx) { return m_queues[queueIdx]; }
 
 	@property size_t queueCount() const { return m_queues.length; }
 }
