@@ -134,14 +134,33 @@ class Buffer
 		bool m_released;
 		size_t m_size;
 		DsubsSoundOpenclCtx m_ctx;
-		cl_mem m_mem;
+		package cl_mem m_mem;
 	}
+
+	package @property const(cl_mem)* mem() const { return &m_mem; }
 
 	/// buffer data size in bytes
 	final @property size_t size() const { return m_size; }
 
 
-protected final:
+package final:
+
+	AsyncEvent enqueueCopy(CommandQueue q, Buffer dest, const(AsyncEvent)* onlyAfter)
+	{
+		assert(dest.m_size == m_size);
+		AsyncEvent evt;
+		if (onlyAfter is null)
+		{
+			clEnqueueCopyBuffer(q.m_q, m_mem, dest.m_mem, 0, 0, m_size, 0,
+				null, &evt.cl).clError;
+		}
+		else
+		{
+			clEnqueueCopyBuffer(q.m_q, m_mem, dest.m_mem, 0, 0, m_size, 1,
+				&onlyAfter.cl, &evt.cl).clError;
+		}
+		return evt;
+	}
 
 	AsyncEvent enqueueFullWrite(CommandQueue q, void[] source, const(AsyncEvent)* onlyAfter)
 	{
@@ -288,19 +307,35 @@ final class Kernel
 
 final class CommandQueue
 {
-	this(DsubsSoundOpenclCtx ctx)
+	this(DsubsSoundOpenclCtx ctx, Program prog)
 	{
 		m_ctx = ctx;
 		// CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
 		cl_int err;
 		m_q = clCreateCommandQueue(ctx.m_ctx, ctx.m_dev, 0, &err);
 		err.clError();
+
+		// command queue acquires kernels
+		mk_firTds = new Kernel(prog, "firTds");
+		mk_radix2 = new Kernel(prog, "fftRadix2Kernel");
+		mk_iradix2 = new Kernel(prog, "ifftRadix2Kernel");
 	}
 
 	private
 	{
 		cl_command_queue m_q;
 		DsubsSoundOpenclCtx m_ctx;
+		// kernels
+		Kernel mk_firTds;
+		Kernel mk_radix2;
+		Kernel mk_iradix2;
+	}
+
+	package @property
+	{
+		Kernel firTds() { return mk_firTds; }
+		Kernel radix2() { return mk_radix2; }
+		Kernel iradix2() { return mk_iradix2; }
 	}
 
 	~this()
@@ -340,14 +375,6 @@ final class DsubsSoundOpenclCtx
 		bool m_released;
 		Program m_prog;
 		CommandQueue[] m_queues;
-
-		// precompiled kernels
-		Kernel mk_firTds;
-	}
-
-	package @property
-	{
-		Kernel firTds() { return mk_firTds; }
 	}
 
 	this(int queueCount = totalCPUs)
@@ -363,12 +390,11 @@ final class DsubsSoundOpenclCtx
 		err.clError();
 		scope(failure) release();
 		clGetContextInfo(m_ctx, CL_CONTEXT_DEVICES, m_dev.sizeof, &m_dev, null).clError;
-		m_queues.length = queueCount;
-		for (int i = 0; i < queueCount; i++)
-			m_queues[i] = new CommandQueue(this);
 		trace("OpenCL context successfully created, compiling kernels");
 		m_prog = new Program(this, import("pyopencl-complex.h") ~ import("kernel.c"));
-		mk_firTds = new Kernel(m_prog, "firTds");
+		m_queues.length = queueCount;
+		for (int i = 0; i < queueCount; i++)
+			m_queues[i] = new CommandQueue(this, m_prog);
 		trace("OpenCL kernels loaded");
 	}
 
@@ -413,7 +439,6 @@ unittest
 	import dsubs_sound.wav;
 
 	DsubsSoundOpenclCtx ctx = s_clCtx;
-	Kernel filtKern = ctx.firTds;
 
 	float[] prevSource = new float[4096 * 5];
 	float[] curSource = new float[4096 * 5];
@@ -443,12 +468,13 @@ unittest
 	for (int i = 0; i < filtCount; i++)
 	{
 		FiltrationCtx exp = expCtxs[i % ctx.queueCount];
+		CommandQueue q = ctx.queue(i % ctx.queueCount);
+		Kernel filtKern = q.firTds;
 		filtKern.setArg(0, &exp.prevTds.m_mem);
 		filtKern.setArg(1, &exp.curTds.m_mem);
 		filtKern.setArg(2, &exp.filterTaps.m_mem);
 		filtKern.setArg(3, octaveHp500.length.to!int);
 		filtKern.setArg(4, &exp.dest.m_mem);
-		CommandQueue q = ctx.queue(i % ctx.queueCount);
 		filtKern.enqueue(q, 1, null, [4096 * 5], null, null).release();
 	}
 	for (int i = 0; i < ctx.queueCount; i++)
