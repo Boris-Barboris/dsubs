@@ -147,3 +147,88 @@ void __kernel ifftRadix2Kernel(__global const float2 *x, __global float2 *y, int
 		y[p] = u1 / (2.0f * t);
 	}
 }
+
+
+// radix-4 functions
+
+// twiddle_P_Q(A) returns A * EXP(-P*PI*i/Q)
+float2 twiddle_1_2(float2 a)
+{
+	// A * (-i)
+	return (float2)(a.y, -a.x);
+}
+
+float2 itwiddle_1_2(float2 a) { return (float2)(a.y, a.x); }
+
+// In-place DFT-4, output is (a,c,b,d). Arguments must be variables.
+#define DFT4(a,b,c,d) { DFT2(a,c); DFT2(b,d); d=twiddle_1_2(d); DFT2(a,b); DFT2(c,d); }
+#define iDFT4(a,b,c,d) { DFT2(a,c); DFT2(b,d); d=itwiddle_1_2(d); DFT2(a,b); DFT2(c,d); }
+
+// Compute T x DFT-4.
+// T is the number of threads.
+// N = 4*T is the size of input vectors.
+// X[N], Y[N]
+// P is the length of input sub-sequences: 1,4,16,...,T.
+// Each DFT-4 has input (X[I],X[I+T],X[I+2*T],X[I+3*T]), I=0..T-1,
+// and output (Y[J],Y|J+P],Y[J+2*P],Y[J+3*P], J = I with two 0 bits inserted at postion P. */
+void __kernel fftRadix4Kernel(__global const float2 *x, __global float2 *y, int p)
+{
+	int t = get_global_size(0); // thread count
+	int i = get_global_id(0); // thread index
+	int k = i & (p - 1); // index in input sequence, in 0..P-1
+	int j = ((i - k) << 2) + k; // output index
+	float alpha = -M_PI * (float)k / (float)(2 * p);
+
+	// Read and twiddle input
+	x += i;
+	float2 u0 = x[0];
+	float2 u1 = twiddle(x[t], 1, alpha);
+	float2 u2 = twiddle(x[2 * t], 2, alpha);
+	float2 u3 = twiddle(x[3 * t], 3, alpha);
+
+	// In-place DFT-4
+	DFT4(u0, u1, u2, u3);
+
+	// Shuffle and write output
+	y += j;
+	y[0] = u0;
+	y[p] = u2;
+	y[2 * p] = u1;
+	y[3 * p] = u3;
+}
+
+void __kernel ifftRadix4Kernel(__global const float2 *x, __global float2 *y, int p, int last)
+{
+	int t = get_global_size(0); // thread count
+	int i = get_global_id(0); // thread index
+	int k = i & (p - 1); // index in input sequence, in 0..P-1
+	int j = ((i - k) << 2) + k; // output index
+	float alpha = M_PI * (float)k / (float)(2 * p);
+
+	// Read and twiddle input
+	x += i;
+	float2 u0 = x[0];
+	float2 u1 = twiddle(x[t], 1, alpha);
+	float2 u2 = twiddle(x[2 * t], 2, alpha);
+	float2 u3 = twiddle(x[3 * t], 3, alpha);
+
+	// In-place DFT-4
+	DFT4(u0, u1, u2, u3);
+
+	// Shuffle and write output
+	y += j;
+	if (last == 0)
+	{
+		y[0] = u0;
+		y[p] = u2;
+		y[2 * p] = u1;
+		y[3 * p] = u3;
+	}
+	else
+	{
+		y[0] = u0 / (4.0f * t);
+		y[p] = u2 / (4.0f * t);
+		y[2 * p] = u1 / (4.0f * t);
+		y[3 * p] = u3 / (4.0f * t);
+	}
+}

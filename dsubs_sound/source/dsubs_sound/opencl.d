@@ -319,6 +319,8 @@ final class CommandQueue
 		mk_firTds = new Kernel(prog, "firTds");
 		mk_radix2 = new Kernel(prog, "fftRadix2Kernel");
 		mk_iradix2 = new Kernel(prog, "ifftRadix2Kernel");
+		mk_radix4 = new Kernel(prog, "fftRadix4Kernel");
+		mk_iradix4 = new Kernel(prog, "ifftRadix4Kernel");
 	}
 
 	private
@@ -329,6 +331,8 @@ final class CommandQueue
 		Kernel mk_firTds;
 		Kernel mk_radix2;
 		Kernel mk_iradix2;
+		Kernel mk_radix4;
+		Kernel mk_iradix4;
 	}
 
 	package @property
@@ -336,6 +340,8 @@ final class CommandQueue
 		Kernel firTds() { return mk_firTds; }
 		Kernel radix2() { return mk_radix2; }
 		Kernel iradix2() { return mk_iradix2; }
+		Kernel radix4() { return mk_radix4; }
+		Kernel iradix4() { return mk_iradix4; }
 	}
 
 	~this()
@@ -343,7 +349,7 @@ final class CommandQueue
 		release();
 	}
 
-	void release() @nogc nothrow
+	private void release() @nogc nothrow
 	{
 		if (m_q !is cl_command_queue.init)
 			clReleaseCommandQueue(m_q);
@@ -391,7 +397,8 @@ final class DsubsSoundOpenclCtx
 		scope(failure) release();
 		clGetContextInfo(m_ctx, CL_CONTEXT_DEVICES, m_dev.sizeof, &m_dev, null).clError;
 		trace("OpenCL context successfully created, compiling kernels");
-		m_prog = new Program(this, import("pyopencl-complex.h") ~ import("kernel.c"));
+		// import("pyopencl-complex.h")
+		m_prog = new Program(this, import("kernel.c"));
 		m_queues.length = queueCount;
 		for (int i = 0; i < queueCount; i++)
 			m_queues[i] = new CommandQueue(this, m_prog);
@@ -403,7 +410,7 @@ final class DsubsSoundOpenclCtx
 		release();
 	}
 
-	void release() nothrow @nogc
+	private void release() nothrow @nogc
 	{
 		if (!m_released)
 		{
