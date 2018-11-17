@@ -9,8 +9,42 @@ import dsubs_sound.wav;
 import dsubs_sound.opencl;
 
 
-/// OpenCL-backed intensity spectrum
-struct ILevelSpectrum
+/// Time-domain signal
+struct Tds
+{
+	enum int BUF_LEN = GLOBAL_SRATE;
+
+	/// Allocate memory of the right size but do not initialize it.
+	/// Value is undefined.
+	this(DsubsSoundOpenclCtx ctx)
+	{
+		buf = Buffer(ctx, BUF_LEN * float.sizeof);
+	}
+
+	this(CommandQueue q, ref const float[BUF_LEN] samples)
+	{
+		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
+		buf.enqueueFullWrite(q, samples[], null).release();
+	}
+
+	/// Allocate data and fill with initValue.
+	this(CommandQueue q, float initValue)
+	{
+		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
+		buf.enqueueFill(q, initValue, null).release();
+	}
+
+	private Buffer buf;
+}
+
+
+enum SpectrumType
+{
+	INTENSITY,
+	ILEVEL
+}
+
+struct Spectrum(SpectrumType stype)
 {
 	/// Allocate memory of the right size but do not initialize it.
 	/// Value is undefined.
@@ -26,21 +60,40 @@ struct ILevelSpectrum
 		buf.enqueueFullWrite(q, ilevels[], null).release();
 	}
 
+	/// Allocate data and fill with initValue.
+	this(CommandQueue q, float initValue)
+	{
+		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
+		buf.enqueueFill(q, initValue, null).release();
+	}
+
 	enum int MAX_FREQ = GLOBAL_SRATE / 2;
 	enum int BUF_LEN = MAX_FREQ;
 
-	Buffer buf;
+	private Buffer buf;
 
-	/// Apply random uniform noise to all frequencies
-	void addUniformNoise(CommandQueue q, float amplitude)
+	/// Apply random uniform noise to frequencies in range [minFreq; maxFreq]
+	void addUniformNoise(CommandQueue q, float amplitude,
+		int minFreq = 1, int maxFreq = MAX_FREQ)
 	{
+		assert(minFreq >= 1);
+		assert(maxFreq <= MAX_FREQ);
 		Kernel k = q.uniformNoise;
 		k.setArg(0, buf.mem);
 		k.setArg(1, amplitude);
 		k.setArg(2, ulongSeed());
-		k.enqueue(q, 1, null, [BUF_LEN], null, null).release();
+		k.enqueue(q, 1, [minFreq - 1], [maxFreq], null, null).release();
+	}
+
+	/// Randomize phases and perform inverse discrete fourier transform.
+	void toTimeDomain(FFTPlan!MAX_FREQ fft, ref Tds dest)
+	{
+
 	}
 }
+
+alias ISpectrum = Spectrum!SpectrumType.INTENSITY;
+alias ILevelSpectrum = Spectrum!SpectrumType.ILEVEL;
 
 
 unittest
@@ -48,9 +101,8 @@ unittest
 	import std.stdio;
 
 	IntensityLevel[GLOBAL_SRATE / 2] levels;
-	levels[] = IntensityLevel(1.0f);
 	CommandQueue q = s_clCtx.queue(0);
-	ILevelSpectrum spec = ILevelSpectrum(q, levels);
+	ISpectrum spec = ISpectrum(q, 0.0f);
 	spec.addUniformNoise(q, 1.0f);
 	spec.buf.fullRead(q, levels.ptr, null);
 	writeln("OpenCL addUniformNoise test result: ", levels[0..16]);

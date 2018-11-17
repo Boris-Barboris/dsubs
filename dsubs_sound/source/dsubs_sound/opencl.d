@@ -172,6 +172,23 @@ package:
 		return evt;
 	}
 
+	AsyncEvent enqueueFill(T)(CommandQueue q, T val, const(AsyncEvent)* onlyAfter)
+	{
+		assert(source.length == m_size);
+		AsyncEvent evt;
+		if (onlyAfter is null)
+		{
+			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, m_size,
+				0, null, &evt.cl).clError;
+		}
+		else
+		{
+			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, m_size,
+				1, &onlyAfter.cl, &evt.cl).clError;
+		}
+		return evt;
+	}
+
 	AsyncEvent enqueueFullWrite(CommandQueue q, const void[] source, const(AsyncEvent)* onlyAfter)
 	{
 		assert(source.length == m_size);
