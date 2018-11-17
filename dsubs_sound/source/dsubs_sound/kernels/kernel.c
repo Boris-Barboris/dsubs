@@ -158,7 +158,7 @@ float2 twiddle_1_2(float2 a)
 	return (float2)(a.y, -a.x);
 }
 
-float2 itwiddle_1_2(float2 a) { return (float2)(a.y, a.x); }
+float2 itwiddle_1_2(float2 a) { return (float2)(-a.y, a.x); }
 
 // In-place DFT-4, output is (a,c,b,d). Arguments must be variables.
 #define DFT4(a,b,c,d) { DFT2(a,c); DFT2(b,d); d=twiddle_1_2(d); DFT2(a,b); DFT2(c,d); }
@@ -213,7 +213,7 @@ void __kernel ifftRadix4Kernel(__global const float2 *x, __global float2 *y, int
 	float2 u3 = twiddle(x[3 * t], 3, alpha);
 
 	// In-place DFT-4
-	DFT4(u0, u1, u2, u3);
+	iDFT4(u0, u1, u2, u3);
 
 	// Shuffle and write output
 	y += j;

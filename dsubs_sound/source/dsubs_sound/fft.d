@@ -55,8 +55,6 @@ final class FFTPlan(int N = GLOBAL_SRATE)
 			k4.enqueue(q, 1, null, [N / 4], null, null).release();
 			swap(x, y);
 		}
-		if (p != N)
-			p /= 4;
 		// radix2 for leftovers
 		for (; p <= N / 2; p *= 2)
 		{
@@ -84,6 +82,7 @@ final class FFTPlan(int N = GLOBAL_SRATE)
 	Buffer inverse(CommandQueue q, Buffer tds) { return perform(q, tds, true); }
 }
 
+
 unittest
 {
 	import std.stdio;
@@ -95,20 +94,20 @@ unittest
 
 	alias float2 = Complex!float;
 
-	float2[] noise = new float2[GLOBAL_SRATE];
-	float2[] spectrum = new float2[GLOBAL_SRATE];
+	float2[] noise = new float2[GLOBAL_SRATE / 2];
+	float2[] spectrum = new float2[GLOBAL_SRATE / 2];
 	for (int i = 0; i < noise.length; i++)
 	{
 		noise[i].re = uniform(-1.0f, 1.0f);
 		noise[i].im = uniform(-1.0f, 1.0f);
 	}
 
-	Fft checker = new Fft(GLOBAL_SRATE);
+	Fft checker = new Fft(GLOBAL_SRATE / 2);
 	float2[] reference = checker.fft!(float)(noise);
 
 	DsubsSoundOpenclCtx ctx = s_clCtx;
 	CommandQueue mainQueue = ctx.queue(0);
-	FFTPlan!GLOBAL_SRATE plan = new FFTPlan!GLOBAL_SRATE(ctx);
+	auto plan = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
 	Buffer sbuf = new Buffer(mainQueue, noise);
 	Buffer sourceCopy = new Buffer(ctx, sbuf.size);
 	sbuf.enqueueCopy(mainQueue, sourceCopy, null).release();
@@ -129,19 +128,19 @@ unittest
 	for (int i = 0; i < spectrum.length; i++)
 	{
 		scope (failure)	writeln("fft mismatch ", reference[i], " with ", spectrum[i]);
-		assert(fabs(reference[i].re - spectrum[i].re) < 1e-2);
-		assert(fabs(reference[i].im - spectrum[i].im) < 1e-2);
+		assert(fabs(reference[i].re - spectrum[i].re) < 1e-4);
+		assert(fabs(reference[i].im - spectrum[i].im) < 1e-4);
 	}
 
 	// test ifft
 	Buffer tds = plan.inverse(mainQueue, res);
-	float2[] generatedNoise = new float2[GLOBAL_SRATE];
+	float2[] generatedNoise = new float2[noise.length];
 	tds.fullRead(mainQueue, generatedNoise.ptr, null);
 
 	for (int i = 0; i < generatedNoise.length; i++)
 	{
 		scope (failure)	writeln("ifft mismatch ", noise[i], " with ", generatedNoise[i]);
-		assert(fabs(noise[i].re - generatedNoise[i].re) < 1e-2);
-		assert(fabs(noise[i].im - generatedNoise[i].im) < 1e-2);
+		assert(fabs(noise[i].re - generatedNoise[i].re) < 1e-4);
+		assert(fabs(noise[i].im - generatedNoise[i].im) < 1e-4);
 	}
 }
