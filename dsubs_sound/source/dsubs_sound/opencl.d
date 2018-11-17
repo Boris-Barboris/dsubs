@@ -9,6 +9,7 @@ import derelict.opencl.cl;
 
 import dsubs_common.utils;
 import dsubs_sound.common;
+import dsubs_sound.fft;
 
 
 class OpenCLException: Exception
@@ -90,7 +91,7 @@ private Platform loadOpenclLibrary()
 }
 
 
-class Buffer
+struct Buffer
 {
 	this(CommandQueue q, void[] data,
 		cl_mem_flags flags = CL_MEM_READ_WRITE)
@@ -120,11 +121,20 @@ class Buffer
 		release();
 	}
 
+	void swap(ref Buffer rhs)
+	{
+		assert(m_size == rhs.m_size);
+		cl_mem tmp = rhs.m_mem;
+		rhs.m_mem = m_mem;
+		m_mem = tmp;
+	}
+
 	void release() nothrow @nogc
 	{
 		if (!m_released)
 		{
-			clReleaseMemObject(m_mem);
+			if (m_mem != cl_mem.init)
+				clReleaseMemObject(m_mem);
 			m_released = true;
 		}
 	}
@@ -134,18 +144,18 @@ class Buffer
 		bool m_released;
 		size_t m_size;
 		DsubsSoundOpenclCtx m_ctx;
-		package cl_mem m_mem;
+		cl_mem m_mem;
 	}
 
 	package @property const(cl_mem)* mem() const { return &m_mem; }
 
 	/// buffer data size in bytes
-	final @property size_t size() const { return m_size; }
+	@property size_t size() const { return m_size; }
 
 
-package final:
+package:
 
-	AsyncEvent enqueueCopy(CommandQueue q, Buffer dest, const(AsyncEvent)* onlyAfter)
+	AsyncEvent enqueueCopy(CommandQueue q, ref Buffer dest, const(AsyncEvent)* onlyAfter)
 	{
 		assert(dest.m_size == m_size);
 		AsyncEvent evt;
@@ -162,7 +172,7 @@ package final:
 		return evt;
 	}
 
-	AsyncEvent enqueueFullWrite(CommandQueue q, void[] source, const(AsyncEvent)* onlyAfter)
+	AsyncEvent enqueueFullWrite(CommandQueue q, const void[] source, const(AsyncEvent)* onlyAfter)
 	{
 		assert(source.length == m_size);
 		AsyncEvent evt;
@@ -179,7 +189,7 @@ package final:
 		return evt;
 	}
 
-	void fullWrite(CommandQueue q, void[] source, const(AsyncEvent)* onlyAfter)
+	void fullWrite(CommandQueue q, const void[] source, const(AsyncEvent)* onlyAfter)
 	{
 		assert(source.length == m_size);
 		if (onlyAfter is null)
@@ -321,28 +331,40 @@ final class CommandQueue
 		mk_iradix2 = new Kernel(prog, "ifftRadix2Kernel");
 		mk_radix4 = new Kernel(prog, "fftRadix4Kernel");
 		mk_iradix4 = new Kernel(prog, "ifftRadix4Kernel");
+		mk_uniformNoise = new Kernel(prog, "addUniformNoise");
+
+		// prepare queue-local fft engine
+		m_fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
 	}
 
 	private
 	{
 		cl_command_queue m_q;
 		DsubsSoundOpenclCtx m_ctx;
+		FFTPlan!(GLOBAL_SRATE / 2) m_fft;
 		// kernels
 		Kernel mk_firTds;
 		Kernel mk_radix2;
 		Kernel mk_iradix2;
 		Kernel mk_radix4;
 		Kernel mk_iradix4;
+		Kernel mk_uniformNoise;
 	}
 
 	package @property
 	{
+		FFTPlan!(GLOBAL_SRATE / 2) fft() { return m_fft; }
+
 		Kernel firTds() { return mk_firTds; }
 		Kernel radix2() { return mk_radix2; }
 		Kernel iradix2() { return mk_iradix2; }
 		Kernel radix4() { return mk_radix4; }
 		Kernel iradix4() { return mk_iradix4; }
+		Kernel uniformNoise() { return mk_uniformNoise; }
 	}
+
+	/// Context this queue belongs to
+	@property DsubsSoundOpenclCtx ctx() { return m_ctx; }
 
 	~this()
 	{
@@ -463,10 +485,10 @@ unittest
 	FiltrationCtx[] expCtxs = new FiltrationCtx[ctx.queueCount];
 	foreach (ref exp; expCtxs)
 	{
-		exp.prevTds = new Buffer(mainQueue, prevSource, CL_MEM_READ_ONLY);
-		exp.curTds = new Buffer(mainQueue, curSource, CL_MEM_READ_ONLY);
-		exp.dest = new Buffer(ctx, 4096 * 5 * float.sizeof, CL_MEM_WRITE_ONLY);
-		exp.filterTaps = new Buffer(mainQueue, cast(float[]) octaveHp500, CL_MEM_READ_ONLY);
+		exp.prevTds = Buffer(mainQueue, prevSource, CL_MEM_READ_ONLY);
+		exp.curTds = Buffer(mainQueue, curSource, CL_MEM_READ_ONLY);
+		exp.dest = Buffer(ctx, 4096 * 5 * float.sizeof, CL_MEM_WRITE_ONLY);
+		exp.filterTaps = Buffer(mainQueue, cast(float[]) octaveHp500, CL_MEM_READ_ONLY);
 	}
 	mainQueue.finish();
 
@@ -474,14 +496,14 @@ unittest
 	int filtCount = 256;
 	for (int i = 0; i < filtCount; i++)
 	{
-		FiltrationCtx exp = expCtxs[i % ctx.queueCount];
+		FiltrationCtx* exp = &expCtxs[i % ctx.queueCount];
 		CommandQueue q = ctx.queue(i % ctx.queueCount);
 		Kernel filtKern = q.firTds;
-		filtKern.setArg(0, &exp.prevTds.m_mem);
-		filtKern.setArg(1, &exp.curTds.m_mem);
-		filtKern.setArg(2, &exp.filterTaps.m_mem);
+		filtKern.setArg(0, exp.prevTds.mem);
+		filtKern.setArg(1, exp.curTds.mem);
+		filtKern.setArg(2, exp.filterTaps.mem);
 		filtKern.setArg(3, octaveHp500.length.to!int);
-		filtKern.setArg(4, &exp.dest.m_mem);
+		filtKern.setArg(4, exp.dest.mem);
 		filtKern.enqueue(q, 1, null, [4096 * 5], null, null).release();
 	}
 	for (int i = 0; i < ctx.queueCount; i++)

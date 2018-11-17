@@ -13,34 +13,42 @@ float toLinear(const dB db)
 	return powr(10.0f, db / 10.0f);
 }
 
-/// construct initial rng seed from ixternal seed constant and globIdx
-ulong getInitState(ulong seed, int globIdx)
-{
-	return seed + globIdx;
-}
-
 ulong xorshift64(ulong *state)
 {
 	ulong x = *state;
-	x^= x << 13;
-	x^= x >> 7;
-	x^= x << 17;
+	x ^= x << 13;
+	x ^= x >> 7;
+	x ^= x << 17;
 	*state = x;
 	return x;
 }
 
 float uniform01(ulong *state)
 {
-	ulong seed = xorshift64(state);
-	return (float) seed / ULONG_MAX;
+	ulong dice = xorshift64(state);
+	return (float) dice / ULONG_MAX;
 }
 
 float uniform(ulong *state, float lower, float upper)
 {
-	return uniform01(state) * (upper - lower) + lower;
+	float roll = uniform01(state);
+	return roll * (upper - lower) + lower;
 }
 
-// KERNEL
+// Add uniform noise to each number in array
+void __kernel addUniformNoise(
+	__global float *data,
+	const float amp,
+	const ulong seed)
+{
+	size_t idx = get_global_id(0);
+	ulong randState = seed + idx;
+	xorshift64(&randState);
+	float val = data[idx];
+	val += uniform(&randState, -amp, amp);
+	data[idx] = val;
+}
+
 // Filter TDS with FIR filter. Maps curSource to dest, with respect to past
 // history of signal, contained in prevSource.
 void __kernel firTds(

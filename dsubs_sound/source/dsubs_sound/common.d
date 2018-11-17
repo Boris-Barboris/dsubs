@@ -22,13 +22,19 @@ static this()
 pragma(inline)
 auto uniform(string boundaries = "[]", T1, T2)(T1 a, T2 b)
 {
-	return std.random.uniform!(boundaries, T1, T2)(a, b, rngen);
+	return std.random.uniform!(boundaries, T1, T2)(a, b, rndGen);
 }
 
 pragma(inline)
 auto uniform01(T)()
 {
-	return std.random.uniform01!T(rngen);
+	return std.random.uniform01!T(rndGen);
+}
+
+pragma(inline)
+ulong ulongSeed()
+{
+	return std.random.uniform!ulong(rndGen);
 }
 
 /// dsubs_sound operates only on time-domain signals with this sampling-rate

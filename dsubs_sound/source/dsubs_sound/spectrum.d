@@ -10,23 +10,50 @@ import dsubs_sound.opencl;
 
 
 /// OpenCL-backed intensity spectrum
-final class IntensitySpectrumCl: Buffer
+struct ILevelSpectrum
 {
+	/// Allocate memory of the right size but do not initialize it.
+	/// Value is undefined.
 	this(DsubsSoundOpenclCtx ctx)
 	{
-		super(ctx, GLOBAL_SRATE * float.sizeof);
+		buf = Buffer(ctx, BUF_LEN * float.sizeof);
 	}
 
-	AsyncEvent startRead(CommandQueue q, ref float[GLOBAL_SRATE] dest,
-		const (AsyncEvent)* onlyAfter = null)
+	/// First element of 'ilevels' is 1Hz, last is MAX_FREQ.
+	this(CommandQueue q, ref const IntensityLevel[BUF_LEN] ilevels)
 	{
-		return enqueueFullRead(q, &dest[0], onlyAfter);
+		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
+		buf.enqueueFullWrite(q, ilevels[], null).release();
 	}
 
-	void fullRead(CommandQueue q, ref float[GLOBAL_SRATE] dest, const (AsyncEvent)* onlyAfter = null)
+	enum int MAX_FREQ = GLOBAL_SRATE / 2;
+	enum int BUF_LEN = MAX_FREQ;
+
+	Buffer buf;
+
+	/// Apply random uniform noise to all frequencies
+	void addUniformNoise(CommandQueue q, float amplitude)
 	{
-		super.fullRead(q, &dest[0], onlyAfter);
+		Kernel k = q.uniformNoise;
+		k.setArg(0, buf.mem);
+		k.setArg(1, amplitude);
+		k.setArg(2, ulongSeed());
+		k.enqueue(q, 1, null, [BUF_LEN], null, null).release();
 	}
+}
+
+
+unittest
+{
+	import std.stdio;
+
+	IntensityLevel[GLOBAL_SRATE / 2] levels;
+	levels[] = IntensityLevel(1.0f);
+	CommandQueue q = s_clCtx.queue(0);
+	ILevelSpectrum spec = ILevelSpectrum(q, levels);
+	spec.addUniformNoise(q, 1.0f);
+	spec.buf.fullRead(q, levels.ptr, null);
+	writeln("OpenCL addUniformNoise test result: ", levels[0..16]);
 }
 
 
