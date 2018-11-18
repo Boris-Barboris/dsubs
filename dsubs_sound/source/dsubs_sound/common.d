@@ -37,5 +37,11 @@ ulong ulongSeed()
 	return std.random.uniform!ulong(rndGen);
 }
 
+pragma(inline)
+uint uintSeed()
+{
+	return std.random.uniform!uint(rndGen);
+}
+
 /// dsubs_sound operates only on time-domain signals with this sampling-rate
 enum GLOBAL_SRATE = 4096;

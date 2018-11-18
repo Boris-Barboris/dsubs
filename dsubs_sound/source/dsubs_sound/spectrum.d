@@ -89,7 +89,7 @@ struct EnergySpectrum(SpectrumType stype)
 		Kernel k = q.uniformNoise;
 		k.setArg(0, buf.mem);
 		k.setArg(1, amplitude);
-		k.setArg(2, ulongSeed());
+		k.setArg(2, uintSeed());
 		k.enqueue(q, 1, [minFreq - 1], [maxFreq], null, null).release();
 	}
 
@@ -101,7 +101,7 @@ struct EnergySpectrum(SpectrumType stype)
 		k.setArg(1, dest.buf.mem);
 		int isILevel = stype == SpectrumType.ILEVEL ? 1 : 0;
 		k.setArg(2, isILevel);
-		k.setArg(3, ulongSeed());
+		k.setArg(3, uintSeed());
 		k.enqueue(q, 1, null, [BUF_LEN], null, null).release();
 		q.fft.inverse(q, dest.buf);
 	}

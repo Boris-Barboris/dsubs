@@ -26,9 +26,30 @@ ulong hash64shift(ulong key)
 	return key;
 }
 
-ulong getRngState(ulong hostSeed, size_t taskId)
+uint hash32shift(uint key)
 {
-	return hash64shift(hostSeed + taskId);
+	key = ~key + (key << 15); // key = (key << 15) - key - 1;
+	key = key ^ (key >> 12);
+	key = key + (key << 2);
+	key = key ^ (key >> 4);
+	key = key * 2057; // key = (key + (key << 3)) + (key << 11);
+	key = key ^ (key >> 16);
+	return key;
+}
+
+uint getRngState(uint hostSeed, uint taskId)
+{
+	return hash32shift(hostSeed + taskId);
+}
+
+uint xorshift32(uint *state)
+{
+	uint x = *state;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	*state = x;
+	return x;
 }
 
 ulong xorshift64(ulong *state)
@@ -41,13 +62,13 @@ ulong xorshift64(ulong *state)
 	return x;
 }
 
-float uniform01(ulong *state)
+float uniform01(uint *state)
 {
-	ulong dice = xorshift64(state);
-	return (float) dice / ULONG_MAX;
+	uint dice = xorshift32(state);
+	return (float) dice / UINT_MAX;
 }
 
-float uniform(ulong *state, float lower, float upper)
+float uniform(uint *state, float lower, float upper)
 {
 	float roll = uniform01(state);
 	return roll * (upper - lower) + lower;
@@ -57,10 +78,10 @@ float uniform(ulong *state, float lower, float upper)
 void __kernel addUniformNoise(
 	__global float *data,
 	const float amp,
-	const ulong seed)
+	const uint seed)
 {
-	size_t idx = get_global_id(0);
-	ulong randState = getRngState(seed, idx);
+	uint idx = get_global_id(0);
+	uint randState = getRngState(seed, idx);
 	float val = data[idx];
 	val += uniform(&randState, -amp, amp);
 	data[idx] = val;
@@ -95,13 +116,13 @@ void __kernel energyToPressure(
 	__global const float *energyBins,
 	__global float2 *pressureBins,
 	const int isILevel,
-	const ulong seed)
+	const uint seed)
 {
 	const uint binCount = get_global_size(0);
 	const uint idx = get_global_id(0);
 	const uint conjIdx = binCount - idx;
-	ulong randState1 = getRngState(seed, idx);
-	ulong randState2 = getRngState(seed, conjIdx);
+	uint randState1 = getRngState(seed, idx);
+	uint randState2 = getRngState(seed, conjIdx);
 	const uint N = binCount * 2;
 	const float2 j = (float2)(0.0f, 1.0f);
 	float phase1, phase2;
