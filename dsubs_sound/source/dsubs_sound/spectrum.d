@@ -130,12 +130,12 @@ unittest
 	Tds tds = Tds(s_clCtx);
 	CommandQueue q = s_clCtx.queue(0);
 	ISpectrum spec = ISpectrum(q, 0.0f);
-	spec.patch(q, 1e12, 100);
+	spec.patch(q, 20.0f, 300);
 	spec.toTimeDomain(q, tds);
 	float[GLOBAL_SRATE] sound;
 	tds.buf.fullRead(q, sound.ptr, null);
 	writeln("OpenCL toTimeDomain result: ", sound[0 .. 16]);
-	writeWavFile("opencl_ifft.wav", sound[], 0.5f, GLOBAL_SRATE);
+	writeWavFile("opencl_ifft.wav", sound[], 1.0f, GLOBAL_SRATE);
 }
 
 
@@ -165,11 +165,9 @@ struct IntensityLevelSpectrum
 		// https://dsp.stackexchange.com/a/28712
 		for (size_t k = 0; k < N / 2; k++)
 		{
-			float freqFactor = k > 0 ? 1.0f / (k * freqRes).pow(2) : 0.0f;
-			Complex!float Xk1 = fromPolar((bins[k] / 2).toLinear * freqFactor, phases[k]);
+			Complex!float Xk1 = fromPolar((bins[k] / 2).toLinear, phases[k]);
 			size_t conjk = bins.length - 1 - k;
-			freqFactor = conjk > 0 ? 1.0f / (conjk * freqRes).pow(2) : 0.0f;
-			Complex!float Xk2 = fromPolar((bins[conjk] / 2).toLinear * freqFactor,
+			Complex!float Xk2 = fromPolar((bins[conjk] / 2).toLinear,
 				-phases[conjk]);
 			Complex!float jw = j * expi(float(2) * PI * k / N);
 			dest.bins[k] = 0.5f * (Xk1 * (1.0f + jw) + Xk2 * (1.0f - jw));
@@ -219,11 +217,9 @@ struct IntensitySpectrum
 		// https://dsp.stackexchange.com/a/28712
 		for (size_t k = 0; k < N / 2; k++)
 		{
-			float freqFactor = k > 0 ? 1.0f / (k * freqRes).pow(2) : 0.0f;
-			Complex!float Xk1 = fromPolar(sqrt(bins[k]) * freqFactor, phases[k]);
+			Complex!float Xk1 = fromPolar(sqrt(bins[k]), phases[k]);
 			size_t conjk = bins.length - 1 - k;
-			freqFactor = conjk > 0 ? 1.0f / (conjk * freqRes).pow(2) : 0.0f;
-			Complex!float Xk2 = fromPolar(sqrt(bins[$ - 1 - k]) * freqFactor, -phases[conjk]);
+			Complex!float Xk2 = fromPolar(sqrt(bins[$ - 1 - k]), -phases[conjk]);
 			Complex!float jw = j * expi(float(2) * PI * k / N);
 			dest.bins[k] = 0.5f * (Xk1 * (1.0f + jw) + Xk2 * (1.0f - jw));
 		}

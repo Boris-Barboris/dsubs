@@ -13,6 +13,24 @@ float toLinear(const dB db)
 	return powr(10.0f, db / 10.0f);
 }
 
+// https://gist.github.com/badboy/6267743
+ulong hash64shift(ulong key)
+{
+	key = (~key) + (key << 21); // key = (key << 21) - key - 1;
+	key = key ^ (key >> 24);
+	key = (key + (key << 3)) + (key << 8); // key * 265
+	key = key ^ (key >> 14);
+	key = (key + (key << 2)) + (key << 4); // key * 21
+	key = key ^ (key >> 28);
+	key = key + (key << 31);
+	return key;
+}
+
+ulong getRngState(ulong hostSeed, size_t taskId)
+{
+	return hash64shift(hostSeed + taskId);
+}
+
 ulong xorshift64(ulong *state)
 {
 	ulong x = *state;
@@ -42,9 +60,7 @@ void __kernel addUniformNoise(
 	const ulong seed)
 {
 	size_t idx = get_global_id(0);
-	ulong randState = seed + idx;
-	xorshift64(&randState);
-	xorshift64(&randState);
+	ulong randState = getRngState(seed, idx);
 	float val = data[idx];
 	val += uniform(&randState, -amp, amp);
 	data[idx] = val;
@@ -84,21 +100,15 @@ void __kernel energyToPressure(
 	const uint binCount = get_global_size(0);
 	const uint idx = get_global_id(0);
 	const uint conjIdx = binCount - idx;
-	ulong randState1 = seed + idx;
-	ulong randState2 = seed + conjIdx;
+	ulong randState1 = getRngState(seed, idx);
+	ulong randState2 = getRngState(seed, conjIdx);
 	const uint N = binCount * 2;
 	const float2 j = (float2)(0.0f, 1.0f);
 	float phase1, phase2;
-	float freqFactor1 = idx == 0 ? 0.0f : 1.0f / (idx * idx);
-	float freqFactor2 = 1.0f / (conjIdx * conjIdx);
 	float2 Xk1, Xk2, jw, res;
 
-	// we have deterministic rng on gpu so we know the phase of conjIdx work item
-	xorshift64(&randState1);
-	xorshift64(&randState1);
+	// we have deterministic rng on gpu so we can regenerate the phase of conjIdx work item
 	phase1 = uniform(&randState1, -M_PI, M_PI);
-	xorshift64(&randState2);
-	xorshift64(&randState2);
 	phase2 = -uniform(&randState2, -M_PI, M_PI);
 
 	float modulus1 = idx == 0 ? 0.0f : energyBins[idx - 1];
@@ -106,13 +116,13 @@ void __kernel energyToPressure(
 	// convert from energy to pressure magnitude
 	if (isILevel == 1)
 	{
-		modulus1 = toLinear(modulus1 / 2) * freqFactor1;
-		modulus2 = toLinear(modulus2 / 2) * freqFactor2;
+		modulus1 = toLinear(modulus1 / 2);
+		modulus2 = toLinear(modulus2 / 2);
 	}
 	else
 	{
-		modulus1 = sqrt(modulus1) * freqFactor1;
-		modulus2 = sqrt(modulus2) * freqFactor2;
+		modulus1 = sqrt(modulus1);
+		modulus2 = sqrt(modulus2);
 	}
 	Xk1 = fromPolar(modulus1, phase1);
 	Xk2 = fromPolar(modulus2, phase2);

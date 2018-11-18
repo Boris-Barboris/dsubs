@@ -3,3 +3,6 @@ https://ccrma.stanford.edu/~jos/filters/Linear_Phase_Really_Ideal.html
 http://www.mechanicalvibration.com/filtfilt_Casual_versus_non_.html
 https://www.calpoly.edu/~dsun09/lessons/ideal_filters.pdf
 https://en.wikipedia.org/wiki/High-pass_filter
+
+good link about energies
+https://physics.info/intensity/
