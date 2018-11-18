@@ -8,7 +8,36 @@ import std.stdio: writeln;
 import core.time;
 
 import dsubs_sound.common;
+import dsubs_sound.spectrum;
+import dsubs_sound.opencl;
 
+
+/// OpenCL linear time-domain filter
+struct LinearFilter
+{
+	this(CommandQueue q, immutable(float)[] taps)
+	{
+		m_tapCount = taps.length.to!int;
+		m_taps = Buffer(q, taps);
+	}
+
+	private
+	{
+		Buffer m_taps;
+		int m_tapCount;
+	}
+
+	void filter(CommandQueue q, ref Tds prev, ref Tds cur, ref Tds dest)
+	{
+		Kernel k = q.firTds;
+		k.setArg(0, cur.mem);
+		k.setArg(1, prev.mem);
+		k.setArg(2, m_taps.mem);
+		k.setArg(3, m_tapCount);
+		k.setArg(4, dest.mem);
+		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null).release();
+	}
+}
 
 /*
 FIR filter designed with
@@ -64,6 +93,11 @@ package immutable float[] octaveHp500 = [
 	-0.02179484, -0.01557452, -0.00259118, 0.00714533,  0.00908985,  0.00504615,
 	-0.00023075, -0.00311903, -0.00295939, -0.00121064,  0.00043872,  0.00120991,
 	0.00112812 ];
+
+package LinearFilter hp500(CommandQueue q)
+{
+	return LinearFilter(q, octaveHp500);
+}
 
 private immutable float[] octaveHp500Small =
 [ -0.0021707, -0.0034806, -0.0028594,  0.0047680,  0.0199879,  0.0300598,  0.0119118, -0.0500182, -0.1445141, -0.2321849, 0.7335775, -0.2321849,

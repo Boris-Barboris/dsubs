@@ -37,6 +37,9 @@ struct Tds
 	}
 
 	private Buffer buf;
+
+	pragma(inline)
+	package @property auto mem() const { return buf.mem(); }
 }
 
 
@@ -79,6 +82,9 @@ struct EnergySpectrum(SpectrumType stype)
 	}
 
 	private Buffer buf;
+
+	pragma(inline)
+	package @property auto mem() const { return buf.mem(); }
 
 	/// Apply random uniform noise to frequencies in range [minFreq; maxFreq]
 	void addUniformNoise(CommandQueue q, float amplitude,
@@ -271,49 +277,6 @@ struct SlidingGenerator
 	}
 }
 
-// unittest
-// {
-// 	import std.algorithm;
-// 	import std.range;
-// 	import std.stdio;
-// 	import core.time;
-// 	import dsubs_sound.wav;
-
-// 	TimeDomainSignal tds;
-// 	SlidingGenerator sgen = SlidingGenerator(1.0f.repeat(1548).array, 500);
-// 	writeln("starting sliding generation, nyquist frequency: ", sgen.nyqFreq);
-// 	auto start = MonoTime.currTime();
-// 	sgen.toTimeDomain(tds, 4096 * 2);
-// 	auto end = MonoTime.currTime();
-// 	writeln("sliding generation took ", end - start);
-// 	float maxp = tds.samples.map!(a => a.re).maxElement;
-// 	writeWavFile("sliding_whitenoise.wav", tds.samples, 0.7f / maxp, tds.samplingRate);
-// }
-
-
-unittest
-{
-	import std.algorithm;
-	import std.range;
-	import std.stdio;
-	import dsubs_sound.wav;
-
-	IntensityLevelSpectrum ispec;
-	ispec.bins.length = 2049;
-	iota(1,2047).map!(i => ispec.bins[i].val = 82.0f - 4 * uniform01!float);
-	Spectrum pspec;
-	ispec.genSpectrum(pspec);
-	assert(pspec.bins.length == 2048);
-	Fft fftCache = new Fft(2048);
-	TimeDomainSignal tds;
-	pspec.toTimeDomain(fftCache, tds);
-	assert(tds.samples.length == 4096);
-	float maxp = tds.samples.maxElement;
-	writeln("IntensityLevelSpectrum test result: ", tds.samples[0 .. 6],
-		", max pressure: ", maxp);
-	writeWavFile("ispec_whitenoise.wav", tds.samples, 0.5f / maxp, tds.samplingRate);
-}
-
 /// Amplitude (pressure) spectrum of a periodic signal, ready for IFFT
 struct Spectrum
 {
@@ -378,16 +341,6 @@ void overlapTDS(const TimeDomainSignal prev, TimeDomainSignal onto, int sampleCo
 	}
 }
 
-unittest
-{
-	import std.range;
-
-	auto tds1 = whiteNoise(4096, 4096);
-	auto tds2 = whiteNoise(4096, 4096);
-	overlapTDS(tds1, tds2, 256);
-	writeWavFile("overlap.wav", chain(tds1.samples, tds2.samples), 1.0f, tds1.samplingRate);
-}
-
 IntensityLevelSpectrum whiteNoiseSpectrum(int maxFreq = 2048, int freqRes = 1)
 {
 	IntensityLevelSpectrum s;
@@ -438,38 +391,4 @@ static this()
 pragma(inline) @property Fft s_fftCache()
 {
 	return sl_fftCache_getter();
-}
-
-
-// correctness test
-unittest
-{
-	import std.algorithm.iteration;
-	import std.stdio;
-	import std.range: repeat;
-	import core.time;
-
-	IntensityLevelSpectrum ss = whiteNoiseSpectrum(2048, 1);
-	Spectrum s;
-	Fft fftCache = new Fft(2048);
-	TimeDomainSignal tds;
-	assert(ss.bins.length == 2049);
-	ss.genSpectrum(s);
-	auto ifftStart = MonoTime.currTime;
-	s.toTimeDomain(fftCache, tds);
-	writeln("ifft took ", MonoTime.currTime() - ifftStart);
-	assert(!isNaN(tds.samples[0].re));
-	assert(!isNaN(tds.samples[0].im));
-	writeln("ifft test tds sample rate: ", tds.samplingRate);
-	writeWavFile("ifft_test_1bphz.wav", tds.samples.repeat(2).joiner(), 16.0f, tds.samplingRate);
-
-	ss = whiteNoiseSpectrum(1024, 2);
-	ss.genSpectrum(s);
-	s.toTimeDomain(fftCache, tds);
-	writeWavFile("ifft_test_2bphz.wav", tds.samples.repeat(4).joiner(), 12.0f, tds.samplingRate);
-
-	ss = whiteNoiseSpectrum(512, 4);
-	ss.genSpectrum(s);
-	s.toTimeDomain(fftCache, tds);
-	writeWavFile("ifft_test_4bphz.wav", tds.samples.repeat(8).joiner(), 8.0f, tds.samplingRate);
 }

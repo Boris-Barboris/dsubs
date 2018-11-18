@@ -181,6 +181,9 @@ void __kernel firTds(
 	dest[idx] = outVal;
 }
 
+
+// void __kernel
+
 // http://www.bealto.com/gpu-fft_fft.html
 
 // In-place DFT-2, output is (a,b). Arguments must be variables.

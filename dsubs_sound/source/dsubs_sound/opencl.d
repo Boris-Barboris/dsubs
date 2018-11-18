@@ -11,6 +11,7 @@ import derelict.opencl.cl;
 import dsubs_common.utils;
 import dsubs_sound.common;
 import dsubs_sound.fft;
+import dsubs_sound.filter;
 
 
 class OpenCLException: Exception
@@ -94,7 +95,7 @@ private Platform loadOpenclLibrary()
 
 struct Buffer
 {
-	this(CommandQueue q, void[] data,
+	this(CommandQueue q, const void[] data,
 		cl_mem_flags flags = CL_MEM_READ_WRITE)
 	{
 		m_ctx = q.m_ctx;
@@ -445,7 +446,12 @@ final class DsubsSoundOpenclCtx
 		bool m_released;
 		Program m_prog;
 		CommandQueue[] m_queues;
+
+		// global stuff
+		LinearFilter f_hp500;
 	}
+
+	package ref LinearFilter hp500filter() { return f_hp500; }
 
 	this(int queueCount = totalCPUs)
 	{
@@ -466,7 +472,10 @@ final class DsubsSoundOpenclCtx
 		m_queues.length = queueCount;
 		for (int i = 0; i < queueCount; i++)
 			m_queues[i] = new CommandQueue(this, m_prog);
-		trace("OpenCL kernels loaded");
+		trace("OpenCL kernels loaded, preparing filters");
+		f_hp500 = hp500(m_queues[0]);
+		m_queues[0].finish();
+		trace("Filters loaded");
 	}
 
 	~this()

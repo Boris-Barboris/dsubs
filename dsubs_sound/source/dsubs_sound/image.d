@@ -4,6 +4,7 @@ import imageformats;
 
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
+import dsubs_sound.opencl;
 
 
 void writeSpectrumTemplateImage(string filename, int binCount, int height)
@@ -13,15 +14,14 @@ void writeSpectrumTemplateImage(string filename, int binCount, int height)
 	write_png(filename, binCount, height, whiteData, 1);
 }
 
-IntensityLevelSpectrum loadSpectrumFromImage(
+void loadSpectrumFromImage(CommandQueue q, ref ILevelSpectrum dest,
 	string filename, float bottomLevel = 80.0f, float topLevel = 160.0f)
 {
 	IFImage img = read_png(filename, 1);
 	enforce(img.c == ColFmt.Y, "unexpected color format " ~ img.c.to!string);
 	enforce(img.h > 0 && img.w > 0, "strange image dimensions");
-	IntensityLevelSpectrum res;
-	res.bins.length = img.w + 2;
-	assert(res.bins.length % 2 == 1);
+	float[GLOBAL_SRATE / 2] bins;
+	enforce(bins.length == img.w + 1, "invalid image width");
 
 	ubyte getPixel(int row, int column)
 	{
@@ -40,20 +40,20 @@ IntensityLevelSpectrum loadSpectrumFromImage(
 	for (int col = 0; col < img.w; col++)
 	{
 		int fromTop = getFirstNonwhite(col);
-		res.bins[col + 1] = topLevel - dy * fromTop;
+		bins[col] = topLevel - dy * fromTop;
 	}
-	// DC and nyquist always zero
-	res.bins[0] = res.bins[$-1] = 0.0f;
+	// nyquist always zero
+	res.bins[$-1] = 0.0f;
 
-	return res;
+	dest = ILevelSpectrum(q, bins);
 }
 
-IntensityLevelSpectrum loadSpectrumFromImageAndWarp(string filename, float noise,
+void loadSpectrumFromImageAndWarp(CommandQueue q, ref ILevelSpectrum dest,
+	string filename, float noise,
 	float bottomLevel = 80.0f, float topLevel = 160.0f)
 {
-	IntensityLevelSpectrum res = loadSpectrumFromImage(filename, bottomLevel, topLevel);
-	res.addNumericNoise(noise);
-	return res;
+	dest = loadSpectrumFromImage(q, dest, filename, bottomLevel, topLevel);
+	dest.addNumericNoise(noise);
 }
 
 unittest
