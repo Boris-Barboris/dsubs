@@ -1,6 +1,7 @@
 module dsubs_sound.opencl;
 
 import std.experimental.logger: trace;
+import std.algorithm.mutation: swap;
 import std.traits: isPointer;
 import std.string: toStringz;
 import std.parallelism: totalCPUs;
@@ -121,12 +122,11 @@ struct Buffer
 		release();
 	}
 
-	void swap(ref Buffer rhs)
+	void swapWith(ref Buffer rhs)
 	{
 		assert(m_size == rhs.m_size);
-		cl_mem tmp = rhs.m_mem;
-		rhs.m_mem = m_mem;
-		m_mem = tmp;
+		swap(m_mem, rhs.m_mem);
+		swap(m_released, rhs.m_released);
 	}
 
 	void release() nothrow @nogc
@@ -172,19 +172,35 @@ package:
 		return evt;
 	}
 
-	AsyncEvent enqueueFill(T)(CommandQueue q, T val, const(AsyncEvent)* onlyAfter)
+	AsyncEvent enqueueFill(T)(CommandQueue q, const T val, const(AsyncEvent)* onlyAfter)
 	{
-		assert(source.length == m_size);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
-			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, m_size,
+			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, 0, m_size,
 				0, null, &evt.cl).clError;
 		}
 		else
 		{
-			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, m_size,
+			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, 0, m_size,
 				1, &onlyAfter.cl, &evt.cl).clError;
+		}
+		return evt;
+	}
+
+	AsyncEvent enqueueFill(T)(CommandQueue q, const T val, size_t offset, size_t count,
+		const(AsyncEvent)* onlyAfter)
+	{
+		AsyncEvent evt;
+		if (onlyAfter is null)
+		{
+			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, offset * T.sizeof,
+			 	count * T.sizeof, 0, null, &evt.cl).clError;
+		}
+		else
+		{
+			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, offset * T.sizeof,
+			 	count * T.sizeof, 1, &onlyAfter.cl, &evt.cl).clError;
 		}
 		return evt;
 	}
@@ -311,6 +327,12 @@ final class Kernel
 		clSetKernelArg(m_kern, idx, T.sizeof, &arg).clError;
 	}
 
+	/// Set size of __local kernel parameter
+	void setLocalArgSize(cl_uint idx, const uint size)
+	{
+		clSetKernelArg(m_kern, idx, size, null).clError;
+	}
+
 	private
 	{
 		Program m_prog;
@@ -349,6 +371,7 @@ final class CommandQueue
 		mk_radix4 = new Kernel(prog, "fftRadix4Kernel");
 		mk_iradix4 = new Kernel(prog, "ifftRadix4Kernel");
 		mk_uniformNoise = new Kernel(prog, "addUniformNoise");
+		mk_energyToPressure = new Kernel(prog, "energyToPressure");
 
 		// prepare queue-local fft engine
 		m_fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
@@ -366,6 +389,7 @@ final class CommandQueue
 		Kernel mk_radix4;
 		Kernel mk_iradix4;
 		Kernel mk_uniformNoise;
+		Kernel mk_energyToPressure;
 	}
 
 	package @property
@@ -378,6 +402,7 @@ final class CommandQueue
 		Kernel radix4() { return mk_radix4; }
 		Kernel iradix4() { return mk_iradix4; }
 		Kernel uniformNoise() { return mk_uniformNoise; }
+		Kernel energyToPressure() { return mk_energyToPressure; }
 	}
 
 	/// Context this queue belongs to

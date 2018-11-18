@@ -44,9 +44,83 @@ void __kernel addUniformNoise(
 	size_t idx = get_global_id(0);
 	ulong randState = seed + idx;
 	xorshift64(&randState);
+	xorshift64(&randState);
 	float val = data[idx];
 	val += uniform(&randState, -amp, amp);
 	data[idx] = val;
+}
+
+// Return A*B
+float2 cmul(float2 a, float2 b)
+{
+	return (float2)(
+		a.x * b.x - a.y * b.y,
+		a.x * b.y + a.y * b.x);
+}
+
+float2 fromPolar(float modulus, float arg)
+{
+	float cs, sn;
+	sn = sincos(arg, &cs);
+	return (float2)(modulus * cs, modulus * sn);
+}
+
+// Return A * exp(K*ALPHA*i)
+float2 twiddle(float2 a, int k, float alpha)
+{
+	float cs, sn;
+	sn = sincos((float)k * alpha, &cs);
+	return cmul(a, (float2)(cs, sn));
+}
+
+/// Convert intensity (or intensity level) spectrum to pressure spectrum by
+/// randomizing phases, and then prepare it for pure-real ifft.
+void __kernel energyToPressure(
+	__global const float *energyBins,
+	__global float2 *pressureBins,
+	const int isILevel,
+	const ulong seed)
+{
+	const uint binCount = get_global_size(0);
+	const uint idx = get_global_id(0);
+	const uint conjIdx = binCount - idx;
+	ulong randState1 = seed + idx;
+	ulong randState2 = seed + conjIdx;
+	const uint N = binCount * 2;
+	const float2 j = (float2)(0.0f, 1.0f);
+	float phase1, phase2;
+	float freqFactor1 = idx == 0 ? 0.0f : 1.0f / (idx * idx);
+	float freqFactor2 = 1.0f / (conjIdx * conjIdx);
+	float2 Xk1, Xk2, jw, res;
+
+	// we have deterministic rng on gpu so we know the phase of conjIdx work item
+	xorshift64(&randState1);
+	xorshift64(&randState1);
+	phase1 = uniform(&randState1, -M_PI, M_PI);
+	xorshift64(&randState2);
+	xorshift64(&randState2);
+	phase2 = -uniform(&randState2, -M_PI, M_PI);
+
+	float modulus1 = idx == 0 ? 0.0f : energyBins[idx - 1];
+	float modulus2 = energyBins[conjIdx - 1];
+	// convert from energy to pressure magnitude
+	if (isILevel == 1)
+	{
+		modulus1 = toLinear(modulus1 / 2) * freqFactor1;
+		modulus2 = toLinear(modulus2 / 2) * freqFactor2;
+	}
+	else
+	{
+		modulus1 = sqrt(modulus1) * freqFactor1;
+		modulus2 = sqrt(modulus2) * freqFactor2;
+	}
+	Xk1 = fromPolar(modulus1, phase1);
+	Xk2 = fromPolar(modulus2, phase2);
+	jw = twiddle(j, 2, M_PI * idx / N);
+	res = cmul(Xk1, (float2)(1.0f, 0.0f) + jw);
+	res += cmul(Xk2, (float2)(1.0f, 0.0f) - jw);
+	res *= 0.5f;
+	pressureBins[idx] = res;
 }
 
 // Filter TDS with FIR filter. Maps curSource to dest, with respect to past
@@ -77,22 +151,6 @@ void __kernel firTds(
 }
 
 // http://www.bealto.com/gpu-fft_fft.html
-
-// Return A*B
-float2 cmul(float2 a, float2 b)
-{
-	return (float2)(
-		a.x * b.x - a.y * b.y,
-		a.x * b.y + a.y * b.x);
-}
-
-// Return A * exp(K*ALPHA*i)
-float2 twiddle(float2 a, int k, float alpha)
-{
-	float cs, sn;
-	sn = sincos((float)k * alpha, &cs);
-	return cmul(a, (float2)(cs, sn));
-}
 
 // In-place DFT-2, output is (a,b). Arguments must be variables.
 #define DFT2(a,b) { float2 tmp = a - b; a += b; b = tmp; }

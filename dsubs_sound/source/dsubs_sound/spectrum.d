@@ -2,10 +2,12 @@ module dsubs_sound.spectrum;
 
 import core.time;
 import std.stdio: writeln;
+import std.algorithm: min;
 alias expi = std.complex.expi;
 
 import dsubs_sound.common;
 import dsubs_sound.wav;
+import dsubs_sound.fft;
 import dsubs_sound.opencl;
 
 
@@ -44,7 +46,7 @@ enum SpectrumType
 	ILEVEL
 }
 
-struct Spectrum(SpectrumType stype)
+struct EnergySpectrum(SpectrumType stype)
 {
 	/// Allocate memory of the right size but do not initialize it.
 	/// Value is undefined.
@@ -70,6 +72,12 @@ struct Spectrum(SpectrumType stype)
 	enum int MAX_FREQ = GLOBAL_SRATE / 2;
 	enum int BUF_LEN = MAX_FREQ;
 
+	void patch(CommandQueue q, float value, size_t offset = 0, size_t count = BUF_LEN)
+	{
+		count = min(BUF_LEN - offset, count);
+		buf.enqueueFill(q, value, offset, count, null).release();
+	}
+
 	private Buffer buf;
 
 	/// Apply random uniform noise to frequencies in range [minFreq; maxFreq]
@@ -86,14 +94,21 @@ struct Spectrum(SpectrumType stype)
 	}
 
 	/// Randomize phases and perform inverse discrete fourier transform.
-	void toTimeDomain(FFTPlan!MAX_FREQ fft, ref Tds dest)
+	void toTimeDomain(CommandQueue q, ref Tds dest)
 	{
-
+		Kernel k = q.energyToPressure;
+		k.setArg(0, buf.mem);
+		k.setArg(1, dest.buf.mem);
+		int isILevel = stype == SpectrumType.ILEVEL ? 1 : 0;
+		k.setArg(2, isILevel);
+		k.setArg(3, ulongSeed());
+		k.enqueue(q, 1, null, [BUF_LEN], null, null).release();
+		q.fft.inverse(q, dest.buf);
 	}
 }
 
-alias ISpectrum = Spectrum!SpectrumType.INTENSITY;
-alias ILevelSpectrum = Spectrum!SpectrumType.ILEVEL;
+alias ISpectrum = EnergySpectrum!(SpectrumType.INTENSITY);
+alias ILevelSpectrum = EnergySpectrum!(SpectrumType.ILEVEL);
 
 
 unittest
@@ -106,6 +121,21 @@ unittest
 	spec.addUniformNoise(q, 1.0f);
 	spec.buf.fullRead(q, levels.ptr, null);
 	writeln("OpenCL addUniformNoise test result: ", levels[0..16]);
+}
+
+unittest
+{
+	import std.stdio;
+
+	Tds tds = Tds(s_clCtx);
+	CommandQueue q = s_clCtx.queue(0);
+	ISpectrum spec = ISpectrum(q, 0.0f);
+	spec.patch(q, 1e12, 100);
+	spec.toTimeDomain(q, tds);
+	float[GLOBAL_SRATE] sound;
+	tds.buf.fullRead(q, sound.ptr, null);
+	writeln("OpenCL toTimeDomain result: ", sound[0 .. 16]);
+	writeWavFile("opencl_ifft.wav", sound[], 0.5f, GLOBAL_SRATE);
 }
 
 
@@ -135,10 +165,10 @@ struct IntensityLevelSpectrum
 		// https://dsp.stackexchange.com/a/28712
 		for (size_t k = 0; k < N / 2; k++)
 		{
-			float freqFactor = k > 0 ? 1.0f / k / freqRes : 0.0f;
+			float freqFactor = k > 0 ? 1.0f / (k * freqRes).pow(2) : 0.0f;
 			Complex!float Xk1 = fromPolar((bins[k] / 2).toLinear * freqFactor, phases[k]);
 			size_t conjk = bins.length - 1 - k;
-			freqFactor = conjk > 0 ? 1.0f / conjk / freqRes : 0.0f;
+			freqFactor = conjk > 0 ? 1.0f / (conjk * freqRes).pow(2) : 0.0f;
 			Complex!float Xk2 = fromPolar((bins[conjk] / 2).toLinear * freqFactor,
 				-phases[conjk]);
 			Complex!float jw = j * expi(float(2) * PI * k / N);
@@ -189,10 +219,10 @@ struct IntensitySpectrum
 		// https://dsp.stackexchange.com/a/28712
 		for (size_t k = 0; k < N / 2; k++)
 		{
-			float freqFactor = k > 0 ? 1.0f / k / freqRes : 0.0f;
+			float freqFactor = k > 0 ? 1.0f / (k * freqRes).pow(2) : 0.0f;
 			Complex!float Xk1 = fromPolar(sqrt(bins[k]) * freqFactor, phases[k]);
 			size_t conjk = bins.length - 1 - k;
-			freqFactor = conjk > 0 ? 1.0f / conjk / freqRes : 0.0f;
+			freqFactor = conjk > 0 ? 1.0f / (conjk * freqRes).pow(2) : 0.0f;
 			Complex!float Xk2 = fromPolar(sqrt(bins[$ - 1 - k]) * freqFactor, -phases[conjk]);
 			Complex!float jw = j * expi(float(2) * PI * k / N);
 			dest.bins[k] = 0.5f * (Xk1 * (1.0f + jw) + Xk2 * (1.0f - jw));

@@ -72,9 +72,11 @@ final class FFTPlan(int N = GLOBAL_SRATE)
 			k2.enqueue(q, 1, null, [N / 2], null, null).release();
 			swap(x, y);
 		}
-		// tds becomes our new staging buffer
+		// At this point result is in 'x' buffer, wich can be referencing
+		// 'tds' parameter or 'm_tmpBuf'. If the latter, 'tds' becomes our new
+		// staging buffer.
 		if (x is &m_tmpBuf)
-			tds.swap(m_tmpBuf);
+			tds.swapWith(m_tmpBuf);
 	}
 
 	void forward(CommandQueue q, ref Buffer tds) { perform(q, tds, false); }
@@ -98,8 +100,8 @@ unittest
 	float2[] spectrum = new float2[fftSize];
 	for (int i = 0; i < noise.length; i++)
 	{
-		noise[i].re = uniform(-1.0f, 1.0f);
-		noise[i].im = uniform(-1.0f, 1.0f);
+		noise[i].re = uniform(-10.0f, 10.0f);
+		noise[i].im = uniform(-10.0f, 10.0f);
 	}
 
 	Fft checker = new Fft(fftSize);
@@ -127,8 +129,8 @@ unittest
 	for (int i = 0; i < spectrum.length; i++)
 	{
 		scope (failure)	writeln("fft mismatch ", reference[i], " with ", spectrum[i]);
-		assert(fabs(reference[i].re - spectrum[i].re) < 1e-4);
-		assert(fabs(reference[i].im - spectrum[i].im) < 1e-4);
+		assert(fabs(reference[i].re - spectrum[i].re) < 1e-2);
+		assert(fabs(reference[i].im - spectrum[i].im) < 1e-2);
 	}
 
 	// test ifft
@@ -139,7 +141,7 @@ unittest
 	for (int i = 0; i < generatedNoise.length; i++)
 	{
 		scope (failure)	writeln("ifft mismatch ", noise[i], " with ", generatedNoise[i]);
-		assert(fabs(noise[i].re - generatedNoise[i].re) < 1e-4);
-		assert(fabs(noise[i].im - generatedNoise[i].im) < 1e-4);
+		assert(fabs(noise[i].re - generatedNoise[i].re) < 1e-2);
+		assert(fabs(noise[i].im - generatedNoise[i].im) < 1e-2);
 	}
 }
