@@ -33,7 +33,7 @@ struct Tds
 	this(CommandQueue q, float initValue)
 	{
 		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
-		buf.enqueueFill(q, initValue, null).release();
+		buf.enqueueFullFill(q, initValue, null).release();
 	}
 
 	private Buffer buf;
@@ -68,17 +68,15 @@ struct EnergySpectrum(SpectrumType stype)
 	this(CommandQueue q, ref const IntensityLevel[BUF_LEN] ilevels)
 	{
 		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
+		assert(ilevels[].length == BUF_LEN);
 		buf.enqueueFullWrite(q, ilevels[], null).release();
 	}
 
 	/// Allocate data and fill with initValue.
 	this(CommandQueue q, float initValue)
 	{
-		import std.stdio;
-		writeln("this(CommandQueue q, float initValue) ",
-			BUF_LEN * float.sizeof, " ", initValue);
 		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
-		buf.enqueueFill(q, initValue, null).release();
+		buf.enqueueFullFill(q, initValue, null).release();
 	}
 
 	enum int MAX_FREQ = GLOBAL_SRATE / 2;
@@ -108,12 +106,18 @@ struct EnergySpectrum(SpectrumType stype)
 		k.enqueue(q, 1, [minFreq - 1], [maxFreq], null, null).release();
 	}
 
+	AsyncEvent enqueueRead(CommandQueue q, float[] dest)
+	{
+		assert(dest.length >= BUF_LEN);
+		return buf.enqueueFullRead(q, dest.ptr, null);
+	}
+
 	/// Randomize phases and perform inverse discrete fourier transform.
 	void toTimeDomain(CommandQueue q, ref Tds dest)
 	{
 		Kernel k = q.energyToPressure;
 		k.setArg(0, buf.mem);
-		k.setArg(1, dest.buf.mem);
+		k.setArg(1, dest.mem);
 		int isILevel = stype == SpectrumType.ILEVEL ? 1 : 0;
 		k.setArg(2, isILevel);
 		k.setArg(3, uintSeed());

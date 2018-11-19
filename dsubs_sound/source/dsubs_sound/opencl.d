@@ -85,11 +85,11 @@ private Platform loadOpenclLibrary()
 	foreach (idx, i; ids)
 	{
 		Platform p = getPlatformById(i);
-		trace("found platform: ", p, idx == 0 ? " (selected)" : "");
+		trace("found platform: ", p, (idx == ids.length - 1) ? " (selected)" : "");
 		platformList ~= p;
 	}
 	DerelictCL.reload(CLVersion.CL12);
-	return platformList[0];
+	return platformList[$-1];
 }
 
 
@@ -103,6 +103,7 @@ struct Buffer
 		m_size = data.length;
 		m_mem = clCreateBuffer(m_ctx.m_ctx, flags, m_size, null, &err);
 		err.clError();
+		//trace("new buffer pointer ", m_mem);
 		scope(failure) release();
 		clEnqueueWriteBuffer(q.m_q, m_mem, true, 0, m_size, data.ptr, 0,
 			null, null).clError;
@@ -115,6 +116,7 @@ struct Buffer
 		cl_int err;
 		m_size = size;
 		m_mem = clCreateBuffer(ctx.m_ctx, flags, m_size, null, &err);
+		//trace("new buffer pointer ", m_mem);
 		err.clError();
 	}
 
@@ -132,10 +134,14 @@ struct Buffer
 
 	void release() nothrow @nogc
 	{
+		import core.stdc.stdio;
 		if (!m_released)
 		{
 			if (m_mem != cl_mem.init)
+			{
+				//printf("releasing buffer %p\n", m_mem);
 				clReleaseMemObject(m_mem);
+			}
 			m_released = true;
 		}
 	}
@@ -158,6 +164,7 @@ package:
 
 	AsyncEvent enqueueCopy(CommandQueue q, ref Buffer dest, const(AsyncEvent)* onlyAfter)
 	{
+		assert(m_mem !is cl_mem.init);
 		assert(dest.m_size == m_size);
 		AsyncEvent evt;
 		if (onlyAfter is null)
@@ -173,14 +180,12 @@ package:
 		return evt;
 	}
 
-	AsyncEvent enqueueFill(T)(CommandQueue q, const T val, const(AsyncEvent)* onlyAfter)
+	AsyncEvent enqueueFullFill(T)(CommandQueue q, const T val, const(AsyncEvent)* onlyAfter)
 	{
+		assert(m_mem !is cl_mem.init);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
-			import std.stdio;
-			writeln("AsyncEvent enqueueFill(T)(CommandQueue q, const T val, ",
-				T.sizeof, " ", m_size);
 			clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, 0, m_size,
 				0, null, &evt.cl).clError;
 		}
@@ -195,6 +200,7 @@ package:
 	AsyncEvent enqueueFill(T)(CommandQueue q, const T val, size_t offset, size_t count,
 		const(AsyncEvent)* onlyAfter)
 	{
+		assert(m_mem !is cl_mem.init);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
@@ -209,40 +215,46 @@ package:
 		return evt;
 	}
 
-	AsyncEvent enqueueFullWrite(CommandQueue q, const void[] source, const(AsyncEvent)* onlyAfter)
+	AsyncEvent enqueueWrite(CommandQueue q, const void[] data, size_t offset, const(AsyncEvent)* onlyAfter)
 	{
-		assert(source.length == m_size);
+		assert(m_mem !is cl_mem.init);
+		assert(data.length + offset <= m_size);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
-			clEnqueueWriteBuffer(q.m_q, m_mem, false, 0, m_size, source.ptr,
+			clEnqueueWriteBuffer(q.m_q, m_mem, true, offset, data.length, data.ptr,
 				0, null, &evt.cl).clError;
 		}
 		else
 		{
-			clEnqueueWriteBuffer(q.m_q, m_mem, false, 0, m_size, source.ptr,
+			clEnqueueWriteBuffer(q.m_q, m_mem, true, offset, data.length, data.ptr,
 				1, &onlyAfter.cl, &evt.cl).clError;
 		}
 		return evt;
 	}
 
-	void fullWrite(CommandQueue q, const void[] source, const(AsyncEvent)* onlyAfter)
+	AsyncEvent enqueueFullWrite(CommandQueue q, const void[] source, const(AsyncEvent)* onlyAfter)
 	{
+		assert(m_mem !is cl_mem.init);
 		assert(source.length == m_size);
+		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
 			clEnqueueWriteBuffer(q.m_q, m_mem, true, 0, m_size, source.ptr,
-				0, null, null).clError;
+				0, null, &evt.cl).clError;
 		}
 		else
 		{
 			clEnqueueWriteBuffer(q.m_q, m_mem, true, 0, m_size, source.ptr,
-				1, &onlyAfter.cl, null).clError;
+				1, &onlyAfter.cl, &evt.cl).clError;
 		}
+		return evt;
 	}
 
+	/// asynchronous read
 	AsyncEvent enqueueFullRead(CommandQueue q, void* dest, const(AsyncEvent)* onlyAfter)
 	{
+		assert(m_mem !is cl_mem.init);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 			clEnqueueReadBuffer(q.m_q, m_mem, false, 0, m_size, dest, 0, null, &evt.cl).clError;
@@ -254,8 +266,10 @@ package:
 		return evt;
 	}
 
+	/// blocking read
 	void fullRead(CommandQueue q, void* dest, const(AsyncEvent)* onlyAfter)
 	{
+		assert(m_mem !is cl_mem.init);
 		if (onlyAfter is null)
 		{
 			clEnqueueReadBuffer(q.m_q, m_mem, true, 0, m_size, dest,

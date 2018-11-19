@@ -66,12 +66,13 @@ unittest
 
 	writeSpectrumTemplateImage("2047bins.png", 2047, 1000);
 	ILevelSpectrum ils;
-	loadSpectrumFromImageAndWarp(q, ils, "std_propeller.png", 0.2f);
-	//ils.patch(q, 0.0f, 20);
+	loadSpectrumFromImage(q, ils, "std_propeller.png");
+	ils.patch(q, 0.0f, 0, 20);
 	Tds tds = Tds(ctx);
 	float[GLOBAL_SRATE] samples;
 	ils.toTimeDomain(q, tds);
 	tds.enqueueRead(q, samples[]).waitFor();
 	float maxp = maxElement(samples[].map!(s => s.abs));
+	writeln("loadSpectrumFromImageAndWarp maxp = ", maxp);
 	writeWavFile("std_propeller_bb.wav", samples[], 0.8f / maxp, GLOBAL_SRATE);
 }

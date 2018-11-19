@@ -1,7 +1,4 @@
 #define dB float
-#define Intensity float
-#define IntensityLevel dB
-
 
 float toDb(const float linear)
 {
@@ -131,7 +128,7 @@ void __kernel modulateTrochoid(
 	const float linGain = 1.0f / sqrt(energyIntegral);
 	const float dfreq = endFundFreq - startFundFreq;
 	const float t = (float) idx / (len - 1);
-	const float fundPhase = 2 * M_PI * (startFundFreq * t + 0.5f * dfreq * t * t);
+	const float fundPhase = 2 * M_PI_F * (startFundFreq * t + 0.5f * dfreq * t * t);
 	float modk = 1.0f;
 	float result = tds[idx];
 	for (int h = 0; h < harmonicCount; h++)
@@ -187,8 +184,8 @@ void __kernel energyToPressure(
 	float2 Xk1, Xk2, jw, res;
 
 	// we have deterministic rng on gpu so we can regenerate the phase of conjIdx work item
-	phase1 = uniform(&randState1, -M_PI, M_PI);
-	phase2 = -uniform(&randState2, -M_PI, M_PI);
+	phase1 = uniform(&randState1, -M_PI_F, M_PI_F);
+	phase2 = -uniform(&randState2, -M_PI_F, M_PI_F);
 
 	float modulus1 = idx == 0 ? 0.0f : energyBins[idx - 1];
 	float modulus2 = energyBins[conjIdx - 1];
@@ -205,7 +202,7 @@ void __kernel energyToPressure(
 	}
 	Xk1 = fromPolar(modulus1, phase1);
 	Xk2 = fromPolar(modulus2, phase2);
-	jw = twiddle(j, 2, M_PI * idx / N);
+	jw = twiddle(j, 2, M_PI_F * idx / N);
 	res = cmul(Xk1, (float2)(1.0f, 0.0f) + jw);
 	res += cmul(Xk2, (float2)(1.0f, 0.0f) - jw);
 	res *= 0.5f;
@@ -260,7 +257,7 @@ void __kernel fftRadix2Kernel(__global const float2 *x, __global float2 *y, int 
 	int i = get_global_id(0);		// thread index
 	int k = i & (p - 1);			// index in input sequence, in 0..P-1
 	int j = ((i - k) << 1) + k;		// output index
-	float alpha = -M_PI * (float)k / (float)p;
+	float alpha = -M_PI_F * (float)k / (float)p;
 
 	// Read and twiddle input
 	x += i;
@@ -282,7 +279,7 @@ void __kernel ifftRadix2Kernel(__global const float2 *x, __global float2 *y, int
 	int i = get_global_id(0);		// thread index
 	int k = i & (p - 1);			// index in input sequence, in 0..P-1
 	int j = ((i - k) << 1) + k;		// output index
-	float alpha = M_PI * (float)k / (float)p;
+	float alpha = M_PI_F * (float)k / (float)p;
 
 	// Read and twiddle input
 	x += i;
@@ -335,7 +332,7 @@ void __kernel fftRadix4Kernel(__global const float2 *x, __global float2 *y, int 
 	int i = get_global_id(0); // thread index
 	int k = i & (p - 1); // index in input sequence, in 0..P-1
 	int j = ((i - k) << 2) + k; // output index
-	float alpha = -M_PI * (float)k / (float)(2 * p);
+	float alpha = -M_PI_F * (float)k / (float)(2 * p);
 
 	// Read and twiddle input
 	x += i;
@@ -361,7 +358,7 @@ void __kernel ifftRadix4Kernel(__global const float2 *x, __global float2 *y, int
 	int i = get_global_id(0); // thread index
 	int k = i & (p - 1); // index in input sequence, in 0..P-1
 	int j = ((i - k) << 2) + k; // output index
-	float alpha = M_PI * (float)k / (float)(2 * p);
+	float alpha = M_PI_F * (float)k / (float)(2 * p);
 
 	// Read and twiddle input
 	x += i;
