@@ -1,6 +1,5 @@
 module dsubs_sound.opencl;
 
-import std.experimental.logger: trace;
 import std.algorithm.mutation: swap;
 import std.traits: isPointer;
 import std.string: toStringz;
@@ -119,6 +118,8 @@ struct Buffer
 		//trace("new buffer pointer ", m_mem);
 		err.clError();
 	}
+
+	@disable this(this);
 
 	~this()
 	{

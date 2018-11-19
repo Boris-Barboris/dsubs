@@ -104,16 +104,16 @@ float trochoid(float A, float B, float C, float x)
 	return A * sin(x + M_PI_2_F + B * sin(x) + C);
 }
 
-typedef struct tag_my_struct
-{
-	float freqMult;
-	float magnitude;
-} Harmonic;
+// typedef struct tag_my_struct
+// {
+// 	float freqMult;
+// 	float magnitude;
+// } Harmonic;
 
 /// Modulate trochoid with time-domain signal
 void __kernel modulateTrochoid(
 	__global float *tds,
-	__constant Harmonic *harmonics,		// [0.2f, 0.05f, 0.8f]
+	__constant float2 *harmonics,
 	const int harmonicCount,
 	const float A,
 	const float B,
@@ -133,9 +133,9 @@ void __kernel modulateTrochoid(
 	float result = tds[idx];
 	for (int h = 0; h < harmonicCount; h++)
 	{
-		const Harmonic harm = harmonics[h];
-		float phase = (startPhase + fundPhase) * harm.freqMult;
-		modk += harm.magnitude * trochoid(A, B, C, phase);
+		const float2 harm = harmonics[h];
+		float phase = (startPhase + fundPhase) * harm.x;
+		modk += harm.y * trochoid(A, B, C, phase);
 	}
 	result *= modk * linGain;
 	tds[idx] = result;

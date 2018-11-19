@@ -36,6 +36,8 @@ struct Tds
 		buf.enqueueFullFill(q, initValue, null).release();
 	}
 
+	@disable this(this);
+
 	private Buffer buf;
 
 	pragma(inline)
@@ -78,6 +80,8 @@ struct EnergySpectrum(SpectrumType stype)
 		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
 		buf.enqueueFullFill(q, initValue, null).release();
 	}
+
+	@disable this(this);
 
 	enum int MAX_FREQ = GLOBAL_SRATE / 2;
 	enum int BUF_LEN = MAX_FREQ;

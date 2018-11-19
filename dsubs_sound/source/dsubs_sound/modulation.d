@@ -6,7 +6,7 @@ import dsubs_sound.opencl;
 
 
 /// Linearly interpolate intensity of 'tds' signal inline
-void modulateIInterp(CommandQueue q, Tds tds, float startMult, float endMult)
+void modulateIInterp(CommandQueue q, ref Tds tds, float startMult, float endMult)
 {
 	Kernel k = q.interpolateIntensity;
 	k.setArg(0, tds.mem);
@@ -86,11 +86,12 @@ struct TrochoidModulator
 		this.startPhase = startPhase;
 	}
 
-	void modulate(CommandQueue q, Tds tds)
+	void modulate(CommandQueue q, ref Tds tds)
 	{
+		Buffer harmBuf = Buffer(q, params.harmonics);
 		Kernel k = q.modulateTrochoid;
 		k.setArg(0, tds.mem);
-		k.setArg(1, params.harmonics.ptr);
+		k.setArg(1, harmBuf.mem);
 		k.setArg(2, params.harmonics.length.to!int);
 		k.setArg(3, params.A);
 		k.setArg(4, params.B);
@@ -129,4 +130,40 @@ struct TrochoidModulator
 		startPhase = uniform(0.0f, float(2 * PI));
 		startPhase = fmod(startPhase, 2 * PI);
 	}
+}
+
+
+version (unittest)
+{
+
+	immutable(TrochoidModulatorParams) stdTrochParams()
+	{
+		return cast(immutable) TrochoidModulatorParams([
+			Harmonic(1.0f, 0.2f),
+			Harmonic(5.0f, 0.8f)],
+			0.5, 0.7, -0.4);
+	}
+
+}
+
+
+unittest
+{
+	import dsubs_sound.wav;
+
+	auto ctx = s_clCtx;
+	CommandQueue q = ctx.queue(0);
+	ISpectrum spec = ISpectrum(q, 1.0f);
+	spec.patch(q, 0.0f, 0, 200);
+	Tds tds = Tds(ctx);
+	spec.toTimeDomain(q, tds);
+	auto tmParams = stdTrochParams();
+	trace("tmParams: ", tmParams);
+	TrochoidModulator tm = TrochoidModulator(&tmParams);
+	tm.updateFundFreq(0.5f, 2.0f);
+	tm.modulate(q, tds);
+	modulateIInterp(q, tds, 0.001f, 1.0f);
+	float[GLOBAL_SRATE] samples;
+	tds.enqueueRead(q, samples[]).waitFor();
+	writeWavFile("opencl_trochmod.wav", samples[], 10.0f);
 }
