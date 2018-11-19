@@ -87,6 +87,64 @@ void __kernel addUniformNoise(
 	data[idx] = val;
 }
 
+
+/// Linearly interpolates intensity of the signal
+void __kernel interpolateIntensity(
+	__global float *tds,
+	const float startMult,
+	const float endMult)
+{
+	uint idx = get_global_id(0);
+	uint len = get_global_size(0);
+	float delta = endMult - startMult;
+	float thisMult = startMult + delta * idx / (len - 1);
+	tds[idx] = tds[idx] * sqrt(fabs(thisMult));
+}
+
+
+float trochoid(float A, float B, float C, float x)
+{
+	return A * sin(x + M_PI_2_F + B * sin(x) + C);
+}
+
+struct Harmonic
+{
+	float freqMult;
+	float magnitude;
+}
+
+/// Modulate trochoid with time-domain signal
+void __kernel modulateTrochoid(
+	__global float *tds,
+	__constant Harmonic *harmonics,		// [0.2f, 0.05f, 0.8f]
+	const int harmonicCount,
+	const float A,
+	const float B,
+	const float C,
+	const float startFundFreq,
+	const float endFundFreq,
+	const float startPhase,
+	const float energyIntegral)
+{
+	uint idx = get_global_id(0);
+	uint len = get_global_size(0);
+	const float linGain = 1.0f / sqrt(energyIntegral);
+	const float dfreq = endFundFreq - startFundFreq;
+	const float t = (float) idx / (len - 1);
+	const float fundPhase = 2 * M_PI * (startFundFreq * t + 0.5f * dfreq * t * t);
+	float modk = 1.0f;
+	float result = tds[idx];
+	for (int h = 0; h < harmonicCount; h++)
+	{
+		const Harmonic harm = harmonics[h];
+		float phase = (startPhase + fundPhase) * harm.freqMult;
+		modk += harm.magnitude * trochoid(A, B, C, phase);
+	}
+	result *= modk * linGain;
+	tds[idx] = result;
+}
+
+
 // Return A*B
 float2 cmul(float2 a, float2 b)
 {

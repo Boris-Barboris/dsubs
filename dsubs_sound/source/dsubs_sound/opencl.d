@@ -373,6 +373,8 @@ final class CommandQueue
 		mk_iradix4 = new Kernel(prog, "ifftRadix4Kernel");
 		mk_uniformNoise = new Kernel(prog, "addUniformNoise");
 		mk_energyToPressure = new Kernel(prog, "energyToPressure");
+		mk_interpolateIntensity = new Kernel(prog, "interpolateIntensity");
+		mk_modulateTrochoid = new Kernel(prog, "modulateTrochoid");
 
 		// prepare queue-local fft engine
 		m_fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
@@ -391,6 +393,8 @@ final class CommandQueue
 		Kernel mk_iradix4;
 		Kernel mk_uniformNoise;
 		Kernel mk_energyToPressure;
+		Kernel mk_interpolateIntensity;
+		Kernel mk_modulateTrochoid;
 	}
 
 	package @property
@@ -404,6 +408,8 @@ final class CommandQueue
 		Kernel iradix4() { return mk_iradix4; }
 		Kernel uniformNoise() { return mk_uniformNoise; }
 		Kernel energyToPressure() { return mk_energyToPressure; }
+		Kernel interpolateIntensity() { return mk_interpolateIntensity; }
+		Kernel modulateTrochoid() { return mk_modulateTrochoid; }
 	}
 
 	/// Context this queue belongs to
