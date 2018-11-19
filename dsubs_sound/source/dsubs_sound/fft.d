@@ -35,8 +35,8 @@ final class FFTPlan(int N = GLOBAL_SRATE)
 		assert(tds !is m_tmpBuf);
 		Buffer* x = &tds;
 		Buffer* y = &m_tmpBuf;
-		Kernel k2 = isInverse ? q.iradix2 : q.radix2;
-		Kernel k4 = isInverse ? q.iradix4 : q.radix4;
+		Kernel k2 = isInverse ? q.mk_iradix2 : q.mk_radix2;
+		Kernel k4 = isInverse ? q.mk_iradix4 : q.mk_radix4;
 		int p = 1;
 		// radix4
 		for (; p <= N / 4; p *= 4)

@@ -85,7 +85,26 @@ void __kernel addUniformNoise(
 }
 
 
-/// Linearly interpolates intensity of the signal
+void __kernel addTo(
+	__global const float *from,
+	__global float *dest)
+{
+	uint idx = get_global_id(0);
+	dest[idx] += from[idx];
+}
+
+void __kernel toShortPcb(
+	__global const float *from,
+	__global short *dest,
+	float maxp)
+{
+	uint idx = get_global_id(0);
+	float val =  fmax(-1.0f, fmin(1.0f, from[idx] / maxp));
+	dest[idx] = convert_short(val * SHRT_MAX);
+}
+
+
+// Linearly interpolates intensity of the signal
 void __kernel interpolateIntensity(
 	__global float *tds,
 	const float startMult,
@@ -96,6 +115,105 @@ void __kernel interpolateIntensity(
 	float delta = endMult - startMult;
 	float thisMult = startMult + delta * idx / (len - 1);
 	tds[idx] = tds[idx] * sqrt(fabs(thisMult));
+}
+
+
+// same but with buffers as data sources
+void __kernel interpolateIntensity2(
+	__global float *tds,
+	__constant float *startSpecSum,
+	__constant float *endSpecSum,
+	const float startk,
+	const float endk)
+{
+	uint idx = get_global_id(0);
+	uint len = get_global_size(0);
+	const float startMult;
+	const float endMult;
+	const float resAvg = 0.5f * (*startSpecSum + *endSpecSum);
+	startMult = *startSpecSum * startk / resAvg;
+	endMult = *endSpecSum * endk / resAvg;
+	float delta = endMult - startMult;
+	float thisMult = startMult + delta * idx / (len - 1);
+	tds[idx] = tds[idx] * sqrt(fabs(thisMult));
+}
+
+
+// reduce sum
+void __kernel sumBuf(
+	__global const float* what,
+	__global float* dest,
+	uint start,
+	uint end)
+{
+	float res = 0.0f;
+	for (uint i = start; i < end; i++)
+		res += what[i];
+	*dest = res;
+}
+
+
+dB seaNoiseIL(float freq)
+{
+	return 70.0f - 6.0f * log2(freq / 20);
+}
+
+
+void __kernel generateSeaNoise(
+	__global float *destIspec,
+	const float imult,
+	const float rngm,
+	const uint seed)
+{
+	uint idx = get_global_id(0);
+	uint randState = getRngState(seed, idx);
+	float intensity = toLinear(
+		seaNoiseIL(idx + 1) + uniform(&randState, -rngm, rngm));
+	destIspec[idx] = intensity * imult;
+}
+
+
+#define SOUND_SPD 1498.0f
+
+
+float waterRangeDissipationK(float freq)
+{
+	float f2 = pown(freq / 1e3, 2);
+	float res11 = 0.11 * f2 / (1 + f2);
+	float res12 = 44 * f2 / (4100 + f2);
+	float res13 = 3e-4 * f2;
+	float res = 2e-3 * (res11 + res12 + res13);
+	return res;
+}
+
+dB getILatRange(int freq, dB il, float range, float dissMod)
+{
+	return il - toDb(range * range) - waterRangeDissipationK(freq) * range * dissMod;
+}
+
+dB flowNoise(int freq, float kts)
+{
+	dB res = 90.0f;
+	// 18 db per knot doubling
+	res += log2(kts / 10.0f) * 18.0f;
+	// 9db per octave fall
+	res -= 9.0f * log2(fmax(freq, 100.0f) / 1000.0f);
+	return res;
+}
+
+
+void __kernel generateFlowNoise(
+	__global float *destIspec,
+	const float imult,
+	const float kts,
+	const float rngm,
+	const uint seed)
+{
+	uint idx = get_global_id(0);
+	uint randState = getRngState(seed, idx);
+	float ispan = uniform(&randState, -rngm, rngm);
+	float intensity = toLinear(flowNoise(idx + 1, kts) + ispan);
+	destIspec[idx] = intensity * imult;
 }
 
 

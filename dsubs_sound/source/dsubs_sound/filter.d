@@ -21,6 +21,8 @@ struct LinearFilter
 		m_taps = Buffer(q, taps);
 	}
 
+	@disable this(this);
+
 	private
 	{
 		Buffer m_taps;
@@ -29,7 +31,7 @@ struct LinearFilter
 
 	void filter(CommandQueue q, ref Tds prev, ref Tds cur, ref Tds dest)
 	{
-		Kernel k = q.firTds;
+		Kernel k = q.mk_firTds;
 		k.setArg(0, cur.mem);
 		k.setArg(1, prev.mem);
 		k.setArg(2, m_taps.mem);
@@ -84,7 +86,7 @@ private immutable float[] tapsHp500 = [
 	-0.016233494320316448,
 ];
 
-package immutable float[] octaveHp500 = [
+private immutable float[] octaveHp500 = [
 	0.00112812,  0.00120991,  0.00043872, -0.00121064, -0.00295939, -0.00311903,
 	-0.00023075,  0.00504615,  0.00908985,  0.00714533, -0.00259118, -0.01557452,
 	-0.02179484, -0.01205388,  0.01360779,  0.04151048,  0.04879799,  0.01605565,

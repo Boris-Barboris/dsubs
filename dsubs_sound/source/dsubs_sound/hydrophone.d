@@ -1,12 +1,9 @@
 module dsubs_sound.hydrophone;
 
-/*
-
 import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
 import std.array: array;
 import std.range;
-import std.stdio;
 
 import dsubs_common.math;
 import dsubs_common.event;
@@ -14,6 +11,7 @@ import dsubs_common.api.entities;
 
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
+import dsubs_sound.opencl;
 import dsubs_sound.filter;
 import dsubs_sound.water;
 import dsubs_sound.soundsource;
@@ -43,14 +41,14 @@ struct HydrophonePrototype
 /// Hydrophone is a collection of identical antennaes
 final class Hydrophone
 {
-	this(Transform2D t, ref const HydrophonePrototype p)
+	this(CommandQueue q, Transform2D t, ref const HydrophonePrototype p)
 	{
 		assert(p.minFreq >= 20 && p.maxFreq >= p.minFreq);
 		m_transform = t;
 		m_minFreq = p.minFreq;
-		m_tdsFilter = highpass500;
+		m_tdsFilter = &q.ctx.hp500filter();
 		m_maxFreq = p.maxFreq;
-		m_srate = m_maxFreq * 2;
+		assert(m_maxFreq <= GLOBAL_SRATE / 2);
 		m_directivity = p.directivity;
 		m_baseNoise = p.baseNoise;
 		m_span = p.antennaeSpan;
@@ -64,9 +62,14 @@ final class Hydrophone
 		m_listenToCellR = m_listenSpan / m_beamAngle;
 		foreach (rot; p.antennaeRots)
 			m_ant ~= new Antennae(p.beamCount, rot);
-		m_iinterp = new IntensityInterpolator();
 		onPreSimulation += &savePrevPos;
 		savePrevPos();
+
+		m_prevTds = Tds(q, 0.0f);
+		m_curTds = Tds(q, 0.0f);
+		m_baseSeaNoiseBuf = Buffer(q.ctx, float.sizeof);
+		m_baseFlowNoiseStartBuf = Buffer(q.ctx, float.sizeof);
+		m_baseFlowNoiseEndBuf = Buffer(q.ctx, float.sizeof);
 	}
 
 	/// invoked by simulator before kinematic update happens
@@ -80,8 +83,8 @@ final class Hydrophone
 		vec2d m_prevPos;
 		double m_prevRot;
 		Antennae[] m_ant;
-		immutable LinearFIR m_tdsFilter;
-		int m_minFreq, m_maxFreq, m_srate;
+		LinearFilter* m_tdsFilter;
+		int m_minFreq, m_maxFreq;
 		float m_span;
 		float m_beamAngle;
 		float m_listenSpan;
@@ -95,7 +98,6 @@ final class Hydrophone
 		/// speed in knots at the start of integration
 		float m_ktsStart = 0.0f;
 		float m_ktsEnd = 0.0f;
-		IntensityInterpolator m_iinterp;
 
 		enum float MAX_HALO = dgr2rad(20);
 		enum float MAX_HALO_2 = MAX_HALO / 2;
@@ -106,19 +108,27 @@ final class Hydrophone
 
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
+		Buffer m_baseSeaNoiseBuf;
 		// broadband flow noise intensity
-		Intensity m_baseFlowNoise;
+		Intensity m_baseFlowNoiseStart;
+		Intensity m_baseFlowNoiseEnd;
+		Buffer m_baseFlowNoiseStartBuf;
+		Buffer m_baseFlowNoiseEndBuf;
 
-		// true when the player is listening signals from this hydrophone
-		bool m_hasListener;
+		// when false, no calculations are performed
+		bool m_active;
 		// world-space direction the player is listening to
 		float m_listenDir = 0.0f;
 		// false when no active antenna has a beam for chosen listen Dir
 		bool m_listenDirValid;
 
-		// unfiltered time domain signals that are generated for listening player
-		TimeDomainSignal m_prevTds;
-		TimeDomainSignal m_curTds;
+		// sound signals that are generated for actively-listening player
+		Tds m_prevTds;
+		Tds m_curTds;
+
+		// we will copy resulting tds asynchronously from OpenCL devices
+		short[GLOBAL_SRATE] m_tdsStage;
+		AsyncEvent m_tdsStageEvt;
 	}
 
 	/// save current position of transform to m_prevPos
@@ -130,15 +140,15 @@ final class Hydrophone
 
 	@property Transform2D transform() { return m_transform; }
 
-	@property bool hasListener() const { return m_hasListener; }
+	@property bool active() const { return m_active; }
 
 	@property bool listenDirValid() const { return m_listenDirValid; }
 
 	@property size_t antennaCount() const { return m_ant.length; }
 
-	@property void hasListener(bool rhs)
+	@property void active(bool rhs)
 	{
-		m_hasListener = rhs;
+		m_active = rhs;
 		if (!rhs)
 			m_listenDirValid = false;
 	}
@@ -202,94 +212,65 @@ final class Hydrophone
 		}
 	}
 
-	private void applySeaNoise()
+	private void startCalculateSeaNoise(CommandQueue q)
 	{
-		float res = 0;
-		for (int freq = m_minFreq; freq < m_maxFreq; freq++)
-		{
-			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
-			float intensity = (seaNoiseIL(freq) + rngm).toLinear;
-			if (m_listenDirValid)
-				s_stageIspec.bins[freq] = intensity * m_directivity * m_listenToCellR;
-			res += intensity;
-		}
-		res /= m_maxFreq;
-		m_baseSeaNoise = Intensity(res * m_directivity);
+		// zero out intensities
+		q.s_ispec.patch(q, 0.0f);
+		// dispatch sea noise spectrum calculation
+		Kernel k = q.mk_generateSeaNoise;
+		k.setArg(0, q.s_ispec.mem);
+		k.setArg(1, m_directivity * m_listenToCellR);
+		k.setArg(2, ISOTROPIC_VAR);
+		k.setArg(3, uintSeed());
+		k.enqueue(q, 1, [m_minFreq - 1], [m_maxFreq - m_minFreq + 1], null, null).release();
+		// s_ispec now contains sea noise spectrum, let's sum it
+		q.s_ispec.reduceSum(q, m_baseSeaNoiseBuf, m_minFreq, m_maxFreq);
+		// m_baseSeaNoiseBuf must contain sum of intensity bins
+		// !!don't forget to scale it's value by m_listenToCellR!!
+		m_baseSeaNoiseBuf.enqueueFullRead(q, &m_baseSeaNoise, null).release();
+		// if we have an active listener, we need to apply sea noise to it
 		if (m_listenDirValid)
-			applyStageIspec();
-	}
-
-	private void applyFlowNoise()
-	{
-		float resStart = 0.0f;
-		float resEnd = 0.0f;
-		float ktsStartAbs = m_ktsStart.abs;
-		float ktsEndAbs = m_ktsEnd.abs;
-		for (int freq = m_minFreq; freq < m_maxFreq; freq++)
 		{
-			float rngm = uniform(-ISOTROPIC_VAR, ISOTROPIC_VAR);
-			float intensityStart = (flowNoise(freq, ktsStartAbs) + rngm).toLinear;
-			float intensityEnd = (flowNoise(freq, ktsEndAbs) + rngm).toLinear;
-			float iavg = 0.5f * (intensityStart + intensityEnd);
-			if (m_listenDirValid)
-				s_stageIspec.bins[freq] = iavg * m_flowNoiseMult *
-					m_directivity * m_listenToCellR;
-			resStart += intensityStart;
-			resEnd += intensityEnd;
-		}
-		float mult = m_flowNoiseMult / m_maxFreq;
-		resStart *= mult;
-		resEnd *= mult;
-		float resAvg = 0.5f * (resStart + resEnd);
-		m_baseFlowNoise = Intensity(resAvg * m_directivity);
-		if (m_listenDirValid && resAvg != 0.0f)
-		{
-			m_iinterp.startIntensityMult = resStart * sgn(m_ktsStart) / resAvg;
-			m_iinterp.endIntensityMult = resEnd * sgn(m_ktsEnd) / resAvg;
-			applyStageIspec(m_iinterp);
+			q.s_ispec.toTimeDomain(q, q.s_tds);
+			q.s_tds.addTo(q, m_curTds);
 		}
 	}
 
-	private void resetStageIspec()
+	private void startCalculateFlowNoise(CommandQueue q)
 	{
-		s_stageIspec.bins.length = m_maxFreq + 1;
-		s_stageIspec.bins[] = Intensity(0.0f);
-	}
+		void dispatchFlowCalc(ref ISpectrum spec, float kts)
+		{
+			Kernel k = q.mk_generateFlowNoise;
+			spec.patch(q, 0.0f);
+			k.setArg(0, spec.mem);
+			k.setArg(1, m_flowNoiseMult * m_directivity * m_listenToCellR);
+			k.setArg(2, kts.abs);
+			k.setArg(3, ISOTROPIC_VAR);
+			k.setArg(4, uintSeed());
+			k.enqueue(q, 1, [m_minFreq - 1],
+				[m_maxFreq - m_minFreq + 1], null, null).release();
+		}
+		dispatchFlowCalc(q.s_ispec, m_ktsStart);
+		dispatchFlowCalc(q.s_ispec2, m_ktsEnd);
 
-	private void resetCurTds()
-	{
-		m_curTds.zeroOut(m_srate, m_srate);
-	}
-
-	/// transform current contents of s_stageIspec to time-domain and add
-	/// the resulting signal to m_curTds
-	private void applyStageIspec()
-	{
-		s_stageIspec.genSpectrum(s_stageSpectrum);
-		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
-		m_curTds.samples[] += s_stageTds.samples[];
-		resetStageIspec();
-	}
-
-	/// ditto
-	private void applyStageIspec(const IModulator mod, float powerPart = 1.0f)
-	{
-		for (size_t i = 0; i < s_stageIspec.bins.length; i++)
-			s_stageIspec.bins[i] *= powerPart;
-		s_stageIspec.genSpectrum(s_stageSpectrum);
-		s_stageSpectrum.toTimeDomain(s_fftCache, s_stageTds);
-		if (mod)
-			mod.modulate(s_stageTds);
-		m_curTds.samples[] += s_stageTds.samples[];
-		resetStageIspec();
-	}
-
-	/// modulate tds and add it to m_curTds
-	private void applyTdsAdditive(TimeDomainSignal tds, const IModulator mod)
-	{
-		if (mod)
-			mod.modulate(tds);
-		m_curTds.samples[] += tds.samples[];
+		q.s_ispec.reduceSum(q, m_baseFlowNoiseStartBuf, m_minFreq, m_maxFreq);
+		q.s_ispec2.reduceSum(q, m_baseFlowNoiseEndBuf, m_minFreq, m_maxFreq);
+		// !!don't forget to scale it's value by m_listenToCellR!!
+		m_baseFlowNoiseStartBuf.enqueueFullRead(q, &m_baseFlowNoiseStart, null).release();
+		m_baseFlowNoiseEndBuf.enqueueFullRead(q, &m_baseFlowNoiseEnd, null).release();
+		// if we have an active listener, we need to apply flow noise to it
+		if (m_listenDirValid)
+		{
+			q.s_ispec2.addTo(q, q.s_ispec);
+			q.s_ispec.toTimeDomain(q, q.s_tds);
+			Kernel k = q.mk_interpolateIntensity2;
+			k.setArg(0, q.s_tds.mem);
+			k.setArg(1, m_baseFlowNoiseStartBuf.mem);
+			k.setArg(2, m_baseFlowNoiseEndBuf.mem);
+			k.setArg(3, 0.5f * sgn(m_ktsStart));
+			k.setArg(4, 0.5f * sgn(m_ktsEnd));
+			q.s_tds.addTo(q, m_curTds);
+		}
 	}
 
 	/// set speed at the start of integration
@@ -306,35 +287,28 @@ final class Hydrophone
 
 	private void swapTdses()
 	{
-		if (m_prevTds.samples.length == 0)
-		{
-			m_prevTds.samplingRate = m_curTds.samplingRate;
-			m_prevTds.samples.length = m_curTds.samples.length;
-		}
-		auto prev = m_prevTds.samples;
-		m_prevTds.samples = m_curTds.samples;
-		m_curTds.samples = prev;
+		m_curTds.swapWith(m_prevTds);
 	}
 
-	/// reset antennaes and apply isotropic noises (sea and flow)
-	void resetAndIsotropic()
+	/// Reset antennaes and start calculating isotropic noises (sea and flow).
+	/// After queue.finish() you should call endIsotropic() to actually apply
+	/// isotropic noises.
+	void resetAndStartIsotropic(CommandQueue q)
 	{
-		if (m_hasListener)
-		{
-			swapTdses();
-			resetCurTds();
-			resetStageIspec();
-			updateListenCell();
-		}
-		else
-			m_prevTds.samples.length = 0;
-		applySeaNoise();
-		applyFlowNoise();
+		swapTdses();
+		m_curTds.fill(q, 0.0f);
+		updateListenCell();
+		startCalculateSeaNoise(q);
+		startCalculateFlowNoise(q);
 		foreach (a; m_ant)
-		{
 			a.reset();
+	}
+
+	/// Call after resetAndStartIsotropic and after opencl queue barrier
+	void endIsotropic()
+	{
+		foreach (a; m_ant)
 			a.applyIsotropic();
-		}
 	}
 
 	// precalculated data
@@ -359,7 +333,8 @@ final class Hydrophone
 		res.worldBearingStart = courseAngle(res.dirStart);
 		res.worldBearingEnd = courseAngle(res.dirEnd);
 		// half of halo size
-		res.haloBase = (s.radius / res.range + pointHaloAngle(res.range)) * (1 + uniform(-0.06f, 0.06f));
+		res.haloBase = (s.radius / res.range + pointHaloAngle(res.range)) *
+			(1 + uniform(-0.06f, 0.06f));
 		res.haloBound = fmin(HALO_GAIN * res.haloBase, MAX_HALO);
 		return res;
 	}
@@ -409,8 +384,11 @@ final class Hydrophone
 		/// apply backround sea noise and flow noises
 		void applyIsotropic()
 		{
+			float isoIntens = m_baseSeaNoise +
+				0.5f * (m_baseFlowNoiseStart + m_baseFlowNoiseEndBuf);
+			isoIntens /= m_listenToCellR;
 			foreach (ref c; beams)
-				c += m_baseSeaNoise + m_baseFlowNoise;
+				c += isoIntens;
 		}
 
 		/// sample beams random distribution and convert to intensity levels
@@ -580,36 +558,38 @@ final class Hydrophone
 }
 
 
-import imageformats;
-
-/// print passive sonar data to PNG image
-private void printToPng(string filename, IntensityLevel[][] data, dB zeroLevel, dB maxLvl)
-{
-	long width = data[0].length.to!long;
-	long height = data.length;
-	ubyte[] pixels;
-	pixels.length = (width * height).to!size_t;
-	size_t idx = 0;
-	const float dynRange = maxLvl - zeroLevel;
-	float minRaw = float.max;
-	float maxRaw = -minRaw;
-	for (int row = 0; row < height; row++)
-		for (int col = 0; col < width; col++)
-		{
-			dB raw = data[row][col];
-			minRaw = fmin(minRaw, raw);
-			maxRaw = fmax(maxRaw, raw);
-			dB transformed = (raw - zeroLevel) / dynRange;
-			transformed = fmax(0.0f, fmin(1.0f, transformed));
-			pixels[idx++] = (transformed * ubyte.max).to!ubyte;
-		}
-	write_png(filename, width, height, pixels, 1);
-	writeln(filename, " written, min/max raw dB: ", minRaw, " ", maxRaw);
-}
-
 
 unittest
 {
+
+	import imageformats;
+
+	// print passive sonar data to PNG image
+	static void printToPng(string filename, IntensityLevel[][] data, dB zeroLevel, dB maxLvl)
+	{
+		long width = data[0].length.to!long;
+		long height = data.length;
+		ubyte[] pixels;
+		pixels.length = (width * height).to!size_t;
+		size_t idx = 0;
+		const float dynRange = maxLvl - zeroLevel;
+		float minRaw = float.max;
+		float maxRaw = -minRaw;
+		for (int row = 0; row < height; row++)
+			for (int col = 0; col < width; col++)
+			{
+				dB raw = data[row][col];
+				minRaw = fmin(minRaw, raw);
+				maxRaw = fmax(maxRaw, raw);
+				dB transformed = (raw - zeroLevel) / dynRange;
+				transformed = fmax(0.0f, fmin(1.0f, transformed));
+				pixels[idx++] = (transformed * ubyte.max).to!ubyte;
+			}
+		write_png(filename, width, height, pixels, 1);
+		writeln(filename, " written, min/max raw dB: ", minRaw, " ", maxRaw);
+	}
+
+
 	import std.array;
 	import std.algorithm: map, maxElement;
 	import std.range;
@@ -716,5 +696,3 @@ unittest
 	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav",
 		tds.samples, 0.8f / maxp, tds.samplingRate);
 }
-
-*/

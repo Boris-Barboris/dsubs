@@ -1,6 +1,7 @@
 module dsubs_sound.water;
 
 import dsubs_sound.spectrum;
+import dsubs_sound.opencl;
 import dsubs_sound.common;
 
 
@@ -20,30 +21,6 @@ IntensityLevel seaNoiseIL(float freq)
 	return IntensityLevel(70.0 - 6.0 * log2(freq / 20));
 }
 
-unittest
-{
-	import std.algorithm;
-	import std.stdio;
-	import dsubs_sound.wav;
-
-	IntensitySpectrum ispec;
-	ispec.bins.length = 2049;
-	foreach (i, ref b; ispec.bins)
-	{
-		if (i >= 40 && i < 2048)
-			b = seaNoiseIL(i) + 3.0f * uniform01!float;
-		else
-			b = 0.0f;
-	}
-	Spectrum pspec;
-	ispec.genSpectrum(pspec);
-	Fft fftCache = new Fft(2048);
-	TimeDomainSignal tds;
-	pspec.toTimeDomain(fftCache, tds);
-	float maxp = tds.samples.maxElement;
-	writeln("background sea noise max pressure: ", maxp);
-	writeWavFile("seanoise.wav", tds.samples, 0.75f / maxp, tds.samplingRate);
-}
 
 /// Reference propagation loss coefficient
 private float waterRangeDissipationK(float freq)

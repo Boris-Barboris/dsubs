@@ -10,6 +10,7 @@ import derelict.opencl.cl;
 import dsubs_common.utils;
 import dsubs_sound.common;
 import dsubs_sound.fft;
+import dsubs_sound.spectrum;
 import dsubs_sound.filter;
 
 
@@ -176,6 +177,25 @@ package:
 		else
 		{
 			clEnqueueCopyBuffer(q.m_q, m_mem, dest.m_mem, 0, 0, m_size, 1,
+				&onlyAfter.cl, &evt.cl).clError;
+		}
+		return evt;
+	}
+
+	AsyncEvent enqueueCopy(CommandQueue q, ref Buffer dest, size_t offset, size_t count,
+		const(AsyncEvent)* onlyAfter)
+	{
+		assert(m_mem !is cl_mem.init);
+		assert(dest.m_size == m_size);
+		AsyncEvent evt;
+		if (onlyAfter is null)
+		{
+			clEnqueueCopyBuffer(q.m_q, m_mem, dest.m_mem, offset, offset, count, 0,
+				null, &evt.cl).clError;
+		}
+		else
+		{
+			clEnqueueCopyBuffer(q.m_q, m_mem, dest.m_mem, offset, offset, count, 1,
 				&onlyAfter.cl, &evt.cl).clError;
 		}
 		return evt;
@@ -370,6 +390,16 @@ final class Kernel
 			&res.cl).clError;
 		return res;
 	}
+
+	AsyncEvent task(CommandQueue q, const AsyncEvent* onlyAfter)
+	{
+		AsyncEvent res;
+		clEnqueueTask(q.m_q, m_kern,
+			onlyAfter is null ? 0 : 1,
+			onlyAfter is null ? null : &onlyAfter.cl,
+			&res.cl).clError;
+		return res;
+	}
 }
 
 
@@ -392,17 +422,34 @@ final class CommandQueue
 		mk_uniformNoise = new Kernel(prog, "addUniformNoise");
 		mk_energyToPressure = new Kernel(prog, "energyToPressure");
 		mk_interpolateIntensity = new Kernel(prog, "interpolateIntensity");
+		mk_interpolateIntensity2 = new Kernel(prog, "interpolateIntensity2");
 		mk_modulateTrochoid = new Kernel(prog, "modulateTrochoid");
+		mk_addTo = new Kernel(prog, "addTo");
+		mk_toShortPcb = new Kernel(prog, "toShortPcb");
+		mk_sumBuf = new Kernel(prog, "sumBuf");
+		mk_generateSeaNoise = new Kernel(prog, "generateSeaNoise");
+		mk_generateFlowNoise = new Kernel(prog, "generateFlowNoise");
 
 		// prepare queue-local fft engine
-		m_fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
+		fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
+
+		s_tds = Tds(ctx);
+		s_ispec = ISpectrum(ctx);
+		s_ispec2 = ISpectrum(ctx);
+		s_ilspec = ILevelSpectrum(ctx);
+		s_pcbBuf = Buffer(ctx, GLOBAL_SRATE * short.sizeof);
 	}
 
 	private
 	{
 		cl_command_queue m_q;
 		DsubsSoundOpenclCtx m_ctx;
-		FFTPlan!(GLOBAL_SRATE / 2) m_fft;
+	}
+
+	/// Queue-local kernels and fft plan
+	package
+	{
+		FFTPlan!(GLOBAL_SRATE / 2) fft;
 		// kernels
 		Kernel mk_firTds;
 		Kernel mk_radix2;
@@ -412,22 +459,24 @@ final class CommandQueue
 		Kernel mk_uniformNoise;
 		Kernel mk_energyToPressure;
 		Kernel mk_interpolateIntensity;
+		Kernel mk_interpolateIntensity2;
 		Kernel mk_modulateTrochoid;
+		Kernel mk_addTo;
+		Kernel mk_toShortPcb;
+		Kernel mk_sumBuf;
+		Kernel mk_generateSeaNoise;
+		Kernel mk_generateFlowNoise;
 	}
 
-	package @property
+	/// Queue-local shared buffers
+	package
 	{
-		FFTPlan!(GLOBAL_SRATE / 2) fft() { return m_fft; }
-
-		Kernel firTds() { return mk_firTds; }
-		Kernel radix2() { return mk_radix2; }
-		Kernel iradix2() { return mk_iradix2; }
-		Kernel radix4() { return mk_radix4; }
-		Kernel iradix4() { return mk_iradix4; }
-		Kernel uniformNoise() { return mk_uniformNoise; }
-		Kernel energyToPressure() { return mk_energyToPressure; }
-		Kernel interpolateIntensity() { return mk_interpolateIntensity; }
-		Kernel modulateTrochoid() { return mk_modulateTrochoid; }
+		Tds s_tds;
+		ISpectrum s_ispec;
+		ISpectrum s_ispec2;
+		ILevelSpectrum s_ilspec;
+		/// short buffer for converted Tds
+		Buffer s_pcbBuf;
 	}
 
 	/// Context this queue belongs to
@@ -475,6 +524,7 @@ final class DsubsSoundOpenclCtx
 		LinearFilter f_hp500;
 	}
 
+	/// pre-built high-pass filter 500Hz+
 	package ref LinearFilter hp500filter() { return f_hp500; }
 
 	this(int queueCount = totalCPUs)
@@ -573,7 +623,7 @@ unittest
 	{
 		FiltrationCtx* exp = &expCtxs[i % ctx.queueCount];
 		CommandQueue q = ctx.queue(i % ctx.queueCount);
-		Kernel filtKern = q.firTds;
+		Kernel filtKern = q.mk_firTds;
 		filtKern.setArg(0, exp.prevTds.mem);
 		filtKern.setArg(1, exp.curTds.mem);
 		filtKern.setArg(2, exp.filterTaps.mem);
