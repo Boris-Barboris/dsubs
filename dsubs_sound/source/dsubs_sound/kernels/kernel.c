@@ -107,11 +107,11 @@ float trochoid(float A, float B, float C, float x)
 	return A * sin(x + M_PI_2_F + B * sin(x) + C);
 }
 
-struct Harmonic
+typedef struct tag_my_struct
 {
 	float freqMult;
 	float magnitude;
-}
+} Harmonic;
 
 /// Modulate trochoid with time-domain signal
 void __kernel modulateTrochoid(

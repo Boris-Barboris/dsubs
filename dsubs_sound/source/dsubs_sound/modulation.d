@@ -17,7 +17,7 @@ void modulateIInterp(CommandQueue q, Tds tds, float startMult, float endMult)
 
 struct Harmonic
 {
-	float freqMult = 1.0f
+	float freqMult = 1.0f;
 	float magnitude = 0.0f;
 }
 
@@ -90,15 +90,15 @@ struct TrochoidModulator
 	{
 		Kernel k = q.modulateTrochoid;
 		k.setArg(0, tds.mem);
-		k.setArg(1, p.harmonics.ptr);
-		k.setArg(2, p.harmonics.length.to!int);
-		k.setArg(3, p.A);
-		k.setArg(4, p.B);
-		k.setArg(5, p.C);
+		k.setArg(1, params.harmonics.ptr);
+		k.setArg(2, params.harmonics.length.to!int);
+		k.setArg(3, params.A);
+		k.setArg(4, params.B);
+		k.setArg(5, params.C);
 		k.setArg(6, startFundFreq);
 		k.setArg(7, endFundFreq);
 		k.setArg(8, startPhase);
-		k.setArg(9, p.energyIntegral);
+		k.setArg(9, params.energyIntegral);
 		k.enqueue(q, 1, null, [tds.BUF_LEN], null, null).release();
 	}
 

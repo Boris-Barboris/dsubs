@@ -40,6 +40,12 @@ struct Tds
 
 	pragma(inline)
 	package @property auto mem() const { return buf.mem(); }
+
+	AsyncEvent enqueueRead(CommandQueue q, float[] dest)
+	{
+		assert(dest.length >= BUF_LEN);
+		return buf.enqueueFullRead(q, dest.ptr, null);
+	}
 }
 
 
@@ -68,6 +74,9 @@ struct EnergySpectrum(SpectrumType stype)
 	/// Allocate data and fill with initValue.
 	this(CommandQueue q, float initValue)
 	{
+		import std.stdio;
+		writeln("this(CommandQueue q, float initValue) ",
+			BUF_LEN * float.sizeof, " ", initValue);
 		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
 		buf.enqueueFill(q, initValue, null).release();
 	}

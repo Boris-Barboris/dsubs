@@ -1,5 +1,7 @@
 module dsubs_sound.activesonar;
 
+/*
+
 import std.algorithm;
 
 import dsubs_common.event;
@@ -276,3 +278,5 @@ unittest
 	TimeDomainSignal tds = genPingSound(2, [Chirp(1100, 1300, 0.3f)]);
 	writeWavFile("midfreq-chirp.wav", tds.samples, 0.6f, tds.samplingRate);
 }
+
+*/

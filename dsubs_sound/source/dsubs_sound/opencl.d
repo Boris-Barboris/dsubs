@@ -82,10 +82,10 @@ private Platform loadOpenclLibrary()
 	cl_platform_id[] ids = new cl_platform_id[platformCount];
 	clGetPlatformIDs(platformCount, ids.ptr, &platformCount).clError;
 	Platform[] platformList;
-	foreach (i; ids)
+	foreach (idx, i; ids)
 	{
 		Platform p = getPlatformById(i);
-		trace("found platform: ", p);
+		trace("found platform: ", p, idx == 0 ? " (selected)" : "");
 		platformList ~= p;
 	}
 	DerelictCL.reload(CLVersion.CL12);
@@ -178,12 +178,15 @@ package:
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
-			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, 0, m_size,
+			import std.stdio;
+			writeln("AsyncEvent enqueueFill(T)(CommandQueue q, const T val, ",
+				T.sizeof, " ", m_size);
+			clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, 0, m_size,
 				0, null, &evt.cl).clError;
 		}
 		else
 		{
-			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, 0, m_size,
+			clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, 0, m_size,
 				1, &onlyAfter.cl, &evt.cl).clError;
 		}
 		return evt;
@@ -195,13 +198,13 @@ package:
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
-			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, offset * T.sizeof,
-			 	count * T.sizeof, 0, null, &evt.cl).clError;
+			clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, offset * T.sizeof,
+				count * T.sizeof, 0, null, &evt.cl).clError;
 		}
 		else
 		{
-			 clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, offset * T.sizeof,
-			 	count * T.sizeof, 1, &onlyAfter.cl, &evt.cl).clError;
+			clEnqueueFillBuffer(q.m_q, m_mem, &val, T.sizeof, offset * T.sizeof,
+				count * T.sizeof, 1, &onlyAfter.cl, &evt.cl).clError;
 		}
 		return evt;
 	}
