@@ -10,7 +10,10 @@
 		"derelict-cl": "~>3.2.0"
 	},
 	"dflags": [
-		"-J source/dsubs_sound/kernels/"
+		"-J source/dsubs_sound/kernels/",
+		"-transition=dtorfields",
+		"-transition=intpromote",
+		"-transition=import"
 	],
 	"dflags-ldc": [
 		"-mattr=+sse2,+mmx",
