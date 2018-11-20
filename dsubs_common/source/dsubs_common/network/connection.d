@@ -169,6 +169,15 @@ class ProtocolConnection(alias Protocol)
 			(ubyte[] msgBody) { handler(Protocol.demarshal!MsgT(msgBody)); };
 	}
 
+	/// ditto
+	final void setHandler(MsgT)(void delegate(MsgT msg, ubyte[] rawBody) handler)
+	{
+		assert(handler);
+		assert(m_handlers[MsgT.g_marshIdx] is null);
+		m_handlers[MsgT.g_marshIdx] =
+			(ubyte[] msgBody) { handler(Protocol.demarshal!MsgT(msgBody), msgBody); };
+	}
+
 	/// synchronous close
 	final void close()
 	{

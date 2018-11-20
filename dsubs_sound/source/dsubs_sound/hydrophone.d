@@ -7,7 +7,7 @@ import std.range;
 
 import dsubs_common.math;
 import dsubs_common.event;
-import dsubs_common.api.entities;
+import dsubs_common.containers.circqueue;
 
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
@@ -127,8 +127,8 @@ final class Hydrophone
 		Tds m_curTds;
 
 		// we will copy resulting tds asynchronously from OpenCL devices
-		short[GLOBAL_SRATE] m_tdsStage;
-		AsyncEvent m_tdsStageEvt;
+		short[GLOBAL_SRATE] m_pcb;
+		AsyncEvent m_pcbEvt;
 	}
 
 	/// save current position of transform to m_prevPos
@@ -163,29 +163,34 @@ final class Hydrophone
 
 	@property float listenDir() const { return m_listenDir; }
 
-	/// finalize m_curTds by overlapping it with m_prevTds
-	const(TimeDomainSignal) finalizeListenTds()
+	/// finalize m_curTds by filtering it
+	private void finalizeListenTds(CommandQueue q)
 	{
 		assert(m_listenDirValid);
-		// if (m_prevTds.samples.length)
-		// 	overlapTDS(m_prevTds, m_curTds, m_srate / 8);
-		s_stageTds.samplingRate = m_srate;
-		s_stageTds.samples.length = m_srate;
-		m_tdsFilter.filter(chain(m_curTds.samples, m_prevTds.samples).cycled,
-			s_stageTds.samples);
-		// m_tdsFilter.filter(m_prevTds.samples ~ m_curTds.samples,
-		// 	s_stageTds.samples, m_srate);
-		return s_stageTds;
+		m_tdsFilter.filter(q, m_prevTds, m_curTds, q.s_tds);
+		m_curTds.swapWith(q.s_tds);
 	}
 
-	immutable(short)[] finalizePcbData(out int srate, float maxp = 1.0f)
+	/// Starts converting m_curTds to short Pcb samples and enqueue asynchronous read
+	/// to m_pcb short buffer
+	void startFinalizePcbData(CommandQueue q, float maxp)
 	{
-		const(TimeDomainSignal) tds = finalizeListenTds();
-		srate = tds.samplingRate;
-		short[] res = new short[tds.samples.length];
-		for (size_t i = 0; i < res.length; i++)
-			res[i] = (fmax(-1.0f, fmin(1.0f, tds.samples[i] / maxp)) * short.max).to!short;
-		return cast(immutable(short)[]) res;
+		srate = GLOBAL_SRATE;
+		finalizeListenTds(q);
+		Kernel k = q.mk_toShortPcb;
+		k.setArg(0, m_curTds.mem);
+		k.setArg(1, q.s_pcbBuf.mem);
+		k.setArg(2, maxp);
+		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null).release();
+		m_pcbEvt = q.s_pcbBuf.enqueueFullRead(q, m_pcb.ptr, null);
+	}
+
+	/// Wait for opencl to copy converted m_curTds into ram and
+	/// return it as short[]
+	immutable(short)[] endFinalizePcbData()
+	{
+		waitFor(m_pcbEvt);
+		return cast(immutable) m_pcb[];
 	}
 
 	// recalculate listening beam according to current transform rotation
@@ -285,17 +290,12 @@ final class Hydrophone
 		return m_ktsEnd = rhs;
 	}
 
-	private void swapTdses()
-	{
-		m_curTds.swapWith(m_prevTds);
-	}
-
 	/// Reset antennaes and start calculating isotropic noises (sea and flow).
 	/// After queue.finish() you should call endIsotropic() to actually apply
 	/// isotropic noises.
 	void resetAndStartIsotropic(CommandQueue q)
 	{
-		swapTdses();
+		m_curTds.swapWith(m_prevTds);
 		m_curTds.fill(q, 0.0f);
 		updateListenCell();
 		startCalculateSeaNoise(q);
@@ -321,7 +321,15 @@ final class Hydrophone
 		double worldBearingEnd;
 		float haloBase;
 		float haloBound;
+
+		Intensity bandSum;	/// OpenCL writes here the sum of band intensities
+		AsyncEvent m_evt;	/// set when bandSum is ready
 	}
+
+	// Sound sources are enqueued and processed asynchronously by opencl.
+	// In order to generate broadband beam data on cpu we await band sums
+	// calculated in opencl. That requires queuing in order to be efficient.
+	private CircQueue!(SourcePrecalc, 16) m_sourceQueue;
 
 	private SourcePrecalc precalcForSource(SoundSource s)
 	{
@@ -386,7 +394,7 @@ final class Hydrophone
 		{
 			float isoIntens = m_baseSeaNoise +
 				0.5f * (m_baseFlowNoiseStart + m_baseFlowNoiseEndBuf);
-			isoIntens /= m_listenToCellR;
+			isoIntens /= m_listenToCellR * GLOBAL_SRATE / 2;
 			foreach (ref c; beams)
 				c += isoIntens;
 		}

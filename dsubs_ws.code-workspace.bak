@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"d.projectImportPaths": [
+			"C:\\coding\\dsubs\\DerelictSFML2\\source",
+			"C:\\coding\\dsubs\\dsubs_common\\source",
+			"C:\\coding\\dsubs\\dsubs_client\\source",
+			"C:\\coding\\dsubs\\dsubs_sound\\source",
+			"C:\\coding\\dsubs\\dsubs_server\\source",
+			"C:\\Users\\John Bull\\AppData\\Roaming\\dub\\packages\\derelict-cl-3.2.0\\derelict-cl\\source"
+		]
+	}
+}
