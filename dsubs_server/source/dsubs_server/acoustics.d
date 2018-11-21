@@ -72,11 +72,27 @@ final class AcousticEnv
 	{
 		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
-			if (!hydrophone.hasListener)
+			int workerIdx = Globals.taskPool.workerIndex.to!int;
+			auto q = Globals.sctx.queue(workerIdx);
+			if (!hydrophone.active)
 				continue;
-			hydrophone.resetAndIsotropic();
+			hydrophone.resetAndStartIsotropic(q);
 			foreach (source; m_sources)
-				hydrophone.applySoundSource(source);
+				hydrophone.applySoundSource(q, source);
+			if (hydrophone.listenDirValid)
+				hydrophone.startFinalizePcbData(q, 100.0f);
+		}
+
+		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
+		{
+			int workerIdx = Globals.taskPool.workerIndex.to!int;
+			auto q = Globals.sctx.queue(workerIdx);
+			if (!hydrophone.active)
+				continue;
+			hydrophone.flushSourceQueue();
+			hydrophone.endIsotropic();
+			if (hydrophone.listenDirValid)
+				hydrophone.endFinalizePcbData();
 		}
 	}
 }

@@ -169,7 +169,6 @@ final class Hydrophone
 	{
 		assert(m_listenDirValid);
 		m_tdsFilter.filter(q, m_prevTds, m_curTds, q.s_tds);
-		// m_curTds.swapWith(q.s_tds);
 	}
 
 	/// Starts converting m_curTds to short Pcb samples and enqueue asynchronous read
@@ -185,13 +184,13 @@ final class Hydrophone
 		m_pcbEvt = q.s_pcbBuf.enqueueFullRead(q, m_pcb.ptr, null);
 	}
 
-	/// Wait for opencl to copy converted m_curTds into ram and
-	/// return it as short[]
-	immutable(short)[] endFinalizePcbData()
+	/// Wait for opencl to copy converted m_curTds into ram
+	void endFinalizePcbData()
 	{
 		waitFor(m_pcbEvt);
-		return cast(immutable) m_pcb[];
 	}
+
+	@property immutable(short)[] pcb() { return cast(immutable) m_pcb[]; }
 
 	// recalculate listening beam according to current transform rotation
 	private void updateListenCell()

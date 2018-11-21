@@ -3,6 +3,8 @@ module dsubs_server.globals;
 import std.parallelism;
 import core.sync.rwmutex;
 
+import dsubs_sound.opencl;
+
 import dsubs_server.player: PlayerCollection;
 import dsubs_server.dynamics: PhysicalEnv;
 import dsubs_server.acoustics;
@@ -34,11 +36,14 @@ __gshared:
 	AcousticEnv acous;
 	/// Simulator
 	Simulator sim;
+	/// OpenCL context
+	DsubsSoundOpenclCtx sctx;
 
 	static void build()
 	{
 		simMut = new ReadWriteMutex();
 		taskPool = new TaskPool(totalCPUs);
+		sctx = new DsubsSoundOpenclCtx(totalCPUs + 1);
 		entityDb = new EntityDb();
 		players = new PlayerCollection();
 		cons = new ConListener();

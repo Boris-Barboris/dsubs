@@ -1,18 +1,11 @@
 module dsubs_sound.water;
 
 import dsubs_sound.spectrum;
-import dsubs_sound.opencl;
 import dsubs_sound.common;
 
 
 /// Speed of sound
-__gshared immutable float SOUND_SPD;
-
-shared static this()
-{
-	SOUND_SPD = 1498 + uniform(-20.0f, 20.0f);
-}
-
+enum float SOUND_SPD = 1498;
 
 /// Get reference sea background noise band level
 IntensityLevel seaNoiseIL(float freq)
@@ -35,17 +28,15 @@ private float waterRangeDissipationK(float freq)
 	return res;
 }
 
-package immutable float[] wrdk;
+package immutable(float)[] wrdk;
 
-shared static this()
+void initializeWrdk()
 {
 	float[] prep_wrdk;
 	prep_wrdk.length = 4096;
 	for (int i = 1; i <= 4096; i++)
 		prep_wrdk[i - 1] = waterRangeDissipationK(i);
-	wrdk = cast(immutable(float[])) prep_wrdk;
-
-	s_clCtx.b_wrdks = Buffer(s_clCtx.queue(0), wrdk[]);
+	wrdk = cast(immutable(float)[]) prep_wrdk;
 }
 
 /// Scale intensity level of a band as if it is received underwater at range

@@ -94,7 +94,7 @@ final class Player
 				{
 					if (m_submarine)
 						foreach (h; m_submarine.hydrophones)
-							h.hasListener = false;
+							h.active = false;
 					m_connection = null;
 					atomicOp!"-="(s_playerCount, 1);
 				}
@@ -128,7 +128,7 @@ final class Player
 				con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
 				if (m_submarine)
 					foreach (h; m_submarine.hydrophones)
-						h.hasListener = true;
+						h.active = true;
 			}
 		}
 	}
@@ -166,7 +166,7 @@ final class Player
 				m_submarine = s;
 				foreach (h; s.hydrophones)
 				{
-					h.hasListener = true;
+					h.active = true;
 					h.listenDir = -coordRot;
 				}
 				return getReconnectState();
@@ -244,10 +244,10 @@ final class Player
 				if (h.listenDirValid)
 				{
 					int srate;
-					auto samples = h.finalizePcbData(srate, 0.2f);
+					auto samples = h.pcb;
 					trace("samples start: ", samples[0..5], " end: ", samples[$-5..$]);
 					haudio ~= immutable HydrophoneAudio(i, h.listenDir + coordRot,
-						samples, srate);
+						samples, samples.length.to!int);
 				}
 			}
 			con.sendMessage(immutable AcousticStreamRes(

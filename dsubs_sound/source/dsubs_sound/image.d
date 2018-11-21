@@ -55,6 +55,15 @@ void loadSpectrumFromImageAndWarp(CommandQueue q, ref ISpectrum dest,
 	dest.addUniformNoise(q, noise);
 }
 
+ISpectrum* loadSpectrumFromImageAndWarp(CommandQueue q,
+	string filename, float noise,
+	float bottomLevel = 80.0f, float topLevel = 160.0f)
+{
+	ISpectrum* spec = new ISpectrum();
+	loadSpectrumFromImageAndWarp(q, *spec, filename, noise, bottomLevel, topLevel);
+	return spec;
+}
+
 unittest
 {
 	import std.array;

@@ -91,11 +91,16 @@ private:
 		bp.mass = 50.0f;
 		bp.shaftRotFreq = 2.0f;
 		bp.soundPrototype = PropellerSoundPrototype(
-			loadSpectrumFromImageAndWarp(
-				"../dsubs_sound/std_propeller.png", 1.0f, 80, 140).toIntensity,
-			loadSpectrumFromImageAndWarp(
-				"../dsubs_sound/std_propeller_cav.png", 1.0f, 60, 140).toIntensity,
-			TrochoidModulatorParams([0.2f, 0.05f, 0.01f, 0.001f, 0.8f, 0.001f],
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/std_propeller.png", 1.0f, 80, 140),
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/std_propeller_cav.png", 1.0f, 60, 140),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.2f),
+				Harmonic(2.0f, 0.05f),
+				Harmonic(3.0f, 0.01f),
+				Harmonic(4.0f, 0.001f),
+				Harmonic(5.0f, 0.8f)],
 				0.5, 0.7, -0.4),
 			4.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
 		);

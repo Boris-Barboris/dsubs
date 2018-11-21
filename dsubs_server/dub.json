@@ -10,6 +10,12 @@
 		"dsubs_common": { "path": "../dsubs_common" },
 		"dsubs_sound": { "path": "../dsubs_sound" }
 	},
+	"dflags": [
+		"-J /home/boris/src/dsubs/dsubs_sound/source/dsubs_sound/kernels",
+		"-transition=dtorfields",
+		"-transition=intpromote",
+		"-transition=import"
+	],
 	"dflags-ldc": [
 		"-mattr=+sse2,+mmx",
 		"-ffast-math"

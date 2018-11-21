@@ -11,6 +11,7 @@ import dsubs_common.utils;
 import dsubs_sound.common;
 import dsubs_sound.fft;
 import dsubs_sound.spectrum;
+import dsubs_sound.water;
 import dsubs_sound.filter;
 
 
@@ -562,6 +563,7 @@ final class DsubsSoundOpenclCtx
 		f_hp500 = hp500(m_queues[0]);
 		m_queues[0].finish();
 		trace("Filters loaded");
+		b_wrdks = Buffer(queue(0), wrdk);
 	}
 
 	~this()
@@ -583,6 +585,12 @@ final class DsubsSoundOpenclCtx
 	CommandQueue queue(size_t queueIdx) { return m_queues[queueIdx]; }
 
 	@property size_t queueCount() const { return m_queues.length; }
+}
+
+
+shared static this()
+{
+	initializeWrdk();
 }
 
 

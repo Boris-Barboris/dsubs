@@ -180,7 +180,7 @@ final class SubmarineFactory
 			t.position = tmpl.hydrophones[i].mount.mountCenter.toGfm!double;
 			t.rotation = tmpl.hydrophones[i].mount.rotation;
 			res.transform.addChild(t);
-			res.m_hydrophones ~= new Hydrophone(t, hp);
+			res.m_hydrophones ~= new Hydrophone(Globals.sctx.queue(0), t, hp);
 		}
 		return res;
 	}
