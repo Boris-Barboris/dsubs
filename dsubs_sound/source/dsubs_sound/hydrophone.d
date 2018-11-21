@@ -122,6 +122,7 @@ final class Hydrophone
 		float m_listenDir = 0.0f;
 		// false when no active antenna has a beam for chosen listen Dir
 		bool m_listenDirValid;
+		bool m_needPrevReset;
 
 		// sound signals that are generated for actively-listening player
 		Tds m_prevTds;
@@ -149,6 +150,8 @@ final class Hydrophone
 
 	@property void active(bool rhs)
 	{
+		if (!m_active && rhs)
+			m_needPrevReset = true;
 		m_active = rhs;
 		if (!rhs)
 			m_listenDirValid = false;
@@ -301,6 +304,11 @@ final class Hydrophone
 		{
 			m_curTds.swapWith(m_prevTds);
 			m_curTds.fill(q, 0.0f);
+			if (m_needPrevReset)
+			{
+				m_prevTds.fill(q, 0.0f);
+				m_needPrevReset = false;
+			}
 		}
 		startCalculateSeaNoise(q);
 		startCalculateFlowNoise(q);
