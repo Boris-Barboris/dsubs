@@ -118,18 +118,15 @@ final class Player
 	/// set current
 	private void emplaceConnection(PlayerConnection con)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(this)
 		{
-			synchronized(this)
-			{
-				closeConnection();
-				m_connection = con;
-				atomicOp!"+="(s_playerCount, 1);
-				con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
-				if (m_submarine)
-					foreach (h; m_submarine.hydrophones)
-						h.active = true;
-			}
+			closeConnection();
+			m_connection = con;
+			atomicOp!"+="(s_playerCount, 1);
+			con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
+			if (m_submarine)
+				foreach (h; m_submarine.hydrophones)
+					h.active = true;
 		}
 	}
 
@@ -280,23 +277,26 @@ final class PlayerCollection
 	{
 		assert(con);
 		scope(success) info("Player ", username, " authorized");
-		synchronized(this)
+		synchronized(Globals.simMut.reader)
 		{
-			Player* p = username in m_players;
-			if (p !is null)
+			synchronized(this)
 			{
-				// player is already present, let's try to authorize new connection
-				enforce!AuthException(p.compareCredentials(username, password),
-					"invalid password");
-				p.emplaceConnection(con);
-				return *p;
-			}
-			else
-			{
-				// new player
-				Player np = new Player(con, username, password);
-				m_players[username] = np;
-				return np;
+				Player* p = username in m_players;
+				if (p !is null)
+				{
+					// player is already present, let's try to authorize new connection
+					enforce!AuthException(p.compareCredentials(username, password),
+						"invalid password");
+					p.emplaceConnection(con);
+					return *p;
+				}
+				else
+				{
+					// new player
+					Player np = new Player(con, username, password);
+					m_players[username] = np;
+					return np;
+				}
 			}
 		}
 	}
