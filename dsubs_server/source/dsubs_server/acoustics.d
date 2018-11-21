@@ -85,8 +85,6 @@ final class AcousticEnv
 
 		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
-			int workerIdx = Globals.taskPool.workerIndex.to!int;
-			auto q = Globals.sctx.queue(workerIdx);
 			if (!hydrophone.active)
 				continue;
 			hydrophone.flushSourceQueue();

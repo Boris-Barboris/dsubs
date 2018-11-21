@@ -42,8 +42,8 @@ __gshared:
 	static void build()
 	{
 		simMut = new ReadWriteMutex();
-		taskPool = new TaskPool(totalCPUs);
-		sctx = new DsubsSoundOpenclCtx(totalCPUs + 1);
+		taskPool = new TaskPool(totalCPUs - 1);
+		sctx = new DsubsSoundOpenclCtx(totalCPUs);
 		entityDb = new EntityDb();
 		players = new PlayerCollection();
 		cons = new ConListener();
