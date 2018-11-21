@@ -212,6 +212,37 @@ dB flowNoise(int freq, float kts)
 }
 
 
+void __kernel firstSonarPass(
+	__write_only image2d_t img,
+	__global const float *wrdks,
+	const dB pingIntens,
+	const dB baseNoise,
+	const int pingFreq,
+	const float span,
+	const dB directivity,
+	const float waterReflectivity,
+	const float rangePerRow,
+	const float dissMod,
+	const float endScale,
+	const uint seed)
+{
+	const uint x = get_global_id(0);
+	const uint y = get_global_id(1);
+	const int beamCount = get_image_width(img);
+	const uint hidx = x + y * beamCount;
+	uint randState = getRngState(seed, hidx);
+	const float fromEmitter = rangePerRow * (y + 0.5f);
+	float waterNoise = toLinear(seaNoiseIL(pingFreq) + directivity);
+	float wrdk = wrdks[pingFreq - 1];
+	dB waterRefl = getILatRange2(wrdk, pingIntens, 2 * fromEmitter, dissMod);
+	waterRefl += waterReflectivity * wrdk * rangePerRow * dissMod;
+	waterRefl += uniform(&randState, -baseNoise, baseNoise);
+	dB resIlevel = toDb(waterNoise + toLinear(waterRefl));
+	resIlevel *= endScale;
+	write_imagef(img, (int2)(x, y), (float4)(resIlevel, 0.0f, 0.0f, 1.0f));
+}
+
+
 void __kernel generateFlowNoise(
 	__global float *destIspec,
 	const float imult,

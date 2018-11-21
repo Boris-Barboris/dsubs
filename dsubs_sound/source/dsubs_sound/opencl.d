@@ -94,15 +94,78 @@ private Platform loadOpenclLibrary()
 }
 
 
+/// Monochrome single-channel floating-point image
+struct FloatImage
+{
+	this(DsubsSoundOpenclCtx ctx, size_t width, size_t height,
+		cl_mem_flags flags = CL_MEM_READ_WRITE)
+	{
+		cl_image_format imgFormat = cl_image_format(CL_R, CL_FLOAT);
+		cl_image_desc desc = cl_image_desc(
+			 CL_MEM_OBJECT_IMAGE2D, width, height, 1, 1, 0, 0, 0, 0, null);
+		m_width = width;
+		m_height = height;
+		cl_int err;
+		m_mem = clCreateImage(ctx.m_ctx, flags, &imgFormat, &desc, null, &err);
+		err.clError();
+	}
+
+	@disable this(this);
+
+	~this()
+	{
+		release();
+	}
+
+	void release() nothrow @nogc
+	{
+		if (!m_released)
+		{
+			if (m_mem != cl_mem.init)
+				clReleaseMemObject(m_mem);
+			m_released = true;
+		}
+	}
+
+	private
+	{
+		bool m_released;
+		size_t m_width, m_height;
+		cl_mem m_mem;
+	}
+
+	@property size_t w() const { return m_width; }
+	@property size_t h() const { return m_height; }
+
+	/// buffer data size in bytes
+	@property size_t size() const { return m_width * m_height * float.sizeof; }
+
+	package @property const(cl_mem)* mem() const { return &m_mem; }
+
+package:
+
+	AsyncEvent enqueueRead(CommandQueue q, float[] dest,
+		size_t[2] origin, size_t[2] region)
+	{
+		assert(dest.length == region[0] * region[1]);
+		AsyncEvent res;
+		size_t[3] corigin = [origin[0], origin[1], 0];
+		size_t[3] cregion = [region[0], region[1], 1];
+		clEnqueueReadImage(q.m_q, m_mem, false, &corigin[0], &cregion[0],
+			0, 0, dest.ptr, 0, null, &res.cl).clError();
+		return res;
+	}
+}
+
+
 struct Buffer
 {
 	this(CommandQueue q, const void[] data,
 		cl_mem_flags flags = CL_MEM_READ_WRITE)
 	{
-		m_ctx = q.m_ctx;
 		cl_int err;
 		m_size = data.length;
-		m_mem = clCreateBuffer(m_ctx.m_ctx, flags, m_size, null, &err);
+		m_mem = clCreateBuffer(q.m_ctx.m_ctx, flags, m_size, null, &err);
 		err.clError();
 		//trace("new buffer pointer ", m_mem);
 		scope(failure) release();
@@ -113,7 +176,6 @@ struct Buffer
 	this(DsubsSoundOpenclCtx ctx, size_t size,
 		cl_mem_flags flags = CL_MEM_READ_WRITE)
 	{
-		m_ctx = ctx;
 		cl_int err;
 		m_size = size;
 		m_mem = clCreateBuffer(ctx.m_ctx, flags, m_size, null, &err);
@@ -153,7 +215,6 @@ struct Buffer
 	{
 		bool m_released;
 		size_t m_size;
-		DsubsSoundOpenclCtx m_ctx;
 		cl_mem m_mem;
 	}
 
@@ -436,6 +497,7 @@ final class CommandQueue
 		mk_generateSeaNoise = new Kernel(prog, "generateSeaNoise");
 		mk_generateFlowNoise = new Kernel(prog, "generateFlowNoise");
 		mk_propellerGenISpec = new Kernel(prog, "propellerGenISpec");
+		mk_firstSonarPass = new Kernel(prog, "firstSonarPass");
 
 		// prepare queue-local fft engine
 		fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
@@ -475,6 +537,7 @@ final class CommandQueue
 		Kernel mk_generateSeaNoise;
 		Kernel mk_generateFlowNoise;
 		Kernel mk_propellerGenISpec;
+		Kernel mk_firstSonarPass;
 	}
 
 	/// Queue-local shared buffers

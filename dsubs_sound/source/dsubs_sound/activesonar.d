@@ -1,7 +1,5 @@
 module dsubs_sound.activesonar;
 
-/*
-
 import std.algorithm;
 
 import dsubs_common.event;
@@ -9,6 +7,7 @@ import dsubs_common.event;
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
 import dsubs_sound.soundsource;
+import dsubs_sound.opencl;
 import dsubs_sound.water;
 import dsubs_sound.wav;
 import dsubs_sound.reverb;
@@ -18,7 +17,7 @@ import dsubs_sound.reverb;
 struct ReflectorPrototype
 {
 	vec2f size;
-	vec3f reflectivity;
+	dB[3] reflectivity;		/// negative to conserve energy
 }
 
 
@@ -40,29 +39,29 @@ final class Reflector
 	private vec2f size;
 
 	/// reflectivities of front (x), sides (y, axial symmetry assumed) and rear (z)
-	private vec3f reflectivity;
+	private dB[3] reflectivity;
 
 	/// calculate cross-radius and effective reflectivity towards the emitter
-	public void calcForEmitter(vec2d emitterPos, out float crad, out float reflect) const
-	{
-		float relBearing = courseAngle(emitterPos - m_transform.wposition) -
-			m_transform.wrotation;
-		float diffFromSide = (fabs(clampAnglePi(relBearing)) - PI_2) / PI_2;
-		float absDiffFromSide = fabs(diffFromSide);
-		crad = size.y * (1.0f - absDiffFromSide) + size.x * absDiffFromSide;
-		if (diffFromSide >= 0.0f)
-		{
-			// emission from the rear
-			reflect = reflectivity.y * (1.0f - absDiffFromSide) +
-				reflectivity.z * absDiffFromSide;
-		}
-		else
-		{
-			// emission from the frontal semisphere
-			reflect = reflectivity.y * (1.0f - absDiffFromSide) +
-				reflectivity.x * absDiffFromSide;
-		}
-	}
+	// public void calcForEmitter(vec2d emitterPos, out float crad, out float reflect) const
+	// {
+	// 	float relBearing = courseAngle(emitterPos - m_transform.wposition) -
+	// 		m_transform.wrotation;
+	// 	float diffFromSide = (fabs(clampAnglePi(relBearing)) - PI_2) / PI_2;
+	// 	float absDiffFromSide = fabs(diffFromSide);
+	// 	crad = size.y * (1.0f - absDiffFromSide) + size.x * absDiffFromSide;
+	// 	if (diffFromSide >= 0.0f)
+	// 	{
+	// 		// emission from the rear
+	// 		reflect = reflectivity.y * (1.0f - absDiffFromSide) +
+	// 			reflectivity.z * absDiffFromSide;
+	// 	}
+	// 	else
+	// 	{
+	// 		// emission from the frontal semisphere
+	// 		reflect = reflectivity.y * (1.0f - absDiffFromSide) +
+	// 			reflectivity.x * absDiffFromSide;
+	// 	}
+	// }
 }
 
 
@@ -78,28 +77,28 @@ struct PingParameters
 {
 	Chirp[] chirps;
 	int tdsLength = 2;		/// tds length in seconds
-	float effectiveFreq;	/// abstracted away "main" frequency.
+	int effectiveFreq;		/// abstracted away "main" frequency.
 }
 
 
-/// Cache for reference Tds ping signals of unity amplitude
-struct PingTdsCache
-{
-	private
-	{
-		TimeDomainSignal[immutable PingParameters*] m_cache;
-	}
+// /// Cache for reference Tds ping signals of unity amplitude
+// struct PingTdsCache
+// {
+// 	private
+// 	{
+// 		Tds[immutable PingParameters*] m_cache;
+// 	}
 
-	void put(immutable PingParameters* params)
-	{
-		m_cache[params] = genPingSound(params.tdsLength, params.chirps);
-	}
+// 	void put(immutable PingParameters* params)
+// 	{
+// 		m_cache[params] = genPingSound(params.tdsLength, params.chirps);
+// 	}
 
-	immutable(TimeDomainSignal)* get(immutable PingParameters* params) immutable
-	{
-		return params in m_cache;
-	}
-}
+// 	Tds* get(immutable PingParameters* params) immutable
+// 	{
+// 		return params in m_cache;
+// 	}
+// }
 
 
 struct ActiveSonarPrototype
@@ -107,11 +106,11 @@ struct ActiveSonarPrototype
 	/// form of the ping chirp, wich will be used to synthesize time domain signal
 	immutable(PingParameters)* pingParams;
 	/// number of beams, formed by transducer
-	int beamCount = 210;
+	int beamCount = 320;
 	/// Sonar is capable of scanning sector of this size
 	float span = 210.0f;
 	/// rows in image per second
-	int rowsPerSec = 10;
+	int radialRes = 10;
 	/// max ping duration (seconds)
 	int maxSec = 60;
 	/// minimum ping power
@@ -128,91 +127,135 @@ struct ActiveSonarPrototype
 }
 
 
-final class ActiveSonar
+unittest
 {
-	this(Transform2D trans, const ActiveSonarPrototype proto,
-		immutable(PingTdsCache)* pingCache)
+	import imageformats;
+	import std.algorithm: map, maxElement;
+	import std.array: array;
+
+	DsubsSoundOpenclCtx ctx = s_clCtx;
+	CommandQueue q = ctx.queue(0);
+
+	FloatImage fimg = FloatImage(ctx, 300, 400);
+
+	Kernel k = q.mk_firstSonarPass;
+	k.setArg(0, fimg.mem);
+	k.setArg(1, ctx.b_wrdks.mem);
+	k.setArg(2, 120.0f);	// pingIntens
+	k.setArg(3, 2.0f);		// baseNoise
+	k.setArg(4, 1400);		// pingFreq
+	k.setArg(5, 210.0f);	// span
+	k.setArg(6, -20.0f);	// directivity
+	k.setArg(7, 0.001f);	// waterReflectivity
+	k.setArg(8, 50.0f);		// rangePerRow
+	k.setArg(9, 4.0f);		// dissMod
+	k.setArg(10, 1.0f / 100);		// endScale
+	k.setArg(11, uintSeed());		// seed
+	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
+
+	float[] res;
+	res.length = fimg.w * fimg.h;
+	fimg.enqueueRead(q, res, [0, 0], [fimg.w, fimg.h]).waitFor();
+	trace("active_sonar max intensity level = ", res.maxElement);
+
+	foreach (float r; res)
 	{
-		m_transform = trans;
-		m_proto = proto;
-		m_tds = pingCache.get(m_proto.pingParams);
+		assert(!isNaN(r));
+		assert(!isInfinity(r));
 	}
 
-	private
-	{
-		Transform2D m_transform;
-		const ActiveSonarPrototype m_proto;
-		immutable(TimeDomainSignal)* m_tds;
-		bool m_hasListener;
-		SonarPing m_trackedPing;
+	string maxRange = (50.0 * fimg.h / 2000).to!int.to!string;
 
-		/// speed in knots at the start of integration
-		float m_ktsStart = 0.0f;
-		float m_ktsEnd = 0.0f;
-	}
-
-	/// invoked by simulator before kinematic update happens
-	Event!(void delegate()) onPreSimulation;
-	/// invoked by simulator right after kinematic update happens
-	Event!(void delegate()) onPostSimulation;
-
-	/// set speed at the start of integration
-	@property float ktsStart(float rhs)
-	{
-		return m_ktsStart = rhs;
-	}
-
-	/// set speed at the end of integration
-	@property float ktsEnd(float rhs)
-	{
-		return m_ktsEnd = rhs;
-	}
-
-	/// currently tracked ping. Null if none.
-	@property SonarPing trackedPing() { return m_trackedPing; }
-
-	@property bool hasListener() const { return m_hasListener; }
-
-	@property void hasListener(bool rhs)
-	{
-		m_hasListener = rhs;
-		if (!rhs)
-			m_trackedPing = null;
-	}
+	ubyte[] resBytes = res.map!(s => (min(1.0f, s) * ubyte.max).to!ubyte).array;
+	write_image("active_sonar_" ~ maxRange ~ "km.png", fimg.w, fimg.h, resBytes, ColFmt.Y);
 }
 
 
-/// Immovable sonar ping source.
-final class SonarPing: SoundSource
-{
-	this(vec2d position, immutable(PingParameters)* params, IntensityLevel power)
-	{
-		m_position = position;
-		m_params = params;
-		savePrevPos();
-	}
+// final class ActiveSonar
+// {
+// 	this(Transform2D trans, const ActiveSonarPrototype proto,
+// 		immutable(PingTdsCache)* pingCache)
+// 	{
+// 		m_transform = trans;
+// 		m_proto = proto;
+// 		m_tds = pingCache.get(m_proto.pingParams);
+// 	}
 
-	private
-	{
-		// time passed since ping creation
-		float m_timeSince = 0.0f;
-		vec2d m_position;
-		const PingParameters* m_params;
-		TimeDomainSignal m_tds;
-		ubyte[][] m_image;
-	}
+// 	private
+// 	{
+// 		Transform2D m_transform;
+// 		const ActiveSonarPrototype m_proto;
+// 		immutable(TimeDomainSignal)* m_tds;
+// 		bool m_hasListener;
+// 		SonarPing m_trackedPing;
 
-	override @property vec2d position() { return m_position; }
+// 		/// speed in knots at the start of integration
+// 		float m_ktsStart = 0.0f;
+// 		float m_ktsEnd = 0.0f;
+// 	}
 
-	override @property float radius() const { return 30.0f; }
+// 	/// invoked by simulator before kinematic update happens
+// 	Event!(void delegate()) onPreSimulation;
+// 	/// invoked by simulator right after kinematic update happens
+// 	Event!(void delegate()) onPostSimulation;
 
-	override void buildSignals(vec2d listenerPos,
-		scope void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
-		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const
-	{
+// 	/// set speed at the start of integration
+// 	@property float ktsStart(float rhs)
+// 	{
+// 		return m_ktsStart = rhs;
+// 	}
 
-	}
-}
+// 	/// set speed at the end of integration
+// 	@property float ktsEnd(float rhs)
+// 	{
+// 		return m_ktsEnd = rhs;
+// 	}
+
+// 	/// currently tracked ping. Null if none.
+// 	@property SonarPing trackedPing() { return m_trackedPing; }
+
+// 	@property bool hasListener() const { return m_hasListener; }
+
+// 	@property void hasListener(bool rhs)
+// 	{
+// 		m_hasListener = rhs;
+// 		if (!rhs)
+// 			m_trackedPing = null;
+// 	}
+// }
+
+
+// /// Immovable sonar ping source.
+// final class SonarPing: SoundSource
+// {
+// 	this(vec2d position, immutable(PingParameters)* params, IntensityLevel power)
+// 	{
+// 		m_position = position;
+// 		m_params = params;
+// 		savePrevPos();
+// 	}
+
+// 	private
+// 	{
+// 		// time passed since ping creation
+// 		float m_timeSince = 0.0f;
+// 		vec2d m_position;
+// 		const PingParameters* m_params;
+// 		TimeDomainSignal m_tds;
+// 		ubyte[][] m_image;
+// 	}
+
+// 	override @property vec2d position() { return m_position; }
+
+// 	override @property float radius() const { return 30.0f; }
+
+// 	override void buildSignals(vec2d listenerPos,
+// 		scope void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
+// 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const
+// 	{
+
+// 	}
+// }
 
 
 private TyGverb* g_reverbator;
@@ -228,24 +271,23 @@ private void ensureReverberatorBuilt()
 	}
 }
 
-private TimeDomainSignal genPingSound(int lifeTime, immutable Chirp[] chirps,
-	int srate = 4096)
+private float[] genPingSound(int lifeTime, immutable Chirp[] chirps,
+	int srate = GLOBAL_SRATE)
 {
 	assert(srate > 0);
 	assert(chirps.length > 0);
 	float phase = uniform(-3.0f, 3.0f);
 	float time = 0.0f;
 	float dt = 1.0f / srate;
-	TimeDomainSignal res;
-	res.samplingRate = srate;
-	res.samples.length = lrint(srate * lifeTime).to!size_t;
+	float[] samples;
+	samples.length = lrint(srate * lifeTime).to!size_t;
 	int curChirp = 0;
 	float freq = chirps[curChirp].startFreq;
 	float chirpDur = chirps[curChirp].duration;
 	float dfreq = (chirps[curChirp].endFreq - freq) / chirps[curChirp].duration * dt;
-	for (size_t i = 0; i < res.samples.length; i++)
+	for (size_t i = 0; i < samples.length; i++)
 	{
-		res.samples[i] = sin(phase);
+		samples[i] = sin(phase);
 		phase += freq * dt * 2 * PI;
 		if (phase > 2 * PI)
 			phase -= 2 * PI;
@@ -257,7 +299,7 @@ private TimeDomainSignal genPingSound(int lifeTime, immutable Chirp[] chirps,
 			curChirp++;
 			if (curChirp >= chirps.length)
 			{
-				res.samples[i+1..$] = 0.0f;
+				samples[i+1..$] = 0.0f;
 				break;
 			}
 			freq = chirps[curChirp].startFreq;
@@ -267,16 +309,14 @@ private TimeDomainSignal genPingSound(int lifeTime, immutable Chirp[] chirps,
 	float[] reverbed;
 	ensureReverberatorBuilt();
 	g_reverbator.set_revtime(lifeTime);
-	g_reverbator.applyToBuf(res.samples, reverbed);
+	g_reverbator.applyToBuf(samples, reverbed);
 	g_reverbator.flush();
-	res.samples = reverbed;
-	return res;
+	samples = reverbed;
+	return samples;
 }
 
 unittest
 {
-	TimeDomainSignal tds = genPingSound(2, [Chirp(1100, 1300, 0.3f)]);
-	writeWavFile("midfreq-chirp.wav", tds.samples, 0.6f, tds.samplingRate);
+	float[] samples = genPingSound(2, [Chirp(1100, 1300, 0.3f)]);
+	writeWavFile("midfreq-chirp.wav", samples, 0.6f, GLOBAL_SRATE);
 }
-
-*/
