@@ -141,6 +141,7 @@ unittest
 	import imageformats: write_image, ColFmt;
 	import std.algorithm: map, maxElement;
 	import std.array: array;
+	import core.time: MonoTime;
 
 	DsubsSoundOpenclCtx ctx = s_clCtx;
 	CommandQueue q = ctx.queue(0);
@@ -174,6 +175,10 @@ unittest
 	k.setArg(12, reflectBuf.mem);
 	k.setArg(13, reflectors.length.to!int);
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
+
+	auto start = MonoTime.currTime();
+	q.finish();
+	trace("mk_firstSonarPass took ", MonoTime.currTime() - start);
 
 	float[] res;
 	res.length = fimg.w * fimg.h;
