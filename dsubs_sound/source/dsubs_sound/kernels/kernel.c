@@ -211,6 +211,47 @@ dB flowNoise(int freq, float kts)
 	return res;
 }
 
+struct reflector
+{
+	float relBearing;
+	float range;
+	float width;
+	float depth;
+	dB reflectivity;
+} __attribute__ ((packed));
+
+
+float getCellCenterDims(uint x, uint y, float span, int beamCount,
+	float rangePerRow, float2 *bearings, float2 *depth)
+{
+	float beamAngle = span / beamCount;
+	float2 bear = (float2)(x * beamAngle, (x + 1) * beamAngle);
+	bear -= span / 2;
+	*bearings = bear;
+	*depth = (float2)(y * rangePerRow, (y + 1) * rangePerRow);
+	return beamAngle;
+}
+
+float areaUnderNormDist(float x, float a, float b, float disp)
+{
+	float normLeft = (a - x) / disp;
+	float normRight = (b - x) / disp;
+	return 0.5f * (erf(normRight) - erf(normLeft));
+}
+
+float getEnergyPart(
+	const struct reflector ref,
+	const float2 cellBearings,
+	const float2 cellDepth,
+	float beamAngle)
+{
+	float angDisp = ref.width / ref.range;
+	float angArea = areaUnderNormDist(ref.relBearing, cellBearings.x,
+		cellBearings.y, angDisp);
+	float radArea = areaUnderNormDist(ref.range, cellDepth.x,
+		cellDepth.y, ref.depth);
+	return angArea * radArea * angDisp / beamAngle;
+}
 
 void __kernel firstSonarPass(
 	__write_only image2d_t img,
@@ -224,22 +265,42 @@ void __kernel firstSonarPass(
 	const float rangePerRow,
 	const float dissMod,
 	const float endScale,
-	const uint seed)
+	const uint seed,
+	__global const struct reflector *reflectors,
+	const int reflectorCount)
 {
-	const uint x = get_global_id(0);
-	const uint y = get_global_id(1);
+	const uint x = get_global_id(0);	// beam, right to left
+	const uint y = get_global_id(1);	// row, close to far
 	const int beamCount = get_image_width(img);
+	const int rowCount = get_image_height(img);
 	const uint hidx = x + y * beamCount;
 	uint randState = getRngState(seed, hidx);
 	const float fromEmitter = rangePerRow * (y + 0.5f);
 	float waterNoise = toLinear(seaNoiseIL(pingFreq) + directivity);
 	float wrdk = wrdks[pingFreq - 1];
 	dB waterRefl = getILatRange2(wrdk, pingIntens, 2 * fromEmitter, dissMod);
-	waterRefl += waterReflectivity * wrdk * rangePerRow * dissMod;
-	waterRefl += uniform(&randState, -baseNoise, baseNoise);
-	dB resIlevel = toDb(waterNoise + toLinear(waterRefl));
+	waterRefl += waterReflectivity;
+
+	// now process reflectors
+	float2 cellBearings;
+	float2 cellDepth;
+	float beamAngle = getCellCenterDims(x, y, span, beamCount,
+		rangePerRow, &cellBearings, &cellDepth);
+	float reflectorsSum = 0.0f;
+	for (int ri = 0; ri < reflectorCount; ri++)
+	{
+		struct reflector ref = reflectors[ri];
+		dB targetReflect = getILatRange2(wrdk, pingIntens, 2 * ref.range, dissMod);
+		targetReflect += ref.reflectivity;
+		float energyPart = getEnergyPart(ref, cellBearings, cellDepth, beamAngle);
+		reflectorsSum += toLinear(targetReflect) * energyPart;
+	}
+	dB resIlevel = toDb(reflectorsSum + waterNoise + toLinear(waterRefl) +
+		uniform(&randState, -baseNoise, baseNoise));
 	resIlevel *= endScale;
-	write_imagef(img, (int2)(x, y), (float4)(resIlevel, 0.0f, 0.0f, 1.0f));
+
+	write_imagef(img, (int2)(beamCount - x - 1, rowCount - y - 1),
+		(float4)(resIlevel, 0.0f, 0.0f, 1.0f));
 }
 
 

@@ -127,16 +127,36 @@ struct ActiveSonarPrototype
 }
 
 
+private struct PreparedReflector
+{
+	float relBearing;
+	float range;
+	float width;
+	float depth;
+	dB reflectivity;
+}
+
 unittest
 {
-	import imageformats;
+	import imageformats: write_image, ColFmt;
 	import std.algorithm: map, maxElement;
 	import std.array: array;
 
 	DsubsSoundOpenclCtx ctx = s_clCtx;
 	CommandQueue q = ctx.queue(0);
 
-	FloatImage fimg = FloatImage(ctx, 300, 400);
+	FloatImage fimg = FloatImage(ctx, 300, 200);
+
+	PreparedReflector[] reflectors = [
+		PreparedReflector(0.0f, 1000.0f, 75.0f, 40.0f, -10.0f),
+		PreparedReflector(0.0f, 2000.0f, 75.0f, 40.0f, -10.0f),
+		PreparedReflector(-1.0f, 3000.0f, 75.0f, 40.0f, -10.0f),
+		PreparedReflector(0.0f, 5000.0f, 75.0f, 40.0f, -10.0f),
+		PreparedReflector(0.0f, 7500.0f, 75.0f, 40.0f, -10.0f)
+	];
+
+	Buffer reflectBuf = Buffer(q, reflectors);
+	enum float rangePerRow = 50.0f;
 
 	Kernel k = q.mk_firstSonarPass;
 	k.setArg(0, fimg.mem);
@@ -144,13 +164,15 @@ unittest
 	k.setArg(2, 120.0f);	// pingIntens
 	k.setArg(3, 2.0f);		// baseNoise
 	k.setArg(4, 1400);		// pingFreq
-	k.setArg(5, 210.0f);	// span
+	k.setArg(5, cast(float) dgr2rad(210.0f));	// span
 	k.setArg(6, -20.0f);	// directivity
-	k.setArg(7, 0.001f);	// waterReflectivity
-	k.setArg(8, 50.0f);		// rangePerRow
+	k.setArg(7, -35.0f);	// waterReflectivity
+	k.setArg(8, rangePerRow);		// rangePerRow
 	k.setArg(9, 4.0f);		// dissMod
-	k.setArg(10, 1.0f / 100);		// endScale
-	k.setArg(11, uintSeed());		// seed
+	k.setArg(10, 1.0f / 50);	// endScale
+	k.setArg(11, uintSeed());	// seed
+	k.setArg(12, reflectBuf.mem);
+	k.setArg(13, reflectors.length.to!int);
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
 	float[] res;
@@ -164,7 +186,7 @@ unittest
 		assert(!isInfinity(r));
 	}
 
-	string maxRange = (50.0 * fimg.h / 2000).to!int.to!string;
+	string maxRange = (rangePerRow * fimg.h / 1000).to!int.to!string;
 
 	ubyte[] resBytes = res.map!(s => (min(1.0f, s) * ubyte.max).to!ubyte).array;
 	write_image("active_sonar_" ~ maxRange ~ "km.png", fimg.w, fimg.h, resBytes, ColFmt.Y);
