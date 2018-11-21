@@ -314,6 +314,8 @@ private final class Program
 		auto ptr = source.ptr;
 		m_prog = clCreateProgramWithSource(ctx.m_ctx, 1, &ptr,
 			[source.length].ptr, &err);
+		if (err != CL_SUCCESS)
+			error("clCreateProgramWithSource failed");
 		err.clError();
 		err = clBuildProgram(m_prog, 0, null, "-cl-std=CL1.2 -Werror".toStringz, null, null);
 		if (err == CL_BUILD_PROGRAM_FAILURE)
@@ -327,7 +329,10 @@ private final class Program
 			throw new OpenCLException(cast(string) msg);
 		}
 		else
+		{
+			error("clBuildProgram failed");
 			err.clError();
+		}
 	}
 
 	~this()
@@ -378,27 +383,27 @@ final class Kernel
 		cl_kernel m_kern;
 	}
 
-	AsyncEvent enqueue(CommandQueue q, cl_uint workDim, const size_t[] global_work_offset,
+	void enqueue(CommandQueue q, cl_uint workDim, const size_t[] global_work_offset,
 		const size_t[] global_work_size, const size_t[] local_work_size,
 		const AsyncEvent* onlyAfter)
 	{
-		AsyncEvent res;
+		// AsyncEvent res;
 		clEnqueueNDRangeKernel(q.m_q, m_kern, workDim,
 			global_work_offset.ptr, global_work_size.ptr, local_work_size.ptr,
 			onlyAfter is null ? 0 : 1,
 			onlyAfter is null ? null : &onlyAfter.cl,
-			&res.cl).clError;
-		return res;
+			null).clError;
+		// return res;
 	}
 
-	AsyncEvent task(CommandQueue q, const AsyncEvent* onlyAfter)
+	void task(CommandQueue q, const AsyncEvent* onlyAfter)
 	{
-		AsyncEvent res;
+		// AsyncEvent res;
 		clEnqueueTask(q.m_q, m_kern,
 			onlyAfter is null ? 0 : 1,
 			onlyAfter is null ? null : &onlyAfter.cl,
-			&res.cl).clError;
-		return res;
+			null).clError;
+		// return res;
 	}
 }
 
@@ -429,6 +434,7 @@ final class CommandQueue
 		mk_sumBuf = new Kernel(prog, "sumBuf");
 		mk_generateSeaNoise = new Kernel(prog, "generateSeaNoise");
 		mk_generateFlowNoise = new Kernel(prog, "generateFlowNoise");
+		mk_propellerGenISpec = new Kernel(prog, "propellerGenISpec");
 
 		// prepare queue-local fft engine
 		fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
@@ -438,6 +444,7 @@ final class CommandQueue
 		s_ispec2 = ISpectrum(ctx);
 		s_ilspec = ILevelSpectrum(ctx);
 		s_pcbBuf = Buffer(ctx, GLOBAL_SRATE * short.sizeof);
+		s_bandSumBuf = Buffer(ctx, float.sizeof);
 	}
 
 	private
@@ -466,6 +473,7 @@ final class CommandQueue
 		Kernel mk_sumBuf;
 		Kernel mk_generateSeaNoise;
 		Kernel mk_generateFlowNoise;
+		Kernel mk_propellerGenISpec;
 	}
 
 	/// Queue-local shared buffers
@@ -475,6 +483,7 @@ final class CommandQueue
 		ISpectrum s_ispec;
 		ISpectrum s_ispec2;
 		ILevelSpectrum s_ilspec;
+		Buffer s_bandSumBuf;	/// 4-byte buffer for one float
 		/// short buffer for converted Tds
 		Buffer s_pcbBuf;
 	}
@@ -527,6 +536,8 @@ final class DsubsSoundOpenclCtx
 	/// pre-built high-pass filter 500Hz+
 	package ref LinearFilter hp500filter() { return f_hp500; }
 
+	package Buffer b_wrdks;
+
 	this(int queueCount = totalCPUs)
 	{
 		m_plat = loadOpenclLibrary();
@@ -543,6 +554,7 @@ final class DsubsSoundOpenclCtx
 		trace("OpenCL context successfully created, compiling kernels");
 		// import("pyopencl-complex.h")
 		m_prog = new Program(this, import("kernel.c"));
+		trace("kernels compiled, preparing command queues");
 		m_queues.length = queueCount;
 		for (int i = 0; i < queueCount; i++)
 			m_queues[i] = new CommandQueue(this, m_prog);
@@ -580,62 +592,15 @@ version (unittest)
 
 	shared static this()
 	{
-		s_clCtx = new DsubsSoundOpenclCtx();
+		try
+		{
+			s_clCtx = new DsubsSoundOpenclCtx();
+		}
+		catch (Exception ex)
+		{
+			error("Failed to create DsubsSoundOpenclCtx");
+			error(ex.toString);
+			throw ex;
+		}
 	}
-}
-
-unittest
-{
-	import std.stdio;
-	import std.range: chain;
-	import core.time: MonoTime;
-	import dsubs_sound.filter;
-	import dsubs_sound.wav;
-
-	DsubsSoundOpenclCtx ctx = s_clCtx;
-
-	float[] prevSource = new float[4096 * 5];
-	float[] curSource = new float[4096 * 5];
-	for (int i = 0; i < prevSource.length; i++)
-	{
-		prevSource[i] = uniform(-1.0f, 1.0f);
-		curSource[i] = uniform(-1.0f, 1.0f);
-	}
-
-	CommandQueue mainQueue = ctx.queue(0);
-	struct FiltrationCtx
-	{
-		Buffer prevTds, curTds, dest, filterTaps;
-	}
-	FiltrationCtx[] expCtxs = new FiltrationCtx[ctx.queueCount];
-	foreach (ref exp; expCtxs)
-	{
-		exp.prevTds = Buffer(mainQueue, prevSource, CL_MEM_READ_ONLY);
-		exp.curTds = Buffer(mainQueue, curSource, CL_MEM_READ_ONLY);
-		exp.dest = Buffer(ctx, 4096 * 5 * float.sizeof, CL_MEM_WRITE_ONLY);
-		exp.filterTaps = Buffer(mainQueue, cast(float[]) octaveHp500, CL_MEM_READ_ONLY);
-	}
-	mainQueue.finish();
-
-	auto startAt = MonoTime.currTime();
-	int filtCount = 256;
-	for (int i = 0; i < filtCount; i++)
-	{
-		FiltrationCtx* exp = &expCtxs[i % ctx.queueCount];
-		CommandQueue q = ctx.queue(i % ctx.queueCount);
-		Kernel filtKern = q.mk_firTds;
-		filtKern.setArg(0, exp.prevTds.mem);
-		filtKern.setArg(1, exp.curTds.mem);
-		filtKern.setArg(2, exp.filterTaps.mem);
-		filtKern.setArg(3, octaveHp500.length.to!int);
-		filtKern.setArg(4, exp.dest.mem);
-		filtKern.enqueue(q, 1, null, [4096 * 5], null, null).release();
-	}
-	for (int i = 0; i < ctx.queueCount; i++)
-		ctx.queue(i).finish();
-	writeln(filtCount, " FIR passes took ", MonoTime.currTime - startAt, " on ",
-		ctx.queueCount, " OpenCL queues");
-
-	expCtxs[0].dest.fullRead(mainQueue, prevSource.ptr, null);
-	writeWavFile("opencl_filter.wav", chain(curSource, prevSource), 0.7f, 4096);
 }

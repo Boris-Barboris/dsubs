@@ -8,11 +8,11 @@ import dsubs_sound.opencl;
 /// Linearly interpolate intensity of 'tds' signal inline
 void modulateIInterp(CommandQueue q, ref Tds tds, float startMult, float endMult)
 {
-	Kernel k = q.interpolateIntensity;
+	Kernel k = q.mk_interpolateIntensity;
 	k.setArg(0, tds.mem);
 	k.setArg(1, startMult);
 	k.setArg(2, endMult);
-	k.enqueue(q, 1, null, [tds.BUF_LEN], null, null).release();
+	k.enqueue(q, 1, null, [tds.BUF_LEN], null, null);
 }
 
 struct Harmonic
@@ -88,8 +88,12 @@ struct TrochoidModulator
 
 	void modulate(CommandQueue q, ref Tds tds)
 	{
+		assert(!isNaN(startFundFreq));
+		assert(!isNaN(endFundFreq));
+		assert(!isNaN(startPhase));
+		assert(!isNaN(params.energyIntegral));
 		Buffer harmBuf = Buffer(q, params.harmonics);
-		Kernel k = q.modulateTrochoid;
+		Kernel k = q.mk_modulateTrochoid;
 		k.setArg(0, tds.mem);
 		k.setArg(1, harmBuf.mem);
 		k.setArg(2, params.harmonics.length.to!int);
@@ -100,7 +104,7 @@ struct TrochoidModulator
 		k.setArg(7, endFundFreq);
 		k.setArg(8, startPhase);
 		k.setArg(9, params.energyIntegral);
-		k.enqueue(q, 1, null, [tds.BUF_LEN], null, null).release();
+		k.enqueue(q, 1, null, [tds.BUF_LEN], null, null);
 	}
 
 	/// Set starting and ending fundamental frequencies

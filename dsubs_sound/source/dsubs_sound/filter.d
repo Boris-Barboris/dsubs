@@ -37,7 +37,7 @@ struct LinearFilter
 		k.setArg(2, m_taps.mem);
 		k.setArg(3, m_tapCount);
 		k.setArg(4, dest.mem);
-		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null).release();
+		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null);
 	}
 }
 

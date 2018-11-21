@@ -14,7 +14,7 @@ struct CircQueue(T, size_t size)
 	@property size_t length() const { return len; }
 	enum size_t capacity = size;
 
-	ref T front()
+	@property ref T front()
 	{
 		assert(len > 0);
 		return arr[ifront];
@@ -27,13 +27,13 @@ struct CircQueue(T, size_t size)
 		len--;
 	}
 
-	/// returns pointer to the inserted value
-	T* pushBack(T val)
+	/// returns reference to the inserted value
+	ref T pushBack(T val)
 	{
 		assert(len < size);
 		size_t backIdx = (ifront + len) % size;
 		arr[backIdx] = val;
 		len++;
-		return &arr[backIdx];
+		return arr[backIdx];
 	}
 }

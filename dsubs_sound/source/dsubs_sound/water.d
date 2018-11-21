@@ -35,7 +35,7 @@ private float waterRangeDissipationK(float freq)
 	return res;
 }
 
-private immutable float[] wrdk;
+package immutable float[] wrdk;
 
 shared static this()
 {
@@ -44,6 +44,8 @@ shared static this()
 	for (int i = 1; i <= 4096; i++)
 		prep_wrdk[i - 1] = waterRangeDissipationK(i);
 	wrdk = cast(immutable(float[])) prep_wrdk;
+
+	s_clCtx.b_wrdks = Buffer(s_clCtx.queue(0), wrdk[]);
 }
 
 /// Scale intensity level of a band as if it is received underwater at range
@@ -85,30 +87,4 @@ IntensityLevel flowNoise(int freq, float kts)
 float pointHaloAngle(float range)
 {
 	return dgr2rad(0.5);
-}
-
-unittest
-{
-	import std.algorithm;
-	import std.stdio;
-	import dsubs_sound.wav;
-
-	IntensitySpectrum ispec;
-	ispec.bins.length = 2049;
-	foreach (i, ref b; ispec.bins)
-	{
-		if (i >= 20 && i < 2048)
-			b = flowNoise(cast(int) i, 10.0f) + uniform(0.0f, 3.0f);
-		else
-			b = 0.0f;
-	}
-	writeln("flow noise: ", ispec.bins[19], " ", ispec.bins[$-1]);
-	Spectrum pspec;
-	ispec.genSpectrum(pspec);
-	Fft fftCache = new Fft(2048);
-	TimeDomainSignal tds;
-	pspec.toTimeDomain(fftCache, tds);
-	float maxp = tds.samples.maxElement;
-	writeln("flow noise max pressure: ", maxp);
-	writeWavFile("turbulence-flow-noise.wav", tds.samples, 0.75f / maxp, tds.samplingRate);
 }

@@ -54,7 +54,7 @@ struct Tds
 		Kernel k = q.mk_addTo;
 		k.setArg(0, mem);
 		k.setArg(1, dest.mem);
-		k.enqueue(q, 1, null, [BUF_LEN], null, null).release();
+		k.enqueue(q, 1, null, [BUF_LEN], null, null);
 	}
 
 	void swapWith(ref Tds rhs)
@@ -73,7 +73,7 @@ struct Tds
 		k.setArg(0, mem);
 		k.setArg(1, start);
 		k.setArg(2, end);
-		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null).release();
+		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null);
 	}
 }
 
@@ -93,8 +93,13 @@ struct EnergySpectrum(SpectrumType stype)
 		buf = Buffer(ctx, BUF_LEN * float.sizeof);
 	}
 
+	static if (stype == SpectrumType.INTENSITY)
+		private alias ElT = Intensity;
+	else
+		private alias ElT = IntensityLevel;
+
 	/// First element of 'ilevels' is 1Hz, last is MAX_FREQ.
-	this(CommandQueue q, ref const IntensityLevel[BUF_LEN] ilevels)
+	this(CommandQueue q, ref const ElT[BUF_LEN] ilevels)
 	{
 		buf = Buffer(q.ctx, BUF_LEN * float.sizeof);
 		assert(ilevels[].length == BUF_LEN);
@@ -134,7 +139,7 @@ struct EnergySpectrum(SpectrumType stype)
 		k.setArg(0, buf.mem);
 		k.setArg(1, amplitude);
 		k.setArg(2, uintSeed());
-		k.enqueue(q, 1, [minFreq - 1], [maxFreq - minFreq + 1], null, null).release();
+		k.enqueue(q, 1, [minFreq - 1], [maxFreq - minFreq + 1], null, null);
 	}
 
 	AsyncEvent enqueueRead(CommandQueue q, float[] dest)
@@ -152,20 +157,23 @@ struct EnergySpectrum(SpectrumType stype)
 		int isILevel = stype == SpectrumType.ILEVEL ? 1 : 0;
 		k.setArg(2, isILevel);
 		k.setArg(3, uintSeed());
-		k.enqueue(q, 1, null, [BUF_LEN], null, null).release();
+		k.enqueue(q, 1, null, [BUF_LEN], null, null);
 		q.fft.inverse(q, dest.buf);
 	}
 
 	/// Sum bins of frequencies from startFreq to endFreq and write result to dest
 	/// buffer
-	void reduceSum(CommandQueue q, ref Buffer dest, int startFreq, int endFreq)
+	void reduceSum(CommandQueue q, ref Buffer dest,
+		int startFreq = 1, int endFreq = MAX_FREQ)
 	{
+		assert(startFreq >= 1);
+		assert(endFreq <= MAX_FREQ);
 		Kernel k = q.mk_sumBuf;
 		k.setArg(0, buf.mem);
 		k.setArg(1, dest.mem);
 		k.setArg(2, startFreq.to!uint - 1);
 		k.setArg(3, endFreq.to!uint);
-		k.task(q, null).release();
+		k.task(q, null);
 	}
 
 	void addTo(CommandQueue q, ref EnergySpectrum!(stype) dest,
@@ -174,7 +182,7 @@ struct EnergySpectrum(SpectrumType stype)
 		Kernel k = q.mk_addTo;
 		k.setArg(0, mem);
 		k.setArg(1, dest.mem);
-		k.enqueue(q, 1, [minFreq - 1], [maxFreq - minFreq + 1], null, null).release();
+		k.enqueue(q, 1, [minFreq - 1], [maxFreq - minFreq + 1], null, null);
 	}
 }
 
@@ -184,20 +192,16 @@ alias ILevelSpectrum = EnergySpectrum!(SpectrumType.ILEVEL);
 
 unittest
 {
-	import std.stdio;
-
 	IntensityLevel[GLOBAL_SRATE / 2] levels;
 	CommandQueue q = s_clCtx.queue(0);
 	ISpectrum spec = ISpectrum(q, 0.0f);
 	spec.addUniformNoise(q, 1.0f);
 	spec.buf.fullRead(q, levels.ptr, null);
-	writeln("OpenCL addUniformNoise test result: ", levels[0..16]);
+	trace("OpenCL addUniformNoise test result: ", levels[0..16]);
 }
 
 unittest
 {
-	import std.stdio;
-
 	Tds tds = Tds(s_clCtx);
 	CommandQueue q = s_clCtx.queue(0);
 	ISpectrum spec = ISpectrum(q, 0.0f);
@@ -205,6 +209,6 @@ unittest
 	spec.toTimeDomain(q, tds);
 	float[GLOBAL_SRATE] sound;
 	tds.buf.fullRead(q, sound.ptr, null);
-	writeln("OpenCL toTimeDomain result: ", sound[0 .. 16]);
+	trace("OpenCL toTimeDomain result: ", sound[0 .. 16]);
 	writeWavFile("opencl_ifft.wav", sound[], 1.0f, GLOBAL_SRATE);
 }

@@ -128,9 +128,14 @@ void __kernel interpolateIntensity2(
 {
 	uint idx = get_global_id(0);
 	uint len = get_global_size(0);
-	const float startMult;
-	const float endMult;
+	float startMult;
+	float endMult;
 	const float resAvg = 0.5f * (*startSpecSum + *endSpecSum);
+	if (resAvg == 0.0f)
+	{
+		tds[idx] = 0.0f;
+		return;
+	}
 	startMult = *startSpecSum * startk / resAvg;
 	endMult = *endSpecSum * endk / resAvg;
 	float delta = endMult - startMult;
@@ -178,11 +183,11 @@ void __kernel generateSeaNoise(
 
 float waterRangeDissipationK(float freq)
 {
-	float f2 = pown(freq / 1e3, 2);
-	float res11 = 0.11 * f2 / (1 + f2);
-	float res12 = 44 * f2 / (4100 + f2);
-	float res13 = 3e-4 * f2;
-	float res = 2e-3 * (res11 + res12 + res13);
+	float f2 = pown(freq / 1e3f, 2);
+	float res11 = 0.11f * f2 / (1.0f + f2);
+	float res12 = 44.0f * f2 / (4100.0f + f2);
+	float res13 = 3e-4f * f2;
+	float res = 2e-3f * (res11 + res12 + res13);
 	return res;
 }
 
@@ -191,13 +196,18 @@ dB getILatRange(int freq, dB il, float range, float dissMod)
 	return il - toDb(range * range) - waterRangeDissipationK(freq) * range * dissMod;
 }
 
+dB getILatRange2(float wrdk, dB il, float range, float dissMod)
+{
+	return il - toDb(range * range) - wrdk * range * dissMod;
+}
+
 dB flowNoise(int freq, float kts)
 {
 	dB res = 90.0f;
 	// 18 db per knot doubling
 	res += log2(kts / 10.0f) * 18.0f;
 	// 9db per octave fall
-	res -= 9.0f * log2(fmax(freq, 100.0f) / 1000.0f);
+	res -= 9.0f * log2(max(freq, 100) / 1000.0f);
 	return res;
 }
 
@@ -214,6 +224,26 @@ void __kernel generateFlowNoise(
 	float ispan = uniform(&randState, -rngm, rngm);
 	float intensity = toLinear(flowNoise(idx + 1, kts) + ispan);
 	destIspec[idx] = intensity * imult;
+}
+
+void __kernel propellerGenISpec(
+	__global const float *sourceIspec,
+	__global float *destIspec,
+	__global const float *wrdks,
+	const float range,
+	const float dissMod,
+	const float imult,
+	const float rngSpan,
+	const uint seed)
+{
+	uint idx = get_global_id(0);
+	uint randState = getRngState(seed, idx);
+	float ispan = uniform(&randState, -rngSpan, rngSpan);
+	float val = sourceIspec[idx] * imult;
+	val += val * ispan;
+	val = fmax(val, 1e-6f);
+	val = getILatRange2(wrdks[idx], toDb(val), range, dissMod);
+	destIspec[idx] = toLinear(val);
 }
 
 

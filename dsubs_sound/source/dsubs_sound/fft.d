@@ -52,7 +52,7 @@ final class FFTPlan(int N = GLOBAL_SRATE)
 				else
 					k4.setArg(3, int(0));
 			}
-			k4.enqueue(q, 1, null, [N / 4], null, null).release();
+			k4.enqueue(q, 1, null, [N / 4], null, null);
 			swap(x, y);
 		}
 		// radix2 for leftovers
@@ -69,7 +69,7 @@ final class FFTPlan(int N = GLOBAL_SRATE)
 				else
 					k2.setArg(3, int(0));
 			}
-			k2.enqueue(q, 1, null, [N / 2], null, null).release();
+			k2.enqueue(q, 1, null, [N / 2], null, null);
 			swap(x, y);
 		}
 		// At this point result is in 'x' buffer, wich can be referencing
