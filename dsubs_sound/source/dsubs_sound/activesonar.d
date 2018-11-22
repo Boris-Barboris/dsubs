@@ -149,6 +149,13 @@ private float[] getReverbGains(float[] relBinSizes, float zeroBin)
 	return res;
 }
 
+struct PingKernelParams
+{
+	dB peakIlevel;
+	dB lowestIlevel;
+	float dirPower;
+}
+
 unittest
 {
 	import imageformats: write_image, ColFmt;
@@ -166,6 +173,10 @@ unittest
 		PreparedReflector(0.0f, 1000.0f, 75.0f, 40.0f, -2.0f),
 		PreparedReflector(0.0f, 2000.0f, 75.0f, 40.0f, -2.0f),
 		PreparedReflector(-1.0f, 3000.0f, 75.0f, 40.0f, -2.0f),
+		PreparedReflector(-1.5f, 3000.0f, 75.0f, 40.0f, -2.0f),
+		PreparedReflector(-2.0f, 3000.0f, 75.0f, 40.0f, -2.0f),
+		PreparedReflector(-2.5f, 3000.0f, 75.0f, 40.0f, -2.0f),
+		PreparedReflector(-3.0f, 3000.0f, 75.0f, 40.0f, -2.0f),
 		PreparedReflector(0.0f, 5000.0f, 75.0f, 40.0f, -2.0f),
 		PreparedReflector(0.0f, 7500.0f, 75.0f, 40.0f, -2.0f)
 	];
@@ -173,13 +184,15 @@ unittest
 	Buffer reflectBuf = Buffer(q, reflectors);
 	enum float rangePerRow = 50.0f;
 
+	PingKernelParams pparams = PingKernelParams(120.0f, 90.0f, 1.5f);
+
 	Kernel k = q.mk_sonarReflectorPass;
 	k.setArg(0, fimg.mem);
 	k.setArg(1, ctx.b_wrdks.mem);
-	k.setArg(2, 120.0f);	// pingIntens
+	k.setArg(2, pparams);	// pingParams
 	k.setArg(3, 1400);		// pingFreq
 	k.setArg(4, float(2 * PI));	// span
-	k.setArg(5, rangePerRow);		// rangePerRow
+	k.setArg(5, rangePerRow);	// rangePerRow
 	k.setArg(6, 4.0f);		// dissMod
 	k.setArg(7, reflectBuf.mem);
 	k.setArg(8, reflectors.length.to!int);
@@ -211,15 +224,16 @@ unittest
 	k.setArg(0, reverbImg.mem);
 	k.setArg(1, fimg.mem);
 	k.setArg(2, ctx.b_wrdks.mem);
-	k.setArg(3, 120.0f);	// pingIntens
-	k.setArg(4, 1.0f);		// baseNoise
-	k.setArg(5, 1400);		// pingFreq
-	k.setArg(6, -20.0f);	// directivity
-	k.setArg(7, -35.0f);	// waterReflectivity
-	k.setArg(8, rangePerRow);		// rangePerRow
-	k.setArg(9, 4.0f);		// dissMod
-	k.setArg(10, 1.0f / 50.0f);		// endScale
-	k.setArg(11, uintSeed());	// seed
+	k.setArg(3, pparams);	// pingParams
+	k.setArg(4, 1400);		// pingFreq
+	k.setArg(5, float(2 * PI));	// span
+	k.setArg(6, 1.0f);		// baseNoise
+	k.setArg(7, -20.0f);	// directivity
+	k.setArg(8, -35.0f);	// waterReflectivity
+	k.setArg(9, rangePerRow);		// rangePerRow
+	k.setArg(10, 4.0f);		// dissMod
+	k.setArg(11, 1.0f / 50.0f);		// endScale
+	k.setArg(12, uintSeed());	// seed
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
 	start = MonoTime.currTime();

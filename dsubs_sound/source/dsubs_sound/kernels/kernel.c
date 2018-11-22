@@ -226,7 +226,7 @@ float getCellCenterDims(uint x, uint y, float span, int beamCount,
 {
 	float beamAngle = span / beamCount;
 	float2 bear = (float2)(x * beamAngle, (x + 1) * beamAngle);
-	bear -= span / 2;
+	bear -= (span - beamAngle) / 2;
 	*bearings = bear;
 	*depth = (float2)(y * rangePerRow, (y + 1) * rangePerRow);
 	return beamAngle;
@@ -253,14 +253,38 @@ float getEnergyPart(
 	return angArea * radArea * angDisp / beamAngle;
 }
 
+struct PingParams
+{
+	dB peakIlevel;
+	dB lowestIlevel;
+	float dirPower;
+} __attribute__ ((packed));
+
+
+// x - relBearing
+dB pingAtRelBearing(const struct PingParams params, const float x)
+{
+	const float piPow = powr(M_PI_F, (params.dirPower - 1.0f) / params.dirPower);
+	const float a = powr(fabs(x) / piPow, params.dirPower) * sign(x);
+	return params.lowestIlevel + (0.5f + 0.5f * cos(a)) *
+		(params.peakIlevel - params.lowestIlevel);
+}
+
+float calcRelBearing(float span, int x, int beamCount)
+{
+	float beamAngle = span / beamCount;
+	return -(span - beamAngle) / 2.0f + x * beamAngle;
+}
+
 /// Applies isotropic noise sources (water) and converts to dB
 void __kernel sonarIsotropicPass(
 	__read_only image2d_t source,
 	__write_only image2d_t dest,
 	__global const float *wrdks,
-	const dB pingIntens,
-	const dB baseNoise,
+	const struct PingParams pingParams,
 	const int pingFreq,
+	const float span,
+	const dB baseNoise,
 	const dB directivity,
 	const float waterReflectivity,
 	const float rangePerRow,
@@ -272,8 +296,8 @@ void __kernel sonarIsotropicPass(
 		CLK_NORMALIZED_COORDS_FALSE |
 		CLK_ADDRESS_NONE |
 		CLK_FILTER_NEAREST;
-	const uint x = get_global_id(0);	// beam, right to left
-	const uint y = get_global_id(1);	// row, close to far
+	const int x = get_global_id(0);	// beam, right to left
+	const int y = get_global_id(1);	// row, close to far
 	const int beamCount = get_image_width(source);
 	const int rowCount = get_image_height(source);
 	const uint hidx = x + y * beamCount;
@@ -281,6 +305,8 @@ void __kernel sonarIsotropicPass(
 	const float fromEmitter = rangePerRow * (y + 0.5f);
 	float waterNoise = toLinear(seaNoiseIL(pingFreq) + directivity);
 	float wrdk = wrdks[pingFreq - 1];
+	const float relBearing = calcRelBearing(span, x, beamCount);
+	const dB pingIntens = pingAtRelBearing(pingParams, relBearing);
 	dB waterRefl = getILatRange2(wrdk, pingIntens, 2 * fromEmitter, dissMod);
 	waterRefl += waterReflectivity;
 
@@ -299,7 +325,7 @@ void __kernel sonarIsotropicPass(
 void __kernel sonarReflectorPass(
 	__write_only image2d_t img,
 	__global const float *wrdks,
-	const dB pingIntens,
+	const struct PingParams pingParams,
 	const int pingFreq,
 	const float span,
 	const float rangePerRow,
@@ -312,6 +338,8 @@ void __kernel sonarReflectorPass(
 	const int beamCount = get_image_width(img);
 	const int rowCount = get_image_height(img);
 	float wrdk = wrdks[pingFreq - 1];
+	const float relBearing = calcRelBearing(span, x, beamCount);
+	const dB pingIntens = pingAtRelBearing(pingParams, relBearing);
 
 	// now process reflectors
 	float2 cellBearings;
