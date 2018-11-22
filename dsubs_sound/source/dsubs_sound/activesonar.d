@@ -149,11 +149,11 @@ unittest
 	FloatImage fimg = FloatImage(ctx, 300, 200);
 
 	PreparedReflector[] reflectors = [
-		PreparedReflector(0.0f, 1000.0f, 75.0f, 40.0f, -10.0f),
-		PreparedReflector(0.0f, 2000.0f, 75.0f, 40.0f, -10.0f),
-		PreparedReflector(-1.0f, 3000.0f, 75.0f, 40.0f, -10.0f),
-		PreparedReflector(0.0f, 5000.0f, 75.0f, 40.0f, -10.0f),
-		PreparedReflector(0.0f, 7500.0f, 75.0f, 40.0f, -10.0f)
+		PreparedReflector(0.0f, 1000.0f, 75.0f, 40.0f, -2.0f),
+		PreparedReflector(0.0f, 2000.0f, 75.0f, 40.0f, -2.0f),
+		PreparedReflector(-1.0f, 3000.0f, 75.0f, 40.0f, -2.0f),
+		PreparedReflector(0.0f, 5000.0f, 75.0f, 40.0f, -2.0f),
+		PreparedReflector(0.0f, 7500.0f, 75.0f, 40.0f, -2.0f)
 	];
 
 	Buffer reflectBuf = Buffer(q, reflectors);
