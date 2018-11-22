@@ -500,6 +500,7 @@ final class CommandQueue
 		mk_sonarReflectorPass = new Kernel(prog, "sonarReflectorPass");
 		mk_sonarReverbPass = new Kernel(prog, "sonarReverbPass");
 		mk_sonarIsotropicPass = new Kernel(prog, "sonarIsotropicPass");
+		mk_sonarSlicePass = new Kernel(prog, "sonarSlicePass");
 
 		// prepare queue-local fft engine
 		fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
@@ -542,6 +543,7 @@ final class CommandQueue
 		Kernel mk_sonarReflectorPass;
 		Kernel mk_sonarReverbPass;
 		Kernel mk_sonarIsotropicPass;
+		Kernel mk_sonarSlicePass;
 	}
 
 	/// Queue-local shared buffers

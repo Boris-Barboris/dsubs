@@ -255,6 +255,36 @@ unittest
 
 	ubyte[] resBytes = res.map!(s => (min(1.0f, max(0.0f, s)) * ubyte.max).to!ubyte).array;
 	write_image("active_sonar_" ~ maxRange ~ "km.png", fimg.w, fimg.h, resBytes, ColFmt.Y);
+
+	// sonar slicing
+
+	FloatImage slicedSonar = FloatImage(ctx, 200, (SOUND_SPD / rangePerRow).to!int);
+
+	k = q.mk_sonarSlicePass;
+	k.setArg(0, fimg.mem);
+	k.setArg(1, slicedSonar.mem);
+	k.setArg(2, 0);	// yoffset
+	k.setArg(3, float(dgr2rad(210)));	// destSpan
+	static assert (vec2f.sizeof == 2 * float.sizeof);
+	k.setArg(4, vec2f(0.0f, -1.0f));	// relRotations
+	k.setArg(5, vec2f(0.0f, -1.0f));	// angVels
+	k.setArg(6, 0.0f);					// flowNoiseGain
+	k.setArg(7, vec2f(0.0f, 0.0f));		// kts
+	k.setArg(8, 1400);					// pingFreq
+	k.enqueue(q, 2, null, [slicedSonar.w, slicedSonar.h], null, null);
+
+	res.length = slicedSonar.w * slicedSonar.h;
+	slicedSonar.enqueueRead(q, res, [0, 0], [slicedSonar.w, slicedSonar.h]).waitFor();
+
+	foreach (float r; res)
+	{
+		assert(!isNaN(r));
+		assert(!isInfinity(r));
+	}
+
+	resBytes = res.map!(s => (min(1.0f, max(0.0f, s)) * ubyte.max).to!ubyte).array;
+	write_image("active_sonar_" ~ maxRange ~ "km_sliced.png",
+		slicedSonar.w, slicedSonar.h, resBytes, ColFmt.Y);
 }
 
 

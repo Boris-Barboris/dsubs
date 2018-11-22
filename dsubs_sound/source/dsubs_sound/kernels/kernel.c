@@ -393,6 +393,53 @@ void __kernel sonarReverbPass(
 		(float4)(res, 0.0f, 0.0f, 1.0f));
 }
 
+// Cubic Hermite spline for normalized time-interval [0 1]
+float chspline(float p0, float p1, float m0, float m1, float t)
+{
+	float t_2 = t * t;
+	float t_3 = t_2 * t;
+	return (2 * t_3 - 3 * t_2 + 1) * p0 +
+			(t_3 - 2 * t_2 + t) * m0 +
+			(-2 * t_3 + 3 * t_2) * p1 +
+			(t_3 - t_2) * m1;
+}
+
+void __kernel sonarSlicePass(
+	__read_only image2d_t source,
+	__write_only image2d_t dest,
+	const int yoffset,		// pixels
+	const float destSpan,
+	const float2 relRotations,	// rotations relative to original ping direction
+	const float2 angVels,
+	const dB flowNoiseGain,
+	const float2 kts,		// absolute values of speed
+	const int pingFreq)
+{
+	const sampler_t sampler =
+		CLK_NORMALIZED_COORDS_TRUE |
+		CLK_ADDRESS_REPEAT |
+		CLK_FILTER_LINEAR;
+	const int x = get_global_id(0);	// beam, right to left
+	const int y = get_global_id(1);	// row, close to far
+	const int sourceBeamCount = get_image_width(source);
+	const int sourceRowCount = get_image_height(source);
+	const int beamCount = get_image_width(dest);
+	const int rowCount = get_image_height(dest);
+	// relative to sonar rotation at the start of slice
+	float beamBearing = calcRelBearing(destSpan, x, beamCount);
+	const float normY = (y + 0.5f) / rowCount;
+	const float interpBearing = chspline(relRotations.x, relRotations.y,
+		angVels.x, angVels.y, normY);
+	beamBearing += interpBearing;
+	// we now need to calculate normalized source x
+	const float sourceX = 0.5f + 0.5f * beamBearing / M_PI_F;
+	const float sourceY = (yoffset + y + 0.5f) / sourceRowCount;
+	const dB res = read_imagef(source, sampler,
+			(float2)(1.0f - sourceX, 1.0f - sourceY)).x;
+	write_imagef(dest, (int2)(beamCount - x - 1, rowCount - y - 1),
+		(float4)(res, 0.0f, 0.0f, 1.0f));
+}
+
 
 void __kernel generateFlowNoise(
 	__global float *destIspec,
