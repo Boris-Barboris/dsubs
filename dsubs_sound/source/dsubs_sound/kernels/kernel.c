@@ -253,26 +253,29 @@ float getEnergyPart(
 	return angArea * radArea * angDisp / beamAngle;
 }
 
-void __kernel firstSonarPass(
-	__write_only image2d_t img,
+/// Applies isotropic noise sources (water) and converts to dB
+void __kernel sonarIsotropicPass(
+	__read_only image2d_t source,
+	__write_only image2d_t dest,
 	__global const float *wrdks,
 	const dB pingIntens,
 	const dB baseNoise,
 	const int pingFreq,
-	const float span,
 	const dB directivity,
 	const float waterReflectivity,
 	const float rangePerRow,
 	const float dissMod,
 	const float endScale,
-	const uint seed,
-	__global const struct reflector *reflectors,
-	const int reflectorCount)
+	const uint seed)
 {
+	const sampler_t sampler =
+		CLK_NORMALIZED_COORDS_FALSE |
+		CLK_ADDRESS_NONE |
+		CLK_FILTER_NEAREST;
 	const uint x = get_global_id(0);	// beam, right to left
 	const uint y = get_global_id(1);	// row, close to far
-	const int beamCount = get_image_width(img);
-	const int rowCount = get_image_height(img);
+	const int beamCount = get_image_width(source);
+	const int rowCount = get_image_height(source);
 	const uint hidx = x + y * beamCount;
 	uint randState = getRngState(seed, hidx);
 	const float fromEmitter = rangePerRow * (y + 0.5f);
@@ -280,6 +283,35 @@ void __kernel firstSonarPass(
 	float wrdk = wrdks[pingFreq - 1];
 	dB waterRefl = getILatRange2(wrdk, pingIntens, 2 * fromEmitter, dissMod);
 	waterRefl += waterReflectivity;
+
+	float reflIntens = read_imagef(source, sampler,
+		(int2)(beamCount - x - 1, rowCount - y - 1)).x;
+	dB resIlevel = toDb(reflIntens + waterNoise + toLinear(waterRefl)) +
+		uniform(&randState, -baseNoise, baseNoise);
+	resIlevel *= endScale;
+
+	write_imagef(dest, (int2)(beamCount - x - 1, rowCount - y - 1),
+		(float4)(resIlevel, 0.0f, 0.0f, 1.0f));
+}
+
+
+/// Writes intensities of reflectors to image
+void __kernel sonarReflectorPass(
+	__write_only image2d_t img,
+	__global const float *wrdks,
+	const dB pingIntens,
+	const int pingFreq,
+	const float span,
+	const float rangePerRow,
+	const float dissMod,
+	__global const struct reflector *reflectors,
+	const int reflectorCount)
+{
+	const uint x = get_global_id(0);	// beam, right to left
+	const uint y = get_global_id(1);	// row, close to far
+	const int beamCount = get_image_width(img);
+	const int rowCount = get_image_height(img);
+	float wrdk = wrdks[pingFreq - 1];
 
 	// now process reflectors
 	float2 cellBearings;
@@ -295,12 +327,42 @@ void __kernel firstSonarPass(
 		float energyPart = getEnergyPart(ref, cellBearings, cellDepth, beamAngle);
 		reflectorsSum += toLinear(targetReflect) * energyPart;
 	}
-	dB resIlevel = toDb(reflectorsSum + waterNoise + toLinear(waterRefl) +
-		uniform(&randState, -baseNoise, baseNoise));
-	resIlevel *= endScale;
-
 	write_imagef(img, (int2)(beamCount - x - 1, rowCount - y - 1),
-		(float4)(resIlevel, 0.0f, 0.0f, 1.0f));
+		(float4)(reflectorsSum, 0.0f, 0.0f, 1.0f));
+}
+
+/// Reverberates intensities of reflectors and writes to image
+void __kernel sonarReverbPass(
+	__read_only image2d_t source,
+	__write_only image2d_t dest,
+	__constant float *reverbGains,
+	const int gainCount,
+	const float gainRangeK,
+	const float rangePerRow)
+{
+	const sampler_t sampler =
+		CLK_NORMALIZED_COORDS_FALSE |
+		CLK_ADDRESS_NONE |
+		CLK_FILTER_NEAREST;
+	const int x = get_global_id(0);	// beam, right to left
+	const int y = get_global_id(1);	// row, close to far
+	const int beamCount = get_image_width(source);
+	const int rowCount = get_image_height(source);
+	float fromEmitter;
+	float res = 0.0f;
+	fromEmitter = rangePerRow * (y + 0.5f);
+	dB sample = read_imagef(source, sampler,
+		(int2)(beamCount - x - 1, rowCount - y - 1)).x;
+	res += sample * (1.0f - fromEmitter * gainRangeK * (1.0f - reverbGains[0]));
+	for (int z = y - 1; z >= 0 && z > y - gainCount; z--)
+	{
+		fromEmitter = rangePerRow * (z + 0.5f);
+		sample = read_imagef(source, sampler,
+			(int2)(beamCount - x - 1, rowCount - z - 1)).x;
+		res += sample * fromEmitter * gainRangeK * reverbGains[y - z];
+	}
+	write_imagef(dest, (int2)(beamCount - x - 1, rowCount - y - 1),
+		(float4)(res, 0.0f, 0.0f, 1.0f));
 }
 
 

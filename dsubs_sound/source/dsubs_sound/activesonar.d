@@ -136,6 +136,19 @@ private struct PreparedReflector
 	dB reflectivity;
 }
 
+/// gains that conserve energy
+private float[] getReverbGains(float[] relBinSizes, float zeroBin)
+{
+	assert(zeroBin > 0.0f);
+	float[] res;
+	res.length = 1 + relBinSizes.length;
+	float totalRel = relBinSizes.sum();
+	res[0] = 1.0f - zeroBin;
+	for (int i = 0; i < relBinSizes.length; i++)
+		res[i + 1] = relBinSizes[i] * zeroBin / totalRel;
+	return res;
+}
+
 unittest
 {
 	import imageformats: write_image, ColFmt;
@@ -147,6 +160,7 @@ unittest
 	CommandQueue q = ctx.queue(0);
 
 	FloatImage fimg = FloatImage(ctx, 300, 200);
+	FloatImage reverbImg = FloatImage(ctx, fimg.w, fimg.h);
 
 	PreparedReflector[] reflectors = [
 		PreparedReflector(0.0f, 1000.0f, 75.0f, 40.0f, -2.0f),
@@ -159,26 +173,58 @@ unittest
 	Buffer reflectBuf = Buffer(q, reflectors);
 	enum float rangePerRow = 50.0f;
 
-	Kernel k = q.mk_firstSonarPass;
+	Kernel k = q.mk_sonarReflectorPass;
 	k.setArg(0, fimg.mem);
 	k.setArg(1, ctx.b_wrdks.mem);
 	k.setArg(2, 120.0f);	// pingIntens
-	k.setArg(3, 2.0f);		// baseNoise
-	k.setArg(4, 1400);		// pingFreq
-	k.setArg(5, cast(float) dgr2rad(210.0f));	// span
-	k.setArg(6, -20.0f);	// directivity
-	k.setArg(7, -35.0f);	// waterReflectivity
-	k.setArg(8, rangePerRow);		// rangePerRow
-	k.setArg(9, 4.0f);		// dissMod
-	k.setArg(10, 1.0f / 50);	// endScale
-	k.setArg(11, uintSeed());	// seed
-	k.setArg(12, reflectBuf.mem);
-	k.setArg(13, reflectors.length.to!int);
+	k.setArg(3, 1400);		// pingFreq
+	k.setArg(4, float(2 * PI));	// span
+	k.setArg(5, rangePerRow);		// rangePerRow
+	k.setArg(6, 4.0f);		// dissMod
+	k.setArg(7, reflectBuf.mem);
+	k.setArg(8, reflectors.length.to!int);
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
 	auto start = MonoTime.currTime();
 	q.finish();
-	trace("mk_firstSonarPass took ", MonoTime.currTime() - start);
+	trace("mk_sonarReflectorPass took ", MonoTime.currTime() - start);
+
+	const(float)[] reverbk = getReverbGains(
+		[1.0f, 0.6f, 0.5f, 0.3f, 0.2f, 0.11f, 0.1, 0.06f, 0.04f, 0.01f], 0.1f);
+	trace("reverbk: ", reverbk);
+	Buffer reverbKbuf = Buffer(q, reverbk);
+
+	k = q.mk_sonarReverbPass;
+	k.setArg(0, fimg.mem);
+	k.setArg(1, reverbImg.mem);
+	k.setArg(2, reverbKbuf.mem);
+	k.setArg(3, reverbk.length.to!int);
+	k.setArg(4, 1.0f / 1500.0f);
+	k.setArg(5, rangePerRow);
+	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
+
+	start = MonoTime.currTime();
+	q.finish();
+	trace("mk_sonarReverbPass took ", MonoTime.currTime() - start);
+
+	k = q.mk_sonarIsotropicPass;
+	k.setArg(0, reverbImg.mem);
+	k.setArg(1, fimg.mem);
+	k.setArg(2, ctx.b_wrdks.mem);
+	k.setArg(3, 120.0f);	// pingIntens
+	k.setArg(4, 1.0f);		// baseNoise
+	k.setArg(5, 1400);		// pingFreq
+	k.setArg(6, -20.0f);	// directivity
+	k.setArg(7, -35.0f);	// waterReflectivity
+	k.setArg(8, rangePerRow);		// rangePerRow
+	k.setArg(9, 4.0f);		// dissMod
+	k.setArg(10, 1.0f / 50.0f);		// endScale
+	k.setArg(11, uintSeed());	// seed
+	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
+
+	start = MonoTime.currTime();
+	q.finish();
+	trace("mk_sonarIsotropicPass took ", MonoTime.currTime() - start);
 
 	float[] res;
 	res.length = fimg.w * fimg.h;
@@ -193,7 +239,7 @@ unittest
 
 	string maxRange = (rangePerRow * fimg.h / 1000).to!int.to!string;
 
-	ubyte[] resBytes = res.map!(s => (min(1.0f, s) * ubyte.max).to!ubyte).array;
+	ubyte[] resBytes = res.map!(s => (min(1.0f, max(0.0f, s)) * ubyte.max).to!ubyte).array;
 	write_image("active_sonar_" ~ maxRange ~ "km.png", fimg.w, fimg.h, resBytes, ColFmt.Y);
 }
 

@@ -497,7 +497,9 @@ final class CommandQueue
 		mk_generateSeaNoise = new Kernel(prog, "generateSeaNoise");
 		mk_generateFlowNoise = new Kernel(prog, "generateFlowNoise");
 		mk_propellerGenISpec = new Kernel(prog, "propellerGenISpec");
-		mk_firstSonarPass = new Kernel(prog, "firstSonarPass");
+		mk_sonarReflectorPass = new Kernel(prog, "sonarReflectorPass");
+		mk_sonarReverbPass = new Kernel(prog, "sonarReverbPass");
+		mk_sonarIsotropicPass = new Kernel(prog, "sonarIsotropicPass");
 
 		// prepare queue-local fft engine
 		fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
@@ -537,7 +539,9 @@ final class CommandQueue
 		Kernel mk_generateSeaNoise;
 		Kernel mk_generateFlowNoise;
 		Kernel mk_propellerGenISpec;
-		Kernel mk_firstSonarPass;
+		Kernel mk_sonarReflectorPass;
+		Kernel mk_sonarReverbPass;
+		Kernel mk_sonarIsotropicPass;
 	}
 
 	/// Queue-local shared buffers
