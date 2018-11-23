@@ -367,7 +367,7 @@ final class Hydrophone
 		res.worldBearingStart = courseAngle(res.dirStart);
 		res.worldBearingEnd = courseAngle(res.dirEnd);
 		// half of halo size
-		res.haloBase = (s.radius / res.range + pointHaloAngle(res.range)) *
+		res.haloBase = (atan(s.radius / res.range) + pointHaloAngle(res.range)) *
 			(1 + uniform(-0.06f, 0.06f));
 		res.haloBound = fmin(HALO_GAIN * res.haloBase, MAX_HALO);
 		return res;
