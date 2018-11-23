@@ -194,8 +194,10 @@ unittest
 	k.setArg(4, float(2 * PI));	// span
 	k.setArg(5, rangePerRow);	// rangePerRow
 	k.setArg(6, 4.0f);		// dissMod
-	k.setArg(7, reflectBuf.mem);
-	k.setArg(8, reflectors.length.to!int);
+	k.setArg(7, vec2f(0.03f, 0.03f));		// reflParamNoise
+	k.setArg(8, reflectBuf.mem);
+	k.setArg(9, reflectors.length.to!int);
+	k.setArg(10, uintSeed());	// seed
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
 	auto start = MonoTime.currTime();
@@ -232,8 +234,7 @@ unittest
 	k.setArg(8, -35.0f);	// waterReflectivity
 	k.setArg(9, rangePerRow);		// rangePerRow
 	k.setArg(10, 4.0f);		// dissMod
-	k.setArg(11, 1.0f / 50.0f);		// endScale
-	k.setArg(12, uintSeed());	// seed
+	k.setArg(11, uintSeed());	// seed
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
 	start = MonoTime.currTime();
@@ -253,24 +254,27 @@ unittest
 
 	string maxRange = (rangePerRow * fimg.h / 1000).to!int.to!string;
 
-	ubyte[] resBytes = res.map!(s => (min(1.0f, max(0.0f, s)) * ubyte.max).to!ubyte).array;
+	ubyte[] resBytes = res.map!(s => (min(1.0f, max(0.0f, s / 50)) * ubyte.max).to!ubyte).array;
 	write_image("active_sonar_" ~ maxRange ~ "km.png", fimg.w, fimg.h, resBytes, ColFmt.Y);
 
 	// sonar slicing
 
-	FloatImage slicedSonar = FloatImage(ctx, 200, (SOUND_SPD / rangePerRow).to!int);
+	FloatImage slicedSonar = FloatImage(ctx, 200, fimg.h);
 
 	k = q.mk_sonarSlicePass;
 	k.setArg(0, fimg.mem);
 	k.setArg(1, slicedSonar.mem);
 	k.setArg(2, 0);	// yoffset
 	k.setArg(3, float(dgr2rad(210)));	// destSpan
+	k.setArg(4, 1.0f);		// rangePerRowRatio
 	static assert (vec2f.sizeof == 2 * float.sizeof);
-	k.setArg(4, vec2f(0.0f, -1.0f));	// relRotations
-	k.setArg(5, vec2f(0.0f, -1.0f));	// angVels
-	k.setArg(6, 0.0f);					// flowNoiseGain
-	k.setArg(7, vec2f(0.0f, 0.0f));		// kts
-	k.setArg(8, 1400);					// pingFreq
+	k.setArg(5, vec2f(0.0f, -1.0f));	// relRotations
+	k.setArg(6, vec2f(0.0f, 0.0f));		// angVels
+	k.setArg(7, -75.0f);					// flowNoiseGain
+	k.setArg(8, vec2f(0.0f, 20.0f));		// kts
+	k.setArg(9, 1400);					// pingFreq
+	k.setArg(10, 1.0f / 70.0f);		// endScale
+	k.setArg(11, seaNoiseIL(1400).val - 25.0f);		// zeroLevel
 	k.enqueue(q, 2, null, [slicedSonar.w, slicedSonar.h], null, null);
 
 	res.length = slicedSonar.w * slicedSonar.h;
