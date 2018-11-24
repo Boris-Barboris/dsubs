@@ -229,13 +229,13 @@ unittest
 	k.setArg(3, pparams);	// pingParams
 	k.setArg(4, 1400);		// pingFreq
 	k.setArg(5, float(2 * PI));	// span
-	k.setArg(6, 1.0f);		// baseNoise
+	k.setArg(6, 2.0f);		// baseNoise
 	k.setArg(7, -20.0f);	// directivity
 	k.setArg(8, -35.0f);	// waterReflectivity
 	k.setArg(9, rangePerRow);		// rangePerRow
 	k.setArg(10, 4.0f);		// dissMod
 	k.setArg(11, vec2i(50, 20));		// perlCellSize
-	k.setArg(12, vec2f(3.0f, 1.0f));		// perlNoiseGain
+	k.setArg(12, vec2f(6.0f, 3.0f));		// perlNoiseGain
 	k.setArg(13, uintSeed());	// seed
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
@@ -276,7 +276,7 @@ unittest
 	k.setArg(8, vec2f(0.0f, 20.0f));		// kts
 	k.setArg(9, 1400);					// pingFreq
 	k.setArg(10, 1.0f / 70.0f);		// endScale
-	k.setArg(11, seaNoiseIL(1400).val - 25.0f);		// zeroLevel
+	k.setArg(11, seaNoiseIL(1400).val - 15.0f);		// zeroLevel
 	k.enqueue(q, 2, null, [slicedSonar.w, slicedSonar.h], null, null);
 
 	res.length = slicedSonar.w * slicedSonar.h;
@@ -288,7 +288,8 @@ unittest
 		assert(!isInfinity(r));
 	}
 
-	resBytes = res.map!(s => (min(1.0f, max(0.0f, s)) * ubyte.max).to!ubyte).array;
+	resBytes = res.map!(s => (min(1.0f, max(0.0f, s)) * ubyte.max).
+		to!ubyte).array;
 	write_image("active_sonar_" ~ maxRange ~ "km_sliced.png",
 		slicedSonar.w, slicedSonar.h, resBytes, ColFmt.Y);
 }

@@ -325,12 +325,12 @@ void __kernel sonarIsotropicPass(
 	float reflIntens = read_imagef(source, sampler,
 		(int2)(beamCount - x - 1, rowCount - y - 1)).x;
 	dB resIlevel = toDb(reflIntens + waterNoise + toLinear(waterRefl)) +
-		uniform(&randState, -baseNoise, baseNoise);
+		uniform(&randState, 0.0f, baseNoise);
 
-	dB perlNoise = perlNoiseGain.x * perlinNoise(seed, (int2)(x, y),
-		perlCellSize.x, beamCount / perlCellSize.x + 1);
-	perlNoise += perlNoiseGain.y * perlinNoise(seed, (int2)(x, y),
-		perlCellSize.y, beamCount / perlCellSize.y + 1);
+	dB perlNoise = perlNoiseGain.x * (1.0f + 0.5f * perlinNoise(seed, (int2)(x, y),
+		perlCellSize.x, beamCount / perlCellSize.x + 1));
+	perlNoise += perlNoiseGain.y * (1.0f + 0.5f * perlinNoise(seed, (int2)(x, y),
+		perlCellSize.y, beamCount / perlCellSize.y + 1));
 	resIlevel += perlNoise;
 
 	write_imagef(dest, (int2)(beamCount - x - 1, rowCount - y - 1),
