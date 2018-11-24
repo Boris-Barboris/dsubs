@@ -235,6 +235,58 @@ float calcRelBearing(float span, int x, int beamCount)
 	return -(span - beamAngle) / 2.0f + x * beamAngle;
 }
 
+float2 randUnity(uint *randState)
+{
+	float cs;
+	float arg = uniform(randState, -M_PI_F, M_PI_F);
+	float sn = sincos(arg, &cs);
+	return (float2)(cs, sn);
+}
+
+float perlinNoise(const uint seed, const int2 pos,
+	const int cellSize, const int cellColCount)
+{
+	uint hidx;
+	uint randState;
+
+	const int2 lcorner = pos / cellSize;
+	const int2 ucorner = lcorner + 1;
+
+	// get 4 gradients in 4 corners
+	hidx = lcorner.x + lcorner.y * cellColCount;
+	randState = getRngState(seed, hidx);
+	float2 grad00 = randUnity(&randState);
+
+	hidx = ucorner.x + lcorner.y * cellColCount;
+	randState = getRngState(seed, hidx);
+	float2 grad10 = randUnity(&randState);
+
+	hidx = lcorner.x + ucorner.y * cellColCount;
+	randState = getRngState(seed, hidx);
+	float2 grad01 = randUnity(&randState);
+
+	hidx = ucorner.x + ucorner.y * cellColCount;
+	randState = getRngState(seed, hidx);
+	float2 grad11 = randUnity(&randState);
+
+	// now dot products and interpolation
+	float2 posv = convert_float2(pos - lcorner * cellSize) / cellSize;
+	float2 sv = smoothstep(0.0f, 1.0f, posv);
+	float n0, n1, ix0, ix1, value;
+	n0 = dot(grad00, posv);
+	posv = convert_float2(pos - (lcorner + (int2)(1, 0)) * cellSize) / cellSize;
+	n1 = dot(grad10, posv);
+	ix0 = mix(n0, n1, sv.x);
+	posv = convert_float2(pos - (ucorner - (int2)(1, 0)) * cellSize) / cellSize;
+	n0 = dot(grad01, posv);
+	posv = convert_float2(pos - ucorner * cellSize) / cellSize;
+	n1 = dot(grad11, posv);
+	ix1 = mix(n0, n1, sv.x);
+	value = mix(ix0, ix1, sv.y);
+
+	return value;
+}
+
 /// Applies isotropic noise sources (water) and converts to dB
 void __kernel sonarIsotropicPass(
 	__read_only image2d_t source,
@@ -248,6 +300,8 @@ void __kernel sonarIsotropicPass(
 	const float waterReflectivity,
 	const float rangePerRow,
 	const float dissMod,
+	const int2 perlCellSize,
+	const float2 perlNoiseGain,
 	const uint seed)
 {
 	const sampler_t sampler =
@@ -270,8 +324,14 @@ void __kernel sonarIsotropicPass(
 
 	float reflIntens = read_imagef(source, sampler,
 		(int2)(beamCount - x - 1, rowCount - y - 1)).x;
-	const dB resIlevel = toDb(reflIntens + waterNoise + toLinear(waterRefl)) +
+	dB resIlevel = toDb(reflIntens + waterNoise + toLinear(waterRefl)) +
 		uniform(&randState, -baseNoise, baseNoise);
+
+	dB perlNoise = perlNoiseGain.x * perlinNoise(seed, (int2)(x, y),
+		perlCellSize.x, beamCount / perlCellSize.x + 1);
+	perlNoise += perlNoiseGain.y * perlinNoise(seed, (int2)(x, y),
+		perlCellSize.y, beamCount / perlCellSize.y + 1);
+	resIlevel += perlNoise;
 
 	write_imagef(dest, (int2)(beamCount - x - 1, rowCount - y - 1),
 		(float4)(resIlevel, 0.0f, 0.0f, 1.0f));

@@ -234,7 +234,9 @@ unittest
 	k.setArg(8, -35.0f);	// waterReflectivity
 	k.setArg(9, rangePerRow);		// rangePerRow
 	k.setArg(10, 4.0f);		// dissMod
-	k.setArg(11, uintSeed());	// seed
+	k.setArg(11, vec2i(50, 20));		// perlCellSize
+	k.setArg(12, vec2f(3.0f, 1.0f));		// perlNoiseGain
+	k.setArg(13, uintSeed());	// seed
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
 	start = MonoTime.currTime();
