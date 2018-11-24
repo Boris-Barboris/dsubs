@@ -506,7 +506,7 @@ final class Hydrophone
 	{
 		ushort[] res;
 		m_ant[antennaIdx].imprint(res);
-		return cast(immutable(ushort)[]) res;
+		return cast(immutable) res;
 	}
 
 	/// Continuous block of hydrophone elements

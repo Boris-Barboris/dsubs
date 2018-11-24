@@ -76,7 +76,7 @@ struct SpawnReq
 	@MaxLenAttr(64) string propulsorName;
 }
 
-/// If swapw was allowed, this message will be followed by
+/// If spawn was allowed (spawnAllowed == true), this message will be followed by
 /// ReconnectStateRes.
 struct SpawnRes
 {
@@ -91,7 +91,7 @@ struct SpawnRes
 }
 
 /// request to reconnect to existing submarine. Should be issued
-/// when 'alreadySpawned' from LoginRes was true instead of SpawnReq.
+/// instead of SpawnReq when 'alreadySpawned' from LoginRes was true.
 /// Server will reply with ReconnectStateRes and resume normal
 /// streaming flow operations.
 struct ReconnectReq
@@ -147,7 +147,7 @@ struct ListenDirReq
 {
 	__gshared const int g_marshIdx;
 	int hydrophoneIdx;
-	float dir;		/// world-space listen-direction
+	float dir;		/// world-space listen direction
 }
 
 /// Server streams acoustic data to the player
@@ -157,4 +157,21 @@ struct AcousticStreamRes
 	usecs_t atTime;
 	AntennaeData[] data;
 	HydrophoneAudio[] audio;
+}
+
+/// Active sonar data is stream to the player as well
+struct SonarStreamRes
+{
+	__gshared const int g_marshIdx;
+	usecs_t atTime;
+	SonarSliceData[] data;
+}
+
+/// Client sends when he wants to emit a ping via active sonar.
+/// Server may ignore this request for optimization purposes (cooldown)
+struct EmitPingReq
+{
+	__gshared const int g_marshIdx;
+	int sonarIdx;
+	float ilevel;	/// intensity level
 }

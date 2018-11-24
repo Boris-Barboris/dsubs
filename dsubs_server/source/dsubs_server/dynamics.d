@@ -58,7 +58,7 @@ struct Kinematics
 	double velLength;
 	double velSquaredLength;
 	double velRotation;
-	double progradeSpeed;
+	double progradeSpeed;	/// dot(forward, vel)
 	vec2d velNormalized;
 	vec2d velLeft;
 	vec2d forward;

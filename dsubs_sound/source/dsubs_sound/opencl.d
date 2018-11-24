@@ -94,13 +94,21 @@ private Platform loadOpenclLibrary()
 }
 
 
-/// Monochrome single-channel floating-point image
-struct FloatImage
+/// Monochrome single-channel image
+struct Image(T)
+	if (is(T == ubyte) || is(T == float))
 {
+
+	alias type = T;
+
 	this(DsubsSoundOpenclCtx ctx, size_t width, size_t height,
 		cl_mem_flags flags = CL_MEM_READ_WRITE)
 	{
-		cl_image_format imgFormat = cl_image_format(CL_R, CL_FLOAT);
+		static if (is(T == float))
+			enum channel_type = CL_FLOAT;
+		else
+			enum channel_type = CL_UNORM_INT8;
+		cl_image_format imgFormat = cl_image_format(CL_R, channel_type);
 		cl_image_desc desc = cl_image_desc(
 			 CL_MEM_OBJECT_IMAGE2D, width, height, 1, 1, 0, 0, 0, 0, null);
 		m_width = width;
@@ -138,13 +146,13 @@ struct FloatImage
 	@property size_t h() const { return m_height; }
 
 	/// buffer data size in bytes
-	@property size_t size() const { return m_width * m_height * float.sizeof; }
+	@property size_t size() const { return m_width * m_height * T.sizeof; }
 
 	package @property const(cl_mem)* mem() const { return &m_mem; }
 
 package:
 
-	AsyncEvent enqueueRead(CommandQueue q, float[] dest,
+	AsyncEvent enqueueRead(CommandQueue q, T[] dest,
 		size_t[2] origin, size_t[2] region)
 	{
 		assert(dest.length == region[0] * region[1]);
@@ -156,6 +164,9 @@ package:
 		return res;
 	}
 }
+
+alias FloatImage = Image!float;
+alias ByteImage = Image!ubyte;
 
 
 struct Buffer

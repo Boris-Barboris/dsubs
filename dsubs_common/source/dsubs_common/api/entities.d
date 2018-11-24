@@ -151,12 +151,40 @@ struct HydrophoneTemplate
 	string name;
 	HydrophoneType type;
 	MountPoint mount;
-	/// field of view of a single antennae
+	/// field of view of a single antennae, radians
 	float fov = 0.0f;
 	/// antennae rotations relative to mount rotation.
 	/// length of this array is equal to number of antennaes in
 	/// the hydrophone.
 	float[] antRots;
+}
+
+struct SonarTemplate
+{
+	MountPoint mount;
+	/// field of view of the transducer array, radians
+	float fov;
+	/// maximum ping intensity level
+	float maxPingIlevel;
+	/// minimum ping intensity level
+	float minPingIlevel;
+	/// each 1-second image slice will have this many pixel rows
+	int radResol;
+	/// there will be this many slices for each ping
+	int maxDuration;
+}
+
+struct SonarSliceData
+{
+	/// index of the sonar in SubmarineTemplate
+	int sonarId;
+	/// incremented for each ping of this sonar, starts with 0
+	int pingId;
+	/// incremented for each slice of this ping, starts with 0
+	int sliceId;
+	/// Each byte is pixel. Screen-space coordinates assumed, 0 index is
+	/// top-left corner
+	ubyte[] data;
 }
 
 /// sound intensity level data from some antennae
