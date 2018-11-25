@@ -13,6 +13,7 @@ final class ProfTimer
 
 	private struct Interval
 	{
+		string name;
 		TimeT start;
 		TimeT end;
 	}
@@ -20,41 +21,43 @@ final class ProfTimer
 	private
 	{
 		Interval total;
-		Interval[string] subintervals;
-		string m_last;
+		Interval[] subStack;
+		Interval[] readySubIntervals;
+		int lastUnclosed = -1;
 	}
 
 	void start()
 	{
 		total.start = MonoTime.currTime();
+		readySubIntervals.length = 0;
 	}
 
 	void start(string name)
 	{
-		Interval newInt = Interval(MonoTime.currTime());
-		subintervals[name] = newInt;
-		m_last = name;
+		Interval newInt = Interval(name, MonoTime.currTime());
+		subStack ~= newInt;
 	}
 
 	void stopLast()
 	{
-		assert(m_last.length > 0);
-		subintervals[m_last].end = MonoTime.currTime();
-		m_last = null;
+		assert (subStack.length > 0);
+		subStack[$-1].end = MonoTime.currTime();
+		readySubIntervals ~= subStack[$-1];
+		subStack.length--;
 	}
 
 	void stop()
 	{
 		total.end = MonoTime.currTime();
-		m_last = null;
+		subStack.length = 0;
 	}
 
 	void printResult()
 	{
-		foreach (pair; subintervals.byKeyValue)
+		foreach (pair; readySubIntervals)
 		{
-			trace("ProfTimer: ", pair.key, " ",
-				(pair.value.end - pair.value.start).total!"usecs", "usecs");
+			trace("ProfTimer: ", pair.name, " ",
+				(pair.end - pair.start).total!"usecs", "usecs");
 		}
 		trace("ProfTimer total: ", (total.end - total.start).total!"usecs", "usecs");
 	}

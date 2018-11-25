@@ -249,6 +249,15 @@ final class Player
 			}
 			con.sendMessage(immutable AcousticStreamRes(
 				Globals.sim.worldTime + timeShift, acdata, haudio));
+			// now active sonar
+			if (s.sonar.active && s.sonar.hasSliceToSend)
+			{
+				immutable SonarSliceData sdata = immutable SonarSliceData(
+					0, s.sonar.pingCounter, s.sonar.sliceToSendNumber,
+					s.sonar.getLastSlice());
+				con.sendMessage(immutable SonarStreamRes(
+					Globals.sim.worldTime + timeShift, [sdata]));
+			}
 		}
 	}
 

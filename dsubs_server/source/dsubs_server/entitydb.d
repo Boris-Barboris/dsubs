@@ -9,6 +9,7 @@ import dsubs_common.api;
 import dsubs_common.api.protocols.backend;
 import dsubs_common.math;
 
+import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
 import dsubs_sound.modulation;
 import dsubs_sound.soundsource;
@@ -156,7 +157,9 @@ Hydrophones:
 						MountPoint(Vector2f(0.0f, 14.2f)),
 						dgr2rad(210), [0.0f]
 					)
-				]
+				],
+				SonarTemplate(MountPoint(Vector2f(0.0f, 14.0f)),
+					dgr2rad(210), 120, 90, 20, 30)
 			));
 		sp.mass = RolledF(2000.0f, 10.0f);
 		sp.Cd0 = RolledF(10.0, 0.25f);
@@ -174,6 +177,8 @@ Hydrophones:
 			HydrophonePrototype([0.0f], 500, 2048, dgr2rad(210), 210, 2 / 90.0f,
 				3.0f, 4e-3, 2e-5, 1e-3)
 		];
+		sp.asprot = ActiveSonarPrototype();
+		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-4.0f, -2.0f, -1.5f]);
 		g_submarines[sp.tmpl.name] = sp;
 	}
 

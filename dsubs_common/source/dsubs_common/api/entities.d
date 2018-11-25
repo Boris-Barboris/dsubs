@@ -111,6 +111,9 @@ struct SubmarineTemplate
 
 	/// Built-in hydrophones
 	HydrophoneTemplate[] hydrophones;
+
+	/// Built-in active sonar
+	SonarTemplate sonar;
 }
 
 /// Self-propelled weapon

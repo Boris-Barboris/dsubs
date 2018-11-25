@@ -327,6 +327,8 @@ final class ActiveSonar
 			proto.radialRes);
 		m_nextSlice = new ubyte[m_nextSliceImage.size];
 		m_maxRange = SOUND_SPD * proto.maxSec * proto.radialRes / 2;
+		onPreSimulation += () { m_worldRotStart = m_transform.wrotation; };
+		onPostSimulation += () { m_worldRotStart = m_transform.wrotation; };
 	}
 
 	private
@@ -375,12 +377,6 @@ final class ActiveSonar
 		m_ktsStart = rhs;
 	}
 
-	/// set world rotation at the start of integration
-	@property void worldRotStart(float rhs)
-	{
-		m_worldRotStart = rhs;
-	}
-
 	/// set angular velocity at the start of integration
 	@property void angVelStart(float rhs)
 	{
@@ -391,12 +387,6 @@ final class ActiveSonar
 	@property void ktsEnd(float rhs)
 	{
 		m_ktsEnd = rhs;
-	}
-
-	/// set world rotation at the end of integration
-	@property void worldRotEnd(float rhs)
-	{
-		m_worldRotEnd = rhs;
 	}
 
 	@property void angVelEnd(float rhs)
@@ -422,6 +412,7 @@ final class ActiveSonar
 	{
 		assert(m_slicesLeft > 1);
 		m_slicesLeft--;
+		m_sliceOffset += m_proto.radialRes;
 		m_hasSliceToSend = false;
 	}
 
@@ -454,13 +445,13 @@ final class ActiveSonar
 			pr.range = dir.length;
 			if (pr.range > m_maxRange + max(r.m_proto.size[0], r.m_proto.size[1]))
 				continue;
-			pr.relBearing = courseAngle(courseAngle(dir) - m_transform.wrotation);
+			pr.relBearing = clampAnglePi(courseAngle(dir) - m_transform.wrotation);
 			r.calcForEmitter(m_transform.wposition, pr);
 			prepr ~= pr;
 		}
 		// push reflectors to opencl
 		Buffer reflectBuf = Buffer(q.ctx, PreparedReflector.sizeof * prepr.length);
-		reflectBuf.enqueueFullWrite(q, prepr).release();
+		reflectBuf.enqueueFullWrite(q, prepr, null).release();
 		// Create sibling texture that will be released at the end of this function
 		FloatImage m_tmpImg = FloatImage(q.ctx, m_omniImage.w, m_omniImage.h);
 		PingKernelParams pkparams = PingKernelParams(m_curPingIlevel,
@@ -471,7 +462,7 @@ final class ActiveSonar
 		// reflector pass
 		Kernel k = q.mk_sonarReflectorPass;
 		k.setArg(0, m_omniImage.mem);
-		k.setArg(1, ctx.b_wrdks.mem);
+		k.setArg(1, q.ctx.b_wrdks.mem);
 		k.setArg(2, pkparams);	// pingParams
 		k.setArg(3, m_proto.pingParams.effectiveFreq);		// pingFreq
 		k.setArg(4, float(2 * PI));	// span
@@ -486,7 +477,7 @@ final class ActiveSonar
 
 		// reverberation pass
 		Buffer reverbKbuf = Buffer(q.ctx, m_proto.reverbk.length * float.sizeof);
-		reverbKbuf.enqueueFullWrite(q, m_proto.reverbk).release();
+		reverbKbuf.enqueueFullWrite(q, m_proto.reverbk, null).release();
 
 		k = q.mk_sonarReverbPass;
 		k.setArg(0, m_omniImage.mem);
@@ -501,7 +492,7 @@ final class ActiveSonar
 		k = q.mk_sonarIsotropicPass;
 		k.setArg(0, m_tmpImg.mem);
 		k.setArg(1, m_omniImage.mem);
-		k.setArg(2, ctx.b_wrdks.mem);
+		k.setArg(2, q.ctx.b_wrdks.mem);
 		k.setArg(3, pkparams);	// pingParams
 		k.setArg(4, m_proto.pingParams.effectiveFreq);		// pingFreq
 		k.setArg(5, float(2 * PI));	// span

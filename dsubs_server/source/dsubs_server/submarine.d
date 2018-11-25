@@ -3,6 +3,7 @@ module dsubs_server.submarine;
 import dsubs_common.api.entities;
 import dsubs_common.math;
 
+import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
 
 import dsubs_server.common;
@@ -25,6 +26,8 @@ final class Submarine
 		Rudder m_rudder;
 		Propulsor m_propulsor;
 		Hydrophone[] m_hydrophones;
+		Reflector m_reflector;
+		ActiveSonar m_sonar;
 
 		// player reference
 		Player m_owner;
@@ -54,6 +57,7 @@ final class Submarine
 
 	@property Hydrophone[] hydrophones() { return m_hydrophones; }
 	@property const(Hydrophone)[] hydrophones() const { return m_hydrophones; }
+	@property ActiveSonar sonar() { return m_sonar; }
 
 	/// creates transform and rigid body
 	this(Player owner, string prototypeName)
@@ -85,6 +89,21 @@ final class Submarine
 			h.onPreSimulation += () { h.ktsStart = m_rigidBody.kinet.progradeSpeed.mps2kts; };
 			h.onPostSimulation += () { h.ktsEnd = m_rigidBody.kinet.progradeSpeed.mps2kts; };
 			Globals.acous.registerHydrophone(h);
+		}
+		// active sonar stuff
+		{
+			m_sonar.onPreSimulation += ()
+				{
+					m_sonar.angVelStart = m_rigidBody.kinet.angVel;
+					m_sonar.ktsStart = m_rigidBody.kinet.progradeSpeed.mps2kts;
+				};
+			m_sonar.onPostSimulation += ()
+				{
+					m_sonar.angVelEnd = m_rigidBody.kinet.angVel;
+					m_sonar.ktsEnd = m_rigidBody.kinet.progradeSpeed.mps2kts;
+				};
+			Globals.acous.registerSonar(m_sonar);
+			Globals.acous.registerReflector(m_reflector);
 		}
 		// add module masses to the hull
 		m_rigidBody.mass += m_propulsor.mass;
@@ -146,8 +165,9 @@ final class SubmarineFactory
 	/// Equilibrium drift angle on maximum rudder deflection, radians
 	float equilDrift;
 
-	// hydrophpone prototypes
 	HydrophonePrototype[] hprots;
+	ActiveSonarPrototype asprot;
+	ReflectorPrototype reflprot;
 
 	this(immutable SubmarineTemplate t)
 	{
@@ -182,6 +202,16 @@ final class SubmarineFactory
 			res.transform.addChild(t);
 			res.m_hydrophones ~= new Hydrophone(Globals.sctx.queue(0), t, hp);
 		}
+		// active sonar
+		{
+			Transform2D t = new Transform2D();
+			t.position = tmpl.sonar.mount.mountCenter.toGfm!double;
+			t.rotation = tmpl.sonar.mount.rotation;
+			res.transform.addChild(t);
+			res.m_sonar = new ActiveSonar(Globals.sctx, t, asprot);
+		}
+		// reflector
+		res.m_reflector = new Reflector(res.transform, reflprot);
 		return res;
 	}
 

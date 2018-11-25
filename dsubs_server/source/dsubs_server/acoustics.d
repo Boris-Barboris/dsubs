@@ -2,6 +2,7 @@ module dsubs_server.acoustics;
 
 import dsubs_common.containers.array;
 
+import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
 import dsubs_sound.soundsource;
 import dsubs_sound.spectrum;
@@ -15,10 +16,12 @@ final class AcousticEnv
 	{
 		Hydrophone[] m_hydrophones;
 		SoundSource[] m_sources;
+		ActiveSonar[] m_sonars;
+		Reflector[] m_reflectors;
 	}
 
 	// all register and unregister calls are supposed to
-	// be called while holding simMut
+	// be called while holding simMut.reader
 
 	void registerHydrophone(Hydrophone e)
 	{
@@ -33,6 +36,22 @@ final class AcousticEnv
 		synchronized(this)
 		{
 			m_sources ~= e;
+		}
+	}
+
+	void registerSonar(ActiveSonar e)
+	{
+		synchronized(this)
+		{
+			m_sonars ~= e;
+		}
+	}
+
+	void registerReflector(Reflector e)
+	{
+		synchronized(this)
+		{
+			m_reflectors ~= e;
 		}
 	}
 
@@ -52,12 +71,30 @@ final class AcousticEnv
 		}
 	}
 
+	void unregisterSonar(ActiveSonar e)
+	{
+		synchronized(this)
+		{
+			m_sonars.removeFirstUnstable(e);
+		}
+	}
+
+	void unregisterReflector(Reflector e)
+	{
+		synchronized(this)
+		{
+			m_reflectors.removeFirstUnstable(e);
+		}
+	}
+
 	void preSimulation()
 	{
-		foreach (source; Globals.taskPool.parallel(m_sources, 16))
+		foreach (source; Globals.taskPool.parallel(m_sources, 8))
 			source.onPreSimulation();
 		foreach (h; m_hydrophones)
 			h.onPreSimulation();
+		foreach (s; m_sonars)
+			s.onPreSimulation();
 	}
 
 	void postSimulation(float dt)
@@ -66,16 +103,39 @@ final class AcousticEnv
 			source.onPostSimulation(dt);
 		foreach (h; m_hydrophones)
 			h.onPostSimulation();
+		foreach (s; m_sonars)
+			s.onPostSimulation();
+	}
+
+	void processActiveSonars()
+	{
+		foreach (ActiveSonar sonar; Globals.taskPool.parallel(m_sonars, 1))
+		{
+			if (!sonar.active)
+			{
+				if (sonar.canGenerateSlice)
+					sonar.skipSiceGeneration();
+			}
+			else
+			{
+				int workerIdx = Globals.taskPool.workerIndex.to!int;
+				auto q = Globals.sctx.queue(workerIdx);
+				if (sonar.pingJustStarted)
+					sonar.drawReflectors(q, m_reflectors);
+				if (sonar.canGenerateSlice)
+					sonar.startSliceGeneration(q);
+			}
+		}
 	}
 
 	void applySourcesOnHydrophones()
 	{
 		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
-			int workerIdx = Globals.taskPool.workerIndex.to!int;
-			auto q = Globals.sctx.queue(workerIdx);
 			if (!hydrophone.active)
 				continue;
+			int workerIdx = Globals.taskPool.workerIndex.to!int;
+			auto q = Globals.sctx.queue(workerIdx);
 			hydrophone.resetAndStartIsotropic(q);
 			foreach (source; m_sources)
 				hydrophone.applySoundSource(q, source);

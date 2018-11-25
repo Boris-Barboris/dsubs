@@ -56,6 +56,9 @@ final class Simulator
 					profiler.start("acous.postSimulation");
 					Globals.acous.postSimulation(1.0f);
 					profiler.stopLast();
+					profiler.start("acous.processActiveSonars");
+					Globals.acous.processActiveSonars();
+					profiler.stopLast();
 					profiler.start("acous.applySourcesOnHydrophones");
 					Globals.acous.applySourcesOnHydrophones();
 					profiler.stopLast();

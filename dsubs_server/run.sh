@@ -1,2 +1,2 @@
 #!/bin/bash
-dub -v -b debug
+dub -b debug
