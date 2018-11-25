@@ -421,6 +421,8 @@ final class ActiveSonar
 		enforce(ilevel <= m_proto.maxPeakIlevel && ilevel >= m_proto.minPeakIlevel,
 			"desired ping intensity out of allowed interval");
 		m_curPingIlevel = ilevel;
+		if (m_pingJustStarted)
+			return m_pingCounter;
 		m_slicesLeft = m_proto.maxSec;
 		m_hasSliceToSend = false;
 		m_omiWrot = m_transform.wrotation;
@@ -535,7 +537,7 @@ final class ActiveSonar
 		m_sliceOffset += m_proto.radialRes;
 
 		m_nextSliceImage.enqueueRead(q, m_nextSlice, [0, 0],
-			[m_nextSliceImage.w, m_nextSliceImage.h]).waitFor();
+			[m_nextSliceImage.w, m_nextSliceImage.h]).release();
 	}
 
 	/// Get last slice

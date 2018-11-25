@@ -90,3 +90,16 @@ struct CICListenDirReq
 	int hydrophoneIdx;
 	float dir;
 }
+
+struct CICSubSonarRes
+{
+	__gshared const int g_marshIdx;
+	SonarSliceData[] data;
+}
+
+struct CICEmitPingReq
+{
+	__gshared const int g_marshIdx;
+	int sonarIdx;
+	float ilevel;
+}

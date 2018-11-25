@@ -152,5 +152,8 @@ final class AcousticEnv
 			if (hydrophone.listenDirValid)
 				hydrophone.endFinalizePcbData();
 		}
+		/// wait for completion of all OpenCL operations
+		for (size_t i = 0; i < Globals.sctx.queueCount; i++)
+			Globals.sctx.queue(i).finish();
 	}
 }

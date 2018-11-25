@@ -121,4 +121,16 @@ final class CICServer
 		}
 		m_listener.broadcast(cast(immutable CICSubAcousticRes) bdcst);
 	}
+
+	void handleSonarStreamRes(SonarStreamRes res)
+	{
+		CICSubSonarRes bdcst;
+		bdcst.data = res.data;
+		m_listener.broadcast(cast(immutable CICSubSonarRes) bdcst);
+	}
+
+	void handleCICEmitPingReq(CICEmitPingReq req)
+	{
+		m_bcon.sendMessage(cast(immutable EmitPingReq) req);
+	}
 }

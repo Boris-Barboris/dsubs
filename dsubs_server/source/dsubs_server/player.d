@@ -30,6 +30,7 @@ final class Player
 		vec2d coordShift;
 		double coordRot;
 		usecs_t timeShift;
+		usecs_t m_lastPingEmit = ulong.min;
 
 		PlayerConnection m_connection;
 		Submarine m_submarine;
@@ -200,6 +201,21 @@ final class Player
 			int hcount = s.hydrophones.length.to!int;
 			enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < hcount, "no such hydrophone");
 			s.hydrophones[req.hydrophoneIdx].listenDir = req.dir - coordRot;
+		}
+	}
+
+	void handleEmitPingRequest(const EmitPingReq req)
+	{
+		synchronized(Globals.simMut.reader)
+		{
+			Submarine s = m_submarine;
+			enforce(s, "player has no submarine, unable to EmitPingReq");
+			enforce(req.sonarIdx == 0, "no such sonar");
+			if (Globals.sim.worldTime - m_lastPingEmit >= 5_000_000)
+			{
+				s.sonar.startPing(req.ilevel);
+				m_lastPingEmit = Globals.sim.worldTime;
+			}
 		}
 	}
 

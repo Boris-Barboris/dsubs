@@ -1,5 +1,8 @@
 module dsubs_client.gui.passwordfield;
 
+import std.array: array;
+import std.range: repeat, take;
+
 import derelict.sfml2.graphics;
 
 public import dsubs_common.mutstring;
@@ -48,6 +51,17 @@ final class PasswordField: TextField
 	{
 		m_hiddenContent.insertAt(c, idx);
 		m_content.insertAt(PWDOT, idx);
+	}
+
+	override void insertAt(dstring s, size_t idx)
+	out
+	{
+		assert(m_hiddenContent.length == m_content.length);
+	}
+	body
+	{
+		m_hiddenContent.insertAt(s, idx);
+		m_content.insertAt(repeat(PWDOT).take(s.length).array, idx);
 	}
 
 	override void removeAt(size_t idx)

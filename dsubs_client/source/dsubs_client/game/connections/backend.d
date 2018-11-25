@@ -37,6 +37,7 @@ final class BackendConnection: ProtocolConnection!BackendProtocol
 		setHandler(&h_spawnRes);
 		setHandler(&h_subKinematicRes);
 		setHandler(&h_acousticStreamRes);
+		setHandler(&h_sonarStreamRes);
 	}
 
 private:
@@ -86,6 +87,11 @@ private:
 	void h_acousticStreamRes(AcousticStreamRes res)
 	{
 		Game.cic.handleAcousticStreamRes(res);
+	}
+
+	void h_sonarStreamRes(SonarStreamRes res)
+	{
+		Game.cic.handleSonarStreamRes(res);
 	}
 }
 

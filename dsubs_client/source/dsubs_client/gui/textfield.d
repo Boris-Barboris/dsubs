@@ -4,6 +4,7 @@ import std.algorithm.comparison;
 import std.conv;
 import std.experimental.logger;
 import std.math;
+import std.utf;
 import std.string;
 
 import derelict.sfml2.graphics;
@@ -15,6 +16,7 @@ import dsubs_client.core.window;
 import dsubs_client.core.utils;
 import dsubs_client.input.router;
 import dsubs_client.gui.label;
+import dsubs_client.core.clipboard.clipboard;
 
 
 class TextField: Label
@@ -140,7 +142,7 @@ class TextField: Label
 		// position of m_cursorStart
 		float x_start = m_contentPos.x + charWidth * m_cursorStart + 1.0f;
 		// position of m_cursorEnd
-		float x_end = x_start + charWidth * (m_cursorEnd - m_cursorStart);
+		float x_end = x_start + charWidth * (m_cursorEnd - m_cursorStart) + 1.0f;
 		if (m_content.length > 1 && !m_updateRecurs)
 		{
 			// make sure m_cursorEnd is always visible and is located inside
@@ -211,6 +213,11 @@ class TextField: Label
 		m_content.insertAt(c, idx);
 	}
 
+	protected void insertAt(dstring s, size_t idx)
+	{
+		m_content.insertAt(s, idx);
+	}
+
 	protected void removeAt(size_t idx)
 	{
 		m_content.removeAt(idx);
@@ -275,6 +282,30 @@ class TextField: Label
 					m_cursorStart = m_cursorEnd = orderedStart + 1;
 					break;
 			}
+		}
+		// update sfml text
+		sfText_setUnicodeString(m_sfText, m_content.ptr);
+		updateText();
+	}
+
+	protected void doHandleString(dstring s)
+	{
+		if (s.length == 0)
+			return;
+		// first we check wether we had range of symbols selected
+		if (m_cursorStart == m_cursorEnd)
+		{
+			insertAt(s, m_cursorStart);
+			m_cursorStart = m_cursorEnd = m_cursorStart + s.length.to!int;
+		}
+		else
+		{
+			// range is selected
+			int orderedStart = min(m_cursorStart, m_cursorEnd);
+			int orderedEnd = max(m_cursorStart, m_cursorEnd);
+			removeInterval(orderedStart, orderedEnd - 1);
+			insertAt(s, orderedStart);
+			m_cursorStart = m_cursorEnd = orderedStart + s.length.to!int;
 		}
 		// update sfml text
 		sfText_setUnicodeString(m_sfText, m_content.ptr);
@@ -354,6 +385,13 @@ class TextField: Label
 				// update sfml text
 				sfText_setUnicodeString(m_sfText, m_content.ptr);
 				updateText();
+				break;
+			case sfKeyV:
+				if (kevt.control)
+				{
+					wstring cont = readClipboard();
+					doHandleString(cont.toUTF32);
+				}
 				break;
 			case sfKeyReturn:
 				// we interpret enter as desire to commit changes and return

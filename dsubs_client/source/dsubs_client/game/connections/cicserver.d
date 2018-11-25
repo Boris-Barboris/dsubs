@@ -97,4 +97,10 @@ private:
 		enforce(m_inSimFlow, "not in simulator flow");
 		m_cicserv.handleCICListenDirReq(req);
 	}
+
+	void h_emitPingReq(CICEmitPingReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICEmitPingReq(req);
+	}
 }

@@ -80,6 +80,8 @@ private Platform loadOpenclLibrary()
 	uint platformCount = 0;
 	clGetPlatformIDs(0, null, &platformCount).clError;
 	trace("detected ", platformCount, " OpenCL platform(s)");
+	if (platformCount == 0)
+		throw new Exception("Install OpenCL! 'ocl-icd' and vendor drivers for example.");
 	cl_platform_id[] ids = new cl_platform_id[platformCount];
 	clGetPlatformIDs(platformCount, ids.ptr, &platformCount).clError;
 	Platform[] platformList;

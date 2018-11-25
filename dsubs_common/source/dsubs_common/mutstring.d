@@ -148,6 +148,18 @@ void insertAt(CharT)(ref dmutstring s, CharT c, size_t at)
 	s[at] = c;
 }
 
+/// Insert char 'c' at index 'at' into dmustring.
+void insertAt(ref dmutstring s, dstring s2, size_t at)
+{
+	assert(at < s.length);
+	if (s2.length == 0)
+		return;
+	s.length += s2.length;
+	for (size_t i = s.length - 1; i >= at + s2.length; i--)
+		s[i] = s[i - s2.length];
+	s[at .. at + s2.length] = s2[];
+}
+
 unittest
 {
 	dmutstring s = _s("as"d);

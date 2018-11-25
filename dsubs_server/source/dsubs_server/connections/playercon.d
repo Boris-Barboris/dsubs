@@ -46,6 +46,7 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 		setHandler(&h_courseReq);
 		setHandler(&h_reconnectReq);
 		setHandler(&h_listenDirReq);
+		setHandler(&h_emitPingReq);
 	}
 
 private:
@@ -135,5 +136,12 @@ private:
 		Player p = m_player;
 		enforceAuthAndSim(p);
 		p.handleListenDirRequest(req);
+	}
+
+	void h_emitPingReq(EmitPingReq req)
+	{
+		Player p = m_player;
+		enforceAuthAndSim(p);
+		p.handleEmitPingRequest(req);
 	}
 }
