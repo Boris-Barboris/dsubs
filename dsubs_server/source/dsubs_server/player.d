@@ -94,8 +94,11 @@ final class Player
 				if (m_connection is oldCon)
 				{
 					if (m_submarine)
+					{
 						foreach (h; m_submarine.hydrophones)
 							h.active = false;
+						m_submarine.sonar.active = false;
+					}
 					m_connection = null;
 					atomicOp!"-="(s_playerCount, 1);
 				}
@@ -126,8 +129,11 @@ final class Player
 			atomicOp!"+="(s_playerCount, 1);
 			con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
 			if (m_submarine)
+			{
 				foreach (h; m_submarine.hydrophones)
 					h.active = true;
+				m_submarine.sonar.active = true;
+			}
 		}
 	}
 
@@ -269,7 +275,7 @@ final class Player
 			if (s.sonar.active && s.sonar.hasSliceToSend)
 			{
 				immutable SonarSliceData sdata = immutable SonarSliceData(
-					0, s.sonar.pingCounter, s.sonar.sliceToSendNumber,
+					0, s.sonar.pingCounter, s.sonar.readySliceId,
 					s.sonar.getLastSlice());
 				con.sendMessage(immutable SonarStreamRes(
 					Globals.sim.worldTime + timeShift, [sdata]));

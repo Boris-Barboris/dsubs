@@ -179,10 +179,10 @@ final class ScrollBar: GuiElement
 		}
 	}
 
-	override void draw(Window wnd)
+	override void draw(Window wnd, long usecsDelta)
 	{
-		super.draw(wnd);
-		m_child.draw(wnd);
+		super.draw(wnd, usecsDelta);
+		m_child.draw(wnd, usecsDelta);
 		// child will set it's own scissors
 		sfRenderWindow_setScissor(wnd.wnd, viewport.tosf);
 		if (m_sbVisible)

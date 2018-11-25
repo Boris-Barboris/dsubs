@@ -50,7 +50,7 @@ class Panel
 		m_root = root;
 	}
 
-	protected void draw(Window wnd) { m_root.draw(wnd); }
+	protected void draw(Window wnd, long usecsDelta) { m_root.draw(wnd, usecsDelta); }
 
 	protected GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
@@ -104,7 +104,7 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 	{
 		// deepest panels first
 		foreach (panel; panels[])
-			panel.draw(wnd);
+			panel.draw(wnd, usecsDelta);
 	}
 
 	// Z-ordered list of GuiElement trees.

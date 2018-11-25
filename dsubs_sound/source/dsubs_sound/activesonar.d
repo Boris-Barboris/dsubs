@@ -111,10 +111,11 @@ struct PingParameters
 /// reverb gains that conserve energy
 private float[] getReverbGains(float[] relBinSizes, float zeroBin)
 {
-	assert(zeroBin > 0.0f);
+	assert(zeroBin >= 0.0f);
 	float[] res;
 	res.length = 1 + relBinSizes.length;
 	float totalRel = relBinSizes.sum();
+	assert(totalRel > 0.0f);
 	res[0] = 1.0f - zeroBin;
 	for (int i = 0; i < relBinSizes.length; i++)
 		res[i + 1] = relBinSizes[i] * zeroBin / totalRel;
@@ -266,11 +267,14 @@ unittest
 		slicedSonar.w, slicedSonar.h, resBytes, ColFmt.Y);
 }
 
+immutable PingParameters g_stdPingParams = immutable PingParameters(
+		[Chirp(1100, 1300, 0.3f)], 2, 1200);
+
 
 struct ActiveSonarPrototype
 {
 	/// form of the ping chirp, wich will be used to synthesize time domain signal
-	immutable(PingParameters)* pingParams;
+	immutable(PingParameters)* pingParams = &g_stdPingParams;
 	/// number of beams in omnidirectional image
 	int omniBeamCount = 320;
 	/// Sonar is capable of scanning sector of this size (degrees)
@@ -278,7 +282,7 @@ struct ActiveSonarPrototype
 	/// rows in slice image per second
 	int radialRes = 20;
 	/// max ping duration (seconds)
-	int maxSec = 30;
+	int maxSec = 10;
 	/// max ping band intensity level
 	dB maxPeakIlevel = 120.0f;
 	dB minPeakIlevel = 90.0f;
@@ -301,9 +305,9 @@ struct ActiveSonarPrototype
 	float reflRangeNoise = 0.03f;
 	/// reverb gains gotten from getReverbGains function
 	immutable(float)[] reverbk = getReverbGains(
-		[1.0f, 0.6f, 0.5f, 0.3f, 0.2f, 0.11f, 0.1, 0.06f, 0.04f, 0.01f], 0.1f);
+		[1.0f, 0.5f, 0.2f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.05f);
 	/// how fast reverb strength increases with range
-	float reverbGainRangeK = 1 / 1500.0f;
+	float reverbGainRangeK = 1 / 3000.0f;
 	/// perlin noise cell sizes (two noise passes are added)
 	int[2] perlinCellSize = [50, 20];
 	/// perlin noise amplitudes (two noise passes are added)
@@ -312,6 +316,12 @@ struct ActiveSonarPrototype
 	dB zeroLevel = dB(seaNoiseIL(1400).val - 15.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
 	float endScale = 1 / 70.0f;
+
+	/// Slice horizontal resolution
+	int getSliceResol() const
+	{
+		return (span / omniBeamCount * 360.0f).to!int;
+	}
 }
 
 
@@ -323,12 +333,11 @@ final class ActiveSonar
 		m_transform = trans;
 		m_proto = proto;
 		m_omniImage = FloatImage(ctx, proto.omniBeamCount, proto.maxSec * proto.radialRes);
-		m_nextSliceImage = ByteImage(ctx, (proto.span / proto.omniBeamCount * 360.0f).to!int,
-			proto.radialRes);
+		m_nextSliceImage = ByteImage(ctx, proto.getSliceResol(), proto.radialRes);
 		m_nextSlice = new ubyte[m_nextSliceImage.size];
 		m_maxRange = SOUND_SPD * proto.maxSec * proto.radialRes / 2;
 		onPreSimulation += () { m_worldRotStart = m_transform.wrotation; };
-		onPostSimulation += () { m_worldRotStart = m_transform.wrotation; };
+		onPostSimulation += () { m_worldRotEnd = m_transform.wrotation; };
 	}
 
 	private
@@ -406,11 +415,11 @@ final class ActiveSonar
 	@property int pingCounter() const { return m_pingCounter; }
 
 	/// index of current to-send slice: [0 .. slicesInPing)
-	@property int sliceToSendNumber() const { return (m_sliceOffset / m_proto.radialRes) - 1; }
+	@property int readySliceId() const { return (m_sliceOffset / m_proto.radialRes) - 1; }
 
 	void skipSiceGeneration()
 	{
-		assert(m_slicesLeft > 1);
+		assert(m_slicesLeft > 0);
 		m_slicesLeft--;
 		m_sliceOffset += m_proto.radialRes;
 		m_hasSliceToSend = false;
@@ -423,6 +432,7 @@ final class ActiveSonar
 		m_curPingIlevel = ilevel;
 		if (m_pingJustStarted)
 			return m_pingCounter;
+		m_sliceOffset = 0;
 		m_slicesLeft = m_proto.maxSec;
 		m_hasSliceToSend = false;
 		m_omiWrot = m_transform.wrotation;
@@ -546,6 +556,28 @@ final class ActiveSonar
 		assert(m_hasSliceToSend);
 		return cast(immutable) m_nextSlice;
 	}
+}
+
+
+unittest
+{
+	DsubsSoundOpenclCtx ctx = s_clCtx;
+	CommandQueue q = ctx.queue(0);
+	auto sproto = ActiveSonarPrototype();
+	ActiveSonar s = new ActiveSonar(ctx, new Transform2D(), sproto);
+	s.angVelStart = 0.0f;
+	s.ktsStart = 0.0f;
+	s.angVelEnd = 0.0f;
+	s.ktsEnd = 0.0f;
+	s.onPreSimulation();
+	s.onPostSimulation();
+	Reflector refl = new Reflector(new Transform2D(),
+		ReflectorPrototype(vec2f(50, 50), [-1, -1, -1]));
+	refl.transform.position = vec2d(0, 2000);
+	s.startPing(120);
+	s.drawReflectors(q, [refl]);
+	s.startSliceGeneration(q);
+	q.finish();
 }
 
 

@@ -171,6 +171,8 @@ struct SonarTemplate
 	float maxPingIlevel;
 	/// minimum ping intensity level
 	float minPingIlevel;
+	/// number of pixels in image row
+	int resol;
 	/// each 1-second image slice will have this many pixel rows
 	int radResol;
 	/// there will be this many slices for each ping
@@ -180,7 +182,7 @@ struct SonarTemplate
 struct SonarSliceData
 {
 	/// index of the sonar in SubmarineTemplate
-	int sonarId;
+	int sonarIdx;
 	/// incremented for each ping of this sonar, starts with 0
 	int pingId;
 	/// incremented for each slice of this ping, starts with 0

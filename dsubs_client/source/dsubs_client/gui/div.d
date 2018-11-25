@@ -268,16 +268,16 @@ final class Div: GuiElement
 		updateChildren();
 	}
 
-	override void draw(Window wnd)
+	override void draw(Window wnd, long usecsDelta)
 	{
-		super.draw(wnd);
+		super.draw(wnd, usecsDelta);
 		if (!extBordersHidden)
 			foreach (rect; m_divBorders)
 				sfRenderWindow_drawRectangleShape(wnd.wnd, rect, &m_sfRst);
 		foreach (rect; m_cellBorders)
 			sfRenderWindow_drawRectangleShape(wnd.wnd, rect, &m_sfRst);
 		foreach (child; m_children)
-			child.draw(wnd);
+			child.draw(wnd, usecsDelta);
 	}
 
 	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)

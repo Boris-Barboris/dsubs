@@ -8,6 +8,7 @@ import std.math;
 import std.experimental.logger;
 
 import core.thread;
+import core.time: MonoTime;
 
 import derelict.sfml2.window;
 
@@ -65,7 +66,7 @@ final class SimulatorState: GameState
 
 		m_gui = new SimulationGUI();
 		Game.worldManager.components ~= new PlayerSubIcon(m_playerSub);
-		m_gui.sonarGui.listenDir = recState.listenDirs[0];
+		m_gui.hydrophoneGui.listenDir = recState.listenDirs[0];
 
 		m_sonarSound = new StreamingSoundSource();
 	}
@@ -99,10 +100,12 @@ final class SimulationGUI
 	{
 		Label curCourse, curSpeed;
 		TextField tgtCourseField, tgtThrottleField;
-		Waterfall m_sonarGui;
+		Waterfall m_hydrophoneGui;
+		SonarDisplay m_sonarGui;
 	}
 
-	@property Waterfall sonarGui() { return m_sonarGui; }
+	@property Waterfall hydrophoneGui() { return m_hydrophoneGui; }
+	@property SonarDisplay sonarGui() { return m_sonarGui; }
 
 	void handleSubKinematicRes(CICSubKinematicRes res)
 	{
@@ -131,7 +134,7 @@ final class SimulationGUI
 
 	void handleCICListenDirReq(CICListenDirReq req)
 	{
-		m_sonarGui.listenDir = req.dir;
+		m_hydrophoneGui.listenDir = req.dir;
 	}
 
 	this()
@@ -281,7 +284,8 @@ final class SimulationGUI
 			backgroundColor(DIV_BCKGROUND).backgroundVisible(true).build;
 
 		GuiElement tabFiller = filler();
-		m_sonarGui = new Waterfall();
+		m_hydrophoneGui = new Waterfall();
+		m_sonarGui = new SonarDisplay(playerSub.tmpl.sonar);
 
 		Div topLevelDiv = builder(vDiv([
 			tabDiv,
@@ -302,12 +306,12 @@ final class SimulationGUI
 		};
 		psonarTab.onClick += (btn)
 		{
-			setMiddlePane(m_sonarGui);
+			setMiddlePane(m_hydrophoneGui);
 			Game.simState.sonarSound.gain = 1.0f;
 		};
 		asonarTab.onClick += (btn)
 		{
-			setMiddlePane(tabFiller);
+			setMiddlePane(m_sonarGui);
 			Game.simState.sonarSound.gain = 0.0f;
 		};
 
@@ -669,9 +673,9 @@ final class Waterfall: GuiElement
 		m_underCursorLabel.content = rw.get();
 	}
 
-	override void draw(Window wnd)
+	override void draw(Window wnd, long usecsDelta)
 	{
-		super.draw(wnd);
+		super.draw(wnd, usecsDelta);
 		sfRenderWindow_drawRectangleShape(wnd.wnd, m_headerRect, &m_sfRst);
 		m_sfRst.texture = sfRenderTexture_getTexture(m_renderTexture);
 		sfRenderWindow_drawPrimitives(wnd.wnd, m_vertices.ptr, 6, sfTriangles,
@@ -679,8 +683,339 @@ final class Waterfall: GuiElement
 		m_sfRst.texture = null;
 		sfRenderWindow_drawCircleShape(wnd.wnd, m_directorCircle, &m_sfRst);
 		foreach (l; m_compassLabels)
-			l.draw(wnd);
+			l.draw(wnd, usecsDelta);
 		if (m_cursorInside)
-			m_underCursorLabel.draw(wnd);
+			m_underCursorLabel.draw(wnd, usecsDelta);
+	}
+}
+
+
+/// Zoomable waterfall display
+final class SonarDisplay: GuiElement
+{
+
+	private
+	{
+		enum int COMPASS_HEADER_HEIGHT = 18;
+		enum int HEADER_HEIGHT = COMPASS_HEADER_HEIGHT;
+		enum int COMPASS_FONTSIZE = 14;
+	}
+
+	this(const SonarTemplate st)
+	{
+		mouseTransparent = false;
+		m_st = st;
+		m_width = st.resol;
+		m_height = st.radResol * st.maxDuration;
+		m_pxperrad = m_width / st.fov;
+		m_hostImage.length = st.radResol * m_width;
+		m_sliceRowsDrawn = st.radResol;
+
+		// create texture
+		m_texture = sfTexture_create(m_width, m_height);
+		sfTexture_setRepeated(m_texture, sfFalse);
+		clear();
+		// camera is used to generate texture coordinates for m_vertices
+		m_camera = new Camera2D(vec2ui(m_width, m_height), false);
+		m_camera.pan(vec2d(m_width * 0.5, m_height * 0.5));
+
+		// m_vertices form a rectanglular area to draw pixel data to
+		m_vertices[0] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
+		m_vertices[1] = sfVertex(sfVector2f(1, 0), sfWhite, sfVector2f(m_width - 1, 0));
+		m_vertices[2] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(m_width - 1, m_height - 1));
+		m_vertices[3] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
+		m_vertices[4] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(m_width - 1, m_height - 1));
+		m_vertices[5] = sfVertex(sfVector2f(0, 1), sfWhite, sfVector2f(0, m_height - 1));
+
+		// compass
+		m_headerRect = sfRectangleShape_create();
+		sfRectangleShape_setOutlineThickness(m_headerRect, 0.0f);
+		sfRectangleShape_setFillColor(m_headerRect, sfBlack);
+		sfRectangleShape_setPosition(m_headerRect, sfVector2f(0, 0));
+		m_underCursorLabel = builder(new Label()).fontSize(COMPASS_FONTSIZE).
+			size(vec2i(40, COMPASS_HEADER_HEIGHT)).fontColor(sfYellow).
+			htextAlign(HTextAlign.CENTER).build();
+
+		// mouse and keyboard handlers
+		onMouseDown += &processMouseDown;
+		onMouseUp += &processMouseUp;
+		onMouseMove += &processMouseMove;
+		onMouseScroll += &processMouseScroll;
+		onMouseEnter += () { m_cursorInside = true; };
+		onMouseLeave += () { m_cursorInside = false; };
+	}
+
+	~this()
+	{
+		sfTexture_destroy(m_texture);
+		sfRectangleShape_destroy(m_headerRect);
+	}
+
+	private
+	{
+		// render target to write pixel data to. 0 pixel column is just after
+		// 180 course, 1023 pixel column is just before 180 course.
+		sfTexture* m_texture;
+		sfVertex[6] m_vertices;
+		Camera2D m_camera;
+		int m_width;
+		int m_height;
+		float m_pxperrad;
+		SonarTemplate m_st;
+		sfRectangleShape* m_headerRect; // compass background
+		Label m_underCursorLabel;
+		bool m_cursorInside;
+		// currently rendered ping
+		int m_curPingId = -1;
+		// ram buffer
+		sfUint8[4][] m_hostImage;
+
+		// stuff for smooth additive rendering each frame
+		MonoTime m_sliceArrivedAt;
+		int m_sliceRowsDrawn;
+		int m_curSlice = -1;
+	}
+
+	/// remember new sonar data
+	void putSliceData(const SonarSliceData data)
+	{
+		assert(data.sonarIdx == 0);
+		assert(m_curPingId <= data.pingId);
+		if (m_curPingId < data.pingId)
+		{
+			// clear();
+			m_curPingId = data.pingId;
+		}
+		finishCurSlice();
+		m_curSlice = data.sliceId;
+		m_sliceArrivedAt = MonoTime.currTime;
+		m_sliceRowsDrawn = 0;
+		// blit data to hostImage
+		for (size_t i = 0; i < data.data.length; i++)
+		{
+			sfUint8[4] color;
+			color[0] = data.data[i];
+			color[1] = data.data[i];
+			color[2] = data.data[i];
+			color[3] = 255;
+			m_hostImage[i] = color;
+		}
+	}
+
+	private void finishCurSlice()
+	{
+		if (m_sliceRowsDrawn >= m_st.radResol)
+			return;
+		int leftRows = m_st.radResol - m_sliceRowsDrawn;
+		sfTexture_updateFromPixels(m_texture,
+			cast(ubyte*) m_hostImage.ptr,
+			m_width, leftRows,
+			0, m_height - (m_curSlice + 1) * m_st.radResol);
+		m_sliceRowsDrawn = m_st.radResol;
+	}
+
+	private void drawCurSlice()
+	{
+		if (m_sliceRowsDrawn >= m_st.radResol)
+			return;
+		auto timeSinceStart = MonoTime.currTime - m_sliceArrivedAt;
+		int mustHaveDrawnRows = to!int(m_st.radResol * timeSinceStart.total!"msecs" / 1000);
+		mustHaveDrawnRows = min(mustHaveDrawnRows, m_st.radResol);
+		if (mustHaveDrawnRows <= m_sliceRowsDrawn)
+			return;
+		int mustNotDrawn = m_st.radResol - mustHaveDrawnRows;
+		int toDrawNow = mustHaveDrawnRows - m_sliceRowsDrawn;
+		// push hostImage to GPU
+		sfTexture_updateFromPixels(m_texture,
+			cast(ubyte*) &m_hostImage[mustNotDrawn * m_width],
+			m_width, toDrawNow,
+			0, m_height - (m_curSlice + 1) * m_st.radResol + mustNotDrawn);
+		m_sliceRowsDrawn = mustHaveDrawnRows;
+	}
+
+	private void clear()
+	{
+		for (size_t i = 0; i < m_hostImage.length; i++)
+		{
+			sfUint8[4] color;
+			color[3] = 255;
+			m_hostImage[i] = color;
+		}
+		for (int j = 0; j < m_st.maxDuration; j++)
+		{
+			sfTexture_updateFromPixels(m_texture, cast(ubyte*) m_hostImage.ptr,
+				m_width, m_st.radResol,
+				0, m_height - (j + 1) * m_st.radResol);
+		}
+	}
+
+	private void processMouseDown(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight)
+		{
+			requestMouseFocus();
+			prev_x = x;
+			prev_y = y;
+		}
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight)
+			returnMouseFocus();
+		if (btn == sfMouseLeft && m_cursorInside)
+		{
+			// request ping
+			Game.ciccon.sendMessage(immutable CICEmitPingReq(0, m_st.maxPingIlevel));
+		}
+	}
+
+	private
+	{
+		int prev_x, prev_y;
+	}
+
+	/// Y size of waterfall display in pixels
+	@property private int csizey() const
+	{
+		return size.y - HEADER_HEIGHT;
+	}
+
+	private void processMouseMove(int x, int y)
+	{
+		if (m_mouseFocused)
+		{
+			// we are panning
+			m_camera.pan(vec2d(double(prev_x - x) / size.x * m_width,
+				double(prev_y - y) / csizey * m_height) / m_camera.zoom);
+			constraintCamera();
+			updateTexCoords();
+			updateHeaderElements();
+			prev_x = x;
+			prev_y = y;
+		}
+		updateCursorLabel(x - position.x);
+	}
+
+	private enum float ZOOM_SPD = 0.14f;
+
+	private void processMouseScroll(int x, int y, float delta)
+	{
+		double oldZoom = m_camera.zoom;
+		m_camera.zoom = max(1.0, min(16.0, m_camera.zoom * (1 + ZOOM_SPD * delta)));
+		if (delta > 0)
+		{
+			float ux = m_width * ((x - position.x) / float(size.x) - 0.5f);
+			float uy = m_height * ((y - position.y - HEADER_HEIGHT) /
+				float(csizey) - 0.5f);
+			vec2d zoomPivot = 1.2f * vec2d(ux, uy);
+			vec2d topan = zoomPivot / oldZoom - zoomPivot / m_camera.zoom;
+			m_camera.pan(topan);
+		}
+		constraintCamera();
+		updateTexCoords();
+		updateHeaderElements();
+	}
+
+	private void constraintCamera()
+	{
+		double overtop = -m_camera.transform2world(vec2d(0, 0)).y;
+		if (overtop > 0.0)
+			m_camera.pan(vec2d(0, overtop));
+		double underbot = m_camera.transform2world(vec2d(0, m_height)).y - m_height;
+		if (underbot > 0.0)
+			m_camera.pan(vec2d(0, -underbot));
+		double overleft = -m_camera.transform2world(vec2d(0, 0)).x;
+		if (overleft > 0.0)
+			m_camera.pan(vec2d(overleft, 0));
+		double overright = m_camera.transform2world(vec2d(m_width, 0)).x - m_width;
+		if (overright > 0.0)
+			m_camera.pan(vec2d(-overright, 0));
+	}
+
+	override void updatePosition()
+	{
+		super.updatePosition();
+		updateHeaderElements();
+	}
+
+	override void updateSize()
+	{
+		super.updateSize();
+		sfRectangleShape_setSize(m_headerRect, sfVector2f(size.x, HEADER_HEIGHT));
+		m_vertices[1].position.x = m_vertices[2].position.x =
+			m_vertices[4].position.x = size.x;
+		m_vertices[2].position.y = m_vertices[4].position.y =
+			m_vertices[5].position.y = size.y;
+		updateHeaderElements();
+	}
+
+	/// update texture coordinates from camera transform
+	private void updateTexCoords()
+	{
+		vec2d ul = m_camera.transform2world(vec2d(0.0, 0.0));
+		vec2d br = m_camera.transform2world(vec2d(m_width, m_height));
+		// x
+		m_vertices[0].texCoords.x = m_vertices[3].texCoords.x =
+			m_vertices[5].texCoords.x = ul.x;
+		m_vertices[1].texCoords.x = m_vertices[2].texCoords.x =
+			m_vertices[4].texCoords.x = br.x;
+		// y
+		m_vertices[0].texCoords.y = m_vertices[1].texCoords.y =
+			m_vertices[3].texCoords.y = ul.y;
+		m_vertices[2].texCoords.y = m_vertices[4].texCoords.y =
+			m_vertices[5].texCoords.y = br.y;
+	}
+
+	// bearing to pixel in screen space
+	private float bearingToPixel(float bearing)
+	{
+		float txCoord = m_camera.transform2screen(
+			vec2d(m_width / 2.0f - m_pxperrad * bearing, 0)).x;
+		float screenWidthTx = m_width * m_camera.zoom;
+		if (txCoord < 0.0f)
+			txCoord = screenWidthTx + fmod(txCoord, screenWidthTx);
+		else
+			txCoord = fmod(txCoord, screenWidthTx);
+		return txCoord * size.x / m_width;
+	}
+
+	private float pixelToBearing(int px)
+	{
+		float tx = m_vertices[0].texCoords.x + (float(px) / size.x) *
+			(m_vertices[1].texCoords.x - m_vertices[0].texCoords.x);
+		return 0.5f * m_st.fov - tx / m_pxperrad;
+	}
+
+	private void updateHeaderElements()
+	{
+	}
+
+	private void updateCursorLabel(int relCoursorX)
+	{
+		import std.format;
+
+		float bearing = clampAnglePi(pixelToBearing(relCoursorX));
+		int lblPosX = lrint(bearingToPixel(bearing)).to!int -
+				m_underCursorLabel.size.x / 2;
+		m_underCursorLabel.position = vec2i(position.x + lblPosX, position.y);
+		dmutstring labelContent = m_underCursorLabel.content;
+		int bearingInt = lrint(-bearing.rad2dgr).to!int;
+		auto rw = mutstringRewriter(labelContent);
+		formattedWrite!"%d"(rw, bearingInt);
+		m_underCursorLabel.content = rw.get();
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		sfRenderWindow_drawRectangleShape(wnd.wnd, m_headerRect, &m_sfRst);
+		drawCurSlice();
+		m_sfRst.texture = m_texture;
+		sfRenderWindow_drawPrimitives(wnd.wnd, m_vertices.ptr, 6, sfTriangles,
+			&m_sfRst);
+		m_sfRst.texture = null;
+		if (m_cursorInside)
+			m_underCursorLabel.draw(wnd, usecsDelta);
 	}
 }

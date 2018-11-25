@@ -204,7 +204,7 @@ class GuiElement: IInputReciever
 		return res;
 	}
 
-	void draw(Window wnd)
+	void draw(Window wnd, long usecsDelta)
 	{
 		sfRenderWindow_setScissor(wnd.wnd, m_viewport.tosf);
 		if (backgroundVisible)

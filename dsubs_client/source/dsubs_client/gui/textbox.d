@@ -222,9 +222,9 @@ final class TextBox: GuiElement
 			sfText_setColor(t, m_fontColor);
 	}
 
-	override void draw(Window wnd)
+	override void draw(Window wnd, long usecsDelta)
 	{
-		super.draw(wnd);
+		super.draw(wnd, usecsDelta);
 		// drawn m_sfTexts line by line
 		// TODO: optimize using viewport, not all lines need to be drawn
 		foreach (t; m_sfTexts)

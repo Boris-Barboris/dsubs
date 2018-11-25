@@ -2,6 +2,7 @@ module dsubs_client.render.render;
 
 import core.time;
 import core.thread;
+import core.stdc.stdlib;
 import core.sync.mutex;
 import std.experimental.logger;
 
@@ -143,7 +144,7 @@ final class Render
 		catch (Throwable err)
 		{
 			error("Render loop crashed: ", err.toString);
-			throw err;
+			exit(1);
 		}
 		trace("Exiting render loop, stop_flag is ", m_stopFlag);
 	}

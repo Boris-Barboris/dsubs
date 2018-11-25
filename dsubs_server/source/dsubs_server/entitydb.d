@@ -112,6 +112,8 @@ private:
 	{
 		SubmarineFactory sp;
 
+		ActiveSonarPrototype asp = ActiveSonarPrototype();
+		asp.maxPeakIlevel = 140;
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Nautilus",
@@ -159,7 +161,8 @@ Hydrophones:
 					)
 				],
 				SonarTemplate(MountPoint(Vector2f(0.0f, 14.0f)),
-					dgr2rad(210), 120, 90, 20, 30)
+					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
+					asp.getSliceResol(), asp.radialRes, asp.maxSec)
 			));
 		sp.mass = RolledF(2000.0f, 10.0f);
 		sp.Cd0 = RolledF(10.0, 0.25f);
@@ -177,8 +180,8 @@ Hydrophones:
 			HydrophonePrototype([0.0f], 500, 2048, dgr2rad(210), 210, 2 / 90.0f,
 				3.0f, 4e-3, 2e-5, 1e-3)
 		];
-		sp.asprot = ActiveSonarPrototype();
-		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-4.0f, -2.0f, -1.5f]);
+		sp.asprot = asp;
+		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-4.0f, -2.0f, -1.0f]);
 		g_submarines[sp.tmpl.name] = sp;
 	}
 

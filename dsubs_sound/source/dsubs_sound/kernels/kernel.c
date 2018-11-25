@@ -302,7 +302,7 @@ void __kernel sonarIsotropicPass(
 	const float dissMod,
 	const int2 perlCellSize,
 	const float2 perlNoiseGain,
-	const uint seed)
+	uint seed)
 {
 	const sampler_t sampler =
 		CLK_NORMALIZED_COORDS_FALSE |
@@ -329,6 +329,7 @@ void __kernel sonarIsotropicPass(
 
 	dB perlNoise = perlNoiseGain.x * (1.0f + 0.5f * perlinNoise(seed, (int2)(x, y),
 		perlCellSize.x, beamCount / perlCellSize.x + 1));
+	xorshift32(&seed);
 	perlNoise += perlNoiseGain.y * (1.0f + 0.5f * perlinNoise(seed, (int2)(x, y),
 		perlCellSize.y, beamCount / perlCellSize.y + 1));
 	resIlevel += perlNoise;

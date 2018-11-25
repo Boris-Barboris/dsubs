@@ -186,9 +186,9 @@ class TextField: Label
 	private static uint m_blinkCounter = 0;
 	__gshared uint BLINK_FREQ = 30;
 
-	override void draw(Window wnd)
+	override void draw(Window wnd, long usecsDelta)
 	{
-		this.GuiElement.draw(wnd);	// transform and background rect
+		this.GuiElement.draw(wnd, usecsDelta);	// transform and background rect
 		if (m_kbFocused || m_mouseFocused)
 		{
 			// need to draw cursor\selection

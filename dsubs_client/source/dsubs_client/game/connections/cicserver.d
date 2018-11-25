@@ -30,6 +30,7 @@ final class CICServerConnection: ProtocolConnection!CICProtocol
 		setHandler(&h_throttleReq);
 		setHandler(&h_courseReq);
 		setHandler(&h_listenDirReq);
+		setHandler(&h_emitPingReq);
 	}
 
 	private

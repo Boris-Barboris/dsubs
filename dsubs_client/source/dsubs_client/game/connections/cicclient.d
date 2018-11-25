@@ -47,6 +47,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 		setHandler(&h_entityDbRes);
 		setHandler(&h_acousticRes);
 		setHandler(&h_listenDirReq);
+		setHandler(&h_sonarRes);
 	}
 
 	/// synchronous (in caller thread) connect to CIC server
@@ -176,26 +177,23 @@ private:
 		assert(req.hydrophoneIdx == 0);
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.gui.sonarGui.listenDir = req.dir;
+			Game.simState.gui.hydrophoneGui.listenDir = req.dir;
 		}
 	}
 
 	void h_acousticRes(CICSubAcousticRes res)
 	{
-		import std.algorithm.iteration: map;
-		import std.array: array;
-
 		assert(res.data.length == 1);
 		assert(res.data[0].hydrophoneIdx == 0);
 		assert(res.data[0].antennaeIdx == 0);
 		StreamingSoundSource s;
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.gui.sonarGui.drawData(
+			Game.simState.gui.hydrophoneGui.drawData(
 				res.data[0].beams,
 				Game.simState.playerSub.tmpl.hydrophones[0].fov,
 				res.rotationAtTime);
-			Game.simState.gui.sonarGui.completeRow();
+			Game.simState.gui.hydrophoneGui.completeRow();
 			s = Game.simState.sonarSound;
 		}
 		if (s && res.audio.length > 0)
@@ -209,6 +207,16 @@ private:
 				Game.delay(()
 					{ s.append(res.audio[0].samples, res.audio[0].samplingRate); }, msecs(250), null);
 			}
+		}
+	}
+
+	void h_sonarRes(CICSubSonarRes res)
+	{
+		assert(res.data.length == 1);
+		assert(res.data[0].sonarIdx == 0);
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.gui.sonarGui.putSliceData(res.data[0]);
 		}
 	}
 }

@@ -182,9 +182,9 @@ class Label: GuiElement
 			return (m_contentWidth + 10.0).lrint.to!int;
 	}
 
-	override void draw(Window wnd)
+	override void draw(Window wnd, long usecsDelta)
 	{
-		super.draw(wnd);
+		super.draw(wnd, usecsDelta);
 		sfRenderWindow_drawText(wnd.wnd, m_sfText, &m_sfRst);
 	}
 }
