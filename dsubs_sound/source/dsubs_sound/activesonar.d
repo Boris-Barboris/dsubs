@@ -143,15 +143,15 @@ unittest
 	FloatImage reverbImg = FloatImage(ctx, fimg.w, fimg.h);
 
 	PreparedReflector[] reflectors = [
-		PreparedReflector(0.0f, 1000.0f, 75.0f, 40.0f, -2.0f),
-		PreparedReflector(0.0f, 2000.0f, 75.0f, 40.0f, -2.0f),
-		PreparedReflector(-1.0f, 3000.0f, 75.0f, 40.0f, -2.0f),
-		PreparedReflector(-1.5f, 3000.0f, 75.0f, 40.0f, -2.0f),
-		PreparedReflector(-2.0f, 3000.0f, 75.0f, 40.0f, -2.0f),
-		PreparedReflector(-2.5f, 3000.0f, 75.0f, 40.0f, -2.0f),
-		PreparedReflector(-3.0f, 3000.0f, 75.0f, 40.0f, -2.0f),
-		PreparedReflector(0.0f, 5000.0f, 75.0f, 40.0f, -2.0f),
-		PreparedReflector(0.0f, 7500.0f, 75.0f, 40.0f, -2.0f)
+		PreparedReflector(0.0f, 1000.0f, 75.0f, 20.0f, -2.0f),
+		PreparedReflector(0.0f, 2000.0f, 75.0f, 20.0f, -2.0f),
+		PreparedReflector(-1.0f, 3000.0f, 75.0f, 20.0f, -2.0f),
+		PreparedReflector(-1.5f, 3000.0f, 75.0f, 20.0f, -2.0f),
+		PreparedReflector(-2.0f, 3000.0f, 75.0f, 20.0f, -2.0f),
+		PreparedReflector(-2.5f, 3000.0f, 75.0f, 20.0f, -2.0f),
+		PreparedReflector(-3.0f, 3000.0f, 75.0f, 20.0f, -2.0f),
+		PreparedReflector(0.0f, 5000.0f, 75.0f, 20.0f, -2.0f),
+		PreparedReflector(0.0f, 7500.0f, 75.0f, 20.0f, -2.0f)
 	];
 
 	Buffer reflectBuf = Buffer(q, reflectors);
@@ -163,7 +163,7 @@ unittest
 	k.setArg(0, fimg.mem);
 	k.setArg(1, ctx.b_wrdks.mem);
 	k.setArg(2, pparams);	// pingParams
-	k.setArg(3, 1400);		// pingFreq
+	k.setArg(3, 1200);		// pingFreq
 	k.setArg(4, float(2 * PI));	// span
 	k.setArg(5, rangePerRow);	// rangePerRow
 	k.setArg(6, 4.0f);		// dissMod
@@ -187,7 +187,7 @@ unittest
 	k.setArg(1, reverbImg.mem);
 	k.setArg(2, reverbKbuf.mem);
 	k.setArg(3, reverbk.length.to!int);
-	k.setArg(4, 1.0f / 1500.0f);
+	k.setArg(4, 1.0f / 2000.0f);
 	k.setArg(5, rangePerRow);
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
@@ -200,16 +200,15 @@ unittest
 	k.setArg(1, fimg.mem);
 	k.setArg(2, ctx.b_wrdks.mem);
 	k.setArg(3, pparams);	// pingParams
-	k.setArg(4, 1400);		// pingFreq
+	k.setArg(4, 1200);		// pingFreq
 	k.setArg(5, float(2 * PI));	// span
-	k.setArg(6, 2.0f);		// baseNoise
-	k.setArg(7, -20.0f);	// directivity
-	k.setArg(8, -35.0f);	// waterReflectivity
-	k.setArg(9, rangePerRow);		// rangePerRow
-	k.setArg(10, 4.0f);		// dissMod
-	k.setArg(11, vec2i(50, 20));		// perlCellSize
-	k.setArg(12, vec2f(6.0f, 3.0f));	// perlNoiseGain
-	k.setArg(13, uintSeed());	// seed
+	k.setArg(6, -20.0f);	// directivity
+	k.setArg(7, 5e-5f);	// waterReflectivity
+	k.setArg(8, rangePerRow);		// rangePerRow
+	k.setArg(9, 4.0f);		// dissMod
+	k.setArg(10, vec2i(50, 20));		// perlCellSize
+	k.setArg(11, vec2f(6.0f, 3.0f));	// perlNoiseGain
+	k.setArg(12, uintSeed());	// seed
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
 	start = MonoTime.currTime();
@@ -247,9 +246,11 @@ unittest
 	k.setArg(6, vec2f(0.0f, 0.0f));		// angVels
 	k.setArg(7, -75.0f);					// flowNoiseGain
 	k.setArg(8, vec2f(0.0f, 20.0f));		// kts
-	k.setArg(9, 1400);					// pingFreq
-	k.setArg(10, 1.0f / 70.0f);		// endScale
-	k.setArg(11, seaNoiseIL(1400).val - 15.0f);		// zeroLevel
+	k.setArg(9, 1200);					// pingFreq
+	k.setArg(10, 1.0f / 50.0f);		// endScale
+	k.setArg(11, seaNoiseIL(1200).val - 12.0f);		// zeroLevel
+	k.setArg(12, 2.0f);			// baseNoise
+	k.setArg(13, uintSeed());	// seed
 	k.enqueue(q, 2, null, [slicedSonar.w, slicedSonar.h], null, null);
 
 	res.length = slicedSonar.w * slicedSonar.h;
@@ -295,11 +296,11 @@ struct ActiveSonarPrototype
 	/// antennae directivity gain
 	dB directivity = -20.0f;
 	/// water mass reflectivity
-	dB waterReflectivity = -35.0f;
+	float waterReflectivity = 5e-5f;
 	/// main sound dissipation modifier
 	float dissMod = 4.0f;
 	/// gain for flow noise
-	dB flowNoiseGain = -75.0f;
+	dB flowNoiseGain = -65.0f;
 	/// reflector bearing and range is randomized around true value by this ratio
 	float reflBearingNoise = 0.03f;
 	float reflRangeNoise = 0.03f;
@@ -307,15 +308,15 @@ struct ActiveSonarPrototype
 	immutable(float)[] reverbk = getReverbGains(
 		[1.0f, 0.5f, 0.2f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.05f);
 	/// how fast reverb strength increases with range
-	float reverbGainRangeK = 1 / 3000.0f;
+	float reverbGainRangeK = 1 / 1500.0f;
 	/// perlin noise cell sizes (two noise passes are added)
-	int[2] perlinCellSize = [50, 20];
+	int[2] perlinCellSize = [51, 23];
 	/// perlin noise amplitudes (two noise passes are added)
-	dB[2] perlinGain = [6.0f, 3.0f];
+	dB[2] perlinGain = [3.0f, 1.0f];
 	/// sonar image will be black on this pixel intensity level
-	dB zeroLevel = dB(seaNoiseIL(1400).val - 15.0f);
+	dB zeroLevel = dB(seaNoiseIL(1200).val - 20.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
-	float endScale = 1 / 70.0f;
+	float endScale = 1 / 50.0f;
 
 	/// Slice horizontal resolution
 	int getSliceResol() const
@@ -335,7 +336,7 @@ final class ActiveSonar
 		m_omniImage = FloatImage(ctx, proto.omniBeamCount, proto.maxSec * proto.radialRes);
 		m_nextSliceImage = ByteImage(ctx, proto.getSliceResol(), proto.radialRes);
 		m_nextSlice = new ubyte[m_nextSliceImage.size];
-		m_maxRange = SOUND_SPD * proto.maxSec * proto.radialRes / 2;
+		m_maxRange = SOUND_SPD * proto.maxSec / 2;
 		onPreSimulation += () { m_worldRotStart = m_transform.wrotation; };
 		onPostSimulation += () { m_worldRotEnd = m_transform.wrotation; };
 	}
@@ -508,14 +509,13 @@ final class ActiveSonar
 		k.setArg(3, pkparams);	// pingParams
 		k.setArg(4, m_proto.pingParams.effectiveFreq);		// pingFreq
 		k.setArg(5, float(2 * PI));	// span
-		k.setArg(6, m_proto.baseNoise);				// baseNoise
-		k.setArg(7, m_proto.directivity);			// directivity
-		k.setArg(8, m_proto.waterReflectivity);		// waterReflectivity
-		k.setArg(9, omniRangePerRow);			// rangePerRow
-		k.setArg(10, m_proto.dissMod);			// dissMod
-		k.setArg(11, m_proto.perlinCellSize);		// perlCellSize
-		k.setArg(12, m_proto.perlinGain);	// perlNoiseGain
-		k.setArg(13, uintSeed());	// seed
+		k.setArg(6, m_proto.directivity);			// directivity
+		k.setArg(7, m_proto.waterReflectivity);		// waterReflectivity
+		k.setArg(8, omniRangePerRow);			// rangePerRow
+		k.setArg(9, m_proto.dissMod);			// dissMod
+		k.setArg(10, m_proto.perlinCellSize);		// perlCellSize
+		k.setArg(11, m_proto.perlinGain);	// perlNoiseGain
+		k.setArg(12, uintSeed());	// seed
 		k.enqueue(q, 2, null, [m_omniImage.w, m_omniImage.h], null, null);
 	}
 
@@ -542,6 +542,8 @@ final class ActiveSonar
 		k.setArg(9, m_proto.pingParams.effectiveFreq);	// pingFreq
 		k.setArg(10, m_proto.endScale);		// endScale
 		k.setArg(11, m_proto.zeroLevel);		// zeroLevel
+		k.setArg(12, m_proto.baseNoise);		// baseNoise
+		k.setArg(13, uintSeed());			// seed
 		k.enqueue(q, 2, null, [m_nextSliceImage.w, m_nextSliceImage.h], null, null);
 
 		m_sliceOffset += m_proto.radialRes;

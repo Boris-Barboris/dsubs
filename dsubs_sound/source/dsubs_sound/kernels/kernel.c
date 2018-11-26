@@ -295,7 +295,6 @@ void __kernel sonarIsotropicPass(
 	const struct PingParams pingParams,
 	const int pingFreq,
 	const float span,
-	const dB baseNoise,
 	const dB directivity,
 	const float waterReflectivity,
 	const float rangePerRow,
@@ -319,13 +318,12 @@ void __kernel sonarIsotropicPass(
 	float wrdk = wrdks[pingFreq - 1];
 	const float relBearing = calcRelBearing(span, x, beamCount);
 	const dB pingIntens = pingAtRelBearing(pingParams, relBearing);
-	dB waterRefl = getILatRange2(wrdk, pingIntens, 2 * fromEmitter, dissMod);
-	waterRefl += waterReflectivity;
+	float waterRefl = getILatRange2(wrdk, pingIntens, 2 * fromEmitter, dissMod);
+	waterRefl = toLinear(waterRefl) * rangePerRow * waterReflectivity;
 
 	float reflIntens = read_imagef(source, sampler,
 		(int2)(beamCount - x - 1, rowCount - y - 1)).x;
-	dB resIlevel = toDb(reflIntens + waterNoise + toLinear(waterRefl)) +
-		uniform(&randState, 0.0f, baseNoise);
+	dB resIlevel = toDb(reflIntens + waterNoise + waterRefl);
 
 	dB perlNoise = perlNoiseGain.x * (1.0f + 0.5f * perlinNoise(seed, (int2)(x, y),
 		perlCellSize.x, beamCount / perlCellSize.x + 1));
@@ -483,7 +481,9 @@ void __kernel sonarSlicePass(
 	const float2 kts,		// absolute values of speed
 	const int pingFreq,
 	const float endScale,
-	const dB zeroLevel)
+	const dB zeroLevel,
+	const dB baseNoise,
+	const uint seed)
 {
 	const sampler_t sampler =
 		CLK_NORMALIZED_COORDS_TRUE |
@@ -495,6 +495,8 @@ void __kernel sonarSlicePass(
 	const int sourceRowCount = get_image_height(source);
 	const int beamCount = get_image_width(dest);
 	const int rowCount = get_image_height(dest);
+	const uint hidx = x + y * beamCount;
+	uint randState = getRngState(seed, hidx);
 	// relative to sonar rotation at the start of slice
 	float beamBearing = calcRelBearing(destSpan, x, beamCount);
 	const float normY = (y + 0.5f) / rowCount;
@@ -509,7 +511,7 @@ void __kernel sonarSlicePass(
 
 	// we need to interpolate flow noise
 	dB fn = flowNoise(pingFreq, mix(kts.x, kts.y, normY)) + flowNoiseGain;
-	res = toDb(toLinear(fn) + toLinear(res));
+	res = toDb(toLinear(fn) + toLinear(res)) + uniform(&randState, 0.0f, baseNoise);
 	res = (res - zeroLevel) * endScale;
 
 	write_imagef(dest, (int2)(beamCount - x - 1, rowCount - y - 1),
