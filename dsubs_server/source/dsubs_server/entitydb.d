@@ -121,10 +121,12 @@ private:
 `offensive capabilities and survivability.
 
 Length: 70m
-Displacement: 2000t
+Displacement: 1600t
 Top speed: 17m/s
 Hydrophones:
-  Bow: passive 500-2kHz spherical array, 210 deg FoV`,
+  Bow: passive 500-2kHz spherical array, 210 deg FoV
+Active sonar:
+  Bow: 1200Hz mid-freq pulse, 210 deg FoV`,
 				[
 					ConvexPolygon(xSymmetry([
 							0.0, 35.0,
@@ -164,13 +166,13 @@ Hydrophones:
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
 					asp.getSliceResol(), asp.radialRes, asp.maxSec)
 			));
-		sp.mass = RolledF(2000.0f, 10.0f);
+		sp.mass = RolledF(1600.0f, 10.0f);
 		sp.Cd0 = RolledF(10.0, 0.25f);
 		sp.Cd1 = RolledF(8.6, 0.1f);
 		sp.Cda = 0.8;
-		sp.Cl = RolledF(40.0, 0.4f);
-		sp.Cr0 = RolledF(1e5, 100);
-		sp.Cr1 = RolledF(1.1e6, 1e2);
+		sp.Cl = RolledF(60.0, 0.4f);
+		sp.Cr0 = RolledF(5e4, 100);
+		sp.Cr1 = RolledF(0.6e6, 1e2);
 		sp.Cm = RolledF(250.0f, 4.0f);
 		sp.equilDrift = dgr2rad(16);
 		vec2f dims = getHullDims(sp.tmpl.hullModel);

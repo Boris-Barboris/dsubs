@@ -283,7 +283,7 @@ struct ActiveSonarPrototype
 	/// rows in slice image per second
 	int radialRes = 20;
 	/// max ping duration (seconds)
-	int maxSec = 10;
+	int maxSec = 15;
 	/// max ping band intensity level
 	dB maxPeakIlevel = 120.0f;
 	dB minPeakIlevel = 90.0f;
@@ -300,10 +300,10 @@ struct ActiveSonarPrototype
 	/// main sound dissipation modifier
 	float dissMod = 4.0f;
 	/// gain for flow noise
-	dB flowNoiseGain = -65.0f;
+	dB flowNoiseGain = -69.0f;
 	/// reflector bearing and range is randomized around true value by this ratio
-	float reflBearingNoise = 0.03f;
-	float reflRangeNoise = 0.03f;
+	float reflBearingNoise = 0.02f;
+	float reflRangeNoise = 0.02f;
 	/// reverb gains gotten from getReverbGains function
 	immutable(float)[] reverbk = getReverbGains(
 		[1.0f, 0.5f, 0.2f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.05f);
@@ -312,7 +312,7 @@ struct ActiveSonarPrototype
 	/// perlin noise cell sizes (two noise passes are added)
 	int[2] perlinCellSize = [51, 23];
 	/// perlin noise amplitudes (two noise passes are added)
-	dB[2] perlinGain = [3.0f, 1.0f];
+	dB[2] perlinGain = [3.0f, 1.4f];
 	/// sonar image will be black on this pixel intensity level
 	dB zeroLevel = dB(seaNoiseIL(1200).val - 20.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value

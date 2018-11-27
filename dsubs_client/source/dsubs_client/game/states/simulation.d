@@ -708,6 +708,7 @@ final class SonarDisplay: GuiElement
 		m_width = st.resol;
 		m_height = st.radResol * st.maxDuration;
 		m_pxperrad = m_width / st.fov;
+		m_pxpermeter = st.radResol / (1450.0f / 2);
 		m_hostImage.length = st.radResol * m_width;
 		m_sliceRowsDrawn = st.radResol;
 
@@ -720,12 +721,13 @@ final class SonarDisplay: GuiElement
 		m_camera.pan(vec2d(m_width * 0.5, m_height * 0.5));
 
 		// m_vertices form a rectanglular area to draw pixel data to
-		m_vertices[0] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
-		m_vertices[1] = sfVertex(sfVector2f(1, 0), sfWhite, sfVector2f(m_width - 1, 0));
-		m_vertices[2] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(m_width - 1, m_height - 1));
-		m_vertices[3] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
-		m_vertices[4] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(m_width - 1, m_height - 1));
-		m_vertices[5] = sfVertex(sfVector2f(0, 1), sfWhite, sfVector2f(0, m_height - 1));
+		m_vertices[0] = sfVertex(sfVector2f(0, HEADER_HEIGHT), sfWhite, sfVector2f(0, 0));
+		m_vertices[1] = sfVertex(sfVector2f(1, HEADER_HEIGHT), sfWhite, sfVector2f(m_width - 1, 0));
+		m_vertices[2] = sfVertex(sfVector2f(1, HEADER_HEIGHT + 1), sfWhite, sfVector2f(m_width - 1, m_height - 1));
+		m_vertices[3] = sfVertex(sfVector2f(0, HEADER_HEIGHT), sfWhite, sfVector2f(0, 0));
+		m_vertices[4] = sfVertex(sfVector2f(1, HEADER_HEIGHT + 1), sfWhite, sfVector2f(m_width - 1, m_height - 1));
+		m_vertices[5] = sfVertex(sfVector2f(0, HEADER_HEIGHT + 1), sfWhite, sfVector2f(0, m_height - 1));
+		updateTexCoords();
 
 		// compass
 		m_headerRect = sfRectangleShape_create();
@@ -733,7 +735,7 @@ final class SonarDisplay: GuiElement
 		sfRectangleShape_setFillColor(m_headerRect, sfBlack);
 		sfRectangleShape_setPosition(m_headerRect, sfVector2f(0, 0));
 		m_underCursorLabel = builder(new Label()).fontSize(COMPASS_FONTSIZE).
-			size(vec2i(40, COMPASS_HEADER_HEIGHT)).fontColor(sfYellow).
+			size(vec2i(80, COMPASS_HEADER_HEIGHT)).fontColor(sfYellow).
 			htextAlign(HTextAlign.CENTER).build();
 
 		// mouse and keyboard handlers
@@ -761,6 +763,7 @@ final class SonarDisplay: GuiElement
 		int m_width;
 		int m_height;
 		float m_pxperrad;
+		float m_pxpermeter;
 		SonarTemplate m_st;
 		sfRectangleShape* m_headerRect; // compass background
 		Label m_underCursorLabel;
@@ -875,7 +878,7 @@ final class SonarDisplay: GuiElement
 		int prev_x, prev_y;
 	}
 
-	/// Y size of waterfall display in pixels
+	/// Y size of sonar display in pixels
 	@property private int csizey() const
 	{
 		return size.y - HEADER_HEIGHT;
@@ -894,7 +897,7 @@ final class SonarDisplay: GuiElement
 			prev_x = x;
 			prev_y = y;
 		}
-		updateCursorLabel(x - position.x);
+		updateCursorLabel(x - position.x, y - position.y - HEADER_HEIGHT);
 	}
 
 	private enum float ZOOM_SPD = 0.14f;
@@ -987,22 +990,33 @@ final class SonarDisplay: GuiElement
 		return 0.5f * m_st.fov - tx / m_pxperrad;
 	}
 
+	private float pixelToRange(int px)
+	{
+		if (csizey <= 0)
+			return 0.0f;
+		float tx = m_vertices[0].texCoords.y + (float(px) / csizey) *
+			(m_vertices[2].texCoords.y - m_vertices[0].texCoords.y);
+		return 1450.0f * m_st.maxDuration * 0.5f - tx / m_pxpermeter;
+	}
+
 	private void updateHeaderElements()
 	{
 	}
 
-	private void updateCursorLabel(int relCoursorX)
+	private void updateCursorLabel(int relCursorX, int relCursorY)
 	{
 		import std.format;
 
-		float bearing = clampAnglePi(pixelToBearing(relCoursorX));
-		int lblPosX = lrint(bearingToPixel(bearing)).to!int -
+		float relBearing = clampAnglePi(pixelToBearing(relCursorX));
+		float worldRot = Game.simState.playerSub.transform.wrotation;
+		float worldBearing = compassAngle(worldRot + relBearing);
+		float range = pixelToRange(relCursorY);
+		int lblPosX = lrint(bearingToPixel(relBearing)).to!int -
 				m_underCursorLabel.size.x / 2;
 		m_underCursorLabel.position = vec2i(position.x + lblPosX, position.y);
 		dmutstring labelContent = m_underCursorLabel.content;
-		int bearingInt = lrint(-bearing.rad2dgr).to!int;
 		auto rw = mutstringRewriter(labelContent);
-		formattedWrite!"%d"(rw, bearingInt);
+		formattedWrite!"%d, %dm"(rw, -worldBearing.rad2dgr.to!int, range.to!int);
 		m_underCursorLabel.content = rw.get();
 	}
 

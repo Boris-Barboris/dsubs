@@ -398,8 +398,6 @@ void __kernel sonarReflectorPass(
 	const uint y = get_global_id(1);	// row, close to far
 	const int beamCount = get_image_width(img);
 	const int rowCount = get_image_height(img);
-	const uint hidx = x + y * beamCount;
-	uint randState = getRngState(seed, hidx);
 	float wrdk = wrdks[pingFreq - 1];
 	const float relBearing = calcRelBearing(span, x, beamCount);
 	const dB pingIntens = pingAtRelBearing(pingParams, relBearing);
@@ -413,8 +411,9 @@ void __kernel sonarReflectorPass(
 	for (int ri = 0; ri < reflectorCount; ri++)
 	{
 		struct reflector ref = reflectors[ri];
-		ref.relBearing *= (1.0f + uniform(&randState, -reflParamNoise.x, -reflParamNoise.x));
-		ref.range *= (1.0f + uniform(&randState, -reflParamNoise.y, -reflParamNoise.y));
+		uint randState = getRngState(seed, ri);
+		ref.relBearing *= (1.0f + uniform(&randState, -reflParamNoise.x, reflParamNoise.x));
+		ref.range *= (1.0f + uniform(&randState, -reflParamNoise.y, reflParamNoise.y));
 		dB targetReflect = getILatRange2(wrdk, pingIntens, 2 * ref.range, dissMod);
 		targetReflect += ref.reflectivity;
 		float energyPart = getEnergyPart(ref, cellBearings, cellDepth, beamAngle);
