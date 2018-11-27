@@ -11,7 +11,7 @@ import dsubs_sound.fft;
 import dsubs_sound.opencl;
 
 
-/// Time-domain signal
+/// Time-domain signal of 1 second length
 struct Tds
 {
 	enum int BUF_LEN = GLOBAL_SRATE;

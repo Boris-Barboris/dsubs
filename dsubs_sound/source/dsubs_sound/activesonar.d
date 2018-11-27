@@ -300,7 +300,7 @@ struct ActiveSonarPrototype
 	/// main sound dissipation modifier
 	float dissMod = 4.0f;
 	/// gain for flow noise
-	dB flowNoiseGain = -69.0f;
+	dB flowNoiseGain = -66.0f;
 	/// reflector bearing and range is randomized around true value by this ratio
 	float reflBearingNoise = 0.02f;
 	float reflRangeNoise = 0.02f;
