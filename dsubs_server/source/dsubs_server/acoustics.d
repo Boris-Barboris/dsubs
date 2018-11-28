@@ -18,6 +18,7 @@ final class AcousticEnv
 		SoundSource[] m_sources;
 		ActiveSonar[] m_sonars;
 		Reflector[] m_reflectors;
+		SonarPing[] m_pings;
 	}
 
 	// all register and unregister calls are supposed to
@@ -28,6 +29,15 @@ final class AcousticEnv
 		synchronized(this)
 		{
 			m_hydrophones ~= e;
+		}
+	}
+
+	void registerPing(SonarPing e)
+	{
+		synchronized(this)
+		{
+			m_pings ~= e;
+			m_sources ~= e;
 		}
 	}
 
@@ -155,5 +165,23 @@ final class AcousticEnv
 		/// wait for completion of all OpenCL operations
 		for (size_t i = 0; i < Globals.sctx.queueCount; i++)
 			Globals.sctx.queue(i).finish();
+	}
+
+	void postAcousticsUpdate()
+	{
+		size_t i = 0;
+		while (i < m_pings.length)
+		{
+			SonarPing p = m_pings[i];
+			p.onAfterAcoustics();
+			if (p.samplesLeft == 0)
+			{
+				m_pings[i] = m_pings[$-1];
+				m_pings.length--;
+				m_sources.removeFirstUnstable(p);
+			}
+			else
+				i++;
+		}
 	}
 }

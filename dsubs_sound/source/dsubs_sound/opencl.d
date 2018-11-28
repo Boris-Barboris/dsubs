@@ -8,9 +8,11 @@ import std.parallelism: totalCPUs;
 import derelict.opencl.cl;
 
 import dsubs_common.utils;
+
 import dsubs_sound.common;
 import dsubs_sound.fft;
 import dsubs_sound.spectrum;
+import dsubs_sound.activesonar;
 import dsubs_sound.water;
 import dsubs_sound.filter;
 
@@ -257,20 +259,21 @@ package:
 		return evt;
 	}
 
-	AsyncEvent enqueueCopy(CommandQueue q, ref Buffer dest, size_t offset, size_t count,
-		const(AsyncEvent)* onlyAfter)
+	AsyncEvent enqueueCopy(CommandQueue q, ref Buffer dest, size_t srcOffset,
+		size_t destOffset, size_t count, const(AsyncEvent)* onlyAfter)
 	{
 		assert(m_mem !is cl_mem.init);
-		assert(dest.m_size == m_size);
+		assert(dest.m_size >= count);
+		assert(m_size >= count);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
-			clEnqueueCopyBuffer(q.m_q, m_mem, dest.m_mem, offset, offset, count, 0,
+			clEnqueueCopyBuffer(q.m_q, m_mem, dest.m_mem, srcOffset, destOffset, count, 0,
 				null, &evt.cl).clError;
 		}
 		else
 		{
-			clEnqueueCopyBuffer(q.m_q, m_mem, dest.m_mem, offset, offset, count, 1,
+			clEnqueueCopyBuffer(q.m_q, m_mem, dest.m_mem, srcOffset, destOffset, count, 1,
 				&onlyAfter.cl, &evt.cl).clError;
 		}
 		return evt;
@@ -619,7 +622,11 @@ final class DsubsSoundOpenclCtx
 	/// pre-built high-pass filter 500Hz+
 	package ref LinearFilter hp500filter() { return f_hp500; }
 
-	package Buffer b_wrdks;
+	package
+	{
+		Buffer b_wrdks;
+		PingTdsCache pingTds;
+	}
 
 	this(int queueCount = totalCPUs)
 	{

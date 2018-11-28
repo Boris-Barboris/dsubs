@@ -89,23 +89,27 @@ struct PingParameters
 
 
 /// Cache for reference Tds ping signals of unity amplitude
-// package struct PingTdsCache
-// {
-// 	private
-// 	{
-// 		Tds[immutable PingParameters*] m_cache;
-// 	}
+package struct PingTdsCache
+{
+	private
+	{
+		VarTds[immutable PingParameters*] m_cache;
+	}
 
-// 	void put(immutable PingParameters* params)
-// 	{
-// 		m_cache[params] = genPingSound(params.tdsLength, params.chirps);
-// 	}
+	void put(CommandQueue q, immutable PingParameters* params)
+	{
+		float[] samples = getPingSamples(params.tdsLength, params.chirps);
+		synchronized(q)
+		{
+			m_cache[params] = VarTds(q, samples);
+		}
+	}
 
-// 	Tds* get(immutable PingParameters* params) immutable
-// 	{
-// 		return params in m_cache;
-// 	}
-// }
+	VarTds* get(immutable PingParameters* params)
+	{
+		return params in m_cache;
+	}
+}
 
 
 /// reverb gains that conserve energy
@@ -122,12 +126,22 @@ private float[] getReverbGains(float[] relBinSizes, float zeroBin)
 	return res;
 }
 
-struct PingKernelParams
+private struct PingKernelParams
 {
 	dB peakIlevel;		/// at the cental axis
 	dB lowestIlevel;	/// opposite direction
 	float dirPower;		/// power exponent of cosine directivity formula
 }
+
+/// gets ping intensity level at relative to emitter bearing
+private IntensityLevel pingAtRelBearing(const PingKernelParams params, const float x)
+{
+	const float piPow = pow(PI, (params.dirPower - 1.0f) / params.dirPower);
+	const float a = pow(fabs(x) / piPow, params.dirPower) * sgn(x);
+	return IntensityLevel(params.lowestIlevel + (0.5f + 0.5f * cos(a)) *
+		(params.peakIlevel - params.lowestIlevel));
+}
+
 
 unittest
 {
@@ -157,7 +171,7 @@ unittest
 	Buffer reflectBuf = Buffer(q, reflectors);
 	enum float rangePerRow = 50.0f;
 
-	PingKernelParams pparams = PingKernelParams(120.0f, 90.0f, 2.0f);
+	PingKernelParams pparams = PingKernelParams(180.0f, 150.0f, 2.0f);
 
 	Kernel k = q.mk_sonarReflectorPass;
 	k.setArg(0, fimg.mem);
@@ -244,11 +258,11 @@ unittest
 	static assert (vec2f.sizeof == 2 * float.sizeof);
 	k.setArg(5, vec2f(0.0f, -1.0f));	// relRotations
 	k.setArg(6, vec2f(0.0f, 0.0f));		// angVels
-	k.setArg(7, -75.0f);					// flowNoiseGain
+	k.setArg(7, ActiveSonarPrototype.init.flowNoiseGain);	// flowNoiseGain
 	k.setArg(8, vec2f(0.0f, 20.0f));		// kts
 	k.setArg(9, 1200);					// pingFreq
-	k.setArg(10, 1.0f / 50.0f);		// endScale
-	k.setArg(11, seaNoiseIL(1200).val - 12.0f);		// zeroLevel
+	k.setArg(10, ActiveSonarPrototype.init.endScale);		// endScale
+	k.setArg(11, ActiveSonarPrototype.init.zeroLevel);		// zeroLevel
 	k.setArg(12, 2.0f);			// baseNoise
 	k.setArg(13, uintSeed());	// seed
 	k.enqueue(q, 2, null, [slicedSonar.w, slicedSonar.h], null, null);
@@ -285,8 +299,8 @@ struct ActiveSonarPrototype
 	/// max ping duration (seconds)
 	int maxSec = 15;
 	/// max ping band intensity level
-	dB maxPeakIlevel = 120.0f;
-	dB minPeakIlevel = 90.0f;
+	dB maxPeakIlevel = 180.0f;
+	dB minPeakIlevel = 160.0f;
 	/// ping in the opposite direction is this different
 	dB antiPeakIlevelDiff = -30.0f;
 	/// power exponent of cosine directivity formula
@@ -300,7 +314,7 @@ struct ActiveSonarPrototype
 	/// main sound dissipation modifier
 	float dissMod = 4.0f;
 	/// gain for flow noise
-	dB flowNoiseGain = -66.0f;
+	dB flowNoiseGain = -13.0f;
 	/// reflector bearing and range is randomized around true value by this ratio
 	float reflBearingNoise = 0.02f;
 	float reflRangeNoise = 0.02f;
@@ -312,11 +326,11 @@ struct ActiveSonarPrototype
 	/// perlin noise cell sizes (two noise passes are added)
 	int[2] perlinCellSize = [51, 23];
 	/// perlin noise amplitudes (two noise passes are added)
-	dB[2] perlinGain = [3.0f, 1.4f];
+	dB[2] perlinGain = [3.5f, 1.7f];
 	/// sonar image will be black on this pixel intensity level
-	dB zeroLevel = dB(seaNoiseIL(1200).val - 20.0f);
+	dB zeroLevel = dB(seaNoiseIL(1200).val + 20.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
-	float endScale = 1 / 50.0f;
+	float endScale = 1 / 75.0f;
 
 	/// Slice horizontal resolution
 	int getSliceResol() const
@@ -329,16 +343,24 @@ struct ActiveSonarPrototype
 /// Component that builds active sonar ping image
 final class ActiveSonar
 {
-	this(DsubsSoundOpenclCtx ctx, Transform2D trans, ref const ActiveSonarPrototype proto)
+	this(CommandQueue q, Transform2D trans, ref const ActiveSonarPrototype proto)
 	{
 		m_transform = trans;
 		m_proto = proto;
-		m_omniImage = FloatImage(ctx, proto.omniBeamCount, proto.maxSec * proto.radialRes);
-		m_nextSliceImage = ByteImage(ctx, proto.getSliceResol(), proto.radialRes);
+		m_omniImage = FloatImage(q.ctx, proto.omniBeamCount, proto.maxSec * proto.radialRes);
+		m_nextSliceImage = ByteImage(q.ctx, proto.getSliceResol(), proto.radialRes);
 		m_nextSlice = new ubyte[m_nextSliceImage.size];
 		m_maxRange = SOUND_SPD * proto.maxSec / 2;
 		onPreSimulation += () { m_worldRotStart = m_transform.wrotation; };
 		onPostSimulation += () { m_worldRotEnd = m_transform.wrotation; };
+		// generate tds if needed
+		m_refPingTds = q.ctx.pingTds.get(proto.pingParams);
+		if (m_refPingTds is null)
+		{
+			q.ctx.pingTds.put(q, proto.pingParams);
+			m_refPingTds = q.ctx.pingTds.get(proto.pingParams);
+			assert(m_refPingTds !is null);
+		}
 	}
 
 	private
@@ -366,6 +388,7 @@ final class ActiveSonar
 		float m_omiWrot;	/// world rotation at the start of ping
 		bool m_pingJustStarted;
 		dB m_curPingIlevel;		/// tracked ping intensity level
+		PingKernelParams m_pkparams;
 		/// Each simulation step we map part of omniImage to nextSlice
 		ByteImage m_nextSliceImage;
 		ubyte[] m_nextSlice;
@@ -374,6 +397,9 @@ final class ActiveSonar
 		int m_sliceOffset = 0;
 		/// Serial number of current tracked ping
 		int m_pingCounter = -1;
+
+		/// Tds-related stuff
+		VarTds* m_refPingTds;
 	}
 
 	/// invoked by simulator before kinematic update happens
@@ -426,19 +452,23 @@ final class ActiveSonar
 		m_hasSliceToSend = false;
 	}
 
-	int startPing(dB ilevel)
+	SonarPing startPing(dB ilevel)
 	{
 		enforce(ilevel <= m_proto.maxPeakIlevel && ilevel >= m_proto.minPeakIlevel,
 			"desired ping intensity out of allowed interval");
 		m_curPingIlevel = ilevel;
 		if (m_pingJustStarted)
-			return m_pingCounter;
+			return null;
 		m_sliceOffset = 0;
 		m_slicesLeft = m_proto.maxSec;
 		m_hasSliceToSend = false;
 		m_omiWrot = m_transform.wrotation;
 		m_pingJustStarted = true;
-		return (++m_pingCounter);
+		m_pingCounter++;
+		m_pkparams = PingKernelParams(m_curPingIlevel,
+			m_curPingIlevel + m_proto.antiPeakIlevelDiff, m_proto.pingDirPower);
+		return new SonarPing(m_transform.wposition, m_omiWrot,
+			m_proto.pingParams.effectiveFreq, m_pkparams, m_refPingTds);
 	}
 
 	@property bool pingJustStarted() const { return m_pingJustStarted; }
@@ -467,8 +497,6 @@ final class ActiveSonar
 		reflectBuf.enqueueFullWrite(q, prepr, null).release();
 		// Create sibling texture that will be released at the end of this function
 		FloatImage m_tmpImg = FloatImage(q.ctx, m_omniImage.w, m_omniImage.h);
-		PingKernelParams pkparams = PingKernelParams(m_curPingIlevel,
-			m_curPingIlevel + m_proto.antiPeakIlevelDiff, m_proto.pingDirPower);
 
 		float omniRangePerRow = m_maxRange / m_proto.maxSec / m_proto.radialRes;
 
@@ -476,7 +504,7 @@ final class ActiveSonar
 		Kernel k = q.mk_sonarReflectorPass;
 		k.setArg(0, m_omniImage.mem);
 		k.setArg(1, q.ctx.b_wrdks.mem);
-		k.setArg(2, pkparams);	// pingParams
+		k.setArg(2, m_pkparams);	// pingParams
 		k.setArg(3, m_proto.pingParams.effectiveFreq);		// pingFreq
 		k.setArg(4, float(2 * PI));	// span
 		k.setArg(5, omniRangePerRow);	// rangePerRow
@@ -506,7 +534,7 @@ final class ActiveSonar
 		k.setArg(0, m_tmpImg.mem);
 		k.setArg(1, m_omniImage.mem);
 		k.setArg(2, q.ctx.b_wrdks.mem);
-		k.setArg(3, pkparams);	// pingParams
+		k.setArg(3, m_pkparams);	// pingParams
 		k.setArg(4, m_proto.pingParams.effectiveFreq);		// pingFreq
 		k.setArg(5, float(2 * PI));	// span
 		k.setArg(6, m_proto.directivity);			// directivity
@@ -566,7 +594,7 @@ unittest
 	DsubsSoundOpenclCtx ctx = s_clCtx;
 	CommandQueue q = ctx.queue(0);
 	auto sproto = ActiveSonarPrototype();
-	ActiveSonar s = new ActiveSonar(ctx, new Transform2D(), sproto);
+	ActiveSonar s = new ActiveSonar(q, new Transform2D(), sproto);
 	s.angVelStart = 0.0f;
 	s.ktsStart = 0.0f;
 	s.angVelEnd = 0.0f;
@@ -576,60 +604,96 @@ unittest
 	Reflector refl = new Reflector(new Transform2D(),
 		ReflectorPrototype(vec2f(50, 50), [-1, -1, -1]));
 	refl.transform.position = vec2d(0, 2000);
-	s.startPing(120);
+	s.startPing(sproto.maxPeakIlevel);
 	s.drawReflectors(q, [refl]);
 	s.startSliceGeneration(q);
 	q.finish();
 }
 
 
-// /// Immovable sonar ping source.
-// final class SonarPing: SoundSource
-// {
-// 	this(vec2d position, immutable(PingParameters)* params, IntensityLevel power)
-// 	{
-// 		m_position = position;
-// 		m_params = params;
-// 		savePrevPos();
-// 	}
-
-// 	private
-// 	{
-// 		// time passed since ping creation
-// 		float m_timeSince = 0.0f;
-// 		vec2d m_position;
-// 		const PingParameters* m_params;
-// 		TimeDomainSignal m_tds;
-// 		ubyte[][] m_image;
-// 	}
-
-// 	override @property vec2d position() { return m_position; }
-
-// 	override @property float radius() const { return 30.0f; }
-
-// 	override void buildSignals(vec2d listenerPos,
-// 		scope void delegate(float bandIntensity, TimeDomainSignal tds) onSignalReady,
-// 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f) const
-// 	{
-
-// 	}
-// }
-
-
-private TyGverb* g_reverbator;
-
-// make sure g_reverbator is build for this thread
-private void ensureReverberatorBuilt()
+/// Immovable sonar ping source.
+final class SonarPing: SoundSource
 {
-	if (g_reverbator is null)
+	this(vec2d position, double wrot, int freq,
+		PingKernelParams kernParam, VarTds* refTds)
 	{
-		GverbParams params = GverbParams(4096, 50.0f, 50.0f, 2.0f,
-			0.1f, 0.0f, 0.01f, 0.6f, 20.0f);
-		g_reverbator = new TyGverb(params);
+		m_position = position;
+		m_wrot = wrot;
+		m_freq = freq;
+		m_kernParam = kernParam;
+		m_refTds = refTds;
+		m_samplesLeft = refTds.length;
+		assert(m_samplesLeft > 0);
+		savePrevPos();
+		m_destOffset = uniform(0, GLOBAL_SRATE);
+	}
+
+	private
+	{
+		vec2d m_position;
+		double m_wrot;
+		int m_freq;	/// effective frequency
+		PingKernelParams m_kernParam;
+		VarTds* m_refTds;
+		size_t m_samplesLeft;
+		size_t m_sourceOffset;
+		size_t m_destOffset;
+	}
+
+	/// when zero, ping is over and can be deleted
+	@property size_t samplesLeft() const { return m_samplesLeft; }
+
+	override float minOmniFactor(float range) const { return 0.1f; }
+
+	override @property vec2d position() { return m_position; }
+
+	override @property float radius() const { return 20.0f; }
+
+	/// update internal offsets
+	void onAfterAcoustics()
+	{
+		size_t usedSamples = GLOBAL_SRATE - m_destOffset;
+		m_destOffset = 0;
+		m_sourceOffset = min(m_refTds.length, m_sourceOffset + usedSamples);
+		m_samplesLeft -= min(usedSamples, m_samplesLeft);
+	}
+
+	override void buildSignals(CommandQueue q, vec2d listenerPos,
+		scope void delegate(Intensity* bandIntensityReady,
+			Buffer* bandIntensityBuf, Tds* tds) onSignalReady,
+		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f)
+	{
+		float range = (listenerPos - m_position).length;
+		float relBearing = courseAngle(listenerPos - m_position) - m_wrot;
+		IntensityLevel ilevel = pingAtRelBearing(m_kernParam, relBearing);
+		ilevel = getILatRange(m_freq, ilevel, range, dissMod);
+		Intensity intens = ilevel.toLinear();
+		size_t samplesUsed = GLOBAL_SRATE - m_destOffset;
+		Intensity intervalIntens = Intensity(
+			intens * min(samplesUsed, m_samplesLeft) / GLOBAL_SRATE);
+		if (needTds && maxFreq >= m_freq && minFreq <= m_freq)
+		{
+			q.s_tds.fill(q, 0.0f);
+			m_refTds.copyTo(q, q.s_tds, m_sourceOffset, m_destOffset);
+			q.s_tds.interpolateIntensity(q, intens / GLOBAL_SRATE, intens / GLOBAL_SRATE);
+			onSignalReady(&intervalIntens, null, &q.s_tds);
+		}
+		else
+			onSignalReady(&intervalIntens, null, null);
 	}
 }
 
-private float[] genPingSound(int lifeTime, immutable Chirp[] chirps,
+
+
+private TyGverb buildReverberator()
+{
+	GverbParams params = GverbParams(4096, 50.0f, 50.0f, 2.0f,
+		0.1f, 0.0f, 0.01f, 0.6f, 20.0f);
+	return TyGverb(params);
+}
+
+
+private float[] getPingSamples(int lifeTime, immutable Chirp[] chirps,
 	int srate = GLOBAL_SRATE)
 {
 	assert(srate > 0);
@@ -665,16 +729,15 @@ private float[] genPingSound(int lifeTime, immutable Chirp[] chirps,
 		}
 	}
 	float[] reverbed;
-	ensureReverberatorBuilt();
-	g_reverbator.set_revtime(lifeTime);
-	g_reverbator.applyToBuf(samples, reverbed);
-	g_reverbator.flush();
+	auto rev = buildReverberator();
+	rev.set_revtime(lifeTime);
+	rev.applyToBuf(samples, reverbed);
 	samples = reverbed;
 	return samples;
 }
 
 unittest
 {
-	float[] samples = genPingSound(2, [Chirp(1100, 1300, 0.3f)]);
+	float[] samples = getPingSamples(2, [Chirp(1100, 1300, 0.3f)]);
 	writeWavFile("midfreq-chirp.wav", samples, 0.6f, GLOBAL_SRATE);
 }

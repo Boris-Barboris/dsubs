@@ -208,7 +208,7 @@ final class SubmarineFactory
 			t.position = tmpl.sonar.mount.mountCenter.toGfm!double;
 			t.rotation = tmpl.sonar.mount.rotation;
 			res.transform.addChild(t);
-			res.m_sonar = new ActiveSonar(Globals.sctx, t, asprot);
+			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, asprot);
 		}
 		// reflector
 		res.m_reflector = new Reflector(res.transform, reflprot);

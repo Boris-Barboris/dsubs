@@ -62,6 +62,9 @@ final class Simulator
 					profiler.start("acous.applySourcesOnHydrophones");
 					Globals.acous.applySourcesOnHydrophones();
 					profiler.stopLast();
+					profiler.start("acous.postAcousticsUpdate");
+					Globals.acous.postAcousticsUpdate();
+					profiler.stopLast();
 					m_worldTime += 1000_000;
 					// stream updates to players
 					profiler.start("players.forEachPlayer.sendUpdate");

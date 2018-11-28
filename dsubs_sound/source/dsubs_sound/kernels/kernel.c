@@ -87,10 +87,11 @@ void __kernel addUniformNoise(
 
 void __kernel addTo(
 	__global const float *from,
-	__global float *dest)
+	__global float *dest,
+	const int fromOffset)
 {
 	uint idx = get_global_id(0);
-	dest[idx] += from[idx];
+	dest[idx] += from[idx + fromOffset];
 }
 
 void __kernel toShortPcb(

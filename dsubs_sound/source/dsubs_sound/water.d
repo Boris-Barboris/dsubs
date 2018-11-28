@@ -28,7 +28,7 @@ private float waterRangeDissipationK(float freq)
 	return res;
 }
 
-package immutable(float)[] wrdk;
+package __gshared immutable(float)[] wrdk;
 
 void initializeWrdk()
 {

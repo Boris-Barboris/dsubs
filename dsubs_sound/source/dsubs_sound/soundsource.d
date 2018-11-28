@@ -29,6 +29,9 @@ abstract class SoundSource
 	/// close distances.
 	@property float radius() const;
 
+	/// Returns minimal omnidirectional factor at the range
+	float minOmniFactor(float range) const;
+
 	/// invoked by simulator before kinematic update happens
 	Event!(void delegate()) onPreSimulation;
 	/// invoked by simulator right after kinematic update happens
@@ -36,7 +39,8 @@ abstract class SoundSource
 
 	/// Generate band intensity and time-domain signal(s) for a hydrophone
 	void buildSignals(CommandQueue q, vec2d listenerPos,
-		scope void delegate(ref Buffer bandIntensityBuf, Tds* tds) onSignalReady,
+		scope void delegate(Intensity* bandIntensityReady,
+			Buffer* bandIntensityBuf, Tds* tds) onSignalReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f);
 }
 
@@ -154,14 +158,16 @@ final class PropellerSound: SoundSource
 		k.setArg(7, uintSeed());
 		k.enqueue(q, 1, [minFreq - 1], [maxFreq - minFreq + 1], null, null);
 
-		// float[GLOBAL_SRATE / 2] ispecDump;
-		// (cast(ISpectrum) dest).enqueueRead(q, ispecDump[]).waitFor();
-		// trace("ispecDump: ", ispecDump);
-
 		// bin sum
 		dest.reduceSum(q, q.s_bandSumBuf, minFreq, maxFreq);
 
 		return kavg;
+	}
+
+	override float minOmniFactor(float range) const
+	{
+		/// regular propellers have no business being omni
+		return 0.0f;
 	}
 
 	private void doModulate(CommandQueue q, ref Tds tds,
@@ -173,7 +179,8 @@ final class PropellerSound: SoundSource
 	}
 
 	override void buildSignals(CommandQueue q, vec2d listenerPos,
-		scope void delegate(ref Buffer bandIntensityBuf, Tds* tds) onSignalReady,
+		scope void delegate(Intensity* bandIntensityReady,
+			Buffer* bandIntensityBuf, Tds* tds) onSignalReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f)
 	{
 		assert(minFreq >= 1);
@@ -203,10 +210,10 @@ final class PropellerSound: SoundSource
 		{
 			q.s_ispec.toTimeDomain(q, q.s_tds);
 			doModulate(q, q.s_tds, kavg, freqCubeStart, freqCubeEnd);
-			onSignalReady(q.s_bandSumBuf, &q.s_tds);
+			onSignalReady(null, &q.s_bandSumBuf, &q.s_tds);
 		}
 		else
-			onSignalReady(q.s_bandSumBuf, null);
+			onSignalReady(null, &q.s_bandSumBuf, null);
 		// cavitation component
 		kavg = genISpec(q, range, relBearing, q.s_ispec, *m_baseCavSpectrum,
 			minFreq, maxFreq, cavSqrStart, cavSqrEnd, dissMod);
@@ -214,10 +221,10 @@ final class PropellerSound: SoundSource
 		{
 			q.s_ispec.toTimeDomain(q, q.s_tds);
 			doModulate(q, q.s_tds, kavg, cavSqrStart, cavSqrEnd);
-			onSignalReady(q.s_bandSumBuf, &q.s_tds);
+			onSignalReady(null, &q.s_bandSumBuf, &q.s_tds);
 		}
 		else
-			onSignalReady(q.s_bandSumBuf, null);
+			onSignalReady(null, &q.s_bandSumBuf, null);
 	}
 }
 
@@ -283,7 +290,7 @@ unittest
 	snd.preUpdate(1.0f, 10.0f);
 	snd.postUpdate(1.0f, 10.0f, 1.0f);
 
-	void onSignalReady(ref Buffer bandIntensityBuf, Tds* tds)
+	void onSignalReady(Intensity* bandIntensityReady, Buffer* bandIntensityBuf, Tds* tds)
 	{
 		trace("onSignalReady called");
 		assert(tds is null);

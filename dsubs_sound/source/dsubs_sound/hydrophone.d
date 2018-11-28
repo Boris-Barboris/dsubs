@@ -32,7 +32,7 @@ struct HydrophonePrototype
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 0.001f;
 	float flowNoiseMult = 0.001f;
-	float selfNoiseMult = 1e-3f;
+	float omniNoiseMult = 5e-3f;
 	/// client listens to beam of this size
 	float listenSpan = dgr2rad(2);
 }
@@ -55,7 +55,7 @@ final class Hydrophone
 		m_listenSpan = p.listenSpan;
 		m_bearingErrNoise = p.bearingErrNoise;
 		m_flowNoiseMult = p.flowNoiseMult;
-		m_selfNoiseMult = p.selfNoiseMult;
+		m_omniNoiseMult = p.omniNoiseMult;
 		assert(m_span > 0.0f && m_span < 2 * PI - MAX_HALO);
 		assert(p.beamCount > 0);
 		m_beamAngle = m_span / p.beamCount;
@@ -65,8 +65,11 @@ final class Hydrophone
 		onPreSimulation += &savePrevPos;
 		savePrevPos();
 
-		m_prevTds = Tds(q, 0.0f);
-		m_curTds = Tds(q, 0.0f);
+		synchronized(q)
+		{
+			m_prevTds = Tds(q, 0.0f);
+			m_curTds = Tds(q, 0.0f);
+		}
 		m_baseSeaNoiseBuf = Buffer(q.ctx, float.sizeof);
 		m_baseFlowNoiseStartBuf = Buffer(q.ctx, float.sizeof);
 		m_baseFlowNoiseEndBuf = Buffer(q.ctx, float.sizeof);
@@ -92,7 +95,7 @@ final class Hydrophone
 		float m_directivity;
 		float m_bearingErrNoise;
 		float m_flowNoiseMult;
-		float m_selfNoiseMult;
+		float m_omniNoiseMult;
 		dB m_baseNoise;
 
 		/// speed in knots at the start of integration
@@ -100,11 +103,10 @@ final class Hydrophone
 		float m_ktsEnd = 0.0f;
 
 		enum float MAX_HALO = dgr2rad(20);
-		enum float MAX_HALO_2 = MAX_HALO / 2;
 		enum float HALO_GAIN = 3.0f;
 		enum float ISOTROPIC_VAR = 2.0;
 		enum int MIN_FREQ = 20;
-		enum float LOCAL_NOISE_RANGE = 100.0f;
+		enum float LOCAL_NOISE_RANGE = 50.0f;
 
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
@@ -337,12 +339,16 @@ final class Hydrophone
 	{
 		vec2d dirEnd;
 		vec2d dirStart;
-		double range;
+		double rangeStart;
+		double rangeEnd;
 		double worldBearingStart;
 		double worldBearingEnd;
 		float haloBase;
 		float haloBound;
-		bool isOmni;
+		float omniFactorStart = 0.0f;
+		float omniFactorEnd = 0.0f;
+
+		alias range = rangeEnd;
 
 		AntennaePrecalc[2] antPrec;
 
@@ -362,7 +368,12 @@ final class Hydrophone
 		SourcePrecalc res;
 		res.dirStart = s.prevPos - m_prevPos;
 		res.dirEnd = s.position - m_transform.wposition;
-		res.range = max(5.0, res.dirEnd.length);
+		res.rangeStart = max(5.0, res.dirStart.length);
+		res.rangeEnd = max(5.0, res.dirEnd.length);
+		res.omniFactorStart = max(s.minOmniFactor(res.rangeStart),
+			caclOmniFactor(res.rangeStart));
+		res.omniFactorEnd = max(s.minOmniFactor(res.rangeEnd),
+			caclOmniFactor(res.rangeEnd));
 		assert(res.range > 0.0);
 		res.worldBearingStart = courseAngle(res.dirStart);
 		res.worldBearingEnd = courseAngle(res.dirEnd);
@@ -373,15 +384,20 @@ final class Hydrophone
 		return res;
 	}
 
+	private static float caclOmniFactor(float range)
+	{
+		if (range <= LOCAL_NOISE_RANGE)
+			return 1.0f;
+		return max(0.0f, 1.0f - (range - LOCAL_NOISE_RANGE) / 200.0f);
+	}
+
 	void applySoundSource(CommandQueue q, SoundSource s)
 	{
 		SourcePrecalc prec = precalcForSource(s);
-		bool isVisible = false;
+		bool isVisible = prec.omniFactorStart > 0.0f || prec.omniFactorEnd > 0.0f;
 		foreach (int i, a; m_ant)
 		{
 			isVisible |= a.precalcForAntennae(i, prec);
-			if (prec.isOmni)
-				break;
 		}
 		if (!isVisible)
 			return;
@@ -407,9 +423,12 @@ final class Hydrophone
 		int compCount = m_sourceQueue.front.components;
 		assert(compCount > 0);
 		//trace("popping with evt: ", m_sourceQueue.front.evt);
-		m_sourceQueue.front.evt[compCount - 1].waitFor();
-		for (int i = 0; i < compCount - 1; i++)
-			m_sourceQueue.front.evt[i].release();
+		for (int i = 0; i < compCount; i++)
+		{
+			AsyncEvent e = m_sourceQueue.front.evt[i];
+			if (e != AsyncEvent.init)
+				e.waitFor();
+		}
 		foreach (int i, a; m_ant)
 			a.applyBuiltIntensity(i, m_sourceQueue.front);
 		m_sourceQueue.popFront();
@@ -420,43 +439,49 @@ final class Hydrophone
 		bool needTds = m_listenDirValid;
 
 		PowerIntegr integr;
-		if (!p.isOmni)
+		if (m_listenDirValid)
 		{
 			float left = m_listenDir + m_listenSpan / 2;
 			float right = m_listenDir - m_listenSpan / 2;
 			integr = integrateBetweenBeams(left, right,
 				p.worldBearingStart, p.worldBearingEnd, p.haloBase);
-			if (integr.totalPart == 0.0f)
-				needTds = false;
+		}
+		if (needTds && integr.totalPart == 0.0f && p.omniFactorStart == 0.0f &&
+			p.omniFactorEnd == 0.0f)
+		{
+			needTds = false;
 		}
 
-		void onSignalReady(ref Buffer bandIntensityBuf, Tds* tds)
+		void onSignalReady(Intensity* bandInt, Buffer* bandIntensityBuf, Tds* tds)
 		{
 			assert(p.components < p.MAX_COMPONENTS);
-			AsyncEvent evt = bandIntensityBuf.enqueueFullRead(q,
-				&p.bandSum[p.components], null);
-			p.evt[p.components] = evt;
+			if (bandInt != null)
+			{
+				// band intensity is already calculated on the CPU
+				p.bandSum[p.components] = *bandInt;
+			}
+			else
+			{
+				// band intensity will arrive later from OpenCL
+				assert(bandIntensityBuf !is null);
+				AsyncEvent evt = bandIntensityBuf.enqueueFullRead(q,
+					&p.bandSum[p.components], null);
+				p.evt[p.components] = evt;
+			}
 			if (needTds && tds)
 			{
-				if (p.isOmni)
-				{
-					float mult = m_directivity * m_selfNoiseMult;
-					modulateIInterp(q, *tds, mult, mult);
-					tds.addTo(q, m_curTds);
-				}
-				else
-				{
-					modulateIInterp(q, *tds, integr.startPart, integr.endPart);
-					tds.addTo(q, m_curTds);
-				}
+				float omniImultStart = p.omniFactorStart * m_directivity * m_omniNoiseMult;
+				float omniImultEnd = p.omniFactorEnd * m_directivity * m_omniNoiseMult;
+				modulateIInterp(q, *tds,
+					max(omniImultStart, integr.startPart),
+					max(omniImultEnd, integr.endPart));
+				tds.addTo(q, m_curTds);
 			}
 			p.components++;
 		}
 
 		s.buildSignals(q, m_transform.wposition, &onSignalReady, m_minFreq,
 			m_maxFreq, needTds, 4.0f);
-
-		//trace("pushed with evt: ", p.evt);
 	}
 
 	private struct PowerIntegr
@@ -614,16 +639,8 @@ final class Hydrophone
 			antPrec.beamStart = beams.length.to!int;
 			antPrec.beamEnd = -1;
 
-			bool localSource = p.range <= LOCAL_NOISE_RANGE;
 			if (sectProj1.count == 0 && sectProj2.count == 0)
-			{
-				if (localSource)
-				{
-					p.isOmni = true;
-					return true;
-				}
 				return false;
-			}
 			if (sectProj1.count)
 			{
 				antPrec.beamStart = min(antPrec.beamStart,
@@ -651,24 +668,22 @@ final class Hydrophone
 				bandSum += p.bandSum[i].val;
 			assert(!isNaN(bandSum));
 			bandSum /= GLOBAL_SRATE / 2;
-			if (p.isOmni)
+			float omniMult = p.omniFactorEnd * m_directivity * m_omniNoiseMult;
+			if (omniMult > 0.0f)
 			{
-				float mult = m_directivity * m_selfNoiseMult;
 				foreach (ref beam; beams)
-					beam += bandSum * mult;
+					beam += bandSum * omniMult;
 			}
-			else
+			// apply broadband power to beams
+			for (int ci = antPrec.beamStart; ci <= antPrec.beamEnd; ci++)
 			{
-				// apply broadband power to beams
-				for (int ci = antPrec.beamStart; ci <= antPrec.beamEnd; ci++)
-				{
-					float beamLeft = beam0Left - ci * m_beamAngle;
-					float beamRight = beamLeft - m_beamAngle;
-					float powerPart = integrateBetweenBeams(beamLeft, beamRight,
-						antPrec.relBearing1, antPrec.relBearing2, p.haloBase, 3).totalPart;
-					assert(!isNaN(powerPart));
-					beams[ci] += bandSum * powerPart;
-				}
+				float beamLeft = beam0Left - ci * m_beamAngle;
+				float beamRight = beamLeft - m_beamAngle;
+				float powerPart = integrateBetweenBeams(beamLeft, beamRight,
+					antPrec.relBearing1, antPrec.relBearing2, p.haloBase, 3).totalPart;
+				assert(!isNaN(powerPart));
+				if (powerPart > omniMult)
+					beams[ci] += bandSum * (powerPart - omniMult);
 			}
 		}
 	}

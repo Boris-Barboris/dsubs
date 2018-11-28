@@ -219,7 +219,9 @@ final class Player
 			enforce(req.sonarIdx == 0, "no such sonar");
 			if (Globals.sim.worldTime - m_lastPingEmit >= 5_000_000)
 			{
-				s.sonar.startPing(req.ilevel);
+				auto ping = s.sonar.startPing(req.ilevel);
+				if (ping)
+					Globals.acous.registerPing(ping);
 				m_lastPingEmit = Globals.sim.worldTime;
 			}
 		}

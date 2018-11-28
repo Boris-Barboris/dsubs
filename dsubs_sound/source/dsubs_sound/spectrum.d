@@ -14,7 +14,7 @@ import dsubs_sound.opencl;
 /// Time-domain signal of 1 second length
 struct Tds
 {
-	enum int BUF_LEN = GLOBAL_SRATE;
+	enum size_t BUF_LEN = GLOBAL_SRATE;
 
 	/// Allocate memory of the right size but do not initialize it.
 	/// Value is undefined.
@@ -54,6 +54,7 @@ struct Tds
 		Kernel k = q.mk_addTo;
 		k.setArg(0, mem);
 		k.setArg(1, dest.mem);
+		k.setArg(2, 0);
 		k.enqueue(q, 1, null, [BUF_LEN], null, null);
 	}
 
@@ -74,6 +75,83 @@ struct Tds
 		k.setArg(1, start);
 		k.setArg(2, end);
 		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null);
+	}
+}
+
+
+/// Time-domain signal of variable length
+struct VarTds
+{
+	/// Allocate memory of the right size but do not initialize it.
+	this(DsubsSoundOpenclCtx ctx, size_t lgth)
+	{
+		buf = Buffer(ctx, lgth * float.sizeof);
+	}
+
+	this(CommandQueue q, const float[] samples)
+	{
+		buf = Buffer(q.ctx, samples.length * float.sizeof);
+		buf.enqueueFullWrite(q, samples, null).release();
+	}
+
+	/// Allocate data and fill with initValue.
+	this(CommandQueue q, size_t lgth, float initValue)
+	{
+		buf = Buffer(q.ctx, lgth * float.sizeof);
+		buf.enqueueFullFill(q, initValue, null).release();
+	}
+
+	@disable this(this);
+
+	private Buffer buf;
+
+	@property size_t length() const { return buf.size / float.sizeof; }
+
+	pragma(inline)
+	package @property auto mem() const { return buf.mem(); }
+
+	AsyncEvent enqueueRead(CommandQueue q, float[] dest)
+	{
+		assert(dest.length >= length);
+		return buf.enqueueFullRead(q, dest.ptr, null);
+	}
+
+	void addTo(CommandQueue q, ref Tds dest, size_t startIdx)
+	{
+		assert(startIdx <= length);
+		Kernel k = q.mk_addTo;
+		k.setArg(0, mem);
+		k.setArg(1, dest.mem);
+		k.setArg(2, startIdx.to!int);
+		k.enqueue(q, 1, null, [min(dest.BUF_LEN, length - startIdx)], null, null);
+	}
+
+	void copyTo(CommandQueue q, ref Tds dest, size_t sourceOffset, size_t destOffset)
+	{
+		assert(sourceOffset <= length);
+		buf.enqueueCopy(q, dest.buf, sourceOffset * float.sizeof, destOffset * float.sizeof,
+			float.sizeof * min(dest.BUF_LEN - destOffset, length - sourceOffset),
+			null).release();
+	}
+
+	void swapWith(ref VarTds rhs)
+	{
+		// length check inside buffer swap
+		buf.swapWith(rhs.buf);
+	}
+
+	void fill(CommandQueue q, float val)
+	{
+		buf.enqueueFullFill(q, val, null).release();
+	}
+
+	void interpolateIntensity(CommandQueue q, float start, float end)
+	{
+		Kernel k = q.mk_interpolateIntensity;
+		k.setArg(0, mem);
+		k.setArg(1, start);
+		k.setArg(2, end);
+		k.enqueue(q, 1, null, [length], null, null);
 	}
 }
 
@@ -182,6 +260,7 @@ struct EnergySpectrum(SpectrumType stype)
 		Kernel k = q.mk_addTo;
 		k.setArg(0, mem);
 		k.setArg(1, dest.mem);
+		k.setArg(2, 0);
 		k.enqueue(q, 1, [minFreq - 1], [maxFreq - minFreq + 1], null, null);
 	}
 }
