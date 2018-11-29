@@ -147,7 +147,8 @@ final class RigidBody: PhysicalEntity
 		vec2d linAcc1 = linAcc(kinet);
 		double rotAcc1 = rotAcc(kinet);
 		nextKinet.pos += dt * kinet.vel;
-		nextKinet.rotation = clampAngle(kinet.rotation + dt * kinet.angVel);
+		//nextKinet.rotation = clampAngle(kinet.rotation + dt * kinet.angVel);
+		nextKinet.rotation = kinet.rotation + dt * kinet.angVel;
 		//trace("linAcc: ", linAcc1);
 		nextKinet.vel += dt * linAcc1;
 		nextKinet.angVel += dt * rotAcc1;

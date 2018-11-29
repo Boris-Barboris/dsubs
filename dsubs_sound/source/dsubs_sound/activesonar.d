@@ -314,7 +314,7 @@ struct ActiveSonarPrototype
 	/// main sound dissipation modifier
 	float dissMod = 4.0f;
 	/// gain for flow noise
-	dB flowNoiseGain = -13.0f;
+	dB flowNoiseGain = -10.0f;
 	/// reflector bearing and range is randomized around true value by this ratio
 	float reflBearingNoise = 0.02f;
 	float reflRangeNoise = 0.02f;
@@ -330,7 +330,7 @@ struct ActiveSonarPrototype
 	/// sonar image will be black on this pixel intensity level
 	dB zeroLevel = dB(seaNoiseIL(1200).val + 20.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
-	float endScale = 1 / 75.0f;
+	float endScale = 1 / 70.0f;
 
 	/// Slice horizontal resolution
 	int getSliceResol() const
@@ -643,11 +643,11 @@ final class SonarPing: SoundSource
 	/// when zero, ping is over and can be deleted
 	@property size_t samplesLeft() const { return m_samplesLeft; }
 
-	override float minOmniFactor(float range) const { return 0.1f; }
+	override float minOmniFactor(float range) const { return 0.25f; }
 
 	override @property vec2d position() { return m_position; }
 
-	override @property float radius() const { return 20.0f; }
+	override @property float radius() const { return 30.0f; }
 
 	/// update internal offsets
 	void onAfterAcoustics()

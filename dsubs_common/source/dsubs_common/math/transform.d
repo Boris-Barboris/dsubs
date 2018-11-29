@@ -164,7 +164,8 @@ class Transform2D
 	final @property void rotation(double val)
 	{
 		assert(!isNaN(val));
-		m_rotation = clampAngle(val);
+		//m_rotation = clampAngle(val);
+		m_rotation = val;
 		propagate();
 	}
 
