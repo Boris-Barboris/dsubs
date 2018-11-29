@@ -62,27 +62,6 @@ vec2d tod(vec2f v)
 	return vec2d(v.x, v.y);
 }
 
-/// approximation of Error function.
-// https://en.wikipedia.org/wiki/Error_function#Approximation_with_elementary_functions
-Unqual!F erf(F)(F x)
-	if (isFloatingPoint!(F))
-{
-	bool neg = x < 0.0;
-	x = abs(x);
-	F res;
-	if (x > 5.4f)
-		res = 1;
-	else
-	{
-		res = 1.0 - 1.0 /
-			pow(1.0 + 0.278393 * x + 0.230389 * pow(x, 2) +
-			0.000972 * pow(x, 3) + 0.078108 * pow(x, 4), 4);
-	}
-	assert(res >= 0 && res <= 1, res.to!string ~ " on " ~ x.to!string);
-	// res = fmax(-1, fmin(1, res));
-	return neg ? -res : res;
-}
-
 /// meters per second to knots
 double mps2kts(double mps)
 {

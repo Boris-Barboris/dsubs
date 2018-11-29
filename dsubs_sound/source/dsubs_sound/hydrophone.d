@@ -4,6 +4,7 @@ import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
 import std.array: array;
 import std.range;
+import std.mathspecial;
 
 import dsubs_common.math;
 import dsubs_common.event;
@@ -473,8 +474,8 @@ final class Hydrophone
 				float omniImultStart = p.omniFactorStart * m_directivity * m_omniNoiseMult;
 				float omniImultEnd = p.omniFactorEnd * m_directivity * m_omniNoiseMult;
 				modulateIInterp(q, *tds,
-					max(omniImultStart, integr.startPart),
-					max(omniImultEnd, integr.endPart));
+					omniImultStart + (1.0f - omniImultStart) * integr.startPart,
+					omniImultEnd + (1.0f - omniImultEnd) * integr.endPart);
 				tds.addTo(q, m_curTds);
 			}
 			p.components++;
@@ -683,7 +684,7 @@ final class Hydrophone
 					antPrec.relBearing1, antPrec.relBearing2, p.haloBase, 3).totalPart;
 				assert(!isNaN(powerPart));
 				if (powerPart > omniMult)
-					beams[ci] += bandSum * (powerPart - omniMult);
+					beams[ci] += bandSum * (1.0f - omniMult) * powerPart;
 			}
 		}
 	}

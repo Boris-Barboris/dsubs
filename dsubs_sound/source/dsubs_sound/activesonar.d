@@ -87,25 +87,32 @@ struct PingParameters
 	int effectiveFreq;		/// abstracted away "main" frequency.
 }
 
+private struct PreparedPingTds
+{
+	VarTds tds;
+	float meanSqr;
+}
+
 
 /// Cache for reference Tds ping signals of unity amplitude
 package struct PingTdsCache
 {
 	private
 	{
-		VarTds[immutable PingParameters*] m_cache;
+		PreparedPingTds[immutable PingParameters*] m_cache;
 	}
 
 	void put(CommandQueue q, immutable PingParameters* params)
 	{
 		float[] samples = getPingSamples(params.tdsLength, params.chirps);
+		float meanSqr = samples[0 .. GLOBAL_SRATE].map!(p => p * p).sum() / GLOBAL_SRATE;
 		synchronized(q)
 		{
-			m_cache[params] = VarTds(q, samples);
+			m_cache[params] = PreparedPingTds(VarTds(q, samples), meanSqr);
 		}
 	}
 
-	VarTds* get(immutable PingParameters* params)
+	PreparedPingTds* get(immutable PingParameters* params)
 	{
 		return params in m_cache;
 	}
@@ -152,8 +159,9 @@ unittest
 
 	DsubsSoundOpenclCtx ctx = s_clCtx;
 	CommandQueue q = ctx.queue(0);
+	ActiveSonarPrototype proto;
 
-	FloatImage fimg = FloatImage(ctx, 300, 200);
+	FloatImage fimg = FloatImage(ctx, proto.omniBeamCount, proto.radialRes * proto.maxSec);
 	FloatImage reverbImg = FloatImage(ctx, fimg.w, fimg.h);
 
 	PreparedReflector[] reflectors = [
@@ -165,23 +173,26 @@ unittest
 		PreparedReflector(-2.5f, 3000.0f, 75.0f, 20.0f, -2.0f),
 		PreparedReflector(-3.0f, 3000.0f, 75.0f, 20.0f, -2.0f),
 		PreparedReflector(0.0f, 5000.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(0.0f, 7500.0f, 75.0f, 20.0f, -2.0f)
+		PreparedReflector(0.0f, 7500.0f, 75.0f, 20.0f, -2.0f),
+		PreparedReflector(0.0f, 10000.0f, 75.0f, 20.0f, -2.0f)
 	];
 
 	Buffer reflectBuf = Buffer(q, reflectors);
-	enum float rangePerRow = 50.0f;
+	float rangePerRow = SOUND_SPD / proto.radialRes / 2;
 
-	PingKernelParams pparams = PingKernelParams(180.0f, 150.0f, 2.0f);
+	PingKernelParams pparams = PingKernelParams(proto.maxPeakIlevel,
+		proto.maxPeakIlevel + proto.antiPeakIlevelDiff, proto.pingDirPower);
+	int pingFreq = proto.pingParams.effectiveFreq;
 
 	Kernel k = q.mk_sonarReflectorPass;
 	k.setArg(0, fimg.mem);
 	k.setArg(1, ctx.b_wrdks.mem);
 	k.setArg(2, pparams);	// pingParams
-	k.setArg(3, 1200);		// pingFreq
+	k.setArg(3, pingFreq);		// pingFreq
 	k.setArg(4, float(2 * PI));	// span
 	k.setArg(5, rangePerRow);	// rangePerRow
-	k.setArg(6, 4.0f);		// dissMod
-	k.setArg(7, vec2f(0.03f, 0.03f));		// reflParamNoise
+	k.setArg(6, proto.dissMod);		// dissMod
+	k.setArg(7, vec2f(proto.reflBearingNoise, proto.reflRangeNoise));	// reflParamNoise
 	k.setArg(8, reflectBuf.mem);
 	k.setArg(9, reflectors.length.to!int);
 	k.setArg(10, uintSeed());	// seed
@@ -191,8 +202,7 @@ unittest
 	q.finish();
 	trace("mk_sonarReflectorPass took ", MonoTime.currTime() - start);
 
-	const(float)[] reverbk = getReverbGains(
-		[1.0f, 0.6f, 0.5f, 0.3f, 0.2f, 0.11f, 0.1, 0.06f, 0.04f, 0.01f], 0.1f);
+	const(float)[] reverbk = proto.reverbk;
 	trace("reverbk: ", reverbk);
 	Buffer reverbKbuf = Buffer(q, reverbk);
 
@@ -201,7 +211,7 @@ unittest
 	k.setArg(1, reverbImg.mem);
 	k.setArg(2, reverbKbuf.mem);
 	k.setArg(3, reverbk.length.to!int);
-	k.setArg(4, 1.0f / 2000.0f);
+	k.setArg(4, proto.reverbGainRangeK);
 	k.setArg(5, rangePerRow);
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
@@ -214,14 +224,14 @@ unittest
 	k.setArg(1, fimg.mem);
 	k.setArg(2, ctx.b_wrdks.mem);
 	k.setArg(3, pparams);	// pingParams
-	k.setArg(4, 1200);		// pingFreq
+	k.setArg(4, pingFreq);		// pingFreq
 	k.setArg(5, float(2 * PI));	// span
-	k.setArg(6, -20.0f);	// directivity
-	k.setArg(7, 5e-5f);	// waterReflectivity
+	k.setArg(6, proto.directivity);	// directivity
+	k.setArg(7, proto.waterReflectivity);	// waterReflectivity
 	k.setArg(8, rangePerRow);		// rangePerRow
-	k.setArg(9, 4.0f);		// dissMod
-	k.setArg(10, vec2i(50, 20));		// perlCellSize
-	k.setArg(11, vec2f(6.0f, 3.0f));	// perlNoiseGain
+	k.setArg(9, proto.dissMod);		// dissMod
+	k.setArg(10, proto.perlinCellSize);		// perlCellSize
+	k.setArg(11, proto.perlinGain);	// perlNoiseGain
 	k.setArg(12, uintSeed());	// seed
 	k.enqueue(q, 2, null, [fimg.w, fimg.h], null, null);
 
@@ -232,6 +242,7 @@ unittest
 	float[] res;
 	res.length = fimg.w * fimg.h;
 	fimg.enqueueRead(q, res, [0, 0], [fimg.w, fimg.h]).waitFor();
+	float resMaxEl = res.maxElement;
 	trace("active_sonar max intensity level = ", res.maxElement);
 
 	foreach (float r; res)
@@ -242,12 +253,14 @@ unittest
 
 	string maxRange = (rangePerRow * fimg.h / 1000).to!int.to!string;
 
-	ubyte[] resBytes = res.map!(s => (min(1.0f, max(0.0f, s / 50)) * ubyte.max).to!ubyte).array;
+	ubyte[] resBytes = res.map!(s => (min(1.0f, max(0.0f, s / resMaxEl)) *
+		ubyte.max).to!ubyte).array;
 	write_image("active_sonar_" ~ maxRange ~ "km.png", fimg.w, fimg.h, resBytes, ColFmt.Y);
 
 	// sonar slicing
 
-	FloatImage slicedSonar = FloatImage(ctx, 200, fimg.h);
+	ByteImage slicedSonar = ByteImage(ctx,
+		(210.0f / 360.0f * proto.omniBeamCount).to!int, fimg.h);
 
 	k = q.mk_sonarSlicePass;
 	k.setArg(0, fimg.mem);
@@ -258,26 +271,18 @@ unittest
 	static assert (vec2f.sizeof == 2 * float.sizeof);
 	k.setArg(5, vec2f(0.0f, -1.0f));	// relRotations
 	k.setArg(6, vec2f(0.0f, 0.0f));		// angVels
-	k.setArg(7, ActiveSonarPrototype.init.flowNoiseGain);	// flowNoiseGain
-	k.setArg(8, vec2f(0.0f, 20.0f));		// kts
-	k.setArg(9, 1200);					// pingFreq
-	k.setArg(10, ActiveSonarPrototype.init.endScale);		// endScale
-	k.setArg(11, ActiveSonarPrototype.init.zeroLevel);		// zeroLevel
-	k.setArg(12, 2.0f);			// baseNoise
+	k.setArg(7, proto.flowNoiseGain);	// flowNoiseGain
+	k.setArg(8, vec2f(0.0f, 30.0f));		// kts
+	k.setArg(9, pingFreq);					// pingFreq
+	k.setArg(10, proto.endScale);		// endScale
+	k.setArg(11, proto.zeroLevel);		// zeroLevel
+	k.setArg(12, proto.baseNoise);			// baseNoise
 	k.setArg(13, uintSeed());	// seed
 	k.enqueue(q, 2, null, [slicedSonar.w, slicedSonar.h], null, null);
 
-	res.length = slicedSonar.w * slicedSonar.h;
-	slicedSonar.enqueueRead(q, res, [0, 0], [slicedSonar.w, slicedSonar.h]).waitFor();
+	resBytes.length = slicedSonar.w * slicedSonar.h;
+	slicedSonar.enqueueRead(q, resBytes, [0, 0], [slicedSonar.w, slicedSonar.h]).waitFor();
 
-	foreach (float r; res)
-	{
-		assert(!isNaN(r));
-		assert(!isInfinity(r));
-	}
-
-	resBytes = res.map!(s => (min(1.0f, max(0.0f, s)) * ubyte.max).
-		to!ubyte).array;
 	write_image("active_sonar_" ~ maxRange ~ "km_sliced.png",
 		slicedSonar.w, slicedSonar.h, resBytes, ColFmt.Y);
 }
@@ -299,8 +304,8 @@ struct ActiveSonarPrototype
 	/// max ping duration (seconds)
 	int maxSec = 15;
 	/// max ping band intensity level
-	dB maxPeakIlevel = 180.0f;
-	dB minPeakIlevel = 160.0f;
+	dB maxPeakIlevel = 210.0f;
+	dB minPeakIlevel = 180.0f;
 	/// ping in the opposite direction is this different
 	dB antiPeakIlevelDiff = -30.0f;
 	/// power exponent of cosine directivity formula
@@ -310,11 +315,11 @@ struct ActiveSonarPrototype
 	/// antennae directivity gain
 	dB directivity = -20.0f;
 	/// water mass reflectivity
-	float waterReflectivity = 5e-5f;
+	float waterReflectivity = 1e-5f;
 	/// main sound dissipation modifier
 	float dissMod = 4.0f;
 	/// gain for flow noise
-	dB flowNoiseGain = -10.0f;
+	dB flowNoiseGain = 5.0f;
 	/// reflector bearing and range is randomized around true value by this ratio
 	float reflBearingNoise = 0.02f;
 	float reflRangeNoise = 0.02f;
@@ -326,11 +331,11 @@ struct ActiveSonarPrototype
 	/// perlin noise cell sizes (two noise passes are added)
 	int[2] perlinCellSize = [51, 23];
 	/// perlin noise amplitudes (two noise passes are added)
-	dB[2] perlinGain = [3.5f, 1.7f];
+	dB[2] perlinGain = [3.9f, 1.6f];
 	/// sonar image will be black on this pixel intensity level
-	dB zeroLevel = dB(seaNoiseIL(1200).val + 20.0f);
+	dB zeroLevel = dB(seaNoiseIL(1200).val + 40.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
-	float endScale = 1 / 70.0f;
+	float endScale = 1 / 80.0f;
 
 	/// Slice horizontal resolution
 	int getSliceResol() const
@@ -353,13 +358,16 @@ final class ActiveSonar
 		m_maxRange = SOUND_SPD * proto.maxSec / 2;
 		onPreSimulation += () { m_worldRotStart = m_transform.wrotation; };
 		onPostSimulation += () { m_worldRotEnd = m_transform.wrotation; };
-		// generate tds if needed
-		m_refPingTds = q.ctx.pingTds.get(proto.pingParams);
-		if (m_refPingTds is null)
+		synchronized
 		{
-			q.ctx.pingTds.put(q, proto.pingParams);
+			// atomically generate tds if needed
 			m_refPingTds = q.ctx.pingTds.get(proto.pingParams);
-			assert(m_refPingTds !is null);
+			if (m_refPingTds is null)
+			{
+				q.ctx.pingTds.put(q, proto.pingParams);
+				m_refPingTds = q.ctx.pingTds.get(proto.pingParams);
+				assert(m_refPingTds !is null);
+			}
 		}
 	}
 
@@ -399,7 +407,7 @@ final class ActiveSonar
 		int m_pingCounter = -1;
 
 		/// Tds-related stuff
-		VarTds* m_refPingTds;
+		PreparedPingTds* m_refPingTds;
 	}
 
 	/// invoked by simulator before kinematic update happens
@@ -615,14 +623,14 @@ unittest
 final class SonarPing: SoundSource
 {
 	this(vec2d position, double wrot, int freq,
-		PingKernelParams kernParam, VarTds* refTds)
+		PingKernelParams kernParam, PreparedPingTds* refTds)
 	{
 		m_position = position;
 		m_wrot = wrot;
 		m_freq = freq;
 		m_kernParam = kernParam;
 		m_refTds = refTds;
-		m_samplesLeft = refTds.length;
+		m_samplesLeft = refTds.tds.length;
 		assert(m_samplesLeft > 0);
 		savePrevPos();
 		m_destOffset = uniform(0, GLOBAL_SRATE);
@@ -634,7 +642,7 @@ final class SonarPing: SoundSource
 		double m_wrot;
 		int m_freq;	/// effective frequency
 		PingKernelParams m_kernParam;
-		VarTds* m_refTds;
+		PreparedPingTds* m_refTds;
 		size_t m_samplesLeft;
 		size_t m_sourceOffset;
 		size_t m_destOffset;
@@ -654,7 +662,7 @@ final class SonarPing: SoundSource
 	{
 		size_t usedSamples = GLOBAL_SRATE - m_destOffset;
 		m_destOffset = 0;
-		m_sourceOffset = min(m_refTds.length, m_sourceOffset + usedSamples);
+		m_sourceOffset = min(m_refTds.tds.length, m_sourceOffset + usedSamples);
 		m_samplesLeft -= min(usedSamples, m_samplesLeft);
 	}
 
@@ -674,8 +682,9 @@ final class SonarPing: SoundSource
 		if (needTds && maxFreq >= m_freq && minFreq <= m_freq)
 		{
 			q.s_tds.fill(q, 0.0f);
-			m_refTds.copyTo(q, q.s_tds, m_sourceOffset, m_destOffset);
-			q.s_tds.interpolateIntensity(q, intens / GLOBAL_SRATE, intens / GLOBAL_SRATE);
+			m_refTds.tds.copyTo(q, q.s_tds, m_sourceOffset, m_destOffset);
+			float imult = intens / m_refTds.meanSqr / GLOBAL_SRATE / GLOBAL_SRATE;
+			q.s_tds.interpolateIntensity(q, imult, imult);
 			onSignalReady(&intervalIntens, null, &q.s_tds);
 		}
 		else

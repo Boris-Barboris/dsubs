@@ -291,3 +291,19 @@ unittest
 	trace("OpenCL toTimeDomain result: ", sound[0 .. 16]);
 	writeWavFile("opencl_ifft.wav", sound[], 1.0f, GLOBAL_SRATE);
 }
+
+
+// energy conservation tests
+unittest
+{
+	import std.algorithm;
+
+	Tds tds = Tds(s_clCtx);
+	CommandQueue q = s_clCtx.queue(0);
+	ISpectrum spec = ISpectrum(q, GLOBAL_SRATE);
+	spec.toTimeDomain(q, tds);
+	float[GLOBAL_SRATE] sound;
+	tds.buf.fullRead(q, sound.ptr, null);
+	trace("4096 spectrum max pressure: ", sound[].map!(s => s.abs).maxElement);
+	trace("4096 spectrum mean square pressure: ", sound[].map!(s => s * s).sum / GLOBAL_SRATE);
+}
