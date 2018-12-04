@@ -263,27 +263,55 @@ unittest
 		(210.0f / 360.0f * proto.omniBeamCount).to!int, fimg.h);
 
 	k = q.mk_sonarSlicePass;
-	k.setArg(0, fimg.mem);
-	k.setArg(1, slicedSonar.mem);
-	k.setArg(2, 0);	// yoffset
-	k.setArg(3, float(dgr2rad(210)));	// destSpan
-	k.setArg(4, 1.0f);		// rangePerRowRatio
-	static assert (vec2f.sizeof == 2 * float.sizeof);
-	k.setArg(5, vec2f(0.0f, -1.0f));	// relRotations
-	k.setArg(6, vec2f(0.0f, 0.0f));		// angVels
-	k.setArg(7, proto.flowNoiseGain);	// flowNoiseGain
-	k.setArg(8, vec2f(0.0f, 30.0f));		// kts
-	k.setArg(9, pingFreq);					// pingFreq
-	k.setArg(10, proto.endScale);		// endScale
-	k.setArg(11, proto.zeroLevel);		// zeroLevel
-	k.setArg(12, proto.baseNoise);			// baseNoise
-	k.setArg(13, uintSeed());	// seed
+
+	void setCommonSlicedParams()
+	{
+		k.setArg(0, fimg.mem);
+		k.setArg(1, slicedSonar.mem);
+		k.setArg(2, 0);	// yoffset
+		k.setArg(3, float(dgr2rad(210)));	// destSpan
+		k.setArg(4, 1.0f);		// rangePerRowRatio
+		k.setArg(5, vec2f(0.0f, -1.0f));	// relRotations
+		k.setArg(6, vec2f(0.0f, 0.0f));		// angVels
+		k.setArg(7, proto.flowNoiseGain);	// flowNoiseGain
+		k.setArg(9, pingFreq);					// pingFreq
+		k.setArg(10, proto.endScale);		// endScale
+		k.setArg(11, proto.zeroLevel);		// zeroLevel
+		k.setArg(12, proto.baseNoise);			// baseNoise
+		k.setArg(13, uintSeed());	// seed
+	}
+
+	setCommonSlicedParams();
+	k.setArg(8, vec2f(0.0f, 0.0f));		// kts
 	k.enqueue(q, 2, null, [slicedSonar.w, slicedSonar.h], null, null);
 
 	resBytes.length = slicedSonar.w * slicedSonar.h;
-	slicedSonar.enqueueRead(q, resBytes, [0, 0], [slicedSonar.w, slicedSonar.h]).waitFor();
+	slicedSonar.enqueueRead(q, resBytes, [0, 0],
+		[slicedSonar.w, slicedSonar.h]).waitFor();
 
-	write_image("active_sonar_" ~ maxRange ~ "km_sliced.png",
+	write_image("active_sonar_" ~ maxRange ~ "km_sliced_0kts.png",
+		slicedSonar.w, slicedSonar.h, resBytes, ColFmt.Y);
+
+	setCommonSlicedParams();
+	k.setArg(8, vec2f(20.0f, 20.0f));		// kts
+	k.enqueue(q, 2, null, [slicedSonar.w, slicedSonar.h], null, null);
+
+	resBytes.length = slicedSonar.w * slicedSonar.h;
+	slicedSonar.enqueueRead(q, resBytes, [0, 0],
+		[slicedSonar.w, slicedSonar.h]).waitFor();
+
+	write_image("active_sonar_" ~ maxRange ~ "km_sliced_20kts.png",
+		slicedSonar.w, slicedSonar.h, resBytes, ColFmt.Y);
+
+	setCommonSlicedParams();
+	k.setArg(8, vec2f(30.0f, 30.0f));		// kts
+	k.enqueue(q, 2, null, [slicedSonar.w, slicedSonar.h], null, null);
+
+	resBytes.length = slicedSonar.w * slicedSonar.h;
+	slicedSonar.enqueueRead(q, resBytes, [0, 0],
+		[slicedSonar.w, slicedSonar.h]).waitFor();
+
+	write_image("active_sonar_" ~ maxRange ~ "km_sliced_30kts.png",
 		slicedSonar.w, slicedSonar.h, resBytes, ColFmt.Y);
 }
 
@@ -315,11 +343,11 @@ struct ActiveSonarPrototype
 	/// antennae directivity gain
 	dB directivity = -20.0f;
 	/// water mass reflectivity
-	float waterReflectivity = 1e-4f;
+	float waterReflectivity = 1e-3f;
 	/// main sound dissipation modifier
 	float dissMod = 4.0f;
 	/// gain for flow noise
-	dB flowNoiseGain = 5.0f;
+	dB flowNoiseGain = 10.0f;
 	/// reflector bearing and range is randomized around true value by this ratio
 	float reflBearingNoise = 0.02f;
 	float reflRangeNoise = 0.02f;
@@ -331,11 +359,11 @@ struct ActiveSonarPrototype
 	/// perlin noise cell sizes (two noise passes are added)
 	int[2] perlinCellSize = [51, 23];
 	/// perlin noise amplitudes (two noise passes are added)
-	dB[2] perlinGain = [3.9f, 1.6f];
+	dB[2] perlinGain = [7.9f, 4.3f];
 	/// sonar image will be black on this pixel intensity level
-	dB zeroLevel = dB(seaNoiseIL(1200).val + 10.0f);
+	dB zeroLevel = dB(seaNoiseIL(1200).val + 20.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
-	float endScale = 1 / 120.0f;
+	float endScale = 1 / 90.0f;
 
 	/// Slice horizontal resolution
 	int getSliceResol() const
