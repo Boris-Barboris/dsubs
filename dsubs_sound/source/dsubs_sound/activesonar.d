@@ -165,16 +165,16 @@ unittest
 	FloatImage reverbImg = FloatImage(ctx, fimg.w, fimg.h);
 
 	PreparedReflector[] reflectors = [
-		PreparedReflector(0.0f, 1000.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(0.0f, 2000.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(-1.0f, 3000.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(-1.5f, 3000.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(-2.0f, 3000.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(-2.5f, 3000.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(-3.0f, 3000.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(0.0f, 5000.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(0.0f, 7500.0f, 75.0f, 20.0f, -2.0f),
-		PreparedReflector(0.0f, 10000.0f, 75.0f, 20.0f, -2.0f)
+		PreparedReflector(0.0f, 1000.0f, 75.0f, 12.0f, -2.0f),
+		PreparedReflector(0.0f, 2000.0f, 75.0f, 12.0f, -2.0f),
+		PreparedReflector(-1.0f, 3000.0f, 75.0f, 12.0f, -2.0f),
+		PreparedReflector(-1.5f, 3000.0f, 75.0f, 12.0f, -2.0f),
+		PreparedReflector(-2.0f, 3000.0f, 75.0f, 12.0f, -2.0f),
+		PreparedReflector(-2.5f, 3000.0f, 75.0f, 12.0f, -2.0f),
+		PreparedReflector(-3.0f, 3000.0f, 75.0f, 12.0f, -2.0f),
+		PreparedReflector(0.0f, 5000.0f, 75.0f, 12.0f, -2.0f),
+		PreparedReflector(0.0f, 7500.0f, 75.0f, 12.0f, -2.0f),
+		PreparedReflector(0.0f, 10000.0f, 75.0f, 12.0f, -2.0f)
 	];
 
 	Buffer reflectBuf = Buffer(q, reflectors);
@@ -315,7 +315,7 @@ struct ActiveSonarPrototype
 	/// antennae directivity gain
 	dB directivity = -20.0f;
 	/// water mass reflectivity
-	float waterReflectivity = 1e-5f;
+	float waterReflectivity = 1e-4f;
 	/// main sound dissipation modifier
 	float dissMod = 4.0f;
 	/// gain for flow noise
@@ -325,17 +325,17 @@ struct ActiveSonarPrototype
 	float reflRangeNoise = 0.02f;
 	/// reverb gains gotten from getReverbGains function
 	immutable(float)[] reverbk = getReverbGains(
-		[1.0f, 0.5f, 0.2f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.05f);
+		[1.0f, 0.5f, 0.2f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.01f);
 	/// how fast reverb strength increases with range
-	float reverbGainRangeK = 1 / 1500.0f;
+	float reverbGainRangeK = 1 / 8000.0f;
 	/// perlin noise cell sizes (two noise passes are added)
 	int[2] perlinCellSize = [51, 23];
 	/// perlin noise amplitudes (two noise passes are added)
 	dB[2] perlinGain = [3.9f, 1.6f];
 	/// sonar image will be black on this pixel intensity level
-	dB zeroLevel = dB(seaNoiseIL(1200).val + 40.0f);
+	dB zeroLevel = dB(seaNoiseIL(1200).val + 10.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
-	float endScale = 1 / 80.0f;
+	float endScale = 1 / 120.0f;
 
 	/// Slice horizontal resolution
 	int getSliceResol() const

@@ -315,12 +315,14 @@ void __kernel sonarIsotropicPass(
 	const uint hidx = x + y * beamCount;
 	uint randState = getRngState(seed, hidx);
 	const float fromEmitter = rangePerRow * (y + 0.5f);
-	float waterNoise = toLinear(seaNoiseIL(pingFreq) + directivity);
-	float wrdk = wrdks[pingFreq - 1];
+	const float waterNoise = toLinear(seaNoiseIL(pingFreq) + directivity) *
+		rangePerRow / SOUND_SPD;
+	const float wrdk = wrdks[pingFreq - 1];
 	const float relBearing = calcRelBearing(span, x, beamCount);
 	const dB pingIntens = pingAtRelBearing(pingParams, relBearing);
 	float waterRefl = getILatRange2(wrdk, pingIntens, 2 * fromEmitter, dissMod);
-	waterRefl = toLinear(waterRefl) * rangePerRow * waterReflectivity;
+	waterRefl = toLinear(waterRefl) * waterReflectivity *
+		rangePerRow / SOUND_SPD;
 
 	float reflIntens = read_imagef(source, sampler,
 		(int2)(beamCount - x - 1, rowCount - y - 1)).x;
