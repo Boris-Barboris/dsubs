@@ -89,6 +89,8 @@ class Button: Label
 
 	private void handleMouseDown(int x, int y, sfMouseButton btn)
 	{
+		if (btn != sfMouseLeft)
+			return;
 		pressed = true;
 	}
 
@@ -108,6 +110,8 @@ class Button: Label
 
 	private void handleMouseUp(int x, int y, sfMouseButton btn)
 	{
+		if (btn != sfMouseLeft)
+			return;
 		if (m_pressed)
 		{
 			simulateClick(btn);

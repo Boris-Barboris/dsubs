@@ -6,13 +6,17 @@ import std.stdio;
 import std.process;
 
 import derelict.openal.al;
-// library needs resampler=bsinc in config
 
 import dsubs_client.common;
 
+
+private enum ALenum AL_GAIN_LIMIT_SOFT = 0x200E;
+
+
 void loadAudioLib()
 {
-	environment["ALSOFT_CONF"] = "alsoft.ini";
+	if (!("ALSOFT_CONF" in environment))
+		environment["ALSOFT_CONF"] = "alsoft.ini";
 	DerelictAL.load();
 	s_device = alcOpenDevice(null);
 	ALenum err = alcGetError(s_device);
@@ -28,6 +32,11 @@ void loadAudioLib()
 	openalcCheckErr("Unable to activate audio context: ");
 	alDistanceModel(AL_NONE);
 	openalcCheckErr("Unable to set distance model: ");
+
+	float maxSoftGain;
+	alGetFloatv(AL_GAIN_LIMIT_SOFT, &maxSoftGain);
+	openalcCheckErr("Unable to query AL_GAIN_LIMIT_SOFT: ");
+	trace("OpenAL AL_GAIN_LIMIT_SOFT = ", maxSoftGain);
 }
 
 void unloadAudioLib()
@@ -78,8 +87,8 @@ final class StreamingSoundSource
 		ALuint source;
 		int m_queuedCount;
 
-		enum float TARGET_MAX = short.max * 0.8f;
-		enum float MAX_GAIN = 1e3;	// +30 dB
+		// enum float TARGET_MAX = short.max * 0.8f;
+		enum float MAX_GAIN = float.max;	// +30 dB
 	}
 
 	@property int queuedCount() const { return m_queuedCount; }

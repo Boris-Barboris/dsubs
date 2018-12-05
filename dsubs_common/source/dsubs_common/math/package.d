@@ -67,3 +67,21 @@ double mps2kts(double mps)
 {
 	return mps * 1.94384;
 }
+
+alias dB = float;
+
+import core.stdc.math: powf, log10f;
+
+/// linear ratio to decibels
+pragma(inline, true)
+float toDb(float linear)
+{
+	return 10.0f * log10f(linear);
+}
+
+/// decibels to linear ratio
+pragma(inline, true)
+float toLinear(float db)
+{
+	return powf(10.0f, db / 10.0f);
+}

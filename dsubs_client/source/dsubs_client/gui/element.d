@@ -165,7 +165,7 @@ class GuiElement: IInputReciever
 	private sfColor m_backgroundColor;
 
 	mixin FinalGetSet!(sfColor, "backgroundColor",
-		"sfRectangleShape_setFillColor(m_sfRect, rhs);");
+		"sfRectangleShape_setFillColor(m_sfRect, rhs); backgroundVisible = true;");
 
 	/// set to true in order to render background
 	bool backgroundVisible = false;
