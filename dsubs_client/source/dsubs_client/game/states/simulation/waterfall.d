@@ -36,7 +36,7 @@ Div createWaterfallPanel(out Waterfall wf)
 				return;
 			}
 			newVal = (newVal - 0.5f) * 2;
-			Game.simState.sonarSound.gain = toLinear(newVal * 20.0f);
+			Game.simState.sonarSound.gain = toLinear(newVal * 12.0f);
 		};
 
 	Div volumeDiv = builder(hDiv([
