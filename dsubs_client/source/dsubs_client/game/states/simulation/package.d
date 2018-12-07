@@ -295,22 +295,35 @@ final class SimulationGUI
 			Game.inputRouter.guiRouter.clearMouseCache();
 		}
 
+		void saveSoundIfNeeded()
+		{
+			if (m_topLevelDiv.children[1] is m_passiveGui)
+			{
+				m_oldSonarGain = Game.simState.sonarSound.gain;
+				Game.simState.sonarSound.gain = 0.0f;
+			}
+		}
+
+		void restoreSoundIfNeeded()
+		{
+			if (m_topLevelDiv.children[1] !is m_passiveGui)
+				Game.simState.sonarSound.gain = m_oldSonarGain;
+		}
+
 		tacticalTab.onClick += (btn)
 		{
+			saveSoundIfNeeded();
 			setMiddlePane(tabFiller);
-			m_oldSonarGain = Game.simState.sonarSound.gain;
-			Game.simState.sonarSound.gain = 0.0f;
 		};
 		psonarTab.onClick += (btn)
 		{
+			restoreSoundIfNeeded();
 			setMiddlePane(m_passiveGui);
-			Game.simState.sonarSound.gain = m_oldSonarGain;
 		};
 		asonarTab.onClick += (btn)
 		{
+			saveSoundIfNeeded();
 			setMiddlePane(m_sonarGui);
-			m_oldSonarGain = Game.simState.sonarSound.gain;
-			Game.simState.sonarSound.gain = 0.0f;
 		};
 
 		Game.guiManager.addPanel(new Panel(m_topLevelDiv));
