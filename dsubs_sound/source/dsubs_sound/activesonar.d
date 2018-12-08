@@ -361,9 +361,9 @@ struct ActiveSonarPrototype
 	/// perlin noise amplitudes (two noise passes are added)
 	dB[2] perlinGain = [7.9f, 4.3f];
 	/// sonar image will be black on this pixel intensity level
-	dB zeroLevel = dB(seaNoiseIL(1200).val + 20.0f);
+	dB zeroLevel = dB(seaNoiseIL(1200).val + 40.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
-	float endScale = 1 / 90.0f;
+	float endScale = 1 / 80.0f;
 
 	/// Slice horizontal resolution
 	int getSliceResol() const
