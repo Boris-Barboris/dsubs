@@ -59,7 +59,7 @@ final class SimulatorState: GameState
 
 		m_gui = new SimulationGUI();
 		Game.worldManager.components ~= new PlayerSubIcon(m_playerSub);
-		m_gui.hydrophoneGui.listenDir = recState.listenDirs[0];
+		m_gui.waterfall.listenDir = recState.listenDirs[0];
 
 		m_sonarSound = new StreamingSoundSource();
 	}
@@ -94,14 +94,13 @@ final class SimulationGUI
 	{
 		Label curCourse, curSpeed;
 		TextField tgtCourseField, tgtThrottleField;
-		Waterfall m_waterfall;
-		GuiElement m_passiveGui;
+		WaterfallGui m_passiveGui;
 		SonarDisplay m_sonarGui;
 		Div m_topLevelDiv;
 		float m_oldSonarGain = 1.0f;
 	}
 
-	@property Waterfall hydrophoneGui() { return m_waterfall; }
+	@property Waterfall waterfall() { return m_passiveGui.wf; }
 	@property SonarDisplay sonarGui() { return m_sonarGui; }
 
 	void handleSubKinematicRes(CICSubKinematicRes res)
@@ -131,7 +130,7 @@ final class SimulationGUI
 
 	void handleCICListenDirReq(CICListenDirReq req)
 	{
-		m_waterfall.listenDir = req.dir;
+		m_passiveGui.wf.listenDir = req.dir;
 	}
 
 	this()
@@ -280,7 +279,7 @@ final class SimulationGUI
 			backgroundColor(DIV_BCKGROUND).build;
 
 		GuiElement tabFiller = filler();
-		m_passiveGui = createWaterfallPanel(m_waterfall);
+		m_passiveGui = createWaterfallPanel();
 		m_sonarGui = new SonarDisplay(playerSub.tmpl.sonar);
 
 		m_topLevelDiv = builder(vDiv([
@@ -297,7 +296,7 @@ final class SimulationGUI
 
 		void saveSoundIfNeeded()
 		{
-			if (m_topLevelDiv.children[1] is m_passiveGui)
+			if (m_topLevelDiv.children[1] is m_passiveGui.root)
 			{
 				m_oldSonarGain = Game.simState.sonarSound.gain;
 				Game.simState.sonarSound.gain = 0.0f;
@@ -306,7 +305,7 @@ final class SimulationGUI
 
 		void restoreSoundIfNeeded()
 		{
-			if (m_topLevelDiv.children[1] !is m_passiveGui)
+			if (m_topLevelDiv.children[1] !is m_passiveGui.root)
 				Game.simState.sonarSound.gain = m_oldSonarGain;
 		}
 
@@ -318,7 +317,7 @@ final class SimulationGUI
 		psonarTab.onClick += (btn)
 		{
 			restoreSoundIfNeeded();
-			setMiddlePane(m_passiveGui);
+			setMiddlePane(m_passiveGui.root);
 		};
 		asonarTab.onClick += (btn)
 		{

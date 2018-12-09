@@ -22,9 +22,18 @@ private
 }
 
 
-Div createWaterfallPanel(out Waterfall wf)
+struct WaterfallGui
 {
-	wf = new Waterfall();
+	Div root;
+	Waterfall wf;
+	Slider volumeSlider;
+}
+
+
+WaterfallGui createWaterfallPanel()
+{
+	WaterfallGui res;
+	res.wf = new Waterfall();
 	Slider volumeSlider = new Slider();
 	volumeSlider.value = 0.5f;
 
@@ -50,13 +59,14 @@ Div createWaterfallPanel(out Waterfall wf)
 		filler()
 	])).fixedSize(vec2i(0, HEADER_SECTION_HEIGHT)).build;
 
-	Div panel = builder(vDiv([
+	res.root = builder(vDiv([
 		filler(5),
 		header,
-		wf
+		res.wf
 	])).backgroundColor(DIV_BCKGROUND).build;
+	res.volumeSlider = volumeSlider;
 
-	return panel;
+	return res;
 }
 
 

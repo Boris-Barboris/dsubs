@@ -177,7 +177,7 @@ private:
 		assert(req.hydrophoneIdx == 0);
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.gui.hydrophoneGui.listenDir = req.dir;
+			Game.simState.gui.waterfall.listenDir = req.dir;
 		}
 	}
 
@@ -189,11 +189,11 @@ private:
 		StreamingSoundSource s;
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.gui.hydrophoneGui.drawData(
+			Game.simState.gui.waterfall.drawData(
 				res.data[0].beams,
 				Game.simState.playerSub.tmpl.hydrophones[0].fov,
 				res.rotationAtTime);
-			Game.simState.gui.hydrophoneGui.completeRow();
+			Game.simState.gui.waterfall.completeRow();
 			s = Game.simState.sonarSound;
 		}
 		if (s && res.audio.length > 0)
