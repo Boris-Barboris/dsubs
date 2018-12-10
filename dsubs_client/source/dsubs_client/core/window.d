@@ -5,6 +5,7 @@ import core.stdc.stdlib: free;
 
 import std.algorithm;
 import std.array;
+import std.string: toStringz;
 import std.conv: to;
 import std.experimental.logger: info, trace;
 
@@ -45,6 +46,11 @@ final class Window
 		// custom sfml patch enables scissor testing
 		sfRenderWindow_setScissorTest(m_wnd, true);
 		resetView();
+	}
+
+	@property void title(string rhs)
+	{
+		sfRenderWindow_setTitle(m_wnd, rhs.toStringz);
 	}
 
 	// TODO: descructor

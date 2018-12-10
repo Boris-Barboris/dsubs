@@ -29,6 +29,7 @@ final class CICState
 
 	void handleReconnectStateRes(ReconnectStateRes res)
 	{
+		static assert (CICReconnectStateRes.sizeof == ReconnectStateRes.sizeof);
 		m_recState = cast(CICReconnectStateRes) res;
 		m_recStateInitialized = true;
 	}

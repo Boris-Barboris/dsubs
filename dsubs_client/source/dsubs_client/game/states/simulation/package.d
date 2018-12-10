@@ -95,13 +95,13 @@ final class SimulationGUI
 		Label curCourse, curSpeed;
 		TextField tgtCourseField, tgtThrottleField;
 		WaterfallGui m_passiveGui;
-		SonarDisplay m_sonarGui;
+		SonarGui m_sonarGui;
 		Div m_topLevelDiv;
 		float m_oldSonarGain = 1.0f;
 	}
 
 	@property Waterfall waterfall() { return m_passiveGui.wf; }
-	@property SonarDisplay sonarGui() { return m_sonarGui; }
+	@property SonarDisplay sonardisp() { return m_sonarGui.sonar; }
 
 	void handleSubKinematicRes(CICSubKinematicRes res)
 	{
@@ -280,7 +280,7 @@ final class SimulationGUI
 
 		GuiElement tabFiller = filler();
 		m_passiveGui = createWaterfallPanel();
-		m_sonarGui = new SonarDisplay(playerSub.tmpl.sonar);
+		m_sonarGui = createSonarGui(playerSub.tmpl.sonar);
 
 		m_topLevelDiv = builder(vDiv([
 			tabDiv,
@@ -322,7 +322,7 @@ final class SimulationGUI
 		asonarTab.onClick += (btn)
 		{
 			saveSoundIfNeeded();
-			setMiddlePane(m_sonarGui);
+			setMiddlePane(m_sonarGui.root);
 		};
 
 		Game.guiManager.addPanel(new Panel(m_topLevelDiv));

@@ -53,6 +53,8 @@ final class CICListener
 					cicPort++;
 				}
 			}
+			if (cicPort == 17964)
+				throw new Exception("Unable to start CIC listener");
 		}
 	}
 

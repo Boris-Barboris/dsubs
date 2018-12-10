@@ -216,7 +216,7 @@ private:
 		assert(res.data[0].sonarIdx == 0);
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.gui.sonarGui.putSliceData(res.data[0]);
+			Game.simState.gui.sonardisp.putSliceData(res.data[0]);
 		}
 	}
 }

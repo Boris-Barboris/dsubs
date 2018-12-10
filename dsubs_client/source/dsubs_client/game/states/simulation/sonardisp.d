@@ -16,6 +16,72 @@ import dsubs_client.game.cic.messages;
 import dsubs_client.game;
 
 
+private
+{
+	enum int HEADER_FONT_SIZE = 16;
+	enum int HEADER_SECTION_HEIGHT = 32;
+	enum int PING_BUTTON_HEIGHT = 30;
+	enum int PING_BUTTON_WIDTH = 100;
+	enum sfColor PING_BUTTON_BCKGROUND = sfColor(200, 50, 50, 255);
+	enum int POWER_SECTION_WIDTH = 160;
+	enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
+}
+
+
+struct SonarGui
+{
+	Div root;
+	SonarDisplay sonar;
+	Button pingBtn;
+	Slider powerSlider;
+}
+
+
+SonarGui createSonarGui(const SonarTemplate st)
+{
+	SonarGui res;
+	res.sonar = new SonarDisplay(st);
+	res.powerSlider = new Slider();
+	res.powerSlider.value = 1.0f;
+
+	res.pingBtn = builder(new Button()).content("Ping").
+		fontSize(PING_BUTTON_HEIGHT - 4).fixedSize(
+			vec2i(PING_BUTTON_WIDTH, PING_BUTTON_HEIGHT)).
+			backgroundColor(PING_BUTTON_BCKGROUND).build();
+
+	res.pingBtn.onClick += (sfMouseButton btn)
+		{
+			if (btn == sfMouseLeft)
+			{
+				// request ping
+				float pingMag = st.minPingIlevel +
+					res.powerSlider.value * (st.maxPingIlevel - st.minPingIlevel);
+				Game.ciccon.sendMessage(immutable CICEmitPingReq(0, pingMag));
+			}
+		};
+
+	Div powerDiv = builder(hDiv([
+		builder(new Label()).content("power:").fontSize(HEADER_FONT_SIZE).build,
+		res.powerSlider
+	])).fixedSize(vec2i(POWER_SECTION_WIDTH, HEADER_SECTION_HEIGHT)).build;
+
+	Div header = builder(hDiv([
+		res.pingBtn,
+		filler(30),
+		powerDiv,
+		filler()
+	])).fixedSize(vec2i(0, HEADER_SECTION_HEIGHT)).build;
+
+	res.root = builder(vDiv([
+		filler(5),
+		header,
+		res.sonar
+	])).backgroundColor(DIV_BCKGROUND).build;
+
+	return res;
+}
+
+
 /// Zoomable waterfall display
 final class SonarDisplay: GuiElement
 {
@@ -192,11 +258,6 @@ final class SonarDisplay: GuiElement
 	{
 		if (btn == sfMouseRight)
 			returnMouseFocus();
-		if (btn == sfMouseLeft && m_cursorInside)
-		{
-			// request ping
-			Game.ciccon.sendMessage(immutable CICEmitPingReq(0, m_st.maxPingIlevel));
-		}
 	}
 
 	private

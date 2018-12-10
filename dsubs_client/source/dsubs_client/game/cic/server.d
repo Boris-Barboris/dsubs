@@ -31,6 +31,7 @@ final class CICServer
 	this(string password, BackendConnection bcon, int spawnId = -1)
 	{
 		m_listener = new CICListener(this, password);
+		Game.window.title = "dsubs (CIC port " ~ m_listener.port.to!string ~ ")";
 		m_state = new CICState();
 		m_bcon = bcon;
 		m_spawnId = spawnId;
