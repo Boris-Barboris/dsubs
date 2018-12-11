@@ -61,13 +61,14 @@ SonarGui createSonarGui(const SonarTemplate st)
 		};
 
 	Div powerDiv = builder(hDiv([
-		builder(new Label()).content("power:").fontSize(HEADER_FONT_SIZE).build,
+		builder(new Label()).content("power:").fontSize(HEADER_FONT_SIZE).
+			layoutType(LayoutType.CONTENT).build,
 		res.powerSlider
 	])).fixedSize(vec2i(POWER_SECTION_WIDTH, HEADER_SECTION_HEIGHT)).build;
 
 	Div header = builder(hDiv([
 		res.pingBtn,
-		filler(30),
+		filler(10),
 		powerDiv,
 		filler()
 	])).fixedSize(vec2i(0, HEADER_SECTION_HEIGHT)).build;

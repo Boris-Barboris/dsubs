@@ -3,29 +3,50 @@ module dsubs_client.game.cic.entities;
 import dsubs_client.common;
 
 
+/// Tag of a TargetData union
+enum DataType: byte
+{
+	Ray,
+	Position,
+	Speed
+}
+
+struct RayData
+{
+	vec2d origin;		/// sensor position at the time
+	double targetDir;	/// world-space direction from origin to target
+}
+
+struct PositionData
+{
+	vec2d targetPos;	/// world-space target position
+}
+
+struct SpeedData
+{
+	double speed;	/// absolute value of speed
+}
+
+/// Sensor data point that is related to one target
+struct TargetData
+{
+	DataType type;
+	usecs_t time;
+	union
+	{
+		RayData ray;
+		PositionData position;
+		SpeedData speed;
+	}
+}
+
 /// Most generic target type classification
-enum TargetType: int
+enum TargetType: byte
 {
 	Unknown,
 	Environment,
 	Submarine,
 	Weapon
-}
-
-/// Data point that contains sample of directional information about target.
-struct RayData
-{
-	usecs_t time;
-	vec2d origin;		/// sensor position at the time
-	double targetDir;	/// world-space direction from origin to target
-}
-
-/// Data point that contains sample of raw target position.
-struct PositionData
-{
-	usecs_t time;
-	vec2d origin;		/// sensor position at the time
-	vec2d targetPos;	/// world-space target position
 }
 
 /// Unique target.

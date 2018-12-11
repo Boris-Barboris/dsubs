@@ -49,7 +49,7 @@ WaterfallGui createWaterfallPanel()
 		};
 
 	Div volumeDiv = builder(hDiv([
-		builder(new Label()).content("Volume: ").fontSize(HEADER_FONT_SIZE).
+		builder(new Label()).content("Volume:").fontSize(HEADER_FONT_SIZE).
 			layoutType(LayoutType.CONTENT).build(),
 		volumeSlider
 	])).fixedSize(vec2i(VOLUME_SECTION_WIDTH, HEADER_SECTION_HEIGHT)).build;
