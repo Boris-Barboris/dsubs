@@ -24,20 +24,23 @@ struct PositionData
 
 struct SpeedData
 {
-	double speed;	/// absolute value of speed
+	double speed;		/// absolute value of speed
+}
+
+union TargetDataUnion
+{
+	RayData ray;
+	PositionData position;
+	SpeedData speed;
 }
 
 /// Sensor data point that is related to one target
 struct TargetData
 {
-	DataType type;
 	usecs_t time;
-	union
-	{
-		RayData ray;
-		PositionData position;
-		SpeedData speed;
-	}
+	DataType type;
+	TargetDataUnion data;
+	alias data this;
 }
 
 /// Most generic target type classification
@@ -49,10 +52,12 @@ enum TargetType: byte
 	Weapon
 }
 
-/// Unique target.
-struct TargetSolution
+/// Unique tracked target.
+struct Target
 {
-	string name;
+	char prefix;
+	int index;
+	string comment;
 	TargetType type;
 	usecs_t createdAt;
 }

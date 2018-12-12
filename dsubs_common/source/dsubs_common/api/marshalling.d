@@ -45,8 +45,11 @@ void getStructMarshLen(StructT)(immutable ref StructT ptr, ref int byteCount)
 	foreach (field; FieldNames!StructT)
 	{
 		alias MemberT = TypeOfMember!(StructT, field);
-		static if (isBasicType!MemberT || is(MemberT == union))
+		static if (isBasicType!MemberT ||
+			(is(MemberT == union) && !hasIndirections!MemberT))
+		{
 			byteCount += MemberT.sizeof;
+		}
 		else static if (isArray!MemberT)
 		{
 			static if (!isStaticArray!MemberT)
@@ -83,7 +86,8 @@ void marshalStruct(StructT)(immutable ref StructT ptr, ref ubyte[] outBuf)
 	foreach (field; FieldNames!StructT)
 	{
 		alias MemberT = TypeOfMember!(StructT, field);
-		static if (isBasicType!MemberT || is(MemberT == union))
+		static if (isBasicType!MemberT ||
+			(is(MemberT == union) && !hasIndirections!MemberT))
 		{
 			*(cast(MemberT*) outBuf.ptr) = __traits(getMember, ptr, field);
 			outBuf = outBuf[MemberT.sizeof .. $];
@@ -127,7 +131,8 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 	foreach (field; FieldNames!StructT)
 	{
 		alias MemberT = TypeOfMember!(StructT, field);
-		static if (isBasicType!MemberT || is(MemberT == union))
+		static if (isBasicType!MemberT ||
+			(is(MemberT == union) && !hasIndirections!MemberT))
 		{
 			__traits(getMember, ptr, field) = *(cast(MemberT*) from.ptr);
 			static if (isFloatingPoint!MemberT)
