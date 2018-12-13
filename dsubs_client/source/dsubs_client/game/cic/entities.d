@@ -37,6 +37,7 @@ union TargetDataUnion
 /// Sensor data point that is related to one target
 struct TargetData
 {
+	uint id;		// unique id
 	usecs_t time;
 	DataType type;
 	TargetDataUnion data;
@@ -55,8 +56,7 @@ enum TargetType: byte
 /// Unique tracked target.
 struct Target
 {
-	char prefix;
-	int index;
+	string name;	// unique id
 	string comment;
 	TargetType type;
 	usecs_t createdAt;
