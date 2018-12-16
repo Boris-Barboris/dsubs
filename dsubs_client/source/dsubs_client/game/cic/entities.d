@@ -24,7 +24,7 @@ struct PositionData
 
 struct SpeedData
 {
-	double speed;		/// absolute value of speed
+	double speed;		/// absolute speed value
 }
 
 union TargetDataUnion
@@ -37,7 +37,7 @@ union TargetDataUnion
 /// Sensor data point that is related to one target
 struct TargetData
 {
-	uint id;		// unique id
+	uint id;		// unique
 	usecs_t time;
 	DataType type;
 	TargetDataUnion data;
@@ -56,7 +56,7 @@ enum TargetType: byte
 /// Unique tracked target.
 struct Target
 {
-	string name;	// unique id
+	string id;		// unique
 	string comment;
 	TargetType type;
 	usecs_t createdAt;

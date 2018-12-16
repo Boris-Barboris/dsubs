@@ -2,6 +2,7 @@ module dsubs_client.game.cic.state;
 
 import dsubs_common.api.protocols.backend;
 import dsubs_client.game.cic.messages;
+import dsubs_client.game.cic.entities;
 import dsubs_client.common;
 
 
@@ -53,5 +54,11 @@ final class CICState
 	{
 		enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < m_recState.listenDirs.length);
 		m_recState.listenDirs[req.hydrophoneIdx] = req.dir;
+	}
+
+	// targeting-related entities
+	private
+	{
+		Target*[string] m_targets;
 	}
 }
