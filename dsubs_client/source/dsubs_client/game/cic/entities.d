@@ -34,12 +34,26 @@ union TargetDataUnion
 	SpeedData speed;
 }
 
+enum DataSourceType: byte
+{
+	Manual,
+	Hydrophone,
+	ActiveSonar
+}
+
+struct DataSource
+{
+	DataSourceType type;
+	byte sensorIdx;		/// index of a hydrophone/sonar if applicable
+}
+
 /// Sensor data point that is related to one target
 struct TargetData
 {
 	uint id;		// unique
 	usecs_t time;
 	DataType type;
+	DataSource source;
 	TargetDataUnion data;
 	alias data this;
 }

@@ -165,16 +165,16 @@ unittest
 	FloatImage reverbImg = FloatImage(ctx, fimg.w, fimg.h);
 
 	PreparedReflector[] reflectors = [
-		PreparedReflector(0.0f, 1000.0f, 75.0f, 12.0f, -2.0f),
-		PreparedReflector(0.0f, 2000.0f, 75.0f, 12.0f, -2.0f),
-		PreparedReflector(-1.0f, 3000.0f, 75.0f, 12.0f, -2.0f),
-		PreparedReflector(-1.5f, 3000.0f, 75.0f, 12.0f, -2.0f),
-		PreparedReflector(-2.0f, 3000.0f, 75.0f, 12.0f, -2.0f),
-		PreparedReflector(-2.5f, 3000.0f, 75.0f, 12.0f, -2.0f),
-		PreparedReflector(-3.0f, 3000.0f, 75.0f, 12.0f, -2.0f),
-		PreparedReflector(0.0f, 5000.0f, 75.0f, 12.0f, -2.0f),
-		PreparedReflector(0.0f, 7500.0f, 75.0f, 12.0f, -2.0f),
-		PreparedReflector(0.0f, 10000.0f, 75.0f, 12.0f, -2.0f)
+		PreparedReflector(0.0f, 1000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(0.0f, 2000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-1.0f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-1.5f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-2.0f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-2.5f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-3.0f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(0.0f, 5000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(0.0f, 7500.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(0.0f, 10000.0f, 75.0f, 12.0f, -10.0f)
 	];
 
 	Buffer reflectBuf = Buffer(q, reflectors);
@@ -332,8 +332,8 @@ struct ActiveSonarPrototype
 	/// max ping duration (seconds)
 	int maxSec = 15;
 	/// max ping band intensity level
-	dB maxPeakIlevel = 210.0f;
-	dB minPeakIlevel = 180.0f;
+	dB maxPeakIlevel = 220.0f;
+	dB minPeakIlevel = 190.0f;
 	/// ping in the opposite direction is this different
 	dB antiPeakIlevelDiff = -30.0f;
 	/// power exponent of cosine directivity formula
@@ -341,7 +341,7 @@ struct ActiveSonarPrototype
 	/// base uniform picture noise
 	dB baseNoise = 2.0f;
 	/// antennae directivity gain
-	dB directivity = -20.0f;
+	dB directivity = -15.0f;
 	/// water mass reflectivity
 	float waterReflectivity = 1e-3f;
 	/// main sound dissipation modifier

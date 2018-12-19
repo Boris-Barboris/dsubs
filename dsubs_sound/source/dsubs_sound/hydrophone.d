@@ -61,6 +61,7 @@ final class Hydrophone
 		assert(p.beamCount > 0);
 		m_beamAngle = m_span / p.beamCount;
 		m_listenToCellR = m_listenSpan / m_beamAngle;
+		m_sourceQueue = CircQueue!SourcePrecalc(16);
 		foreach (rot; p.antennaeRots)
 			m_ant ~= new Antennae(p.beamCount, rot);
 		onPreSimulation += &savePrevPos;
@@ -362,7 +363,7 @@ final class Hydrophone
 	// Sound sources are enqueued and processed asynchronously by opencl.
 	// In order to generate broadband beam data on cpu we await band sums,
 	// calculated in opencl. That requires queuing in order to be efficient.
-	private CircQueue!(SourcePrecalc, 16) m_sourceQueue;
+	private CircQueue!SourcePrecalc m_sourceQueue;
 
 	private SourcePrecalc precalcForSource(SoundSource s)
 	{

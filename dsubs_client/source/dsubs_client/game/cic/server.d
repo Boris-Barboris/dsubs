@@ -31,7 +31,6 @@ final class CICServer
 	this(string password, BackendConnection bcon, int spawnId = -1)
 	{
 		m_listener = new CICListener(this, password);
-		Game.window.title = "dsubs (CIC port " ~ m_listener.port.to!string ~ ")";
 		m_state = new CICState();
 		m_bcon = bcon;
 		m_spawnId = spawnId;
@@ -41,6 +40,7 @@ final class CICServer
 	{
 		assert(m_listener);
 		m_listener.start();
+		Game.window.title = "dsubs (coop port " ~ m_listener.port.to!string ~ ")";
 	}
 
 	@property CICListener listener() { return m_listener; }
