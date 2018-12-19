@@ -132,6 +132,7 @@ final class MainMenuState: GameState
 						info("stopping backend connection maintainer to focus on CIC");
 						Game.bconm.stop();
 						infoLabel.content = "Connected to CIC server";
+						Game.window.title = "dsubs (coop client)";
 					}
 				},
 				(Exception ex)

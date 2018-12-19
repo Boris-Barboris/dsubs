@@ -5,6 +5,8 @@ public import dsubs_common.api.constants;
 public import dsubs_common.api.entities;
 public import dsubs_common.api.utils;
 
+public import dsubs_client.game.cic.entities;
+
 
 /// first message sent by client after connecting to CIC
 struct CICLoginReq
@@ -102,4 +104,43 @@ struct CICEmitPingReq
 	__gshared const int g_marshIdx;
 	int sonarIdx;
 	float ilevel;
+}
+
+
+/*
+Target and sensor data management API.
+*/
+
+/// Sent by client to create new target from initial data piece.
+struct CICCreateTargetFromDataReq
+{
+	__gshared const int g_marshIdx;
+	char tgtIdPrefix;		/// CIC will allocate new id for the target, wich will begin with this letter
+	TargetData initialData;	/// first data sample. Id is ignored.
+}
+
+/// Broadcasted by CIC server when the new target is created.
+struct CICTargetCreatedRes
+{
+	__gshared const int g_marshIdx;
+	Target newTarget;
+	TargetData initialData;
+}
+
+/// Broadcasted by CIC server when the existing target properties (comment, type, solution) are updated
+struct CICTargetUpdatedRes
+{
+	__gshared const int g_marshIdx;
+	Target target;
+}
+
+/// Sent by client to update or append new data sample to target.
+/// Broadcasted by server when new data is produced by hydrophone tracker, or
+/// one of the clients has updated the data.
+struct CICTargetDataReqRes
+{
+	__gshared const int g_marshIdx;
+	string targetId;
+	TargetData data;	/// id should be set to -1 on client for the new data sample to be created.
+						/// If id >= 0, TargetData is updated if found in the CIC.
 }

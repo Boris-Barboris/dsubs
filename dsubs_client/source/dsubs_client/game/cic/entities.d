@@ -14,7 +14,7 @@ enum DataType: byte
 struct RayData
 {
 	vec2d origin;		/// sensor position at the time
-	double targetDir;	/// world-space direction from origin to target
+	double bearing;		/// world-space direction from origin to target
 }
 
 struct PositionData
@@ -34,6 +34,12 @@ union TargetDataUnion
 	SpeedData speed;
 }
 
+union SolutionDataUnion
+{
+	RayData ray;
+	PositionData position;
+}
+
 enum DataSourceType: byte
 {
 	Manual,
@@ -44,18 +50,24 @@ enum DataSourceType: byte
 struct DataSource
 {
 	DataSourceType type;
-	byte sensorIdx;		/// index of a hydrophone/sonar if applicable
+	int sensorIdx;		/// index of a hydrophone/sonar if applicable
 }
 
 /// Sensor data point that is related to one target
 struct TargetData
 {
-	uint id;		// unique
+	int id;				// globally-unique, monotonically increasing
 	usecs_t time;
-	DataType type;
 	DataSource source;
+	DataType type;
 	TargetDataUnion data;
-	alias data this;
+}
+
+struct HydrophoneTracker
+{
+	int hydrophoneIdx;		/// index of a hydrophone
+	string targetId;		/// periodically adds ray data to this target
+	float bearing;			/// current world-space bearing
 }
 
 /// Most generic target type classification
@@ -64,7 +76,8 @@ enum TargetType: byte
 	Unknown,
 	Environment,
 	Submarine,
-	Weapon
+	Weapon,
+	Decoy
 }
 
 /// Unique tracked target.
@@ -74,12 +87,19 @@ struct Target
 	string comment;
 	TargetType type;
 	usecs_t createdAt;
+	TargetSolution solution;
 }
 
-/// Resulting kinematic snapshot of the solution.
-struct SolutionKinematicSnap
+/// Target kinematics
+struct TargetSolution
 {
 	usecs_t time;
-	vec2d pos;
+	/// Solution may lie on the ray (ray tracking mode), or have a concrete
+	/// position (absolute position mode).
+	DataType posType;
+	SolutionDataUnion posData;
+	/// Target may or may not have velocity calculated. If not, you should assume
+	/// that target is stationary.
+	bool velAvailable;
 	vec2d vel;
 }
