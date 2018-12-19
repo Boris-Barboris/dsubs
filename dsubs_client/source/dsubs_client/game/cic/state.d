@@ -1,5 +1,7 @@
 module dsubs_client.game.cic.state;
 
+import core.sync.mutex: Mutex;
+
 import dsubs_common.api.protocols.backend;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cic.entities;
@@ -20,13 +22,19 @@ final class CICState
 		bool m_recStateInitialized;
 	}
 
+	this()
+	{
+		m_tgtMut = new Mutex();
+		m_tgtDataTree = new TargetDataTree();
+	}
+
 	@property immutable(CICReconnectStateRes) recState() const
 	{
 		return cast(immutable CICReconnectStateRes) m_recState;
 	}
 
 	/// false until the very first reconnect state received from backend
-	bool recStateInitialized() const { return m_recStateInitialized; }
+	@property bool recStateInitialized() const { return m_recStateInitialized; }
 
 	void handleReconnectStateRes(ReconnectStateRes res)
 	{
@@ -56,9 +64,21 @@ final class CICState
 		m_recState.listenDirs[req.hydrophoneIdx] = req.dir;
 	}
 
-	// targeting-related entities
+	// targeting-related state
 	private
 	{
+		Mutex m_tgtMut;
 		Target*[string] m_targets;
+		/// target id sequence generators
+		int[ubyte.max + 1] m_targetPostfixes;
+		/// dataId sequence generator
+		int m_dataIdSeq;
+		/// time-ordered tree of target data
+		TargetDataTree m_tgtDataTree;
+		/// id-hashed table of target data
+		TargetData*[int] m_tgtDataHash;
 	}
+
+	/// Main targeting system mutex, provides targeting state serialization.
+	@property Mutex tgtMut() { return m_tgtMut; }
 }

@@ -75,8 +75,8 @@ private:
 		enforce(!m_inSimFlow, "already in simulator flow");
 		synchronized(m_cicserv)
 		{
-			if (m_cicserv.state.recStateInitialized)
-				sendMessage(m_cicserv.state.recState);
+			enforce(m_cicserv.state.recStateInitialized, "reconnect state not ready");
+			sendMessage(m_cicserv.state.recState);
 			m_inSimFlow = true;
 		}
 	}

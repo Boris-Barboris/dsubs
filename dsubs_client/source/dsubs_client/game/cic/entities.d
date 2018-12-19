@@ -1,6 +1,9 @@
 module dsubs_client.game.cic.entities;
 
+import std.container.rbtree: RedBlackTree;
+
 import dsubs_client.common;
+import dsubs_common.api.utils;
 
 
 /// Tag of a TargetData union
@@ -34,12 +37,6 @@ union TargetDataUnion
 	SpeedData speed;
 }
 
-union SolutionDataUnion
-{
-	RayData ray;
-	PositionData position;
-}
-
 enum DataSourceType: byte
 {
 	Manual,
@@ -56,17 +53,21 @@ struct DataSource
 /// Sensor data point that is related to one target
 struct TargetData
 {
-	int id;				// globally-unique, monotonically increasing
+	int id = -1;		// globally-unique, monotonically increasing
 	usecs_t time;
 	DataSource source;
 	DataType type;
 	TargetDataUnion data;
 }
 
+/// RB-tree of TargetData pointers, ordered by time.
+alias TargetDataTree = RedBlackTree!(TargetData*,
+	"a.time < b.time || (a.time == b.time && a.id < b.id)", false);
+
 struct HydrophoneTracker
 {
 	int hydrophoneIdx;		/// index of a hydrophone
-	string targetId;		/// periodically adds ray data to this target
+	@MaxLenAttr(16) string targetId;	/// periodically adds ray data to this target
 	float bearing;			/// current world-space bearing
 }
 
@@ -83,8 +84,8 @@ enum TargetType: byte
 /// Unique tracked target.
 struct Target
 {
-	string id;		// unique
-	string comment;
+	@MaxLenAttr(16) string id;		// unique
+	@MaxLenAttr(128) string comment;
 	TargetType type;
 	usecs_t createdAt;
 	TargetSolution solution;
@@ -94,12 +95,11 @@ struct Target
 struct TargetSolution
 {
 	usecs_t time;
-	/// Solution may lie on the ray (ray tracking mode), or have a concrete
-	/// position (absolute position mode).
-	DataType posType;
-	SolutionDataUnion posData;
-	/// Target may or may not have velocity calculated. If not, you should assume
-	/// that target is stationary.
+	/// Solution may lie on the last known ray (ray tracking mode), or have a concrete
+	/// position (absolute position mode). The last mode is indicated by posAvailable = true.
+	bool posAvailable;
+	PositionData posData;
+	/// Solution may or may not have velocity assigned.
 	bool velAvailable;
 	vec2d vel;
 }

@@ -127,8 +127,8 @@ struct CICTargetCreatedRes
 	TargetData initialData;
 }
 
-/// Broadcasted by CIC server when the existing target properties (comment, type, solution) are updated
-struct CICTargetUpdatedRes
+/// Request/broadcast to update target properties (type, comment, solution).
+struct CICTargetUpdateReq
 {
 	__gshared const int g_marshIdx;
 	Target target;
@@ -136,11 +136,41 @@ struct CICTargetUpdatedRes
 
 /// Sent by client to update or append new data sample to target.
 /// Broadcasted by server when new data is produced by hydrophone tracker, or
-/// one of the clients has updated the data.
-struct CICTargetDataReqRes
+/// one of the clients has sent this message.
+struct CICTargetDataReq
 {
 	__gshared const int g_marshIdx;
-	string targetId;
-	TargetData data;	/// id should be set to -1 on client for the new data sample to be created.
-						/// If id >= 0, TargetData is updated if found in the CIC.
+	@MaxLenAttr(16) string targetId;
+	/// data.id should be set to -1 on client for the new data sample to be created.
+	/// If id >= 0, it tries to update the date with the same id.
+	TargetData data;
+}
+
+/// Request/broadcast to drop target (drops related data).
+struct CICDropTargetReq
+{
+	__gshared const int g_marshIdx;
+	@MaxLenAttr(16) string targetId;
+}
+
+/// Request/broadcast to drop target data.
+struct CICDropDataReq
+{
+	__gshared const int g_marshIdx;
+	int dataId;
+}
+
+/// Request/broadcast to merge source target into dest target.
+struct CICTargetMergeReq
+{
+	__gshared const int g_marshIdx;
+	@MaxLenAttr(16) string sourceTgtId;
+	@MaxLenAttr(16) string destTgtId;
+}
+
+/// Server broadcast the fact that it has deleted old TargetData.
+struct CICDataRetentionRes
+{
+	__gshared const int g_marshIdx;
+	usecs_t olderThan;
 }

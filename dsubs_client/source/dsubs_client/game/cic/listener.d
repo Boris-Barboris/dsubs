@@ -99,10 +99,13 @@ final class CICListener
 	/// broadcast message to all clients in simulator flow
 	void broadcast(immutable(ubyte)[] data)
 	{
-		foreach (CICServerConnection c; allCons.byValue())
+		synchronized(this)
 		{
-			if (c.inSimFlow)
-				c.sendBytes(data);
+			foreach (CICServerConnection c; allCons.byValue())
+			{
+				if (c.inSimFlow)
+					c.sendBytes(data);
+			}
 		}
 	}
 

@@ -67,8 +67,8 @@ final class CICServer
 		synchronized(this)
 		{
 			m_state.handleSubKinematicRes(res);
+			m_listener.broadcast(cast(immutable CICSubKinematicRes) res);
 		}
-		m_listener.broadcast(cast(immutable CICSubKinematicRes) res);
 	}
 
 	void handleCICThrottleReq(CICThrottleReq req)
@@ -79,6 +79,7 @@ final class CICServer
 			{
 				m_state.handleThrottleReq(req);
 			}
+			// broadcast here is outside of lock because the message is idempotent
 			m_listener.broadcast(cast(immutable CICThrottleReq) req);
 			m_bcon.sendMessage(cast(immutable ThrottleReq) req);
 		}
@@ -92,6 +93,7 @@ final class CICServer
 			{
 				m_state.handleCourseReq(req);
 			}
+			// broadcast here is outside of lock because the message is idempotent
 			m_listener.broadcast(cast(immutable CICCourseReq) req);
 			m_bcon.sendMessage(cast(immutable CourseReq) req);
 		}
@@ -105,6 +107,7 @@ final class CICServer
 			{
 				m_state.handleListenDirReq(req);
 			}
+			// broadcast here is outside of lock because the message is idempotent
 			m_listener.broadcast(cast(immutable CICListenDirReq) req);
 			m_bcon.sendMessage(cast(immutable ListenDirReq) req);
 		}
@@ -115,11 +118,9 @@ final class CICServer
 		CICSubAcousticRes bdcst;
 		bdcst.data = res.data;
 		bdcst.audio = res.audio;
-		synchronized(this)
-		{
-			assert(res.atTime == m_state.recState.subSnap.atTime);
-			bdcst.rotationAtTime = m_state.recState.subSnap.rotation;
-		}
+		assert(m_state.recStateInitialized);
+		assert(res.atTime == m_state.recState.subSnap.atTime);
+		bdcst.rotationAtTime = m_state.recState.subSnap.rotation;
 		m_listener.broadcast(cast(immutable CICSubAcousticRes) bdcst);
 	}
 
