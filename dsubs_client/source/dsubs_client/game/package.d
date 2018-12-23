@@ -57,20 +57,20 @@ __gshared:
 	CICServer cic;
 	CICClientConnection ciccon;
 
-	private GameState m_activeState;
+	private IGameState m_activeState;
 
 	/// get current active game state object
-	static @property GameState activeState() { return m_activeState; }
+	static @property IGameState activeState() { return m_activeState; }
 
 	/// switch game to new state
-	static @property void activeState(GameState newState)
+	static @property void activeState(IGameState newState)
 	{
 		assert(newState);
 		if (shuttingDown)
 			return;
 		if (m_activeState)
-			info("STATE TRANSITION: " ~ m_activeState.kind.to!string ~ " to ",
-				newState.kind.to!string);
+			info("STATE TRANSITION: " ~ m_activeState.classinfo.name ~ " to ",
+				newState.classinfo.name);
 		clearEntities();
 		m_activeState = newState;
 		m_activeState.setup();
@@ -78,23 +78,26 @@ __gshared:
 
 	static @property MainMenuState mainMenuState()
 	{
-		enforce(m_activeState.kind == GameStateKind.MAINMENU,
-			"game is not in main menu state, but in " ~ m_activeState.kind.to!string);
-		return cast(MainMenuState) m_activeState;
+		MainMenuState resState = cast(MainMenuState) m_activeState;
+		enforce(resState !is null,
+			"game is not in main menu state, but in " ~ m_activeState.classinfo.name);
+		return resState;
 	}
 
 	static @property LoadoutState loadoutState()
 	{
-		enforce(m_activeState.kind == GameStateKind.LOADOUT,
-			"game is not in loadout state, but in " ~ m_activeState.kind.to!string);
-		return cast(LoadoutState) m_activeState;
+		LoadoutState resState = cast(LoadoutState) m_activeState;
+		enforce(resState !is null,
+			"game is not in loadout state, but in " ~ m_activeState.classinfo.name);
+		return resState;
 	}
 
 	static @property SimulatorState simState()
 	{
-		enforce(m_activeState.kind == GameStateKind.SIMULATION,
-			"game is not in simulator state, but in " ~ m_activeState.kind.to!string);
-		return cast(SimulatorState) m_activeState;
+		SimulatorState resState = cast(SimulatorState) m_activeState;
+		enforce(resState !is null,
+			"game is not in simulator state, but in " ~ m_activeState.classinfo.name);
+		return resState;
 	}
 
 	/// start the game (blocks caller thread)
@@ -158,7 +161,7 @@ __gshared:
 		worldManager.clear();
 		hotkeyManager.clear();
 		// let's free some memory after the clear
-		delay(() { GC.collect(); }, msecs(500));
+		delay(() { GC.collect(); GC.minimize(); }, msecs(500));
 		// hotkey manager requires some additional attention
 		render.onPreRender += (long usecs) { hotkeyManager.processHeldKeys(usecs); };
 	}

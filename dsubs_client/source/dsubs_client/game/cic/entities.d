@@ -47,13 +47,21 @@ enum DataSourceType: byte
 struct DataSource
 {
 	DataSourceType type;
-	int sensorIdx;		/// index of a hydrophone/sonar if applicable
+	int sensorIdx;		/// index of a hydrophone/sonar, if applicable
+}
+
+/// Semantically target id consists of capital latin letter and a number.
+struct TargetId
+{
+	char prefix;
+	int postfix;
 }
 
 /// Sensor data point that is related to one target
 struct TargetData
 {
 	int id = -1;		// globally-unique, monotonically increasing
+	TargetId tgtId;
 	usecs_t time;
 	DataSource source;
 	DataType type;
@@ -67,7 +75,7 @@ alias TargetDataTree = RedBlackTree!(TargetData*,
 struct HydrophoneTracker
 {
 	int hydrophoneIdx;		/// index of a hydrophone
-	@MaxLenAttr(16) string targetId;	/// periodically adds ray data to this target
+	TargetId tgtId;			/// periodically adds ray data to this target
 	float bearing;			/// current world-space bearing
 }
 
@@ -84,7 +92,7 @@ enum TargetType: byte
 /// Unique tracked target.
 struct Target
 {
-	@MaxLenAttr(16) string id;		// unique
+	TargetId id;		// unique
 	@MaxLenAttr(128) string comment;
 	TargetType type;
 	usecs_t createdAt;

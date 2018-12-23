@@ -33,13 +33,8 @@ private
 }
 
 
-final class LoadoutState: GameState
+final class LoadoutState: IGameState
 {
-	this()
-	{
-		super(GameStateKind.LOADOUT);
-	}
-
 	private Submarine curSelectedSub;
 	private TextBox hullDescriptionBox;
 	private Button startButton;

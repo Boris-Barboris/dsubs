@@ -23,11 +23,10 @@ import dsubs_client.game.states.simulation.sonardisp;
 import dsubs_client.lib.openal;
 
 
-final class SimulatorState: GameState
+final class SimulatorState: IGameState
 {
 	this(CICReconnectStateRes recState)
 	{
-		super(GameStateKind.SIMULATION);
 		this.recState = recState;
 	}
 

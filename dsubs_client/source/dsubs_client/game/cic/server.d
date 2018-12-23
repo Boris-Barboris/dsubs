@@ -44,6 +44,7 @@ final class CICServer
 	}
 
 	@property CICListener listener() { return m_listener; }
+	@property CICState state() { return m_state; }
 
 	void stop()
 	{
@@ -51,11 +52,11 @@ final class CICServer
 		m_listener.stop();
 	}
 
-	@property CICState state() { return m_state; }
-
 	void handleReconnectStateRes(ReconnectStateRes res)
 	{
-		synchronized(this)
+		enforce(!m_state.recStateInitialized,
+			"protocol flow error: unexpected duplicate ReconnectStateRes");
+		synchronized(m_state.rsMut)
 		{
 			m_state.handleReconnectStateRes(res);
 			m_listener.broadcast(cast(immutable CICReconnectStateRes) res);
@@ -64,24 +65,23 @@ final class CICServer
 
 	void handleSubKinematicRes(SubKinematicRes res)
 	{
-		synchronized(this)
+		synchronized(m_state.rsMut)
 		{
 			m_state.handleSubKinematicRes(res);
-			m_listener.broadcast(cast(immutable CICSubKinematicRes) res);
 		}
+		m_listener.broadcast(cast(immutable CICSubKinematicRes) res);
 	}
 
 	void handleCICThrottleReq(CICThrottleReq req)
 	{
 		synchronized
 		{
-			synchronized(this)
+			synchronized(m_state.rsMut)
 			{
 				m_state.handleThrottleReq(req);
 			}
-			// broadcast here is outside of lock because the message is idempotent
-			m_listener.broadcast(cast(immutable) req);
 			m_bcon.sendMessage(cast(immutable ThrottleReq) req);
+			m_listener.broadcast(cast(immutable) req);
 		}
 	}
 
@@ -89,13 +89,12 @@ final class CICServer
 	{
 		synchronized
 		{
-			synchronized(this)
+			synchronized(m_state.rsMut)
 			{
 				m_state.handleCourseReq(req);
 			}
-			// broadcast here is outside of lock because the message is idempotent
-			m_listener.broadcast(cast(immutable) req);
 			m_bcon.sendMessage(cast(immutable CourseReq) req);
+			m_listener.broadcast(cast(immutable) req);
 		}
 	}
 
@@ -103,13 +102,12 @@ final class CICServer
 	{
 		synchronized
 		{
-			synchronized(this)
+			synchronized(m_state.rsMut)
 			{
 				m_state.handleListenDirReq(req);
 			}
-			// broadcast here is outside of lock because the message is idempotent
-			m_listener.broadcast(cast(immutable) req);
 			m_bcon.sendMessage(cast(immutable ListenDirReq) req);
+			m_listener.broadcast(cast(immutable) req);
 		}
 	}
 
@@ -118,8 +116,8 @@ final class CICServer
 		CICSubAcousticRes bdcst;
 		bdcst.data = res.data;
 		bdcst.audio = res.audio;
-		assert(m_state.recStateInitialized);
-		assert(res.atTime == m_state.recState.subSnap.atTime);
+		enforce(m_state.recStateInitialized);
+		enforce(res.atTime == m_state.recState.subSnap.atTime);
 		bdcst.rotationAtTime = m_state.recState.subSnap.rotation;
 		m_listener.broadcast(cast(immutable) bdcst);
 	}
@@ -127,6 +125,7 @@ final class CICServer
 	void handleSonarStreamRes(SonarStreamRes res)
 	{
 		CICSubSonarRes bdcst;
+		enforce(res.atTime == m_state.recState.subSnap.atTime);
 		bdcst.data = res.data;
 		m_listener.broadcast(cast(immutable) bdcst);
 	}
@@ -134,5 +133,58 @@ final class CICServer
 	void handleCICEmitPingReq(CICEmitPingReq req)
 	{
 		m_bcon.sendMessage(cast(immutable EmitPingReq) req);
+	}
+
+	// targeting
+
+	void handleCICCreateTargetFromDataReq(CICCreateTargetFromDataReq req)
+	{
+		enforce(req.initialData.id < 0, "TargetData mus be new sample");
+		enforce(req.initialData.type != DataType.Speed,
+			"Cannot create target from speed data");
+		CICTargetCreatedRes res;
+		synchronized (m_state.tgtMut)
+		{
+			Target* tgt = m_state.createTarget(req.tgtIdPrefix);
+			req.initialData.tgtId = tgt.id;
+			TargetData* data = m_state.updateOrCreateData(req.initialData);
+			if (data is null)
+				assert(0, "should not have happenned");
+			m_state.initializeSolution(tgt, data);
+			res.newTarget = *tgt;
+			res.initialData = *data;
+			m_listener.broadcast(cast(immutable) res);
+		}
+	}
+
+	void handleCICTargetUpdateReq(CICTargetUpdateReq req)
+	{
+		synchronized (m_state.tgtMut)
+		{
+			if (m_state.updateTarget(req.target))
+				m_listener.broadcast(cast(immutable) req);
+		}
+	}
+
+	void handleCICTargetDataReq(CICTargetDataReq req)
+	{
+		synchronized (m_state.tgtMut)
+		{
+			TargetData* data = m_state.updateOrCreateData(req.data);
+			if (data !is null)
+			{
+				CICTargetDataReq res = CICTargetDataReq(*data);
+				m_listener.broadcast(cast(immutable) res);
+			}
+		}
+	}
+
+	void handleCICDropTargetReq(CICDropTargetReq req)
+	{
+		synchronized (m_state.tgtMut)
+		{
+			if (m_state.dropTarget(req.tgtId))
+				m_listener.broadcast(cast(immutable) req);
+		}
 	}
 }

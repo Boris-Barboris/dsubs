@@ -115,8 +115,8 @@ Target and sensor data management API.
 struct CICCreateTargetFromDataReq
 {
 	__gshared const int g_marshIdx;
-	char tgtIdPrefix;		/// CIC will allocate new id for the target, wich will begin with this letter
-	TargetData initialData;	/// first data sample. Id is ignored.
+	char tgtIdPrefix;		/// CIC will allocate new id for the target, wich will start with this letter
+	TargetData initialData;	/// first data sample. Id and tgtId are ignored.
 }
 
 /// Broadcasted by CIC server when the new target is created.
@@ -140,9 +140,9 @@ struct CICTargetUpdateReq
 struct CICTargetDataReq
 {
 	__gshared const int g_marshIdx;
-	@MaxLenAttr(16) string targetId;
 	/// data.id should be set to -1 on client for the new data sample to be created.
-	/// If id >= 0, it tries to update the date with the same id.
+	/// If id >= 0, it tries to update the data sample with the same id. TargetData can
+	/// be reassigned from one target to another using this method.
 	TargetData data;
 }
 
@@ -150,7 +150,7 @@ struct CICTargetDataReq
 struct CICDropTargetReq
 {
 	__gshared const int g_marshIdx;
-	@MaxLenAttr(16) string targetId;
+	TargetId tgtId;
 }
 
 /// Request/broadcast to drop target data.
@@ -164,8 +164,8 @@ struct CICDropDataReq
 struct CICTargetMergeReq
 {
 	__gshared const int g_marshIdx;
-	@MaxLenAttr(16) string sourceTgtId;
-	@MaxLenAttr(16) string destTgtId;
+	TargetId sourceTgtId;
+	TargetId destTgtId;
 }
 
 /// Server broadcast the fact that it has deleted old TargetData.

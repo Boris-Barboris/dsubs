@@ -30,13 +30,8 @@ private
 }
 
 
-final class MainMenuState: GameState
+final class MainMenuState: IGameState
 {
-	this()
-	{
-		super(GameStateKind.MAINMENU);
-	}
-
 	private
 	{
 		bool canLogin, alreadySpawned;
