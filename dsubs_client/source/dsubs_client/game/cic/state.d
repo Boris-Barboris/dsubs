@@ -95,6 +95,7 @@ final class CICState
 	}
 
 	/// Main targeting system mutex, provides targeting state serialization.
+	/// Must not be taken after rsMut to prevent deadlocks.
 	@property Mutex tgtMut() { return m_tgtMut; }
 
 	/// Allocate, initialize and register new Target entity.
@@ -202,5 +203,34 @@ final class CICState
 		// we need to remove all targetData of this target
 		tgtCtx.dataTree.clear();
 		return true;
+	}
+
+	bool dropData(int id)
+	{
+		TargetData* data = m_tgtDataHash.get(id, null);
+		if (data is null)
+			return false;
+		m_tgtDataHash.remove(id);
+		TargetContext* tgtCtx = m_tgtCtxHash[data.tgtId];
+		tgtCtx.dataTree.removeKey(data);
+		return true;
+	}
+
+	bool mergeTargets(TargetId source, TargetId dest)
+	{
+		assert(source != dest);
+		TargetContext* sourceCtx = m_tgtCtxHash.get(source, null);
+		if (sourceCtx is null)
+			return false;
+		TargetContext* destCtx = m_tgtCtxHash.get(dest, null);
+		if (destCtx is null)
+			return false;
+		foreach (TargetData* data; sourceCtx.dataTree[])
+		{
+			data.tgtId = dest;
+			destCtx.dataTree.insert(data);
+		}
+		sourceCtx.dataTree.clear();
+		return m_tgtCtxHash.remove(source);
 	}
 }

@@ -187,4 +187,24 @@ final class CICServer
 				m_listener.broadcast(cast(immutable) req);
 		}
 	}
+
+	void handleCICDropDataReq(CICDropDataReq req)
+	{
+		synchronized (m_state.tgtMut)
+		{
+			if (m_state.dropData(req.dataId))
+				m_listener.broadcast(cast(immutable) req);
+		}
+	}
+
+	void handleCICTargetMergeReq(CICTargetMergeReq req)
+	{
+		if (req.sourceTgtId == req.destTgtId)
+			return;
+		synchronized(m_state.tgtMut)
+		{
+			if (m_state.mergeTargets(req.sourceTgtId, req.destTgtId))
+				m_listener.broadcast(cast(immutable) req);
+		}
+	}
 }
