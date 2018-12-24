@@ -73,12 +73,15 @@ private:
 	{
 		enforce(m_authorized, "unauthorized");
 		enforce(!m_inSimFlow, "already in simulator flow");
-		synchronized(m_cicserv.state.rsMut)
+		synchronized(m_cicserv.state.tgtMut)
 		{
-			enforce(m_cicserv.state.recStateInitialized, "reconnect state not ready");
-			sendMessage(m_cicserv.state.recState);
+			synchronized(m_cicserv.state.rsMut)
+			{
+				enforce(m_cicserv.state.recStateInitialized, "reconnect state not ready");
+				sendMessage(m_cicserv.state.cicRecState);
+				m_inSimFlow = true;
+			}
 		}
-		m_inSimFlow = true;
 	}
 
 	void h_throttleReq(CICThrottleReq req)

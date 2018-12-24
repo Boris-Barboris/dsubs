@@ -59,7 +59,6 @@ final class CICServer
 		synchronized(m_state.rsMut)
 		{
 			m_state.handleReconnectStateRes(res);
-			m_listener.broadcast(cast(immutable CICReconnectStateRes) res);
 		}
 	}
 

@@ -1,5 +1,7 @@
 module dsubs_client.game.cic.state;
 
+import std.array: array;
+import std.algorithm: map;
 import std.ascii: isUpper;
 
 import core.sync.mutex: Mutex;
@@ -20,7 +22,7 @@ final class CICState
 {
 	private
 	{
-		CICReconnectStateRes m_recState;
+		ReconnectStateRes m_recState;
 		bool m_recStateInitialized;
 		Mutex m_rsMut;
 	}
@@ -37,9 +39,17 @@ final class CICState
 	/// Timestamp of the last kinematic snapshot, received from the server.
 	@property usecs_t lastSimTime() const { return m_recState.subSnap.atTime; }
 
-	@property immutable(CICReconnectStateRes) recState() const
+	@property immutable(ReconnectStateRes) recState() const
 	{
-		return cast(immutable CICReconnectStateRes) m_recState;
+		return cast(immutable) m_recState;
+	}
+
+	@property immutable(CICReconnectStateRes) cicRecState() const
+	{
+		const CICReconnectStateRes res = const CICReconnectStateRes(
+			m_recState,
+			m_tgtCtxHash.byValue.map!(ctx => ctx.tgt).array);
+		return cast(immutable) res;
 	}
 
 	/// false until the very first reconnect state received from backend
@@ -47,8 +57,7 @@ final class CICState
 
 	void handleReconnectStateRes(ReconnectStateRes res)
 	{
-		static assert (CICReconnectStateRes.sizeof == ReconnectStateRes.sizeof);
-		m_recState = cast(CICReconnectStateRes) res;
+		m_recState = res;
 		m_recStateInitialized = true;
 	}
 

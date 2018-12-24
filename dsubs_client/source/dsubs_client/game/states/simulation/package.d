@@ -27,12 +27,12 @@ final class SimulatorState: IGameState
 {
 	this(CICReconnectStateRes recState)
 	{
-		this.recState = recState;
+		this.m_recState = recState;
 	}
 
 	private
 	{
-		CICReconnectStateRes recState;
+		CICReconnectStateRes m_recState;
 	}
 
 	mixin Readonly!(Submarine, "playerSub");
@@ -42,23 +42,25 @@ final class SimulatorState: IGameState
 
 	override void setup()
 	{
+		ReconnectStateRes rawRecState = m_recState.rawState;
+
 		// create submarine
 		m_playerSub = new Submarine(
-			Game.entityManager, recState.submarineName, recState.propulsorName);
-		m_playerSub.targetCourse = recState.targetCourse;
-		m_playerSub.targetThrottle = recState.targetThrottle;
-		m_playerSub.updateKinematics(recState.subSnap);
+			Game.entityManager, rawRecState.submarineName, rawRecState.propulsorName);
+		m_playerSub.targetCourse = rawRecState.targetCourse;
+		m_playerSub.targetThrottle = rawRecState.targetThrottle;
+		m_playerSub.updateKinematics(rawRecState.subSnap);
 		Game.worldManager.components ~= m_playerSub;
 
 		// set up camera
-		Game.worldManager.camCtx.camera.center = recState.subSnap.position.toGfm;
+		Game.worldManager.camCtx.camera.center = rawRecState.subSnap.position.toGfm;
 		Game.worldManager.camCtx.camera.zoom = 10.0;
 		m_camController = new CameraController();
 		Game.worldManager.mouseReceivers ~= m_camController;
 
 		m_gui = new SimulationGUI();
 		Game.worldManager.components ~= new PlayerSubIcon(m_playerSub);
-		m_gui.waterfall.listenDir = recState.listenDirs[0];
+		m_gui.waterfall.listenDir = rawRecState.listenDirs[0];
 
 		m_sonarSound = new StreamingSoundSource();
 	}

@@ -2,6 +2,7 @@
 module dsubs_client.game.cic.messages;
 
 public import dsubs_common.api.constants;
+public import dsubs_common.api.protocols.backend: ReconnectStateRes;
 public import dsubs_common.api.entities;
 public import dsubs_common.api.utils;
 
@@ -51,13 +52,8 @@ struct CICEntityDbRes
 struct CICReconnectStateRes
 {
 	__gshared const int g_marshIdx;
-	int spawnId;
-	@MaxLenAttr(64) string submarineName;
-	@MaxLenAttr(64) string propulsorName;
-	KinematicSnapshot subSnap;
-	float targetCourse;
-	float targetThrottle;
-	float[] listenDirs;
+	ReconnectStateRes rawState;		/// raw reconnect state from backend
+	Target[] targets;
 }
 
 struct CICSubKinematicRes
