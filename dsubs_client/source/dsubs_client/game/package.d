@@ -57,13 +57,13 @@ __gshared:
 	CICServer cic;
 	CICClientConnection ciccon;
 
-	private IGameState m_activeState;
+	private GameState m_activeState;
 
 	/// get current active game state object
-	static @property IGameState activeState() { return m_activeState; }
+	static @property GameState activeState() { return m_activeState; }
 
 	/// switch game to new state
-	static @property void activeState(IGameState newState)
+	static @property void activeState(GameState newState)
 	{
 		assert(newState);
 		if (shuttingDown)
@@ -113,7 +113,7 @@ __gshared:
 		mainMutex = new Mutex();
 		scheduler = new Scheduler();
 		scheduler.start();
-		scope(failure) scheduler.stop();
+		scope(exit) scheduler.stop();
 		render.guiRender = guiManager;
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
@@ -139,16 +139,13 @@ __gshared:
 
 		// start render thread and serve the windows event pump
 		render.start(mainMutex);
-		scope(failure)
+		scope(exit)
 		{
 			shuttingDown = true;
 			render.stop();
+			window.close();
 		}
 		window.pollEvents(mainMutex);
-		shuttingDown = true;
-		scheduler.stop();
-		render.stop();
-		window.close();
 	}
 
 	/// clear various callbacks and objects in order to transition to another
@@ -161,7 +158,7 @@ __gshared:
 		worldManager.clear();
 		hotkeyManager.clear();
 		// let's free some memory after the clear
-		delay(() { GC.collect(); GC.minimize(); }, msecs(500));
+		delay(() { GC.collect(); GC.minimize(); }, msecs(500), null);
 		// hotkey manager requires some additional attention
 		render.onPreRender += (long usecs) { hotkeyManager.processHeldKeys(usecs); };
 	}

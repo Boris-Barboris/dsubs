@@ -50,7 +50,11 @@ final class Window
 
 	@property void title(string rhs)
 	{
-		sfRenderWindow_setTitle(m_wnd, rhs.toStringz);
+		// randomly deadlocks on Windows
+		version(linux)
+		{
+			sfRenderWindow_setTitle(m_wnd, rhs.toStringz);
+		}
 	}
 
 	// TODO: descructor
@@ -101,16 +105,13 @@ final class Window
 		{
 			synchronized(mutex)
 			{
-				// special case: window close event
+				m_eventHandlers[event.type](this, &event);
 				if (event.type == sfEvtClosed)
 				{
-					m_eventHandlers[event.type](this, &event);
 					// actually close the window
 					info("Standard window close event caught");
 					m_stopFlag = true;
 				}
-				else
-					m_eventHandlers[event.type](this, &event);
 			}
 		}
 	}
@@ -144,7 +145,6 @@ final class Window
 	}
 
 private:
-	// lock to hold, since view is contended by event processing and render threads
 	sfRenderWindow* m_wnd;
 	sfView* m_view;
 	sfVideoMode m_mode;

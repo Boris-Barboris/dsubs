@@ -30,7 +30,7 @@ private
 }
 
 
-final class MainMenuState: IGameState
+final class MainMenuState: GameState
 {
 	private
 	{

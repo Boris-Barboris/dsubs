@@ -23,7 +23,7 @@ import dsubs_client.game.states.simulation.sonardisp;
 import dsubs_client.lib.openal;
 
 
-final class SimulatorState: IGameState
+final class SimulatorState: GameState
 {
 	this(CICReconnectStateRes recState)
 	{
@@ -61,6 +61,7 @@ final class SimulatorState: IGameState
 		m_gui = new SimulationGUI();
 		Game.worldManager.components ~= new PlayerSubIcon(m_playerSub);
 		m_gui.waterfall.listenDir = rawRecState.listenDirs[0];
+		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) m_recState.rawState.subSnap);
 
 		m_sonarSound = new StreamingSoundSource();
 	}

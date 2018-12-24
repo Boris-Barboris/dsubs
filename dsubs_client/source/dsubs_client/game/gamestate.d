@@ -3,7 +3,7 @@ module dsubs_client.game.gamestate;
 import dsubs_client.game;
 
 
-interface IGameState
+abstract class GameState
 {
 	/// Transform the Game into this state.
 	/// Only called while holding Game.mainMutex.

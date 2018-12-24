@@ -33,11 +33,15 @@ private
 }
 
 
-final class LoadoutState: IGameState
+final class LoadoutState: GameState
 {
-	private Submarine curSelectedSub;
-	private TextBox hullDescriptionBox;
-	private Button startButton;
+	private
+	{
+		Submarine curSelectedSub;
+		TextBox hullDescriptionBox;
+		Button startButton;
+		string curSelectedPropulsor;
+	}
 
 	override void handleBackendDisconnect()
 	{
@@ -60,10 +64,10 @@ final class LoadoutState: IGameState
 		Hull1 |				| prop1
 		Hull2 |				| prop2
 		Hull3 |_____________|______
-			|	Description	|Play
+			  |	Description	|Play
 		*/
 
-		string curSelectedPropulsor = propulsors[0];
+		curSelectedPropulsor = propulsors[0];
 
 		hullDescriptionBox = new TextBox();
 		hullDescriptionBox.fontSize = 16;
@@ -104,9 +108,6 @@ final class LoadoutState: IGameState
 			size(vec2i(200, BTN_SIZE * hulls.length.to!int + hulls.length.to!int)).build;
 		ScrollBar hullsScrollbar = new ScrollBar(hullDiv);
 
-		TextBox moduleDescriptionBox = new TextBox();
-		moduleDescriptionBox.fontSize = 16;
-
 		// scrollist of propulsors
 		GuiElement[] propButtons;
 		foreach (propName; propulsors)
@@ -123,7 +124,7 @@ final class LoadoutState: IGameState
 				};
 			propSelector.onMouseEnter += ()
 				{
-					moduleDescriptionBox.content =
+					hullDescriptionBox.content =
 						Game.entityManager.propTemplates[propName].description;
 				};
 		}
@@ -163,11 +164,10 @@ final class LoadoutState: IGameState
 					])
 				).fraction(0.25f).build(),
 			vDiv([
-				new ScrollBar(moduleDescriptionBox),
-				filler(0.5f),
+				filler(0.75f),
 				builder(new Label()).fontSize(BTN_FONT).
 					fixedSize(vec2i(1, BTN_SIZE)).fontColor(HINT_COLOR).
-					content("Hull description").build,
+					content("Description").build,
 				new ScrollBar(hullDescriptionBox)
 			]),
 			builder(vDiv([
