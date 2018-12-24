@@ -71,8 +71,9 @@ final class Render
 		m_stopFlag = true;
 		if (m_worker && m_worker.isRunning)
 		{
-			trace("joining render thread");
+			trace("joining render thread...");
 			m_worker.join(false);
+			trace("OK");
 		}
 	}
 

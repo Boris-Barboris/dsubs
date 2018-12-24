@@ -10,14 +10,10 @@
 		"derelict-cl": "~>3.2.0"
 	},
 	"dflags": [
-		"-J $ROOT_PACKAGE_DIR/../dsubs_sound/source/dsubs_sound/kernels",
+		"-J $PACKAGE_DIR/source/dsubs_sound/kernels",
 		"-transition=dtorfields",
 		"-transition=intpromote",
 		"-transition=import"
-	],
-	"dflags-ldc": [
-		"-mattr=+sse2,+mmx",
-		"-ffast-math"
 	],
 	"description": "Server-side acoustics library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",

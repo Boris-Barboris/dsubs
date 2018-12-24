@@ -5,6 +5,7 @@ import std.algorithm: map;
 import std.ascii: isUpper;
 
 import core.sync.mutex: Mutex;
+import core.sync.condition: Condition;
 
 import dsubs_common.api.protocols.backend;
 import dsubs_client.game.cic.messages;
@@ -23,6 +24,7 @@ final class CICState
 	private
 	{
 		ReconnectStateRes m_recState;
+		Condition m_recStateCond;
 		bool m_recStateInitialized;
 		Mutex m_rsMut;
 	}
@@ -30,6 +32,7 @@ final class CICState
 	this()
 	{
 		m_rsMut = new Mutex();
+		m_recStateCond = new Condition(m_rsMut);
 		m_tgtMut = new Mutex();
 	}
 
@@ -44,8 +47,12 @@ final class CICState
 		return cast(immutable) m_recState;
 	}
 
-	@property immutable(CICReconnectStateRes) cicRecState() const
+	/// You must hold rsMut when entering this method
+	@property immutable(CICReconnectStateRes) awaitCicRecState()
 	{
+		if (!m_recStateInitialized)
+			m_recStateCond.wait();
+		assert(m_recStateInitialized);
 		const CICReconnectStateRes res = const CICReconnectStateRes(
 			m_recState,
 			m_tgtCtxHash.byValue.map!(ctx => ctx.tgt).array);
@@ -57,8 +64,13 @@ final class CICState
 
 	void handleReconnectStateRes(ReconnectStateRes res)
 	{
-		m_recState = res;
-		m_recStateInitialized = true;
+		assert(!m_recStateInitialized);
+		synchronized(m_recStateCond.mutex)
+		{
+			m_recState = res;
+			m_recStateInitialized = true;
+			m_recStateCond.notifyAll();
+		}
 	}
 
 	void handleSubKinematicRes(SubKinematicRes res)

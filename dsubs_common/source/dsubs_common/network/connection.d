@@ -106,8 +106,8 @@ class ProtocolConnection(alias Protocol)
 	/// tasks.
 	final void start()
 	{
-		m_readerThread = new Thread(&readProc, 512 * 1024).start();
 		m_writerThread = spawn(cast(shared void delegate()) &writerProc);
+		m_readerThread = new Thread(&readProc, 512 * 1024).start();
 		m_started = true;
 	}
 
@@ -141,11 +141,13 @@ class ProtocolConnection(alias Protocol)
 	/// send raw bytes to the peer
 	private void sendBytesSync(const(ubyte)[] msgBody)
 	{
-		size_t toSend = msgBody.length;
+		ptrdiff_t toSend = msgBody.length.to!ptrdiff_t;
 		while (toSend != 0)
 		{
+			assert(toSend > 0);
 			auto sent = m_sock.send(msgBody[$-toSend .. $]);
-			if (sent == Socket.ERROR)
+			assert(sent <= toSend);
+			if (sent <= Socket.ERROR)
 			{
 				version(Posix)
 				{
@@ -153,8 +155,7 @@ class ProtocolConnection(alias Protocol)
 						continue;
 				}
 				throw new ConnectionException(lastSocketError());
-			} else if (sent == 0)
-				throw new ConnectionException("remote peer closed connection");
+			}
 			else
 				toSend -= sent;
 		}
@@ -221,11 +222,16 @@ class ProtocolConnection(alias Protocol)
 	{
 		if (res.length == 0)
 			res = new ubyte[size];
-		size_t toReceive = size;
+		else if (res.length < size)
+			res.length = size.to!size_t;
+		ptrdiff_t toReceive = size;
 		while (toReceive != 0)
 		{
+			assert(toReceive > 0);
 			auto received = m_sock.receive(res[$-toReceive .. $]);
-			if (received == Socket.ERROR)
+			assert(received <= toReceive);
+			static assert(Socket.ERROR < 0);
+			if (received <= Socket.ERROR)
 			{
 				version(Posix)
 				{
@@ -233,7 +239,8 @@ class ProtocolConnection(alias Protocol)
 						continue;
 				}
 				throw new ConnectionException(lastSocketError());
-			} else if (received == 0)
+			}
+			else if (received == 0)
 				throw new ConnectionException("remote peer closed connection");
 			else
 				toReceive -= received;

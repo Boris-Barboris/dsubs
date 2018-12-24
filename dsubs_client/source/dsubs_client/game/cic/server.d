@@ -56,10 +56,7 @@ final class CICServer
 	{
 		enforce(!m_state.recStateInitialized,
 			"protocol flow error: unexpected duplicate ReconnectStateRes");
-		synchronized(m_state.rsMut)
-		{
-			m_state.handleReconnectStateRes(res);
-		}
+		m_state.handleReconnectStateRes(res);
 	}
 
 	void handleSubKinematicRes(SubKinematicRes res)

@@ -25,7 +25,7 @@ struct ServerStatusRes
 }
 
 /** This message requests authorization from the server.
-After authorization succeeded, you don't need to send any more of those.
+After authorization succeeded, you must not send any more of those.
 Authorization is done only once for TCP connection. */
 struct LoginReq
 {

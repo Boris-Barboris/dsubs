@@ -119,8 +119,10 @@ final class Window
 	/// Call this after exiting possEvents loop in order to destroy window handle
 	void close()
 	{
+		info("closing window...");
 		sfRenderWindow_close(m_wnd);
 		m_wnd = null;
+		info("OK");
 	}
 
 	/// Raw SFML window pointer

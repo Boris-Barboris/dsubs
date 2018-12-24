@@ -77,8 +77,7 @@ private:
 		{
 			synchronized(m_cicserv.state.rsMut)
 			{
-				enforce(m_cicserv.state.recStateInitialized, "reconnect state not ready");
-				sendMessage(m_cicserv.state.cicRecState);
+				sendMessage(m_cicserv.state.awaitCicRecState());
 				m_inSimFlow = true;
 			}
 		}

@@ -14,10 +14,6 @@
 		"-transition=intpromote",
 		"-transition=import"
 	],
-	"dflags-ldc": [
-		"-mattr=+sse2,+mmx",
-		"-ffast-math"
-	],
 	"description": "Common library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
 	"targetType": "library"

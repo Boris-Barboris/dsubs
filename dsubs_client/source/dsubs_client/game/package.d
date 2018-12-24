@@ -113,7 +113,12 @@ __gshared:
 		mainMutex = new Mutex();
 		scheduler = new Scheduler();
 		scheduler.start();
-		scope(exit) scheduler.stop();
+		scope(exit)
+		{
+			scheduler.stop();
+			Thread.sleep(msecs(100));
+			window.close();
+		}
 		render.guiRender = guiManager;
 		render.worldRender = worldManager;
 		inputRouter.guiRouter = guiManager;
@@ -131,6 +136,7 @@ __gshared:
 				ciccon.close();
 			if (cic)
 				cic.stop();
+			info("OK");
 		}
 
 		// setup main menu
@@ -143,9 +149,16 @@ __gshared:
 		{
 			shuttingDown = true;
 			render.stop();
-			window.close();
 		}
-		window.pollEvents(mainMutex);
+		try
+		{
+			window.pollEvents(mainMutex);
+		}
+		catch (Throwable tw)
+		{
+			error("window message loop crashed with ", tw.toString);
+			throw tw;
+		}
 	}
 
 	/// clear various callbacks and objects in order to transition to another
