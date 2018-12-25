@@ -148,7 +148,7 @@ __gshared:
 		scope(exit)
 		{
 			shuttingDown = true;
-			render.stop();
+			render.stopAsync();
 		}
 		try
 		{

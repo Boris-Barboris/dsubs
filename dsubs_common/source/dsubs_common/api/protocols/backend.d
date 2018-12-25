@@ -30,8 +30,8 @@ Authorization is done only once for TCP connection. */
 struct LoginReq
 {
 	__gshared const int g_marshIdx;
-	@MaxLenAttr(512) ubyte[] username;		/// RSA-encrypted
-	@MaxLenAttr(512) ubyte[] password;		/// RSA-encrypted
+	@MaxLenAttr(1024) ubyte[] username;		/// RSA-encrypted
+	@MaxLenAttr(1024) ubyte[] password;		/// RSA-encrypted
 }
 
 struct LoginRes

@@ -109,6 +109,8 @@ final class Render
 			{
 				m_window.resetView();
 				sfRenderWindow_clear(m_window.wnd, clearColor);
+				if (m_stopFlag)
+					break;
 				synchronized(mutex)
 				{
 					onPreRender(usecsDelta);
@@ -124,6 +126,8 @@ final class Render
 						guiRender.draw(m_window, usecsDelta);
 					onPostRender(usecsDelta);
 				}
+				if (m_stopFlag)
+					break;
 				// present backbuffer, blocks until vsync
 				sfRenderWindow_display(m_window.wnd);
 				// update timings
