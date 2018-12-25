@@ -94,7 +94,9 @@ final class MainMenuState: GameState
 			}
 			info("authorizing with login ", loginField.content.str);
 			Game.bconm.con.sendMessage(
-				immutable LoginReq(loginField.content.str.encrypt, pwField.content.str.encrypt));
+				immutable LoginReq(
+					cast(immutable(ubyte)[]) loginField.content.str,
+					cast(immutable(ubyte)[]) pwField.content.str));
 			infoLabel.content = "Authorizing...";
 		};
 

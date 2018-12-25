@@ -45,7 +45,6 @@ final class Render
 		assert(wnd);
 		m_window = wnd;
 		m_router = router;
-		wnd.registerHandler(sfEvtClosed, (w, e) { this.stop(); });
 	}
 
 	/// start rendering thread

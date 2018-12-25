@@ -9,9 +9,17 @@ import dsubs_client.lib.fonts;
 import dsubs_client.tests;
 import dsubs_client.game;
 
+version(Windows)
+{
+	extern(Windows) int SetConsoleOutputCP(uint);
+}
 
 void main(string[] argv)
 {
+	version(Windows)
+	{
+		SetConsoleOutputCP(65001);
+	}
 	version(unittest) info("Unit tests OK");
 	version(linux)
 	{

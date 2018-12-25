@@ -5,9 +5,17 @@ import core.stdc.stdlib;
 import dsubs_server.common;
 import dsubs_server.globals;
 
+version(Windows)
+{
+	extern(Windows) int SetConsoleOutputCP(uint);
+}
 
 void main(string[] argv)
 {
+	version(Windows)
+	{
+		SetConsoleOutputCP(65001);
+	}
 	try
 	{
 		Globals.build();

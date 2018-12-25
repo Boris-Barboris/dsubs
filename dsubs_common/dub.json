@@ -6,8 +6,7 @@
 	],
 	"dependencies": {
 		"gfm:math": "~>6.2.7",
-		"painlesstraits": "0.3.0",
-		"secured": "~>1.0.0"
+		"painlesstraits": "0.3.0"
 	},
 	"dflags": [
 		"-transition=dtorfields",
