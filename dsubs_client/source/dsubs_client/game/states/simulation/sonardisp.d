@@ -274,7 +274,7 @@ final class SonarDisplay: GuiElement
 
 	private void processMouseMove(int x, int y)
 	{
-		if (m_mouseFocused)
+		if (mouseFocused)
 		{
 			// we are panning
 			m_camera.pan(vec2d(double(prev_x - x) / size.x * m_width,

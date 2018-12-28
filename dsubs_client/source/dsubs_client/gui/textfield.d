@@ -75,7 +75,7 @@ class TextField: Label
 
 	private void handleMouseMove(int x, int y)
 	{
-		if (m_mouseFocused)
+		if (mouseFocused)
 		{
 			// x and y to local space
 			x -= position.x;
@@ -189,7 +189,7 @@ class TextField: Label
 	override void draw(Window wnd, long usecsDelta)
 	{
 		this.GuiElement.draw(wnd, usecsDelta);	// transform and background rect
-		if (m_kbFocused || m_mouseFocused)
+		if (kbFocused || mouseFocused)
 		{
 			// need to draw cursor\selection
 			if (m_cursorStart == m_cursorEnd)
@@ -314,7 +314,7 @@ class TextField: Label
 
 	private void handleMouseScroll(int x, int y, float delta)
 	{
-		if (m_kbFocused && !m_mouseFocused)
+		if (kbFocused && !mouseFocused)
 		{
 			m_cursorStart = max(0, min(m_content.length - 1,
 				lrint(m_cursorStart + delta).to!int));

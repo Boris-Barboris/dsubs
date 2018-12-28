@@ -262,10 +262,10 @@ class GuiElement: IInputReciever
 	}
 
 	// focuses
-	protected bool m_kbFocused = false;
+	mixin Readonly!(bool, "kbFocused");
 	void handleKbFocusGain() { m_kbFocused = true; }
 	void handleKbFocusLoss() { m_kbFocused = false; }
-	protected bool m_mouseFocused = false;
+	mixin Readonly!(bool, "mouseFocused");
 	void handleMouseFocusGain() { m_mouseFocused = true; }
 	void handleMouseFocusLoss() { m_mouseFocused = false; }
 

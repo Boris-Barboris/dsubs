@@ -232,13 +232,13 @@ final class ScrollBar: GuiElement
 
 	private void handleMouseUp(int x, int y, sfMouseButton btn)
 	{
-		if (btn == sfMouseLeft && m_mouseFocused)
+		if (btn == sfMouseLeft && mouseFocused)
 			returnMouseFocus();
 	}
 
 	private void handleMouseMove(int x, int y)
 	{
-		if (m_mouseFocused && m_sbVisible)
+		if (mouseFocused && m_sbVisible)
 		{
 			int delta = y - m_prevY;
 			float gain = size.y > 0 ? float(m_child.size.y) / size.y : 0.0f;
