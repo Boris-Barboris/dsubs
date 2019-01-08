@@ -19,12 +19,6 @@ Socket listenTcp(TcpServer settings)
 	Socket listenSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
 	scope(failure) listenSock.close();
 	listenSock.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, false);
-	version (Windows) { /* windows has socket buf size autotuning */ }
-	else
-	{
-		listenSock.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVBUF, 64 * 1024);
-		listenSock.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDBUF, 256 * 1024);
-	}
 	listenSock.bind(addr);
 	listenSock.listen(16);
 	info("Serving TCP on ", addr);
