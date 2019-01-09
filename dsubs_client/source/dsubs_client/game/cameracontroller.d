@@ -1,6 +1,5 @@
 module dsubs_client.game.cameracontroller;
 
-import std.functional;
 import std.math;
 
 import std.experimental.logger;
@@ -38,14 +37,14 @@ final class CameraController: WorldMouseReceiver
 	{
 		Game.hotkeyManager.addHoldkey(&handleKeyboard);
 		Game.hotkeyManager.setHotkey(Hotkey(sfKeyEscape),
-			toDelegate(&resetCameraToPlayerSub));
+			&resetCameraToPlayerSub);
 		Game.render.onPreRender += &handleSmooth;
 	}
 
-	private static void resetCameraToPlayerSub()
+	private void resetCameraToPlayerSub()
 	{
 		Game.worldManager.camCtx.camera.center =
-					Game.simState.playerSub.transform.position;
+					Game.simState.playerSub.transform.wposition;
 	}
 
 	private void handleKeyboard(long usecs, Modifier curMods)
@@ -85,8 +84,8 @@ final class CameraController: WorldMouseReceiver
 		bool smoothing = false;
 		double targetZoom;
 		vec2d zoomPivot;
-		double zoomVel = 0.0f;
-		double zoomAcc = 75.0f;
+		double zoomVel = 0.0;
+		double zoomAcc = 90.0;
 	}
 
 	private static double parabolicMove(double y1, double v1, double y2,
@@ -148,7 +147,8 @@ final class CameraController: WorldMouseReceiver
 		Camera2D camera = Game.worldManager.camCtx.camera;
 		// zooming
 		double oldZoom = camera.zoom;
-		camera.zoom = parabolicMove(oldZoom, zoomVel, targetZoom, zoomAcc * oldZoom, dt, zoomVel);
+		double accK = targetZoom < oldZoom ? 1.6 : 1.0;
+		camera.zoom = parabolicMove(oldZoom, zoomVel, targetZoom, accK * zoomAcc * oldZoom, dt, zoomVel);
 		if (camera.zoom == targetZoom)
 			smoothing = false;
 		// panning while zooming
