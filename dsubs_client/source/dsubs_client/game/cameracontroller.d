@@ -158,7 +158,7 @@ final class CameraController: WorldMouseReceiver
 		camera.pan(topan);
 	}
 
-	void handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
+	HandleResult handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
 		sfMouseButton btn, float delta)
 	{
 		Camera2D camera = Game.worldManager.camCtx.camera;
@@ -201,6 +201,7 @@ final class CameraController: WorldMouseReceiver
 			default:
 				break;
 		}
+		return HandleResult(false);
 	}
 
 	// dummy handlers just to conform to IInputReciever

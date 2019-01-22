@@ -13,6 +13,8 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 public import derelict.sfml2.window;
 
+import gfm.math.vector;
+
 import dsubs_common.event;
 
 
@@ -135,6 +137,9 @@ final class Window
 
 	/// client area height
 	@property uint height() const { return m_mode.height; }
+
+	/// width-height integer vector
+	@property vec2i size() const { return vec2i(m_mode.width.to!int, m_mode.height.to!int); }
 
 	@property bool hasFocus() const { return sfRenderWindow_hasFocus(m_wnd) == sfTrue; }
 

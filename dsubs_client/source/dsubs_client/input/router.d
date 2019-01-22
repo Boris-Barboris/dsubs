@@ -28,11 +28,12 @@ interface IInputReciever
 	// Recievers can also request exclusive mouse event focus. Example: dragging
 	void handleMouseFocusGain();
 	void handleMouseFocusLoss();
-	// keyboard handling method. Reciever may state that he is uninterested in
+	// keyboard handling method. Receiver may state that he is uninterested in
 	// this event.
 	HandleResult handleKeyboard(Window wnd, const sfEvent* evt);
-	// mouse handling method. We forbid to pass mouse events through recievers.
-	void handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
+	// mouse handling method. Receiver may state that he is uninterested in
+	// this event.
+	HandleResult handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
 		sfMouseButton btn, float delta);
 }
 
@@ -58,7 +59,6 @@ interface IWindowEventSubrouter
 	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y);
 	RouteResult routeKeyboard(Window wnd, const sfEvent* evt);
 	void handleWindowResize(Window wnd, const sfSizeEvent* evt);
-	void clearMouseCache();
 }
 
 /// Window event router
@@ -239,6 +239,7 @@ private:
 		}
 	}
 
+	// returns true when handler search should stop
 	static bool handleMouse(Window wnd, RouteResult rres, const sfEvent* evt, int x, int y,
 		sfMouseButton btn, float delta)
 	{
@@ -251,8 +252,8 @@ private:
 			{
 				kbFocused = null;
 			}
-			rres.reciever.handleMousePos(wnd, evt, x, y, btn, delta);
-			return true;
+			HandleResult res = rres.reciever.handleMousePos(wnd, evt, x, y, btn, delta);
+			return !res.passThrough;
 		}
 		return false;
 	}
@@ -267,8 +268,8 @@ private:
 			assert(0, "Mouse event is not actually a mouse event");
 		if (g_mouseFocused)
 		{
-			g_mouseFocused.handleMousePos(wnd, evt, x, y, btn, delta);
-			return;	// no passthrough for mouse
+			if (!g_mouseFocused.handleMousePos(wnd, evt, x, y, btn, delta).passThrough)
+				return;
 		}
 		// routing cascade
 		if (guiRouter)

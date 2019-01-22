@@ -235,7 +235,7 @@ class GuiElement: IInputReciever
 		return HandleResult(false);
 	}
 
-	void handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
+	HandleResult handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
 		sfMouseButton btn, float delta)
 	{
 		if (btn >= 0)
@@ -249,6 +249,7 @@ class GuiElement: IInputReciever
 			onMouseScroll(x, y, delta);
 		else
 			onMouseMove(x, y);
+		return HandleResult(mouseTransparent);
 	}
 
 	void handleMouseEnter()
@@ -264,10 +265,18 @@ class GuiElement: IInputReciever
 	// focuses
 	mixin Readonly!(bool, "kbFocused");
 	void handleKbFocusGain() { m_kbFocused = true; }
-	void handleKbFocusLoss() { m_kbFocused = false; }
+	void handleKbFocusLoss()
+	{
+		m_kbFocused = false;
+		onKbFocusLoss();
+	}
 	mixin Readonly!(bool, "mouseFocused");
 	void handleMouseFocusGain() { m_mouseFocused = true; }
-	void handleMouseFocusLoss() { m_mouseFocused = false; }
+	void handleMouseFocusLoss()
+	{
+		m_mouseFocused = false;
+		onMouseFocusLoss();
+	}
 
 	// focus manipulation methods
 
@@ -300,12 +309,16 @@ class GuiElement: IInputReciever
 	/// Return deepest GuiElement that contains the point, null otherwise.
 	GuiElement getFromPoint(const sfEvent* evt, int x, int y)
 	{
-		if ((x >= m_position.x && x < m_position.x + m_size.x) &&
-			(y >= m_position.y && y < m_position.y + m_size.y))
-		{
+		if (rectContainsPoint(x, y))
 			return this;
-		}
 		return null;
+	}
+
+	/// Returns true if base element rectangle contains the point
+	final bool rectContainsPoint(int x, int y) const
+	{
+		return ((x >= m_position.x && x < m_position.x + m_size.x) &&
+			(y >= m_position.y && y < m_position.y + m_size.y));
 	}
 
 	/// whether the element is transparent for mouse events
@@ -322,9 +335,18 @@ class GuiElement: IInputReciever
 			return GuiRouteResult(null, true);
 	}
 
+	/// Called by manager or layout engine when this element leaves the screen
+	void onHide()
+	{
+		returnMouseFocus();
+		returnKbFocus();
+	}
+
 	// events for users to subscribe to
 	Event!(void delegate()) onMouseEnter;
 	Event!(void delegate()) onMouseLeave;
+	Event!(void delegate()) onMouseFocusLoss;
+	Event!(void delegate()) onKbFocusLoss;
 	Event!(void delegate(int x, int y)) onMouseMove;
 	Event!(void delegate(int x, int y, sfMouseButton btn)) onMouseDown;
 	Event!(void delegate(int x, int y, sfMouseButton btn)) onMouseUp;

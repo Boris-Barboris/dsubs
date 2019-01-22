@@ -5,6 +5,7 @@ import std.utf;
 import core.thread;
 
 import derelict.sfml2.window;
+import derelict.sfml2.system;
 
 import dsubs_common.api;
 import dsubs_common.api.protocols.backend;
@@ -80,7 +81,7 @@ final class MainMenuState: GameState
 				connectButton.simulateClick();
 		};
 
-		connectButton.onClick += (b)
+		connectButton.onClick += ()
 		{
 			if (!canLogin)
 			{
@@ -111,7 +112,7 @@ final class MainMenuState: GameState
 		cicConnectButton = builder(new Button(ButtonType.ASYNC)).content("Join coop host").
 			fontSize(MENU_BUTTON_FONTSIZE / 2).fixedSize(vec2i(400, btnSize / 2)).build();
 
-		cicConnectButton.onClick += (b)
+		cicConnectButton.onClick += ()
 		{
 			if (cicConnectCancellator)
 			{
@@ -148,7 +149,27 @@ final class MainMenuState: GameState
 		Button exitButton = builder(new Button()).content("Exit").
 			fontSize(MENU_BUTTON_FONTSIZE).
 			fixedSize(vec2i(400, btnSize)).build();
-		exitButton.onClick += (b) { Game.window.stopEventProcessing(); };
+		exitButton.onClick += () { Game.window.stopEventProcessing(); };
+
+		// context menu test
+		exitButton.onMouseUp += (int x, int y, sfMouseButton b) {
+			if (b == sfMouseRight)
+			{
+				Button[] buttons = [
+					builder(new Button()).content("print").build(),
+					builder(new Button()).content("quit").build()
+				];
+				buttons[0].onClick += () { info("print button pressed"); };
+				buttons[1].onClick += () { Game.window.stopEventProcessing(); };
+				ContextMenu menu = contextMenu(
+					Game.guiManager,
+					buttons,
+					Game.window.size,
+					vec2i(x, y),
+					60
+				);
+			}
+		};
 
 		Div mainMenuDiv = builder(vDiv([
 			filler(),

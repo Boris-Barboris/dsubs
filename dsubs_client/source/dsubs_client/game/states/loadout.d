@@ -80,7 +80,7 @@ final class LoadoutState: GameState
 				fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
 				htextAlign(HTextAlign.LEFT).build();
 			hullButtons ~= hullSelector;
-			hullSelector.onClick += (btn)
+			hullSelector.onClick += ()
 				{
 					if (curSelectedSub is null || curSelectedSub.tmpl.name != hullname)
 					{
@@ -116,7 +116,7 @@ final class LoadoutState: GameState
 				fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
 				htextAlign(HTextAlign.LEFT).build();
 			propButtons ~= propSelector;
-			propSelector.onClick += (btn)
+			propSelector.onClick += ()
 				{
 					curSelectedPropulsor = propName;
 					if (curSelectedSub)
@@ -137,7 +137,7 @@ final class LoadoutState: GameState
 		startButton = builder(new Button(ButtonType.ASYNC)).fontSize(45).
 			htextAlign(HTextAlign.CENTER).content("Start").fixedSize(vec2i(1, 70)).
 			build();
-		startButton.onClick += (btn)
+		startButton.onClick += ()
 			{
 				if (curSelectedSub is null)
 				{

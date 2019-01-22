@@ -30,19 +30,16 @@ package struct GuiRouteResult
 /// Primitive panel, wich consists of one GuiElement tree.
 class Panel
 {
-	protected GuiElement m_root;
-	@property GuiElement root() { return m_root; }
+	private GuiElement m_root;
+	final @property GuiElement root() { return m_root; }
+
+	private GuiManager m_manager;
+	final @property GuiManager manager() { return m_manager; }
+
+	private DList!(Panel).Iterator m_zorderIter;
 
 	/// If true, mouse click will push this panel on top of the stack.
 	bool zboost = false;
-
-	/// previous mouse event reciever, for quick lookup
-	protected GuiElement m_mouseCache;
-
-	void clearMouseCache()
-	{
-		m_mouseCache = null;
-	}
 
 	this(GuiElement root)
 	{
@@ -50,31 +47,16 @@ class Panel
 		m_root = root;
 	}
 
+	void onHide()
+	{
+		m_root.onHide();
+	}
+
 	protected void draw(Window wnd, long usecsDelta) { m_root.draw(wnd, usecsDelta); }
 
 	protected GuiRouteResult routeMousePos(const sfEvent* evt, int x, int y)
 	{
-		GuiRouteResult res;
-		if (m_mouseCache)
-		{
-			res = m_mouseCache.routeMousePos(evt, x, y);
-			if (res.mouseReciever)
-			{
-				// cache hit, update it
-				m_mouseCache = res.mouseReciever;
-				return res;
-			}
-			else
-			{
-				// cache miss
-				//trace("Panel mouse cache miss");
-				m_mouseCache = null;
-			}
-		}
-		// no cached handler
-		res = m_root.routeMousePos(evt, x, y);
-		m_mouseCache = res.mouseReciever;
-		return res;
+		return m_root.routeMousePos(evt, x, y);
 	}
 
 	protected void handleWindowResize(const sfSizeEvent* evt)
@@ -114,22 +96,32 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 	/// register a panel in a manager and place it on top of all existing panels
 	void addPanel(Panel p)
 	{
+		assert(p.m_manager is null, "panel already belongs to some manager");
 		panels.insertBack(p);
+		p.m_manager = this;
+		p.m_zorderIter = panels.last;
 		// initial shakedown in order to befriend new panel
 		// with current window size
 		sfSizeEvent fake = sfSizeEvent(sfEvtResized, m_wnd.width, m_wnd.height);
 		p.handleWindowResize(&fake);
 	}
 
-	void clearPanels()
+	void removePanel(Panel p)
 	{
-		panels.clear();
+		assert(p.m_manager is this, "panel does not belong to this manager");
+		p.onHide();
+		panels.remove(p.m_zorderIter);
+		p.m_manager = null;
 	}
 
-	void clearMouseCache()
+	void clearPanels()
 	{
-		foreach(p; panels)
-			p.clearMouseCache();
+		foreach (panel; panels[])
+		{
+			panel.onHide();
+			panel.m_manager = null;
+		}
+		panels.clear();
 	}
 
 	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y)
@@ -142,7 +134,6 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 			res = panel.routeMousePos(evt, x, y);
 			if (res.mouseReciever)
 			{
-				// event-transparent elements only update panel's lookup cache
 				if (res.mouseTransparent)
 					continue;
 				if (evt.type == sfEvtMouseButtonPressed && panel.zboost)
@@ -151,6 +142,7 @@ final class GuiManager: IWindowDrawer, IWindowEventSubrouter
 					// the top of z-stack
 					panels.remove(i);
 					panels.insertBack(panel);
+					panel.m_zorderIter = panels.last;
 				}
 				return RouteResult(res.mouseReciever);
 			}

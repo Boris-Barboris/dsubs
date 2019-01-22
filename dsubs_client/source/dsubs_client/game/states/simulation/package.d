@@ -293,7 +293,7 @@ final class SimulationGUI
 		void setMiddlePane(GuiElement el)
 		{
 			m_topLevelDiv.setChild(el, 1);
-			Game.inputRouter.guiRouter.clearMouseCache();
+			Game.inputRouter.clearFocused();
 		}
 
 		void saveSoundIfNeeded()
@@ -311,17 +311,17 @@ final class SimulationGUI
 				Game.simState.sonarSound.gain = m_oldSonarGain;
 		}
 
-		tacticalTab.onClick += (btn)
+		tacticalTab.onClick += ()
 		{
 			saveSoundIfNeeded();
 			setMiddlePane(tabFiller);
 		};
-		psonarTab.onClick += (btn)
+		psonarTab.onClick += ()
 		{
 			restoreSoundIfNeeded();
 			setMiddlePane(m_passiveGui.root);
 		};
-		asonarTab.onClick += (btn)
+		asonarTab.onClick += ()
 		{
 			saveSoundIfNeeded();
 			setMiddlePane(m_sonarGui.root);

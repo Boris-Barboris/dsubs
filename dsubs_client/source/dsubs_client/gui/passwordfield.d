@@ -12,7 +12,7 @@ import dsubs_client.gui.textfield;
 
 final class PasswordField: TextField
 {
-	static immutable dchar PWDOT = '•';
+	enum dchar PWDOT = '•';
 
 	/// actual password will be here
 	private dmutstring m_hiddenContent;

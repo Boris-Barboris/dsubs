@@ -15,13 +15,14 @@ import derelict.sfml2.window;
 import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
 import dsubs_client.core.utils;
+import dsubs_client.input.router;
 import dsubs_client.gui.element;
 
 
 enum DivType
 {
-	HORZ,	/// children are separated by vertical lines
-	VERT	/// children are separated by horizontal lines
+	HORZ,	/// children left/right of each other
+	VERT	/// children above/below each other
 }
 
 /// Linear layout manager, rectangular one-dimentional array of elements
@@ -116,6 +117,7 @@ final class Div: GuiElement
 		GuiElement old = m_children[idx];
 		old.parent = null;
 		old.parentViewport = null;
+		old.onHide();
 		newChild.parent = this;
 		newChild.parentViewport = &viewport();
 		m_children[idx] = newChild;
@@ -266,6 +268,13 @@ final class Div: GuiElement
 	{
 		super.updateSize();
 		updateChildren();
+	}
+
+	override void onHide()
+	{
+		foreach (child; m_children)
+			child.onHide();
+		super.onHide();
 	}
 
 	override void draw(Window wnd, long usecsDelta)

@@ -49,15 +49,12 @@ SonarGui createSonarGui(const SonarTemplate st)
 			vec2i(PING_BUTTON_WIDTH, PING_BUTTON_HEIGHT)).
 			backgroundColor(PING_BUTTON_BCKGROUND).build();
 
-	res.pingBtn.onClick += (sfMouseButton btn)
+	res.pingBtn.onClick += ()
 		{
-			if (btn == sfMouseLeft)
-			{
-				// request ping
-				float pingMag = st.minPingIlevel +
-					res.powerSlider.value * (st.maxPingIlevel - st.minPingIlevel);
-				Game.ciccon.sendMessage(immutable CICEmitPingReq(0, pingMag));
-			}
+			// request ping
+			float pingMag = st.minPingIlevel +
+				res.powerSlider.value * (st.maxPingIlevel - st.minPingIlevel);
+			Game.ciccon.sendMessage(immutable CICEmitPingReq(0, pingMag));
 		};
 
 	Div powerDiv = builder(hDiv([

@@ -114,28 +114,28 @@ class Button: Label
 			return;
 		if (m_pressed)
 		{
-			simulateClick(btn);
+			simulateClick();
 			pressed = false;
 		}
 	}
 
-	final void simulateClick(sfMouseButton btn = sfMouseLeft)
+	final void simulateClick()
 	{
 		pressed = true;
 		final switch (m_buttonType)
 		{
 			case ButtonType.TOGGLE:
 				m_state = cast(ButtonState)!m_state;
-				onClick(btn);
+				onClick();
 				break;
 			case ButtonType.SYNC:
-				onClick(btn);
+				onClick();
 				break;
 			case ButtonType.ASYNC:
 				if (m_state == ButtonState.INACTIVE)
 				{
 					m_state = ButtonState.ACTIVE;
-					onClick(btn);
+					onClick();
 				}
 		}
 		pressed = false;
@@ -149,5 +149,5 @@ class Button: Label
 		updateFontColor();
 	}
 
-	Event!(void delegate(sfMouseButton btn)) onClick;
+	Event!(void delegate()) onClick;
 }

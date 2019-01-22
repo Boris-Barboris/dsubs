@@ -159,6 +159,12 @@ final class ScrollBar: GuiElement
 		updateChildPosition();
 	}
 
+	override void onHide()
+	{
+		m_child.onHide();
+		super.onHide();
+	}
+
 	private void handleMouseScroll(int x, int y, float delta)
 	{
 		updateMouseScroll(delta);

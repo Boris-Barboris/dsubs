@@ -83,8 +83,6 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 		return m_holdkeys.length = 0;
 	}
 
-	void clearMouseCache() {}
-
 	/// return true if hotkey was overwritten, false otherwise, throws
 	/// if the hotkey is invalid.
 	bool setHotkey(Hotkey hk, void delegate() onRelease)
@@ -186,6 +184,10 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 	void handleMouseLeave() {}
 	void handleMouseFocusGain() {}
 	void handleMouseFocusLoss() {}
-	void handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
-		sfMouseButton btn, float delta) {}
+
+	HandleResult handleMousePos(Window wnd, const sfEvent* evt, int x, int y,
+		sfMouseButton btn, float delta)
+	{
+		return HandleResult(true);
+	}
 }

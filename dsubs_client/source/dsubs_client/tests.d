@@ -61,17 +61,14 @@ void testGuiElements()
 	int shiftDir = 1;
 	auto button1 = builder(new Button(ButtonType.SYNC)).fontSize(32).
 		content("Click me").build();
-	button1.onClick += (btn)
+	button1.onClick += ()
 	{
-		if (btn == sfMouseLeft)
-			btn1Counter += shiftDir;
-		if (btn == sfMouseRight)
-			btn1Counter -= shiftDir;
+		btn1Counter += shiftDir;
 		label1.content = btn1Counter.to!string;
 	};
 	auto button2 = builder(new Button(ButtonType.TOGGLE)).fontSize(32).
 		content("Positive").build();
-	button2.onClick += (btn) {
+	button2.onClick += () {
 		if (button2.state == ButtonState.ACTIVE)
 		{
 			button2.content = "Negative";
@@ -87,11 +84,11 @@ void testGuiElements()
 		content("Activate x10").build();
 	auto button4 = builder(new Button(ButtonType.SYNC)).fontSize(24).
 		content("Deactivate x10").build();
-	button3.onClick += (btn)
+	button3.onClick += ()
 	{
 		shiftDir *= 10;
 	};
-	button4.onClick += (btn)
+	button4.onClick += ()
 	{
 		if (button3.state == ButtonState.ACTIVE)
 		{
