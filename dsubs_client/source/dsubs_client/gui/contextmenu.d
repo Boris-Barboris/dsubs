@@ -33,6 +33,9 @@ final class ContextMenu: Panel
 			if (this.manager)
 				this.manager.removePanel(this);
 		};
+		// buttons when pressed should trigger focus loss
+		foreach (Button btn; elements)
+			btn.onClick += () { div.returnMouseFocus(); };
 		super(div);
 	}
 
