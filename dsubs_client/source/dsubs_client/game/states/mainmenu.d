@@ -165,8 +165,7 @@ final class MainMenuState: GameState
 					Game.guiManager,
 					buttons,
 					Game.window.size,
-					vec2i(x, y),
-					60
+					vec2i(x, y)
 				);
 			}
 		};

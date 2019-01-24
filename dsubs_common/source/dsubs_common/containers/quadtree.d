@@ -1,6 +1,6 @@
 module dsubs_common.containers.quadtree;
 
-import std.algorithm: countUntil, remove, SwapStrategy;
+import std.algorithm: countUntil, remove, SwapStrategy, map;
 import std.math;
 
 public import gfm.math.vector;
@@ -30,19 +30,17 @@ private struct Square
 	}
 
 	@property vec2f center() const { return m_center; }
-	@property vec2f center(vec2f rhs)
+	@property void center(vec2f rhs)
 	{
 		m_center = rhs;
 		updateLrtb();
-		return m_center;
 	}
 
 	@property float side() const { return m_side; }
-	@property float side(float rhs)
+	@property void side(float rhs)
 	{
 		m_side = rhs;
 		updateLrtb();
-		return m_side;
 	}
 
 	private void updateLrtb()
@@ -145,19 +143,17 @@ struct Rectangle
 	}
 
 	@property vec2f center() const { return m_center; }
-	@property vec2f center(vec2f rhs)
+	@property void center(vec2f rhs)
 	{
 		m_center = rhs;
 		updateLrtb();
-		return m_center;
 	}
 
 	@property vec2f size() const { return m_size; }
-	@property vec2f size(vec2f rhs)
+	@property void size(vec2f rhs)
 	{
 		m_size = rhs;
 		updateLrtb();
-		return m_size;
 	}
 
 	private void updateLrtb()
@@ -173,15 +169,17 @@ struct Rectangle
 	@property float top() const { return m_top; }
 	@property float bottom() const { return m_bottom; }
 
-	/// check this rectange against square on intersection\composition
-	private Relation relate(ref const Square sqr) const
+
+	/// check this rectange against another rectange on intersection\composition
+	private Relation relate(T)(ref const T rect) const
+		if (is(T == Rectangle) || is(T == Square))
 	{
-		if (right < sqr.left || left >= sqr.right)
+		if (right < rect.left || left >= rect.right)
 			return Relation.outside;
-		if (bottom >= sqr.top || top < sqr.bottom)
+		if (bottom >= rect.top || top < rect.bottom)
 			return Relation.outside;
-		if (left >= sqr.left && right < sqr.right &&
-			top < sqr.top && bottom >= sqr.bottom)
+		if (left >= rect.left && right < rect.right &&
+			top < rect.top && bottom >= rect.bottom)
 			return Relation.inside;
 		return Relation.intersect;
 	}
@@ -197,9 +195,9 @@ struct Rectangle
 
 private enum Relation: byte
 {
-	inside,
-	intersect,
-	outside
+	outside = 0,
+	intersect = 1,
+	inside = 3,
 }
 
 private enum Quadrant: byte
@@ -219,7 +217,7 @@ final class QuadTree(T)
 public:
 
 	/// tree node that holds rectangle and user-defined payload
-	struct LeafNode
+	static struct LeafNode
 	{
 		private QuadTree!T m_tree;
 		private CellNode* parent;
@@ -233,13 +231,12 @@ public:
 		@property ref const(Rectangle) rect() const { return m_rect; }
 
 		/// update the recnagle and reindex this leaf in the tree
-		@property ref const(Rectangle) rect(Rectangle newRect)
+		@property void rect(Rectangle newRect)
 		{
 			assert(parent !is null && m_tree !is null, "Leaf is an orphan");
 			assert(!newRect.anyNaN);
 			m_rect = newRect;
 			m_tree.reindexLeaf(&this);
-			return m_rect;
 		}
 	}
 
@@ -257,7 +254,7 @@ public:
 		m_root.area = Square(rootCenter, rootSquareSize);
 	}
 
-	/// create new leaf and return a handle to it.
+	/// create new leaf and return a handle to it
 	LeafNode* addLeaf(Rectangle rect, T payload, LeafNode* hint = null)
 	{
 		assert(!rect.anyNaN);
@@ -306,7 +303,26 @@ public:
 			applyRecursUpConst(start.parent, filterDlg);
 	}
 
-	void findInRectangle(ref const Rectangle searchArea, ref LeafNode*[] result);
+	/// append all leafs that intersect 'searchRect' to 'result'
+	void findAllIntersectingRectangle(const Rectangle searchRect,
+		ref LeafNode*[] result, bool searchUp = true)
+	{
+		const(CellNode)* start = walkDownConst(m_root, searchRect);
+
+		scope void delegate(const(CellNode*) cell) filterDlg = (cell) {
+			foreach (const(LeafNode)* l; cell.leafChildren)
+			{
+				if (l.rect.relate(searchRect) & Relation.intersect)
+					result ~= cast(LeafNode*) l;
+			}
+		};
+
+		// start itself and all of it's children are suspects
+		applyRecursDownConst(start, filterDlg);
+		// as well as all of it's parents
+		if (searchUp && start.parent !is null)
+			applyRecursUpConst(start.parent, filterDlg);
+	}
 
 	/// append all leafs that contain 'point' in their rectangles to 'result'
 	void findUnderPoint(vec2f point, ref LeafNode*[] result) const
@@ -329,7 +345,7 @@ public:
 
 private:
 
-	struct CellNode
+	static struct CellNode
 	{
 		CellNode* parent = null;
 		Square area;
@@ -366,7 +382,7 @@ private:
 		return walkDown(newPivot, rect);
 	}
 
-	/// get or create subsell, placed in quadrant q
+	/// get or create subcell, placed in quadrant q
 	static CellNode* ensureQuadrantSubcell(CellNode* parent, Quadrant q)
 	{
 		assert(q >= 0);
@@ -421,7 +437,7 @@ private:
 		return walkDownConst(cur.cellChildren[q], rect);
 	}
 
-	/// apply delegate to 'node' and all of it's subcells recursively
+	/// apply delegate to 'node' and all of it's subcells recursively, depth-first
 	static void applyRecursDownConst(
 		const(CellNode)* node, scope void delegate(const(CellNode)*) dlg)
 	{
@@ -597,4 +613,13 @@ unittest
 	assert(res.countUntil(node2) >= 0);
 	assert(res.countUntil(node3) >= 0);
 	res.length = 0;
+	tree.findAllIntersectingRectangle(Rectangle(vec2f(0.0f, 0.0f), vec2f(1.0f, 1.0f)), res);
+	assert(res.length == 2);
+	assert(res.countUntil(node1) >= 0);
+	assert(res.countUntil(node2) >= 0);
+	res.length = 0;
+	tree.findAllIntersectingRectangle(Rectangle(vec2f(-5.0f, 0.0f), vec2f(1.0f, 0.5f)), res);
+	assert(res.length == 0);
+	tree.findAllIntersectingRectangle(Rectangle(vec2f(-50.0f, 0.0f), vec2f(1000.0f, 500.0f)), res);
+	assert(res.length == 3);
 }

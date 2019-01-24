@@ -26,7 +26,7 @@ class WorldRenderable
 	mixin Readonly!(Transform, "transform");
 
 	/// yes, we're actually 2.5D
-	float depth = 0.0f;
+	// float depth = 0.0f;
 
 	this()
 	{
@@ -61,7 +61,7 @@ final class CameraContext
 
 
 /// Something that may receive mouse events in the context of world space
-interface WorldMouseReceiver: IInputReciever
+interface IWorldMouseReceiver: IInputReciever
 {
 	bool isMouseEventInteresting(Window wnd, const sfEvent* evt, int x, int y);
 }
@@ -80,7 +80,8 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 	void clear()
 	{
 		components.length = 0;
-		mouseReceivers.length = 0;
+		foreach (ref arr; m_mouseReceivers)
+			arr.length = 0;
 	}
 
 	this(Window wnd)
@@ -112,17 +113,26 @@ final class WorldManager: IWindowDrawer, IWindowEventSubrouter
 		assert(arr != [1, 2, 2, 2, 3]);
 	}
 
-	// Event handling
+	// Input event handling
 
-	/// objects that may receive mouse right after clickables
-	WorldMouseReceiver[] mouseReceivers;
+	private IWorldMouseReceiver[][3] m_mouseReceivers;
+
+	/// first layer of mouse receivers for overlay interface components
+	@property ref IWorldMouseReceiver[] overlayMouseReceivers() { return m_mouseReceivers[0]; }
+	/// second layer of mouse receivers for other world-space objects
+	@property ref IWorldMouseReceiver[] worldMouseReceivers() { return m_mouseReceivers[1]; }
+	/// third layer of mouse receivers for background mouse handling
+	@property ref IWorldMouseReceiver[] backgroundMouseReceivers() { return m_mouseReceivers[2]; }
 
 	RouteResult routeMousePos(Window wnd, const sfEvent* evt, int x, int y)
 	{
-		foreach (mr; mouseReceivers)
+		foreach (arr; m_mouseReceivers)
 		{
-			if (mr.isMouseEventInteresting(wnd, evt, x, y))
-				return RouteResult(mr);
+			foreach (mr; arr)
+			{
+				if (mr.isMouseEventInteresting(wnd, evt, x, y))
+					return RouteResult(mr);
+			}
 		}
 		return RouteResult(null);
 	}

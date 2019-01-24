@@ -126,6 +126,9 @@ class Label: GuiElement
 		int m_leftOffset;		// needed for textfield
 	}
 
+	final float contentWidth() const { return m_contentWidth; }
+	final float contentHeight() const { return m_contentHeight; }
+
 	override void updateSize()
 	{
 		super.updateSize();

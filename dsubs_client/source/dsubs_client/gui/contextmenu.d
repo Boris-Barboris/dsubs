@@ -1,6 +1,6 @@
 module dsubs_client.gui.contextmenu;
 
-import std.algorithm.comparison;
+import std.algorithm;
 
 import derelict.sfml2.window;
 import derelict.sfml2.graphics;
@@ -19,10 +19,14 @@ final class ContextMenu: Panel
 {
 	@property Div rootDiv() { return cast(Div) root; }
 
-	this(Button[] elements, int width, int rowHeight = 22)
+	this(Button[] elements, int rowHeight = 22)
 	{
 		Div div = vDiv(cast(GuiElement[]) elements);
-		div.fixedSize = vec2i(width, (rowHeight * elements.length).to!int);
+		div.fixedSize = vec2i(100, (rowHeight * elements.length).to!int);
+		// now adapt div width to max content size of buttons
+		float maxContentWidth = elements.map!(
+			e => (e.contentWidth + 2 * e.padding)).reduce!(max);
+		div.fixedSize = vec2i(lrint(maxContentWidth).to!int, div.size.y);
 		div.backgroundColor = sfColor(15, 15, 15, 255);
 		// handle a click outside of the context menu
 		div.onMouseDown += (int x, int y, sfMouseButton btn) {
@@ -64,9 +68,9 @@ final class ContextMenu: Panel
 
 /// Build, place and activate the context menu on a gui manager
 ContextMenu contextMenu(GuiManager mgr, Button[] elements,
-	vec2i wndSize, vec2i luCorner, int width, int rowHeight = 18)
+	vec2i wndSize, vec2i luCorner, int rowHeight = 18)
 {
-	ContextMenu menu = new ContextMenu(elements, width, rowHeight);
+	ContextMenu menu = new ContextMenu(elements, rowHeight);
 	menu.placeByLUCorner(wndSize, luCorner);
 	menu.activate(mgr);
 	return menu;

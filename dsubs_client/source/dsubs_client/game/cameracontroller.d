@@ -17,7 +17,7 @@ import dsubs_client.render.camera;
 
 
 /// Camera controller that handles panning and zooming
-final class CameraController: WorldMouseReceiver
+final class CameraController: IWorldMouseReceiver
 {
 	float zoomTgtK = 0.25f;
 	float kbPanSpeed = 1500.0f;

@@ -26,13 +26,13 @@ string decrypt(ubyte[] data, RSAKeyInfo* privKeyInfo)
 
 unittest
 {
-	import std.stdio;
-	import std.conv: to;
+	// import std.stdio;
+	// import std.conv: to;
 
-	RSAKeyPair pair = RSA.generateKeyPair(2048);
-	string data = "123test";
-	ubyte[] en = RSA.encrypt(RSA.decodeKey(pair.publicKey), cast(ubyte[]) data);
-	writeln("encrypted 7-byte data size: ", en.length);
-	ubyte[] de = RSA.decrypt(RSA.decodeKey(pair.privateKey), en);
-	assert(cast(string) de == data);
+	// RSAKeyPair pair = RSA.generateKeyPair(2048);
+	// string data = "123test";
+	// ubyte[] en = RSA.encrypt(RSA.decodeKey(pair.publicKey), cast(ubyte[]) data);
+	// writeln("encrypted 7-byte data size: ", en.length);
+	// ubyte[] de = RSA.decrypt(RSA.decodeKey(pair.privateKey), en);
+	// assert(cast(string) de == data);
 }

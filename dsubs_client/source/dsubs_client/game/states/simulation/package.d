@@ -56,7 +56,7 @@ final class SimulatorState: GameState
 		Game.worldManager.camCtx.camera.center = rawRecState.subSnap.position.toGfm;
 		Game.worldManager.camCtx.camera.zoom = 10.0;
 		m_camController = new CameraController();
-		Game.worldManager.mouseReceivers ~= m_camController;
+		Game.worldManager.backgroundMouseReceivers ~= m_camController;
 
 		m_gui = new SimulationGUI();
 		Game.worldManager.components ~= new PlayerSubIcon(m_playerSub);
