@@ -33,7 +33,7 @@ final class CICState
 	{
 		m_rsMut = new Mutex();
 		m_recStateCond = new Condition(m_rsMut);
-		m_tgtMut = new Mutex();
+		m_ctcMut = new Mutex();
 	}
 
 	/// Main reconnect state mutex. Serialized reconnect state operations.
@@ -55,7 +55,7 @@ final class CICState
 		assert(m_recStateInitialized);
 		const CICReconnectStateRes res = const CICReconnectStateRes(
 			m_recState,
-			m_tgtCtxHash.byValue.map!(ctx => ctx.tgt).array);
+			m_ctcCtxHash.byValue.map!(ctx => ctx.ctc).array);
 		return cast(immutable) res;
 	}
 
@@ -94,79 +94,79 @@ final class CICState
 		m_recState.listenDirs[req.hydrophoneIdx] = req.dir;
 	}
 
-	/// Target and it's data.
-	private struct TargetContext
+	/// Contact and it's data.
+	private struct ContactContext
 	{
-		Target tgt;
-		TargetDataTree dataTree;	/// time-ordered data tree of this target
+		Contact ctc;
+		ContactDataTree dataTree;	/// time-ordered data tree of this contact
 	}
 
-	// targeting-related state
+	// contacting-related state
 	private
 	{
-		Mutex m_tgtMut;
-		/// tgtId-hashed table of all target contexts
-		TargetContext*[TargetId] m_tgtCtxHash;
-		/// target id sequence generators
-		int['Z' - 'A' + 1] m_targetPostfixes;
+		Mutex m_ctcMut;
+		/// ctcId-hashed table of all contact contexts
+		ContactContext*[ContactId] m_ctcCtxHash;
+		/// contact id sequence generators
+		int['Z' - 'A' + 1] m_contactPostfixes;
 		/// dataId sequence generator
 		int m_dataIdSeq = -1;
-		/// id-hashed table of all target data
-		TargetData*[int] m_tgtDataHash;
+		/// id-hashed table of all contact data
+		ContactData*[int] m_ctcDataHash;
 	}
 
-	/// Main targeting system mutex, provides targeting state serialization.
+	/// Main contacting system mutex, provides contacting state serialization.
 	/// Must not be taken after rsMut to prevent deadlocks.
-	@property Mutex tgtMut() { return m_tgtMut; }
+	@property Mutex ctcMut() { return m_ctcMut; }
 
-	/// Allocate, initialize and register new Target entity.
-	Target* createTarget(char prefix)
+	/// Allocate, initialize and register new Contact entity.
+	Contact* createContact(char prefix)
 	{
 		enforce(isUpper(prefix), "capital latin letters only");
 		size_t sprefix = (prefix - 'A').to!size_t;
-		if (m_targetPostfixes[sprefix] == int.max)
+		if (m_contactPostfixes[sprefix] == int.max)
 			assert(0, "sequence overflow");
-		m_targetPostfixes[sprefix]++;
-		Target resTgt = Target(TargetId(prefix, m_targetPostfixes[sprefix]));
+		m_contactPostfixes[sprefix]++;
+		Contact resctc = Contact(ContactId(prefix, m_contactPostfixes[sprefix]));
 		synchronized (m_rsMut)
 		{
-			resTgt.createdAt = lastSimTime;
+			resctc.createdAt = lastSimTime;
 		}
-		resTgt.solution.time = resTgt.createdAt;
-		TargetContext* resCtx = new TargetContext(resTgt, new TargetDataTree());
-		m_tgtCtxHash[resTgt.id] = resCtx;
-		return &resCtx.tgt;
+		resctc.solution.time = resctc.createdAt;
+		ContactContext* resCtx = new ContactContext(resctc, new ContactDataTree());
+		m_ctcCtxHash[resctc.id] = resCtx;
+		return &resCtx.ctc;
 	}
 
-	/// Returns null if the target or the data being updated does not exist
-	TargetData* updateOrCreateData(TargetData newData)
+	/// Returns null if the contact or the data being updated does not exist
+	ContactData* updateOrCreateData(ContactData newData)
 	{
-		// verify that the target exists
-		TargetContext* tgtCtx = m_tgtCtxHash.get(newData.tgtId, null);
-		if (tgtCtx is null)
+		// verify that the contact exists
+		ContactContext* ctcCtx = m_ctcCtxHash.get(newData.ctcId, null);
+		if (ctcCtx is null)
 			return null;
 		if (newData.id >= 0)
 		{
 			// if we are updating the data, verify that it exists
-			TargetData* existing = m_tgtDataHash.get(newData.id, null);
+			ContactData* existing = m_ctcDataHash.get(newData.id, null);
 			if (existing is null)
 				return null;
-			// data target may have been changed
-			if (existing.tgtId != newData.tgtId)
+			// data contact may have been changed
+			if (existing.ctcId != newData.ctcId)
 			{
-				// we need to remove the data from old target
-				TargetContext* oldTgtCtx = m_tgtCtxHash[existing.tgtId];
-				oldTgtCtx.dataTree.removeKey(existing);
+				// we need to remove the data from old contact
+				ContactContext* oldctcCtx = m_ctcCtxHash[existing.ctcId];
+				oldctcCtx.dataTree.removeKey(existing);
 				existing.time = newData.time;
-				existing.tgtId = newData.tgtId;
-				tgtCtx.dataTree.insert(existing);
+				existing.ctcId = newData.ctcId;
+				ctcCtx.dataTree.insert(existing);
 			}
 			else if (existing.time != newData.time)
 			{
 				// timestamp differs, we need to reinsert it into the tree
-				tgtCtx.dataTree.removeKey(existing);
+				ctcCtx.dataTree.removeKey(existing);
 				existing.time = newData.time;
-				tgtCtx.dataTree.insert(existing);
+				ctcCtx.dataTree.insert(existing);
 			}
 			existing.source = newData.source;
 			existing.type = newData.type;
@@ -179,79 +179,79 @@ final class CICState
 			if (m_dataIdSeq == int.max)
 				assert(0, "sequence overflow");
 			m_dataIdSeq++;
-			TargetData* res = new TargetData(m_dataIdSeq, newData.tgtId, newData.time,
+			ContactData* res = new ContactData(m_dataIdSeq, newData.ctcId, newData.time,
 				newData.source, newData.type, newData.data);
-			m_tgtDataHash[res.id] = res;
-			tgtCtx.dataTree.insert(res);
+			m_ctcDataHash[res.id] = res;
+			ctcCtx.dataTree.insert(res);
 			return res;
 		}
 	}
 
-	/// Try to set initial solution of the target based on one data
-	void initializeSolution(Target* tgt, TargetData* fromData)
+	/// Try to set initial solution of the contact based on one data
+	void initializeSolution(Contact* ctc, ContactData* fromData)
 	{
-		assert(tgt.id == fromData.tgtId);
-		tgt.solution.velAvailable = false;
-		tgt.solution.time = fromData.time;
+		assert(ctc.id == fromData.ctcId);
+		ctc.solution.velAvailable = false;
+		ctc.solution.time = fromData.time;
 		if (fromData.type == DataType.Position)
 		{
-			tgt.solution.posAvailable = true;
-			tgt.solution.posData = fromData.data.position;
+			ctc.solution.posAvailable = true;
+			ctc.solution.posData = fromData.data.position;
 		}
 		else
-			tgt.solution.posAvailable = false;
+			ctc.solution.posAvailable = false;
 	}
 
-	/// Update target parameters
-	bool updateTarget(Target from)
+	/// Update contact parameters
+	bool updateContact(Contact from)
 	{
-		TargetContext* tgtCtx = m_tgtCtxHash.get(from.id, null);
-		if (tgtCtx is null)
+		ContactContext* ctcCtx = m_ctcCtxHash.get(from.id, null);
+		if (ctcCtx is null)
 			return false;
-		enforce(from.createdAt == tgtCtx.tgt.createdAt,
-			"Target createdAt is immutable");
-		tgtCtx.tgt.comment = from.comment;
-		tgtCtx.tgt.solution = from.solution;
+		enforce(from.createdAt == ctcCtx.ctc.createdAt,
+			"Contact createdAt is immutable");
+		ctcCtx.ctc.comment = from.comment;
+		ctcCtx.ctc.solution = from.solution;
 		return true;
 	}
 
-	bool dropTarget(TargetId tgtId)
+	bool dropContact(ContactId ctcId)
 	{
-		TargetContext* tgtCtx = m_tgtCtxHash.get(tgtId, null);
-		if (tgtCtx is null)
+		ContactContext* ctcCtx = m_ctcCtxHash.get(ctcId, null);
+		if (ctcCtx is null)
 			return false;
-		m_tgtCtxHash.remove(tgtId);
-		// we need to remove all targetData of this target
-		tgtCtx.dataTree.clear();
+		m_ctcCtxHash.remove(ctcId);
+		// we need to remove all contactData of this contact
+		ctcCtx.dataTree.clear();
 		return true;
 	}
 
 	bool dropData(int id)
 	{
-		TargetData* data = m_tgtDataHash.get(id, null);
+		ContactData* data = m_ctcDataHash.get(id, null);
 		if (data is null)
 			return false;
-		m_tgtDataHash.remove(id);
-		TargetContext* tgtCtx = m_tgtCtxHash[data.tgtId];
-		tgtCtx.dataTree.removeKey(data);
+		m_ctcDataHash.remove(id);
+		ContactContext* ctcCtx = m_ctcCtxHash[data.ctcId];
+		ctcCtx.dataTree.removeKey(data);
 		return true;
 	}
 
-	bool mergeTargets(TargetId source, TargetId dest)
+	bool mergeContacts(ContactId source, ContactId dest)
 	{
 		assert(source != dest);
-		TargetContext* sourceCtx = m_tgtCtxHash.get(source, null);
+		ContactContext* sourceCtx = m_ctcCtxHash.get(source, null);
 		if (sourceCtx is null)
 			return false;
-		TargetContext* destCtx = m_tgtCtxHash.get(dest, null);
+		ContactContext* destCtx = m_ctcCtxHash.get(dest, null);
 		if (destCtx is null)
 			return false;
-		foreach (TargetData* data; sourceCtx.dataTree[])
+		foreach (ContactData* data; sourceCtx.dataTree[])
 		{
-			data.tgtId = dest;
+			data.ctcId = dest;
 			destCtx.dataTree.insert(data);
 		}
 		sourceCtx.dataTree.clear();
-		return m_tgtCtxHash.remove(source);
+		return m_ctcCtxHash.remove(source);
 	}
 }

@@ -53,7 +53,7 @@ struct CICReconnectStateRes
 {
 	__gshared const int g_marshIdx;
 	ReconnectStateRes rawState;		/// raw reconnect state from backend
-	Target[] targets;
+	Contact[] contacts;
 }
 
 struct CICSubKinematicRes
@@ -104,67 +104,67 @@ struct CICEmitPingReq
 
 
 /*
-Target and sensor data management API.
+Contact and sensor data management API.
 */
 
-/// Sent by client to create new target from initial data piece.
-struct CICCreateTargetFromDataReq
+/// Sent by client to create new contact from initial data piece.
+struct CICCreateContactFromDataReq
 {
 	__gshared const int g_marshIdx;
-	char tgtIdPrefix;		/// CIC will allocate new id for the target, wich will start with this letter
-	TargetData initialData;	/// first data sample. Id and tgtId are ignored.
+	char ctcIdPrefix;		/// CIC will allocate new id for the contact, wich will start with this letter
+	ContactData initialData;	/// first data sample. Id and ctcId are ignored.
 }
 
-/// Broadcasted by CIC server when the new target is created.
-struct CICTargetCreatedRes
+/// Broadcasted by CIC server when the new contact is created.
+struct CICContactCreatedRes
 {
 	__gshared const int g_marshIdx;
-	Target newTarget;
-	TargetData initialData;
+	Contact newContact;
+	ContactData initialData;
 }
 
-/// Request/broadcast to update target properties (type, comment, solution).
-struct CICTargetUpdateReq
+/// Request/broadcast to update contact properties (type, comment, solution).
+struct CICContactUpdateReq
 {
 	__gshared const int g_marshIdx;
-	Target target;
+	Contact contact;
 }
 
-/// Sent by client to update or append new data sample to target.
+/// Sent by client to update or append new data sample to contact.
 /// Broadcasted by server when new data is produced by hydrophone tracker, or
 /// one of the clients has sent this message.
-struct CICTargetDataReq
+struct CICContactDataReq
 {
 	__gshared const int g_marshIdx;
 	/// data.id should be set to -1 on client for the new data sample to be created.
-	/// If id >= 0, it tries to update the data sample with the same id. TargetData can
-	/// be reassigned from one target to another using this method.
-	TargetData data;
+	/// If id >= 0, it tries to update the data sample with the same id. ContactData can
+	/// be reassigned from one contact to another using this method.
+	ContactData data;
 }
 
-/// Request/broadcast to drop target (drops related data).
-struct CICDropTargetReq
+/// Request/broadcast to drop contact (drops related data).
+struct CICDropContactReq
 {
 	__gshared const int g_marshIdx;
-	TargetId tgtId;
+	ContactId ctcId;
 }
 
-/// Request/broadcast to drop target data.
+/// Request/broadcast to drop contact data.
 struct CICDropDataReq
 {
 	__gshared const int g_marshIdx;
 	int dataId;
 }
 
-/// Request/broadcast to merge source target into dest target.
-struct CICTargetMergeReq
+/// Request/broadcast to merge source contact into dest contact.
+struct CICContactMergeReq
 {
 	__gshared const int g_marshIdx;
-	TargetId sourceTgtId;
-	TargetId destTgtId;
+	ContactId sourceCtcId;
+	ContactId destCtcId;
 }
 
-/// Server broadcast the fact that it has deleted old TargetData.
+/// Server broadcast the fact that it has deleted old ContactData.
 struct CICDataRetentionRes
 {
 	__gshared const int g_marshIdx;

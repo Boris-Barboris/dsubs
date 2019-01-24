@@ -6,7 +6,7 @@ import dsubs_client.common;
 import dsubs_common.api.utils;
 
 
-/// Tag of a TargetData union
+/// Tag of a ContactData union
 enum DataType: byte
 {
 	Ray,
@@ -17,12 +17,12 @@ enum DataType: byte
 struct RayData
 {
 	vec2d origin;		/// sensor position at the time
-	double bearing;		/// world-space direction from origin to target
+	double bearing;		/// world-space direction from origin to contact
 }
 
 struct PositionData
 {
-	vec2d targetPos;	/// world-space target position
+	vec2d contactPos;	/// world-space contact position
 }
 
 struct SpeedData
@@ -30,7 +30,7 @@ struct SpeedData
 	double speed;		/// absolute speed value
 }
 
-union TargetDataUnion
+union ContactDataUnion
 {
 	RayData ray;
 	PositionData position;
@@ -50,37 +50,37 @@ struct DataSource
 	int sensorIdx;		/// index of a hydrophone/sonar, if applicable
 }
 
-/// Semantically target id consists of capital latin letter and a number.
-struct TargetId
+/// Semantically contact id consists of capital latin letter and a number.
+struct ContactId
 {
 	char prefix;
 	int postfix;
 }
 
-/// Sensor data point that is related to one target
-struct TargetData
+/// Sensor data point that is related to one contact
+struct ContactData
 {
 	int id = -1;		// globally-unique, monotonically increasing
-	TargetId tgtId;
+	ContactId ctcId;
 	usecs_t time;
 	DataSource source;
 	DataType type;
-	TargetDataUnion data;
+	ContactDataUnion data;
 }
 
-/// RB-tree of TargetData pointers, ordered by time.
-alias TargetDataTree = RedBlackTree!(TargetData*,
+/// RB-tree of ContactData pointers, ordered by time.
+alias ContactDataTree = RedBlackTree!(ContactData*,
 	"a.time < b.time || (a.time == b.time && a.id < b.id)", false);
 
 struct HydrophoneTracker
 {
 	int hydrophoneIdx;		/// index of a hydrophone
-	TargetId tgtId;			/// periodically adds ray data to this target
+	ContactId ctcId;			/// periodically adds ray data to this contact
 	float bearing;			/// current world-space bearing
 }
 
-/// Most generic target type classification
-enum TargetType: byte
+/// Most generic contact type classification
+enum ContactType: byte
 {
 	Unknown,
 	Environment,
@@ -89,18 +89,18 @@ enum TargetType: byte
 	Decoy
 }
 
-/// Unique tracked target.
-struct Target
+/// Unique tracked contact.
+struct Contact
 {
-	TargetId id;		// unique
+	ContactId id;		// unique
 	@MaxLenAttr(128) string comment;
-	TargetType type;
+	ContactType type;
 	usecs_t createdAt;
-	TargetSolution solution;
+	ContactSolution solution;
 }
 
-/// Target kinematics
-struct TargetSolution
+/// Contact kinematics
+struct ContactSolution
 {
 	usecs_t time;
 	/// Solution may lie on the last known ray (ray tracking mode), or have a concrete

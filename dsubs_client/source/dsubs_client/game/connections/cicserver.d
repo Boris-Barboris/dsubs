@@ -73,7 +73,7 @@ private:
 	{
 		enforce(m_authorized, "unauthorized");
 		enforce(!m_inSimFlow, "already in simulator flow");
-		synchronized(m_cicserv.state.tgtMut)
+		synchronized(m_cicserv.state.ctcMut)
 		{
 			synchronized(m_cicserv.state.rsMut)
 			{

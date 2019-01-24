@@ -131,75 +131,75 @@ final class CICServer
 		m_bcon.sendMessage(cast(immutable EmitPingReq) req);
 	}
 
-	// targeting
+	// contacting
 
-	void handleCICCreateTargetFromDataReq(CICCreateTargetFromDataReq req)
+	void handleCICCreateContactFromDataReq(CICCreateContactFromDataReq req)
 	{
-		enforce(req.initialData.id < 0, "TargetData mus be new sample");
+		enforce(req.initialData.id < 0, "ContactData mus be new sample");
 		enforce(req.initialData.type != DataType.Speed,
-			"Cannot create target from speed data");
-		CICTargetCreatedRes res;
-		synchronized (m_state.tgtMut)
+			"Cannot create contact from speed data");
+		CICContactCreatedRes res;
+		synchronized (m_state.ctcMut)
 		{
-			Target* tgt = m_state.createTarget(req.tgtIdPrefix);
-			req.initialData.tgtId = tgt.id;
-			TargetData* data = m_state.updateOrCreateData(req.initialData);
+			Contact* ctc = m_state.createContact(req.ctcIdPrefix);
+			req.initialData.ctcId = ctc.id;
+			ContactData* data = m_state.updateOrCreateData(req.initialData);
 			if (data is null)
 				assert(0, "should not have happenned");
-			m_state.initializeSolution(tgt, data);
-			res.newTarget = *tgt;
+			m_state.initializeSolution(ctc, data);
+			res.newContact = *ctc;
 			res.initialData = *data;
 			m_listener.broadcast(cast(immutable) res);
 		}
 	}
 
-	void handleCICTargetUpdateReq(CICTargetUpdateReq req)
+	void handleCICContactUpdateReq(CICContactUpdateReq req)
 	{
-		synchronized (m_state.tgtMut)
+		synchronized (m_state.ctcMut)
 		{
-			if (m_state.updateTarget(req.target))
+			if (m_state.updateContact(req.contact))
 				m_listener.broadcast(cast(immutable) req);
 		}
 	}
 
-	void handleCICTargetDataReq(CICTargetDataReq req)
+	void handleCICContactDataReq(CICContactDataReq req)
 	{
-		synchronized (m_state.tgtMut)
+		synchronized (m_state.ctcMut)
 		{
-			TargetData* data = m_state.updateOrCreateData(req.data);
+			ContactData* data = m_state.updateOrCreateData(req.data);
 			if (data !is null)
 			{
-				CICTargetDataReq res = CICTargetDataReq(*data);
+				CICContactDataReq res = CICContactDataReq(*data);
 				m_listener.broadcast(cast(immutable) res);
 			}
 		}
 	}
 
-	void handleCICDropTargetReq(CICDropTargetReq req)
+	void handleCICDropContactReq(CICDropContactReq req)
 	{
-		synchronized (m_state.tgtMut)
+		synchronized (m_state.ctcMut)
 		{
-			if (m_state.dropTarget(req.tgtId))
+			if (m_state.dropContact(req.ctcId))
 				m_listener.broadcast(cast(immutable) req);
 		}
 	}
 
 	void handleCICDropDataReq(CICDropDataReq req)
 	{
-		synchronized (m_state.tgtMut)
+		synchronized (m_state.ctcMut)
 		{
 			if (m_state.dropData(req.dataId))
 				m_listener.broadcast(cast(immutable) req);
 		}
 	}
 
-	void handleCICTargetMergeReq(CICTargetMergeReq req)
+	void handleCICContactMergeReq(CICContactMergeReq req)
 	{
-		if (req.sourceTgtId == req.destTgtId)
+		if (req.sourceCtcId == req.destCtcId)
 			return;
-		synchronized(m_state.tgtMut)
+		synchronized(m_state.ctcMut)
 		{
-			if (m_state.mergeTargets(req.sourceTgtId, req.destTgtId))
+			if (m_state.mergeContacts(req.sourceCtcId, req.destCtcId))
 				m_listener.broadcast(cast(immutable) req);
 		}
 	}

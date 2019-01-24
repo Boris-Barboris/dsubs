@@ -9,6 +9,7 @@ import dsubs_client.common;
 import dsubs_client.gui.element;
 import dsubs_client.gui.div;
 import dsubs_client.gui.button;
+import dsubs_client.gui.label;
 import dsubs_client.gui.manager;
 
 
@@ -33,9 +34,12 @@ final class ContextMenu: Panel
 			if (this.manager)
 				this.manager.removePanel(this);
 		};
-		// buttons when pressed should trigger focus loss
+		// apply shanges to buttons
 		foreach (Button btn; elements)
+		{
 			btn.onClick += () { div.returnMouseFocus(); };
+			btn.htextAlign = HTextAlign.LEFT;
+		}
 		super(div);
 	}
 
