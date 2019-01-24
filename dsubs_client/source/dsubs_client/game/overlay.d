@@ -38,6 +38,7 @@ class OverlayEntity: WorldRenderable
 			prevRot = camCtx.camera.rotation;
 			transform.rotation = prevRot;
 		}
+		super.update(camCtx, usecsDelta);
 	}
 }
 
