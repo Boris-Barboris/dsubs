@@ -12,7 +12,6 @@ import std.range;
 import derelict.sfml2.graphics;
 
 import dsubs_common.math;
-import dsubs_common.containers.quadtree;
 
 import dsubs_client.core.window;
 import dsubs_client.core.utils;
@@ -22,18 +21,11 @@ import dsubs_client.render.render;
 import dsubs_client.render.camera;
 
 
-private alias OptimTree = QuadTree!(WorldRenderable);
-
 /// Something that is rendered in world space.
 /// Reference frame hierarchies are implemented using transform parenting.
 class WorldRenderable
 {
 	mixin Readonly!(Transform, "transform");
-
-	/// yes, we're actually 2.5D
-	// float depth = 0.0f;
-
-	private OptimTree.LeafNode* m_treeLeaf;
 
 	this()
 	{
@@ -43,20 +35,13 @@ class WorldRenderable
 	/// Generally, it may well be some texture instead of a window
 	abstract void render(Window wnd);
 
-	/// Must return axis-aligned bounding box in world-space coordinates
-	abstract @property Rectangle aabb() const;
-
 	/** View is not a model. Component transform is not bound to objects real
 	(server-side) position and may be inter\extrapolated on arbitrary refresh rate.
 	To create an illusion of smoothness, game objects will update their transforms
 	every frame. After update, all renderables will be rendered by all interested
 	cameras.
 	Child classes should call super.update at the very end of their update overload. */
-	void update(CameraContext camCtx, long usecsDelta)
-	{
-		if (m_treeLeaf)
-			m_treeLeaf.rect = aabb;
-	}
+	void update(CameraContext camCtx, long usecsDelta) {}
 }
 
 /// Wrapper around camera
