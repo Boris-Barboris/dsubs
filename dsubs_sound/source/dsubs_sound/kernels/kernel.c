@@ -361,10 +361,28 @@ float getCellCenterDims(uint x, uint y, float span, int beamCount,
 	return beamAngle;
 }
 
-float areaUnderNormDist(float x, float a, float b, float disp)
+// a <= b for non-negative result
+float areaUnderNormDist(float mean, float a, float b, float disp)
 {
-	float normLeft = (a - x) / disp;
-	float normRight = (b - x) / disp;
+	float normLeft = (a - mean) / disp;
+	float normRight = (b - mean) / disp;
+	return 0.5f * (erf(normRight) - erf(normLeft));
+}
+
+float angleDist(float a, float b)
+{
+	float val = fmod(a - b, 2 * M_PI_F);
+	if (fabs(val) > M_PI_F)
+		val -= sign(val) * 2 * M_PI_F;
+	return val;
+}
+
+// same but on the circle for azimuth
+float areaUnderNormDistCyclic(float mean, float a, float b, float disp)
+{
+	float angleDistA = angleDist(a, mean);
+	float normLeft = (angleDistA) / disp;
+	float normRight = (angleDistA + b - a) / disp;
 	return 0.5f * (erf(normRight) - erf(normLeft));
 }
 
@@ -375,7 +393,7 @@ float getEnergyPart(
 	float beamAngle)
 {
 	float angDisp = atan(ref.width / ref.range);
-	float angArea = areaUnderNormDist(ref.relBearing, cellBearings.x,
+	float angArea = areaUnderNormDistCyclic(ref.relBearing, cellBearings.x,
 		cellBearings.y, angDisp);
 	float radArea = areaUnderNormDist(ref.range, cellDepth.x,
 		cellDepth.y, ref.depth);

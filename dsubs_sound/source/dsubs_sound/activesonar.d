@@ -171,7 +171,8 @@ unittest
 		PreparedReflector(-1.5f, 3000.0f, 75.0f, 12.0f, -10.0f),
 		PreparedReflector(-2.0f, 3000.0f, 75.0f, 12.0f, -10.0f),
 		PreparedReflector(-2.5f, 3000.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(-3.0f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-3.14f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(3.14f, 3300.0f, 75.0f, 12.0f, -10.0f),
 		PreparedReflector(0.0f, 5000.0f, 75.0f, 12.0f, -10.0f),
 		PreparedReflector(0.0f, 7500.0f, 75.0f, 12.0f, -10.0f),
 		PreparedReflector(0.0f, 10000.0f, 75.0f, 12.0f, -10.0f)
