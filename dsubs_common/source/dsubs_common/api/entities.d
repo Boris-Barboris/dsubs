@@ -199,6 +199,7 @@ struct AntennaeData
 	int antennaeIdx;	// index of the antennae on that hydrophone
 	/// Each sample corresponds to one antennae beam.
 	/// Units are decibells, scaled to [0, ushort.max] interval.
+	/// Rotation from first beam to last one is clockwise.
 	ushort[] beams;
 }
 

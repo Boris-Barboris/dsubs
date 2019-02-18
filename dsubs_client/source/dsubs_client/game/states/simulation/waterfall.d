@@ -161,7 +161,8 @@ final class Waterfall: GuiElement
 	private
 	{
 		// render target to write pixel data to. 0 pixel column is just after
-		// 180 course, 1023 pixel column is just before 180 course.
+		// 180 course, 1023 pixel column is just before 180 course. 0 to 1023 is clockwise
+		// rotation.
 		sfRenderTexture* m_renderTexture;
 		Camera2D m_camera;
 		sfVertex[6] m_vertices;
