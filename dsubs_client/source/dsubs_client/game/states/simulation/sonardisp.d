@@ -80,7 +80,7 @@ SonarGui createSonarGui(const SonarTemplate st)
 }
 
 
-/// Zoomable waterfall display
+/// Zoomable active sonar display
 final class SonarDisplay: GuiElement
 {
 
