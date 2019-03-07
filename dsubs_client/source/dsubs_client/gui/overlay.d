@@ -26,6 +26,7 @@ class OverlayElement: GuiElement
 	{
 		OverlayIndex.LeafNode* m_cellNode;
 		Overlay m_owner;
+		Rectangle m_prevRect;
 	}
 
 	mixin Readonly!(Transform2D, "transform");
@@ -35,28 +36,25 @@ class OverlayElement: GuiElement
 		m_owner = owner;
 		m_transform = trans;
 		// we clamp all overlay elements with overlay's viewport
-		parent = owner;
 		parentViewport = &parent.viewport;
 		// overlays are mostly for clickable objects
 		mouseTransparent = false;
 	}
 
-	/// This method must contain the logic to update element position
-	/// when the tracked object moves in world-space.
-	protected void onTrackedUpdate()
+	/// Must be called when tracked value moves in world space. Triggers reindex.
+	protected final void onTrackedUpdate(Rectangle newRect)
 	{
-
+		if (m_cellNode)
+			m_cellNode.rect = newRect;
 	}
 
-	/// when position or size of the
-	private void updateInIndex()
+	/// Called by overlay when new coordinates of all tracked objects and camera
+	/// state are ready to be applied to the element.
+	protected void onPreDraw(ref const(mat3x3d) world2screen,
+		ref const(mat3x3d) screen2world)
 	{
-
-	}
-
-	override void draw(Window wnd, long usecsDelta)
-	{
-
+		// first we need to update the position.
+		vec2d newPos = world2screen * transform.wposition;
 	}
 }
 
