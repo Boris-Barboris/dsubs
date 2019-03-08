@@ -2,7 +2,7 @@ module dsubs_client.gui.overlay;
 
 import derelict.sfml2.graphics;
 
-import dsubs_common.containers.quadtree;
+// import dsubs_common.containers.quadtree;
 
 import dsubs_client.math.transform;
 import dsubs_client.render.camera;
@@ -11,51 +11,42 @@ import dsubs_client.gui.element;
 import dsubs_client.input.router;
 
 
-private alias OverlayIndex = QuadTree!OverlayElement;
+// private alias OverlayIndex = QuadTree!OverlayElement;
 
-
-/// Gui element wich is not a member of binary div tree and needs general 2D indexing.
 /// Overlay elements are usually tracking some point in world space while keeping
-/// their screen-space size constant. Indexing is done in world space, because it is
-/// more static than screen space (camera moves more often than world).
-/// Index leafs must be updated when the tracked transform changes, or camera changes
-/// zoom.
+/// their screen-space size constant.
 class OverlayElement: GuiElement
 {
 	private
 	{
-		OverlayIndex.LeafNode* m_cellNode;
 		Overlay m_owner;
-		Rectangle m_prevRect;
 	}
 
-	mixin Readonly!(Transform2D, "transform");
+	/// Overlay elements may require hiding, or only small subset of them to be drawn
+	private bool m_hidden = false;
 
-	this(Overlay owner, Transform2D trans)
+	mixin FinalGetSet!(bool, "hidden", "if (rhs) onHide();");
+
+	this(Overlay owner)
 	{
 		m_owner = owner;
-		m_transform = trans;
 		// we clamp all overlay elements with overlay's viewport
-		parentViewport = &parent.viewport;
+		parentViewport = &owner.viewport;
 		// overlays are mostly for clickable objects
 		mouseTransparent = false;
+		owner.elements[this] = true;
 	}
 
-	/// Must be called when tracked value moves in world space. Triggers reindex.
-	protected final void onTrackedUpdate(Rectangle newRect)
+	/// transforms center in screen-space to rounded left upper angle to set position to
+	final vec2i center2lu(vec2d centerOnScreen)
 	{
-		if (m_cellNode)
-			m_cellNode.rect = newRect;
+		return cast(vec2i) centerOnScreen - size / 2;
 	}
 
 	/// Called by overlay when new coordinates of all tracked objects and camera
-	/// state are ready to be applied to the element.
-	protected void onPreDraw(ref const(mat3x3d) world2screen,
-		ref const(mat3x3d) screen2world)
-	{
-		// first we need to update the position.
-		vec2d newPos = world2screen * transform.wposition;
-	}
+	/// state are ready to be applied to the element,
+	/// right before actually drawing the element.
+	protected abstract void onPreDraw();
 }
 
 
@@ -63,10 +54,50 @@ class OverlayElement: GuiElement
 /// standard input events to them.
 class Overlay: GuiElement
 {
-	private
+	private bool[OverlayElement] m_elements;
+
+	/// remove child overlay element
+	void remove(OverlayElement el)
 	{
-		OverlayIndex m_index;
+		m_elements.remove(el);
+		if (!el.hidden)
+			el.onHide();
 	}
 
-	this() {}
+	/// must return coordinates, transformed from world space to screen space.
+	protected abstract vec2d world2screenPos(vec2d world);
+	/// must return rotation, transformed from world space to screen space.
+	protected abstract double world2screenRot(double world);
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		foreach (OverlayElement el; elements.byKey)
+		{
+			if (!el.hidden)
+			{
+				el.onPreDraw();
+				el.draw(wnd, usecsDelta);
+			}
+		}
+	}
+
+	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
+	{
+		if (rectContainsPoint(x, y))
+		{
+			// now let's find the element to route event to
+			foreach (OverlayElement el; elements.byKey)
+			{
+				if (!el.hidden)
+				{
+					GuiElement res = el.getFromPoint(evt, x, y);
+					if (res)
+						return res;
+				}
+			}
+			return this;
+		}
+		return null;
+	}
 }

@@ -160,15 +160,14 @@ final class Waterfall: GuiElement
 
 	private
 	{
-		// render target to write pixel data to. 0 pixel column is just after
-		// 180 course, 1023 pixel column is just before 180 course. 0 to 1023 is clockwise
-		// rotation.
+		// render target to write pixel data to. 0 pixel column is just after (right)
+		// 180 course, 1023 pixel column is just before 180 course (left of it). 
+		// 0 to 1023 is clockwise rotation.
 		sfRenderTexture* m_renderTexture;
 		Camera2D m_camera;
 		sfVertex[6] m_vertices;
 		// m_renderTexture is perpetually streamed from
 		int m_vertPos;
-		long m_vertShifts;
 		sfVertex[] m_stage;
 
 		__gshared const sfRenderStates s_states =
@@ -231,7 +230,6 @@ final class Waterfall: GuiElement
 	{
 		sfRenderTexture_display(m_renderTexture);
 		m_vertPos++;
-		m_vertShifts++;
 		if (m_vertPos > 0)
 			m_vertPos -= HEIGHT + 1;
 		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : HEIGHT + 0.5f;

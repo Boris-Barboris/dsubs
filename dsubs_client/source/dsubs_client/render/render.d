@@ -112,9 +112,9 @@ final class Render
 					break;
 				synchronized(mutex)
 				{
-					onPreRender(usecsDelta);
 					if (m_router)
 						m_router.simulateMouseMove();
+					onPreRender(usecsDelta);
 					if (worldRender)
 					{
 						worldRender.draw(m_window, usecsDelta);
@@ -136,7 +136,6 @@ final class Render
 				// update fps
 				if (++frameCounter > FPS_UPDATE_FREQ - 1)
 				{
-					// 60 frames were rendered
 					long totalMsecs = (curTime - lastFpsMark).total!"msecs";
 					m_avgFps = FPS_UPDATE_FREQ * 1000.0f / totalMsecs;
 					trace("FPS: ", m_avgFps);
@@ -147,7 +146,7 @@ final class Render
 		}
 		catch (Throwable err)
 		{
-			error("Render loop crashed: ", err.toString);
+			error("Render thread crashed: ", err.toString);
 			exit(1);
 		}
 		trace("Exiting render loop, stop_flag is ", m_stopFlag);

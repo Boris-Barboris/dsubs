@@ -213,12 +213,10 @@ unittest
 
 
 /// OutputRange implementation that rewrites the mutstring content.
-/// Usefull in pair with std.formattedwrite. Does not set mutrsring length
-/// in the end, just writes trailing zero.
+/// Usefull in pair with std.formattedwrite.
 auto mutstringRewriter(Char)(Char[] base)
 	if (isSomeChar!Char)
 {
-	assert(base.length > 0);
 	static struct Writer
 	{
 		Char[] base;
@@ -231,6 +229,7 @@ auto mutstringRewriter(Char)(Char[] base)
 		}
 		Char[] get()
 		{
+			base.length = len + 1;
 			base[len] = 0;
 			return base;
 		}
@@ -247,7 +246,7 @@ unittest
 	auto rw = mutstringRewriter(s);
 	formattedWrite(rw, "%d", 77);
 	s = rw.get();
-	assert(s.length == 4);
+	assert(s.length == 3);
 	assert(s[2] == 0);
 	assert(s[0..2] == "77");
 }

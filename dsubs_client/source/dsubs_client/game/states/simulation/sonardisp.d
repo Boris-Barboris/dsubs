@@ -80,12 +80,15 @@ SonarGui createSonarGui(const SonarTemplate st)
 }
 
 
-/// Zoomable active sonar display
+/// Zoomable active sonar display, similar to waterfall, but flows bottom to top.
 final class SonarDisplay: GuiElement
 {
 
 	private
 	{
+		/// if there are 100 beams in sonar image slice, we'll render the slices into
+		/// a texture with a width of 100 * WIDTH_MULTIPLIER.
+		enum int WIDTH_MULTIPLIER = 5;
 		enum int COMPASS_HEADER_HEIGHT = 18;
 		enum int HEADER_HEIGHT = COMPASS_HEADER_HEIGHT;
 		enum int COMPASS_FONTSIZE = 14;
@@ -95,19 +98,19 @@ final class SonarDisplay: GuiElement
 	{
 		mouseTransparent = false;
 		m_st = st;
-		m_width = st.resol;
+		m_width = st.resol * WIDTH_MULTIPLIER;
 		m_height = st.radResol * st.maxDuration;
-		m_pxperrad = m_width / st.fov;
-		m_pxpermeter = st.radResol / (1450.0f / 2);
+		m_pxperrad = m_width / (PI * 2);
+		m_pxpermeter = st.radResol / (SOUND_SPD / 2);
 		m_hostImage.length = st.radResol * m_width;
 		m_sliceRowsDrawn = st.radResol;
 
 		// create texture
 		m_texture = sfTexture_create(m_width, m_height);
-		sfTexture_setRepeated(m_texture, sfFalse);
+		sfTexture_setRepeated(m_texture, sfTrue);
 		clear();
 		// camera is used to generate texture coordinates for m_vertices
-		m_camera = new Camera2D(vec2ui(m_width, m_height), false);
+		m_camera = new Camera2D(vec2ui(to!uint(m_pxperrad * st.fov), m_height), false);
 		m_camera.pan(vec2d(m_width * 0.5, m_height * 0.5));
 
 		// m_vertices form a rectanglular area to draw pixel data to
@@ -145,11 +148,12 @@ final class SonarDisplay: GuiElement
 
 	private
 	{
-		// render target to write pixel data to. 0 pixel column is just after
-		// 180 course, 1023 pixel column is just before 180 course.
+		// render target to write pixel data to. 0 pixel column is just after (right)
+		// 180 course, last pixel column is just before 180 course (left of it).
+		// 0 to last is clockwise rotation.
 		sfTexture* m_texture;
-		sfVertex[6] m_vertices;
 		Camera2D m_camera;
+		sfVertex[6] m_vertices;
 		int m_width;
 		int m_height;
 		float m_pxperrad;
@@ -169,7 +173,7 @@ final class SonarDisplay: GuiElement
 		int m_curSlice = -1;
 	}
 
-	/// remember new sonar data
+	/// memorize new slice of sonar data
 	void putSliceData(const SonarSliceData data)
 	{
 		assert(data.sonarIdx == 0);
@@ -187,14 +191,14 @@ final class SonarDisplay: GuiElement
 		for (size_t i = 0; i < data.data.length; i++)
 		{
 			sfUint8[4] color;
-			color[0] = data.data[i];
-			color[1] = data.data[i];
-			color[2] = data.data[i];
+			// black and white
+			color[0] = color[1] = color[2] = data.data[i];
 			color[3] = 255;
 			m_hostImage[i] = color;
 		}
 	}
 
+	/// flush yet undrawn rows of old slice to the texture
 	private void finishCurSlice()
 	{
 		if (m_sliceRowsDrawn >= m_st.radResol)
@@ -207,6 +211,7 @@ final class SonarDisplay: GuiElement
 		m_sliceRowsDrawn = m_st.radResol;
 	}
 
+	/// draw new rows of the slice, based on timing
 	private void drawCurSlice()
 	{
 		if (m_sliceRowsDrawn >= m_st.radResol)
@@ -269,6 +274,13 @@ final class SonarDisplay: GuiElement
 		return size.y - HEADER_HEIGHT;
 	}
 
+	private void onCameraChange()
+	{
+		constraintCamera();
+		updateTexCoords();
+		updateHeaderElements();
+	}
+
 	private void processMouseMove(int x, int y)
 	{
 		if (mouseFocused)
@@ -276,9 +288,7 @@ final class SonarDisplay: GuiElement
 			// we are panning
 			m_camera.pan(vec2d(double(prev_x - x) / size.x * m_width,
 				double(prev_y - y) / csizey * m_height) / m_camera.zoom);
-			constraintCamera();
-			updateTexCoords();
-			updateHeaderElements();
+			onCameraChange();
 			prev_x = x;
 			prev_y = y;
 		}
@@ -300,9 +310,7 @@ final class SonarDisplay: GuiElement
 			vec2d topan = zoomPivot / oldZoom - zoomPivot / m_camera.zoom;
 			m_camera.pan(topan);
 		}
-		constraintCamera();
-		updateTexCoords();
-		updateHeaderElements();
+		onCameraChange();
 	}
 
 	private void constraintCamera()
@@ -375,13 +383,21 @@ final class SonarDisplay: GuiElement
 		return 0.5f * m_st.fov - tx / m_pxperrad;
 	}
 
+	enum float SOUND_SPD = 1450.0f;
+
 	private float pixelToRange(int px)
 	{
 		if (csizey <= 0)
 			return 0.0f;
 		float tx = m_vertices[0].texCoords.y + (float(px) / csizey) *
 			(m_vertices[2].texCoords.y - m_vertices[0].texCoords.y);
-		return 1450.0f * m_st.maxDuration * 0.5f - tx / m_pxpermeter;
+		return SOUND_SPD * m_st.maxDuration * 0.5f - tx / m_pxpermeter;
+	}
+
+	private float rangeToPixel(float range)
+	{
+		float txCoord = m_camera.transform2screen(vec2d(0, range)).y;
+		return txCoord * size.y / m_height;
 	}
 
 	private void updateHeaderElements()
@@ -416,5 +432,17 @@ final class SonarDisplay: GuiElement
 		m_sfRst.texture = null;
 		if (m_cursorInside)
 			m_underCursorLabel.draw(wnd, usecsDelta);
+	}
+
+	/// Sonar display has it's own overlay, wich is drawing contacts on top of sonar
+	/// data.
+	final class SonarDispOverlay: Overlay
+	{
+		protected vec2d world2screenPos(vec2d world)
+		{
+			return vec2d(
+				outer.bearingToPixel(world.x),
+				outer.rangeToPixel(world.y));
+		}
 	}
 }
