@@ -584,7 +584,7 @@ final class ActiveSonar
 		k.enqueue(q, 2, null, [m_omniImage.w, m_omniImage.h], null, null);
 	}
 
-	/// enqueue commands that render slite to byte buffer
+	/// enqueue commands that render slice to byte buffer
 	void startSliceGeneration(CommandQueue q)
 	{
 		assert(m_slicesLeft > 0);
@@ -622,6 +622,11 @@ final class ActiveSonar
 	{
 		assert(m_hasSliceToSend);
 		return cast(immutable) m_nextSlice;
+	}
+
+	void markSliceSent()
+	{
+		m_hasSliceToSend = false;
 	}
 }
 

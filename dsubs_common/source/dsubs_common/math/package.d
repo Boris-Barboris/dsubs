@@ -85,3 +85,16 @@ float toLinear(float db)
 {
 	return powf(10.0f, db / 10.0f);
 }
+
+/// https://en.wikipedia.org/wiki/Cubic_Hermite_spline
+auto chspline(FT, TT)(FT p0, FT p1, FT m0, FT m1, TT t, TT dt)
+{
+	assert(t >= 0.0 && t <= 1.0);
+	double t_2 = t * t;
+	double t_3 = t_2 * t;
+
+	return (2 * t_3 - 3 * t_2 + 1) * p0 +
+		(t_3 - 2 * t_2 + t) * dt * m0 +
+		(-2 * t_3 + 3 * t_2) * p1 +
+		(t_3 - t_2) * dt * m1;
+}

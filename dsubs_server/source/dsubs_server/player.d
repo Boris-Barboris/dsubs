@@ -281,6 +281,7 @@ final class Player
 					s.sonar.getLastSlice());
 				con.sendMessage(immutable SonarStreamRes(
 					Globals.sim.worldTime + timeShift, [sdata]));
+				s.sonar.markSliceSent();
 			}
 		}
 	}

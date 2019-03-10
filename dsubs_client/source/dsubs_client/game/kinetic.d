@@ -115,24 +115,11 @@ struct KinematicTrace
 	{
 		double dt = (records[i2].atTime - records[i1].atTime) / 1e6;
 		double t = (curTime - records[i1].atTime) / 1e6 / dt;
-		assert(t >= 0.0 && t <= 1.0);
-		double t_2 = t * t;
-		double t_3 = t_2 * t;
-
-		auto chspline(T)(T p0, T p1, T m0, T m1)
-		{
-			return (2 * t_3 - 3 * t_2 + 1) * p0 +
-			(t_3 - 2 * t_2 + t) * dt * m0 +
-			(-2 * t_3 + 3 * t_2) * p1 +
-			(t_3 - t_2) * dt * m1;
-		}
 
 		curState.position = chspline(records[i1].position, records[i2].position,
-			records[i1].velocity, records[i2].velocity);
-		// rotations must be moved to one half-circle in order to prevent "flips"
-		curState.rotation = chspline(records[i1].rotation, records[i1].rotation +
-			angleDist(records[i2].rotation, records[i1].rotation),
-			records[i1].angVel, records[i2].angVel);
+			records[i1].velocity, records[i2].velocity, t, dt);
+		curState.rotation = chspline(records[i1].rotation, records[i2].rotation,
+			records[i1].angVel, records[i2].angVel, t, dt);
 		// simple linear interpolation for velocities
 		curState.velocity = records[i1].velocity +
 			t * (records[i2].velocity - records[i1].velocity);

@@ -31,10 +31,10 @@ class OverlayElement: GuiElement
 	{
 		m_owner = owner;
 		// we clamp all overlay elements with overlay's viewport
-		parentViewport = &owner.viewport;
+		parentViewport = &owner.viewport();
 		// overlays are mostly for clickable objects
 		mouseTransparent = false;
-		owner.elements[this] = true;
+		owner.m_elements[this] = true;
 	}
 
 	/// transforms center in screen-space to rounded left upper angle to set position to
@@ -72,7 +72,7 @@ class Overlay: GuiElement
 	override void draw(Window wnd, long usecsDelta)
 	{
 		super.draw(wnd, usecsDelta);
-		foreach (OverlayElement el; elements.byKey)
+		foreach (OverlayElement el; m_elements.byKey)
 		{
 			if (!el.hidden)
 			{
@@ -87,7 +87,7 @@ class Overlay: GuiElement
 		if (rectContainsPoint(x, y))
 		{
 			// now let's find the element to route event to
-			foreach (OverlayElement el; elements.byKey)
+			foreach (OverlayElement el; m_elements.byKey)
 			{
 				if (!el.hidden)
 				{

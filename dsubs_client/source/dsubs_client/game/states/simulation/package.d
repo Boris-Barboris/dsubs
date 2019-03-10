@@ -118,6 +118,8 @@ final class SimulationGUI
 		double proj = dot(vel, fwd);
 		mutsformat!"speed: %.1f"(cc, proj);
 		curSpeed.content = cc;
+		// pass to other classes that need it
+		m_sonarGui.sonar.handleSubKinematicRes(res);
 	}
 
 	void updateTgtCourseDisplay(float newTgt)

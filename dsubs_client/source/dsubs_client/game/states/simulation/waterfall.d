@@ -70,49 +70,98 @@ WaterfallGui createWaterfallPanel()
 }
 
 
-
-/// Zoomable waterfall display
-final class Waterfall: GuiElement
+/// Common code for Waterfall and SonarDisplay, related to panoramic
+/// cylindrical coordinate mapping
+class PanoramicElement(DataIntType): GuiElement
 {
-
-	private
+	protected
 	{
-		// directional resolution will be 1024 pixels
-		enum int WIDTH = 1024;
-		enum int HEIGHT = 300;
-		enum float PXPERRAD = WIDTH / (PI * 2);
-		enum int COMPASS_HEADER_HEIGHT = 18;
-		enum int DIRECTOR_HEADER_HEIGHT = 12;
-		enum int HEADER_HEIGHT = COMPASS_HEADER_HEIGHT + DIRECTOR_HEADER_HEIGHT;
-		enum int COMPASS_FONTSIZE = 14;
+		/// height of compass part of the header
+		int m_compassHeight;
+		/// full height of the header, including compass and all other elements
+		int m_headerHeight;
+
+		// render target to write pixel data to. 0 pixel column is just after (right from it)
+		// 180 course, last pixel column is just before 180 course (left from it).
+		// 0 to $-1 is clockwise rotation.
+		sfRenderTexture* m_renderTexture;
+		int m_width;	/// width of m_renderTexture
+		int m_height;	/// height of m_renderTexture
+		float m_pxperrad;		/// x scale between world space and renderTexture space
+		float m_pyperworldy;	/// y scale between world space and renderTexture space
+		/// camera is used to control zooming and panning over renderTexture and
+		/// generate texture coordinates for m_vertices.
+		Camera2D m_camera;
+		int m_camViewportWidth;		/// width of camera viewport on 1.0 zoom
+		int m_camViewportHeight;	/// height of camera viewport on 1.0 zoom
+		float m_zoomSpd = 0.14f;	/// zoom sensitivity gain
+		/// vertices that render m_renderTexture on the screen
+		sfVertex[6] m_vertices;
+
+		/// vertex array for rendering rows on top of m_renderTexure using lines
+		sfVertex[] m_stage;
+
+		__gshared const sfRenderStates s_states =
+			sfRenderStates(sfBlendAlpha, sfTransform_Identity);
+
+		/// compass background
+		sfRectangleShape* m_headerRect;
+		Label[4] m_compassLabels;
+		Label m_underCursorLabel;
+		bool m_cursorInside;
 	}
 
-	this()
+	/// For normalized data [0, 1] this level and darker will be rendered as black.
+	float blackLevel = 0.0f;
+
+	struct PanoramicParams
+	{
+		int compassHeight = 18;
+		int headerHeight = 18;
+		int width = 360 * 4;
+		int height = -1;
+		int camViewPortWidth = 360 * 4;
+		int camViewPortHeight = -1;
+	}
+
+	this(PanoramicParams params)
 	{
 		mouseTransparent = false;
-		m_renderTexture = sfRenderTexture_create(WIDTH, HEIGHT + 1, false);
+		m_width = params.width;
+		assert(m_width > 0);
+		m_height = params.height;
+		assert(m_height > 0);
+		m_camViewportWidth = params.camViewPortWidth;
+		assert(m_camViewportWidth > 0);
+		m_camViewportHeight = params.camViewPortHeight;
+		assert(m_camViewportHeight > 0);
+		m_compassHeight = params.compassHeight;
+		m_headerHeight = params.headerHeight;
+		m_pxperrad = m_width / (PI * 2);
+
+		// 1 pixel higher than m_height to support waterfall streaming
+		m_renderTexture = sfRenderTexture_create(m_width, m_height + 1, false);
+		sfRenderTexture_setActive(m_renderTexture, sfTrue);
 		sfRenderTexture_clear(m_renderTexture, sfBlack);
 		sfRenderTexture_setRepeated(m_renderTexture, sfTrue);
-		bool ok = sfRenderTexture_setActive(m_renderTexture, false) == sfTrue;
-		assert(ok);
-		// camera is used to generate texture coordinates for m_vertices
-		m_camera = new Camera2D(vec2ui(WIDTH, HEIGHT), false);
-		m_camera.pan(vec2d(WIDTH * 0.5, HEIGHT * 0.5));
-		m_vertPos = -HEIGHT - 1;
+		sfRenderTexture_setActive(m_renderTexture, sfFalse);
+
+		m_camera = new Camera2D(vec2ui(m_camViewportWidth, m_camViewportHeight), false);
+		m_camera.pan(vec2d(m_width * 0.5, m_height * 0.5));
+
 		// m_vertices form a rectanglular area to draw broadband data to
 		m_vertices[0] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
-		m_vertices[1] = sfVertex(sfVector2f(1, 0), sfWhite, sfVector2f(WIDTH - 1, 0));
-		m_vertices[2] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(WIDTH - 1, HEIGHT - 1));
+		m_vertices[1] = sfVertex(sfVector2f(1, 0), sfWhite, sfVector2f(m_width, 0));
+		m_vertices[2] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(m_width, m_height));
 		m_vertices[3] = sfVertex(sfVector2f(0, 0), sfWhite, sfVector2f(0, 0));
-		m_vertices[4] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(WIDTH - 1, HEIGHT - 1));
-		m_vertices[5] = sfVertex(sfVector2f(0, 1), sfWhite, sfVector2f(0, HEIGHT - 1));
+		m_vertices[4] = sfVertex(sfVector2f(1, 1), sfWhite, sfVector2f(m_width, m_height));
+		m_vertices[5] = sfVertex(sfVector2f(0, 1), sfWhite, sfVector2f(0, m_height));
 		foreach (ref sfVertex v; m_vertices)
-		{
-			v.position.y = HEADER_HEIGHT;
-			v.texCoords.y -= m_vertPos;
-		}
+			v.position.y = m_headerHeight;
+		updateTexCoords();
 
 		// compass
+		int compassFontSize = m_compassHeight - 4;
 		m_headerRect = sfRectangleShape_create();
 		sfRectangleShape_setOutlineThickness(m_headerRect, 0.0f);
 		sfRectangleShape_setFillColor(m_headerRect, sfBlack);
@@ -120,27 +169,16 @@ final class Waterfall: GuiElement
 		for (int i = 0; i < 4; i++)
 		{
 			Label lbl = new Label();
-			lbl.fontSize = COMPASS_FONTSIZE;
-			lbl.size = vec2i(40, COMPASS_HEADER_HEIGHT);
+			lbl.fontSize = compassFontSize;
+			lbl.size = vec2i(40, m_compassHeight);
 			lbl.fontColor = sfWhite;
 			lbl.htextAlign = HTextAlign.CENTER;
 			lbl.content = (i * 90).to!string;
 			m_compassLabels[i] = lbl;
 		}
-		m_underCursorLabel = builder(new Label()).fontSize(COMPASS_FONTSIZE).
-			size(vec2i(40, COMPASS_HEADER_HEIGHT)).fontColor(sfYellow).
+		m_underCursorLabel = builder(new Label()).fontSize(compassFontSize).
+			size(vec2i(100, m_compassHeight)).fontColor(sfYellow).
 			htextAlign(HTextAlign.CENTER).build();
-
-		// director
-		m_directorCircle = sfCircleShape_create();
-		sfCircleShape_setPointCount(m_directorCircle, 3);
-		sfCircleShape_setRotation(m_directorCircle, 180.0f);
-		sfCircleShape_setRadius(m_directorCircle, DIRECTOR_HEADER_HEIGHT / 2);
-		sfCircleShape_setFillColor(m_directorCircle, sfWhite);
-		sfCircleShape_setOutlineThickness(m_directorCircle, 0.0f);
-		sfFloatRect bounds = sfCircleShape_getLocalBounds(m_directorCircle);
-		sfCircleShape_setOrigin(m_directorCircle,
-			sfVector2f(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2));
 
 		// mouse and keyboard handlers
 		onMouseDown += &processMouseDown;
@@ -155,98 +193,83 @@ final class Waterfall: GuiElement
 	{
 		sfRenderTexture_destroy(m_renderTexture);
 		sfRectangleShape_destroy(m_headerRect);
-		sfCircleShape_destroy(m_directorCircle);
 	}
 
-	private
+	/// screen-space height of the area to draw renderTexture to
+	final @property int contentHeight() const
 	{
-		// render target to write pixel data to. 0 pixel column is just after (right)
-		// 180 course, 1023 pixel column is just before 180 course (left of it). 
-		// 0 to 1023 is clockwise rotation.
-		sfRenderTexture* m_renderTexture;
-		Camera2D m_camera;
-		sfVertex[6] m_vertices;
-		// m_renderTexture is perpetually streamed from
-		int m_vertPos;
-		sfVertex[] m_stage;
-
-		__gshared const sfRenderStates s_states =
-			sfRenderStates(sfBlendAlpha, sfTransform_Identity);
-
-		sfRectangleShape* m_headerRect; // compass background
-		Label[4] m_compassLabels;
-		Label m_underCursorLabel;
-		bool m_cursorInside;
-
-		// microphone director
-		sfCircleShape* m_directorCircle;
-		float m_listenDir = 0.0;
+		return size.y - m_headerHeight;
 	}
 
-	/// draw data to current row
-	void drawData(const(ushort)[] data, float fov, float bearing, float blackLevel = 0.1f)
+	/// draw one row of data to renderTexture.
+	protected final void drawRow(const(DataIntType)[] data, float ytexture, float sectorAngle,
+		float sectorCenterBearing)
 	{
 		m_stage.length = data.length * 2;
-		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : HEIGHT + 0.5f;
-		float x = WIDTH / 2.0f - PXPERRAD * (bearing + fov / 2);
-		float dx = PXPERRAD * fov / data.length;
+		float x = m_width / 2.0f - m_pxperrad * (sectorCenterBearing + sectorAngle / 2);
+		float dx = m_pxperrad * sectorAngle / data.length;
 		assert(dx > 0.0f);
 		if (x < 0.0f)
-			x += WIDTH;
-		if (x > WIDTH)
-			x -= WIDTH;
+			x += m_width;
+		if (x > m_width)
+			x -= m_width;
 		for (size_t i = 0, j = 0; i < data.length; i++, j += 2)
 		{
-			float brightness = min(1.0f, max(0.0f, float(data[i]) / ushort.max - blackLevel));
+			float brightness = min(1.0f,
+				max(0.0f, float(data[i]) / DataIntType.max - blackLevel));
 			ubyte brt = lrint(brightness / (1 - blackLevel) * ubyte.max).to!ubyte;
 			sfColor color = sfColor(brt, brt, brt, 255);
-			m_stage[j].position = sfVector2f(x, row);
+			m_stage[j].position = sfVector2f(x, ytexture);
 			m_stage[j].color = color;
 			x += dx;
-			if (x > WIDTH)
+			if (x > m_width)
 			{
 				// we have a special case of wraparound
-				m_stage[j + 1].position = sfVector2f(WIDTH, row);
+				m_stage[j + 1].position = sfVector2f(m_width, ytexture);
 				m_stage[j + 1].color = color;
-				x -= WIDTH;
+				x -= m_width;
 				m_stage.length += 2;
-				m_stage[$ - 2].position = sfVector2f(0, row);
+				m_stage[$ - 2].position = sfVector2f(0, ytexture);
 				m_stage[$ - 2].color = color;
-				m_stage[$ - 1].position = sfVector2f(x, row);
+				m_stage[$ - 1].position = sfVector2f(x, ytexture);
 				m_stage[$ - 1].color = color;
 			}
 			else
 			{
-				m_stage[j + 1].position = sfVector2f(x, row);
+				m_stage[j + 1].position = sfVector2f(x, ytexture);
 				m_stage[j + 1].color = color;
 			}
 		}
 		sfRenderTexture_setActive(m_renderTexture, sfTrue);
 		sfRenderTexture_drawPrimitives(m_renderTexture, m_stage.ptr,
 			m_stage.length, sfLines, &s_states);
+		sfRenderTexture_setActive(m_renderTexture, sfFalse);
 	}
 
-	void completeRow()
+	protected final void clearRow(float ytexture, sfColor color = sfBlack)
 	{
-		sfRenderTexture_display(m_renderTexture);
-		m_vertPos++;
-		if (m_vertPos > 0)
-			m_vertPos -= HEIGHT + 1;
-		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : HEIGHT + 0.5f;
-		sfVertex[2] blackLine = [sfVertex(sfVector2f(0, row), sfBlack),
-			sfVertex(sfVector2f(WIDTH, row), sfBlack)];
+		sfVertex[2] blackLine = [sfVertex(sfVector2f(0, ytexture), sfBlack),
+			sfVertex(sfVector2f(m_width, ytexture), sfBlack)];
+		sfRenderTexture_setActive(m_renderTexture, sfTrue);
 		sfRenderTexture_drawPrimitives(m_renderTexture, blackLine.ptr,
 			2, sfLines, &s_states);
-		updateTexCoords();
+		sfRenderTexture_setActive(m_renderTexture, sfFalse);
+	}
+
+	protected
+	{
+		int m_mousePrevX, m_mousePrevY;
+		bool m_panned;	/// true when mouse has moved by
 	}
 
 	private void processMouseDown(int x, int y, sfMouseButton btn)
 	{
 		if (btn == sfMouseRight)
 		{
+			m_panned = false;
 			requestMouseFocus();
-			prev_x = x;
-			prev_y = y;
+			m_mousePrevX = x;
+			m_mousePrevY = y;
 		}
 	}
 
@@ -254,22 +277,13 @@ final class Waterfall: GuiElement
 	{
 		if (btn == sfMouseRight)
 			returnMouseFocus();
-		if (btn == sfMouseLeft && m_cursorInside)
-		{
-			updateDirectorElement(x - position.x);
-			Game.ciccon.sendMessage(immutable CICListenDirReq(0, m_listenDir));
-		}
 	}
 
-	private
+	protected void onCameraChange()
 	{
-		int prev_x, prev_y;
-	}
-
-	/// Y size of waterfall display in pixels
-	@property private int csizey() const
-	{
-		return size.y - HEADER_HEIGHT;
+		constraintCamera();
+		updateTexCoords();
+		updateHeaderElements();
 	}
 
 	private void processMouseMove(int x, int y)
@@ -277,35 +291,30 @@ final class Waterfall: GuiElement
 		if (mouseFocused)
 		{
 			// we are panning
-			m_camera.pan(vec2d(double(prev_x - x) / size.x * WIDTH,
-				double(prev_y - y) / csizey * HEIGHT) / m_camera.zoom);
-			constraintCamera();
-			updateTexCoords();
-			updateHeaderElements();
-			prev_x = x;
-			prev_y = y;
+			m_panned = true;
+			m_camera.pan(vec2d(double(m_mousePrevX - x) / size.x * m_camViewportWidth,
+				double(m_mousePrevY - y) / contentHeight * m_height) / m_camera.zoom);
+			onCameraChange();
+			m_mousePrevX = x;
+			m_mousePrevY = y;
 		}
-		updateCursorLabel(x - position.x);
+		updateCursorLabel(x - position.x, y - position.y - m_headerHeight);
 	}
-
-	private enum float ZOOM_SPD = 0.14f;
 
 	private void processMouseScroll(int x, int y, float delta)
 	{
 		double oldZoom = m_camera.zoom;
-		m_camera.zoom = max(1.0, min(16.0, m_camera.zoom * (1 + ZOOM_SPD * delta)));
+		m_camera.zoom = max(1.0, min(16.0, m_camera.zoom * (1 + m_zoomSpd * delta)));
 		if (delta > 0)
 		{
-			float ux = WIDTH * ((x - position.x) / float(size.x) - 0.5f);
-			float uy = HEIGHT * ((y - position.y - HEADER_HEIGHT) /
-				float(csizey) - 0.5f);
+			float ux = m_camViewportWidth * ((x - position.x) / float(size.x) - 0.5f);
+			float uy = m_camViewportHeight * ((y - position.y - m_headerHeight) /
+				float(contentHeight) - 0.5f);
 			vec2d zoomPivot = 1.2f * vec2d(ux, uy);
 			vec2d topan = zoomPivot / oldZoom - zoomPivot / m_camera.zoom;
 			m_camera.pan(topan);
 		}
-		constraintCamera();
-		updateTexCoords();
-		updateHeaderElements();
+		onCameraChange();
 	}
 
 	private void constraintCamera()
@@ -313,7 +322,7 @@ final class Waterfall: GuiElement
 		double overtop = -m_camera.transform2world(vec2d(0, 0)).y;
 		if (overtop > 0.0)
 			m_camera.pan(vec2d(0, overtop));
-		double underbot = m_camera.transform2world(vec2d(0, HEIGHT)).y - HEIGHT;
+		double underbot = m_camera.transform2world(vec2d(0, m_camViewportHeight)).y - m_height;
 		if (underbot > 0.0)
 			m_camera.pan(vec2d(0, -underbot));
 	}
@@ -327,7 +336,7 @@ final class Waterfall: GuiElement
 	override void updateSize()
 	{
 		super.updateSize();
-		sfRectangleShape_setSize(m_headerRect, sfVector2f(size.x, HEADER_HEIGHT));
+		sfRectangleShape_setSize(m_headerRect, sfVector2f(size.x, m_headerHeight));
 		m_vertices[1].position.x = m_vertices[2].position.x =
 			m_vertices[4].position.x = size.x;
 		m_vertices[2].position.y = m_vertices[4].position.y =
@@ -335,42 +344,44 @@ final class Waterfall: GuiElement
 		updateHeaderElements();
 	}
 
-	/// update texture coordinates from camera transform
-	private void updateTexCoords()
+	/// update vertex texture coordinates from camera transform
+	protected void updateTexCoords()
 	{
+		vec2d ul = m_camera.transform2world(vec2d(0.0, 0.0));
+		vec2d br = m_camera.transform2world(vec2d(m_camViewportWidth, m_camViewportHeight));
 		// x
 		m_vertices[0].texCoords.x = m_vertices[3].texCoords.x =
-			m_vertices[5].texCoords.x = m_camera.transform2world(vec2d(0.0, 0.0)).x;
+			m_vertices[5].texCoords.x = ul.x;
 		m_vertices[1].texCoords.x = m_vertices[2].texCoords.x =
-			m_vertices[4].texCoords.x = m_camera.transform2world(vec2d(WIDTH, 0.0)).x;
+			m_vertices[4].texCoords.x = br.x;
 		// y
 		m_vertices[0].texCoords.y = m_vertices[1].texCoords.y =
-			m_vertices[3].texCoords.y = m_camera.transform2world(vec2d(0.0, 0.0f)).y - m_vertPos;
+			m_vertices[3].texCoords.y = ul.y;
 		m_vertices[2].texCoords.y = m_vertices[4].texCoords.y =
-			m_vertices[5].texCoords.y = m_camera.transform2world(vec2d(0.0, HEIGHT)).y - m_vertPos;
+			m_vertices[5].texCoords.y = br.y;
 	}
 
 	// bearing to pixel in screen space
-	private float bearingToPixel(float bearing)
+	protected final float bearingToPixel(float bearing)
 	{
-		float txCoord = m_camera.transform2screen(
-			vec2d(WIDTH / 2.0f - PXPERRAD * bearing, 0)).x;
-		float screenWidthTx = WIDTH * m_camera.zoom;
-		if (txCoord < 0.0f)
-			txCoord = screenWidthTx + fmod(txCoord, screenWidthTx);
+		float camCoord = m_camera.transform2screen(
+			vec2d(m_width / 2.0f - m_pxperrad * bearing, 0)).x;
+		float fullRotationCam = m_width * m_camera.zoom;
+		if (camCoord < 0.0f)
+			camCoord = fullRotationCam + fmod(camCoord, fullRotationCam);
 		else
-			txCoord = fmod(txCoord, screenWidthTx);
-		return txCoord * size.x / WIDTH;
+			camCoord = fmod(camCoord, fullRotationCam);
+		return camCoord * size.x / m_camViewportWidth;
 	}
 
-	private float pixelToBearing(int px)
+	protected final float pixelToBearing(int px)
 	{
 		float tx = m_vertices[0].texCoords.x + (float(px) / size.x) *
 			(m_vertices[1].texCoords.x - m_vertices[0].texCoords.x);
-		return PI - tx / PXPERRAD;
+		return PI - tx / m_pxperrad;
 	}
 
-	private void updateHeaderElements()
+	protected void updateHeaderElements()
 	{
 		// compass
 		for (int i = 0; i < 4; i++)
@@ -380,32 +391,13 @@ final class Waterfall: GuiElement
 				m_compassLabels[i].size.x / 2;
 			m_compassLabels[i].position = vec2i(position.x + lblPosX, position.y);
 		}
-		// director
-		float dirX = bearingToPixel(m_listenDir);
-		sfCircleShape_setPosition(m_directorCircle,
-			sfVector2f(dirX, COMPASS_HEADER_HEIGHT + DIRECTOR_HEADER_HEIGHT / 2));
 	}
 
-	@property void listenDir(float rhs)
-	{
-		m_listenDir = rhs;
-		float dirX = bearingToPixel(m_listenDir);
-		sfCircleShape_setPosition(m_directorCircle,
-			sfVector2f(dirX, COMPASS_HEADER_HEIGHT + DIRECTOR_HEADER_HEIGHT / 2));
-	}
-
-	private void updateDirectorElement(int relCursorX)
-	{
-		m_listenDir = pixelToBearing(relCursorX);
-		sfCircleShape_setPosition(m_directorCircle,
-			sfVector2f(relCursorX, COMPASS_HEADER_HEIGHT + DIRECTOR_HEADER_HEIGHT / 2));
-	}
-
-	private void updateCursorLabel(int relCoursorX)
+	protected void updateCursorLabel(int relCursorX, int relCursorY)
 	{
 		import std.format;
 
-		float bearing = clampAnglePi(pixelToBearing(relCoursorX));
+		float bearing = clampAnglePi(pixelToBearing(relCursorX));
 		int lblPosX = lrint(bearingToPixel(bearing)).to!int -
 				m_underCursorLabel.size.x / 2;
 		m_underCursorLabel.position = vec2i(position.x + lblPosX, position.y);
@@ -416,18 +408,132 @@ final class Waterfall: GuiElement
 		m_underCursorLabel.content = rw.get();
 	}
 
+	protected void drawHeaderShapes(Window wnd, long usecsDelta)
+	{
+		sfRenderWindow_drawRectangleShape(wnd.wnd, m_headerRect, &m_sfRst);
+	}
+
 	override void draw(Window wnd, long usecsDelta)
 	{
 		super.draw(wnd, usecsDelta);
-		sfRenderWindow_drawRectangleShape(wnd.wnd, m_headerRect, &m_sfRst);
+		drawHeaderShapes(wnd, usecsDelta);
 		m_sfRst.texture = sfRenderTexture_getTexture(m_renderTexture);
 		sfRenderWindow_drawPrimitives(wnd.wnd, m_vertices.ptr, 6, sfTriangles,
 			&m_sfRst);
-		m_sfRst.texture = null;
-		sfRenderWindow_drawCircleShape(wnd.wnd, m_directorCircle, &m_sfRst);
 		foreach (l; m_compassLabels)
 			l.draw(wnd, usecsDelta);
 		if (m_cursorInside)
 			m_underCursorLabel.draw(wnd, usecsDelta);
+	}
+}
+
+
+/// Zoomable waterfall display for hydrophone data
+final class Waterfall: PanoramicElement!ushort
+{
+	private
+	{
+		// microphone director
+		sfCircleShape* m_directorCircle;
+		float m_listenDir = 0.0;
+		int m_dirHeaderHeight = 12;
+		/// in waterfall render texture is sliding from top to bottom cyclically.
+		int m_vertPos;
+	}
+
+	this()
+	{
+		PanoramicParams params;
+		params.headerHeight = params.compassHeight + m_dirHeaderHeight;
+		params.height = 60 * 5;		// 5 minutes
+		params.camViewPortHeight = params.height;
+		blackLevel = 0.1f;
+		m_pyperworldy = 1.0f;		// 1 pixel = 1 second
+		super(params);
+		m_vertPos = -m_height - 1;
+
+		// director
+		m_directorCircle = sfCircleShape_create();
+		sfCircleShape_setPointCount(m_directorCircle, 3);
+		sfCircleShape_setRotation(m_directorCircle, 180.0f);
+		sfCircleShape_setRadius(m_directorCircle, m_dirHeaderHeight / 2);
+		sfCircleShape_setFillColor(m_directorCircle, sfWhite);
+		sfCircleShape_setOutlineThickness(m_directorCircle, 0.0f);
+		sfFloatRect bounds = sfCircleShape_getLocalBounds(m_directorCircle);
+		sfCircleShape_setOrigin(m_directorCircle,
+			sfVector2f(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2));
+
+		// mouse and keyboard handlers
+		onMouseUp += &processMouseUp;
+	}
+
+	~this()
+	{
+		sfCircleShape_destroy(m_directorCircle);
+	}
+
+	void drawData(const(ushort)[] data, float sectorAngle, float sectorCenterBearing)
+	{
+		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : m_height + 0.5f;
+		drawRow(data, row, sectorAngle, sectorCenterBearing);
+		completeRow();
+	}
+
+	// draw black line to zero out the next row we will render into
+	private void completeRow()
+	{
+		sfRenderTexture_display(m_renderTexture);
+		m_vertPos++;
+		if (m_vertPos > 0)
+			m_vertPos -= m_height + 1;
+		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : m_height + 0.5f;
+		clearRow(row);
+		updateTexCoords();
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseLeft && m_cursorInside)
+		{
+			updateDirectorElement(x - position.x);
+			Game.ciccon.sendMessage(immutable CICListenDirReq(0, m_listenDir));
+		}
+	}
+
+	override void updateTexCoords()
+	{
+		super.updateTexCoords();
+		foreach (ref sfVertex vertex; m_vertices)
+			vertex.texCoords.y -= m_vertPos;
+	}
+
+	override void updateHeaderElements()
+	{
+		super.updateHeaderElements();
+		float dirX = bearingToPixel(m_listenDir);
+		sfCircleShape_setPosition(m_directorCircle,
+			sfVector2f(dirX, m_compassHeight + m_dirHeaderHeight / 2));
+	}
+
+	@property void listenDir(float rhs)
+	{
+		m_listenDir = rhs;
+		float dirX = bearingToPixel(m_listenDir);
+		sfCircleShape_setPosition(m_directorCircle,
+			sfVector2f(dirX, m_compassHeight + m_dirHeaderHeight / 2));
+	}
+
+	private void updateDirectorElement(int relCursorX)
+	{
+		m_listenDir = pixelToBearing(relCursorX);
+		sfCircleShape_setPosition(m_directorCircle,
+			sfVector2f(relCursorX, m_compassHeight + m_dirHeaderHeight / 2));
+	}
+
+	override void drawHeaderShapes(Window wnd, long usecsDelta)
+	{
+		super.drawHeaderShapes(wnd, usecsDelta);
+		m_sfRst.texture = null;
+		sfRenderWindow_drawCircleShape(wnd.wnd, m_directorCircle, &m_sfRst);
 	}
 }
