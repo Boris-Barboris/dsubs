@@ -300,7 +300,7 @@ final class Div: GuiElement
 			foreach (kid; m_children)
 			{
 				auto check = kid.getFromPoint(evt, x, y);
-				if (check)
+				if (check && !check.mouseTransparent)
 					return check;
 				cursor += kid.size[dim] + m_borderWidth;
 				if (cursor >= offset)

@@ -16,7 +16,7 @@ import dsubs_client.gui;
 import dsubs_client.render.camera;
 import dsubs_client.core.window;
 import dsubs_client.game.cic.messages;
-import dsubs_client.game.states.simulation.waterfall: PanoramicElement;
+import dsubs_client.game.states.simulation.waterfall: PanoramicDisplay;
 import dsubs_client.game;
 
 
@@ -72,20 +72,20 @@ SonarGui createSonarGui(const SonarTemplate st)
 		filler(10),
 		powerDiv,
 		filler()
-	])).fixedSize(vec2i(0, HEADER_SECTION_HEIGHT)).build;
+	])).fixedSize(vec2i(0, HEADER_SECTION_HEIGHT)).mouseTransparent(false).build;
 
 	res.root = builder(vDiv([
 		filler(5),
 		header,
 		res.sonar
-	])).backgroundColor(DIV_BCKGROUND).build;
+	])).backgroundColor(DIV_BCKGROUND).mouseTransparent(false).build;
 
 	return res;
 }
 
 
 /// Zoomable active sonar display, similar to waterfall, but flows bottom to top.
-final class SonarDisplay: PanoramicElement!ubyte
+final class SonarDisplay: PanoramicDisplay!ubyte
 {
 	/// assumed speed of sound
 	enum float SOUND_SPD = 1450.0f;
@@ -122,14 +122,20 @@ final class SonarDisplay: PanoramicElement!ubyte
 
 		PanoramicParams params;
 		params.height = st.maxDuration * st.radResol;
-		params.camViewPortWidth = to!int(params.width * st.fov / (2 * PI));
+		params.camViewPortWidth = to!int(params.width * st.fov / (1.9 * PI));
 		params.camViewPortHeight = params.height;
-		super(params);
+		params.additionalRow = false;
+		super(params, new SonarOverlay());
 	}
 
 	/// we require sonar rotation interpolation in order to correcly skew slice rows.
 	void handleSubKinematicRes(CICSubKinematicRes res)
 	{
+		if (m_curSliceSnapIdx == 0)
+		{
+			finishCurSlice();
+			m_curSliceSnapIdx++;
+		}
 		m_kinetSnaps[0] = m_kinetSnaps[1];
 		m_kinetSnaps[1] = m_kinetSnaps[2];
 		m_kinetSnaps[2] = res.snap;
@@ -212,7 +218,20 @@ final class SonarDisplay: PanoramicElement!ubyte
 	private float rangeToPixel(float range)
 	{
 		float camCoord = m_camera.transform2screen(vec2d(0, range)).y;
-		return camCoord * size.y / m_height;
+		return camCoord * contentHeight / m_camViewportHeight;
+	}
+
+	final class SonarOverlay: PanoramicOverlay
+	{
+		/// world.x is bearing, world.y is range in meters
+		override vec2d world2screenPos(vec2d world)
+		{
+			return position +
+				vec2d(
+					bearingToPixel(world.x),
+					rangeToPixel(world.y)
+				);
+		}
 	}
 
 	override void updateCursorLabel(int relCursorX, int relCursorY)

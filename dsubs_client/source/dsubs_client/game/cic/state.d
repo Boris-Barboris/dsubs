@@ -115,7 +115,7 @@ final class CICState
 		ContactData*[int] m_ctcDataHash;
 	}
 
-	/// Main contacting system mutex, provides contacting state serialization.
+	/// Main contact menagement system mutex, provides contac state serialization.
 	/// Must not be taken after rsMut to prevent deadlocks.
 	@property Mutex ctcMut() { return m_ctcMut; }
 
@@ -221,7 +221,9 @@ final class CICState
 		if (ctcCtx is null)
 			return false;
 		m_ctcCtxHash.remove(ctcId);
-		// we need to remove all contactData of this contact
+		// we need to remove all data of this contact
+		foreach (ContactData* data; ctcCtx.dataTree[])
+			m_ctcDataHash.remove(data.id);
 		ctcCtx.dataTree.clear();
 		return true;
 	}

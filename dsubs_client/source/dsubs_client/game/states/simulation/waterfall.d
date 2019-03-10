@@ -57,13 +57,13 @@ WaterfallGui createWaterfallPanel()
 	Div header = builder(hDiv([
 		volumeDiv,
 		filler()
-	])).fixedSize(vec2i(0, HEADER_SECTION_HEIGHT)).build;
+	])).fixedSize(vec2i(0, HEADER_SECTION_HEIGHT)).mouseTransparent(false).build;
 
 	res.root = builder(vDiv([
 		filler(5),
 		header,
 		res.wf
-	])).backgroundColor(DIV_BCKGROUND).build;
+	])).backgroundColor(DIV_BCKGROUND).mouseTransparent(false).build;
 	res.volumeSlider = volumeSlider;
 
 	return res;
@@ -72,7 +72,7 @@ WaterfallGui createWaterfallPanel()
 
 /// Common code for Waterfall and SonarDisplay, related to panoramic
 /// cylindrical coordinate mapping
-class PanoramicElement(DataIntType): GuiElement
+class PanoramicDisplay(DataIntType): GuiElement
 {
 	protected
 	{
@@ -108,8 +108,9 @@ class PanoramicElement(DataIntType): GuiElement
 		sfRectangleShape* m_headerRect;
 		Label[4] m_compassLabels;
 		Label m_underCursorLabel;
-		bool m_cursorInside;
 	}
+
+	private PanoramicOverlay m_overlay;
 
 	/// For normalized data [0, 1] this level and darker will be rendered as black.
 	float blackLevel = 0.0f;
@@ -122,10 +123,13 @@ class PanoramicElement(DataIntType): GuiElement
 		int height = -1;
 		int camViewPortWidth = 360 * 4;
 		int camViewPortHeight = -1;
+		bool additionalRow = true;
 	}
 
-	this(PanoramicParams params)
+	this(PanoramicParams params, PanoramicOverlay overlay)
 	{
+		assert(overlay !is null);
+		m_overlay = overlay;
 		mouseTransparent = false;
 		m_width = params.width;
 		assert(m_width > 0);
@@ -140,7 +144,8 @@ class PanoramicElement(DataIntType): GuiElement
 		m_pxperrad = m_width / (PI * 2);
 
 		// 1 pixel higher than m_height to support waterfall streaming
-		m_renderTexture = sfRenderTexture_create(m_width, m_height + 1, false);
+		m_renderTexture = sfRenderTexture_create(m_width,
+			params.additionalRow ? m_height + 1 : m_height, false);
 		sfRenderTexture_setActive(m_renderTexture, sfTrue);
 		sfRenderTexture_clear(m_renderTexture, sfBlack);
 		sfRenderTexture_setRepeated(m_renderTexture, sfTrue);
@@ -179,14 +184,24 @@ class PanoramicElement(DataIntType): GuiElement
 		m_underCursorLabel = builder(new Label()).fontSize(compassFontSize).
 			size(vec2i(100, m_compassHeight)).fontColor(sfYellow).
 			htextAlign(HTextAlign.CENTER).build();
+	}
 
-		// mouse and keyboard handlers
-		onMouseDown += &processMouseDown;
-		onMouseUp += &processMouseUp;
-		onMouseMove += &processMouseMove;
-		onMouseScroll += &processMouseScroll;
-		onMouseEnter += () { m_cursorInside = true; };
-		onMouseLeave += () { m_cursorInside = false; };
+	override void onHide()
+	{
+		super.onHide();
+		m_overlay.onHide();
+	}
+
+	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
+	{
+		if (rectContainsPoint(x, y))
+		{
+			GuiElement res = m_overlay.getFromPoint(evt, x, y);
+			if (res)
+				return res;
+			return this;
+		}
+		return null;
 	}
 
 	~this()
@@ -205,6 +220,7 @@ class PanoramicElement(DataIntType): GuiElement
 	protected final void drawRow(const(DataIntType)[] data, float ytexture, float sectorAngle,
 		float sectorCenterBearing)
 	{
+		sectorCenterBearing = clampAnglePi(sectorCenterBearing);
 		m_stage.length = data.length * 2;
 		float x = m_width / 2.0f - m_pxperrad * (sectorCenterBearing + sectorAngle / 2);
 		float dx = m_pxperrad * sectorAngle / data.length;
@@ -256,65 +272,11 @@ class PanoramicElement(DataIntType): GuiElement
 		sfRenderTexture_setActive(m_renderTexture, sfFalse);
 	}
 
-	protected
-	{
-		int m_mousePrevX, m_mousePrevY;
-		bool m_panned;	/// true when mouse has moved by
-	}
-
-	private void processMouseDown(int x, int y, sfMouseButton btn)
-	{
-		if (btn == sfMouseRight)
-		{
-			m_panned = false;
-			requestMouseFocus();
-			m_mousePrevX = x;
-			m_mousePrevY = y;
-		}
-	}
-
-	private void processMouseUp(int x, int y, sfMouseButton btn)
-	{
-		if (btn == sfMouseRight)
-			returnMouseFocus();
-	}
-
 	protected void onCameraChange()
 	{
 		constraintCamera();
 		updateTexCoords();
 		updateHeaderElements();
-	}
-
-	private void processMouseMove(int x, int y)
-	{
-		if (mouseFocused)
-		{
-			// we are panning
-			m_panned = true;
-			m_camera.pan(vec2d(double(m_mousePrevX - x) / size.x * m_camViewportWidth,
-				double(m_mousePrevY - y) / contentHeight * m_height) / m_camera.zoom);
-			onCameraChange();
-			m_mousePrevX = x;
-			m_mousePrevY = y;
-		}
-		updateCursorLabel(x - position.x, y - position.y - m_headerHeight);
-	}
-
-	private void processMouseScroll(int x, int y, float delta)
-	{
-		double oldZoom = m_camera.zoom;
-		m_camera.zoom = max(1.0, min(16.0, m_camera.zoom * (1 + m_zoomSpd * delta)));
-		if (delta > 0)
-		{
-			float ux = m_camViewportWidth * ((x - position.x) / float(size.x) - 0.5f);
-			float uy = m_camViewportHeight * ((y - position.y - m_headerHeight) /
-				float(contentHeight) - 0.5f);
-			vec2d zoomPivot = 1.2f * vec2d(ux, uy);
-			vec2d topan = zoomPivot / oldZoom - zoomPivot / m_camera.zoom;
-			m_camera.pan(topan);
-		}
-		onCameraChange();
 	}
 
 	private void constraintCamera()
@@ -331,6 +293,7 @@ class PanoramicElement(DataIntType): GuiElement
 	{
 		super.updatePosition();
 		updateHeaderElements();
+		m_overlay.position = vec2i(position.x, position.y + m_headerHeight);
 	}
 
 	override void updateSize()
@@ -342,6 +305,7 @@ class PanoramicElement(DataIntType): GuiElement
 		m_vertices[2].position.y = m_vertices[4].position.y =
 			m_vertices[5].position.y = size.y;
 		updateHeaderElements();
+		m_overlay.size = vec2i(size.x, contentHeight);
 	}
 
 	/// update vertex texture coordinates from camera transform
@@ -422,14 +386,89 @@ class PanoramicElement(DataIntType): GuiElement
 			&m_sfRst);
 		foreach (l; m_compassLabels)
 			l.draw(wnd, usecsDelta);
-		if (m_cursorInside)
+		if (m_overlay.m_cursorInside)
 			m_underCursorLabel.draw(wnd, usecsDelta);
+		m_overlay.draw(wnd, usecsDelta);
+	}
+
+	/// Overlay for PanoramicElement
+	class PanoramicOverlay: Overlay
+	{
+		override double world2screenRot(double world) { return world; }
+
+		this()
+		{
+			mouseTransparent = false;
+			// mouse and keyboard handlers
+			onMouseDown += &processMouseDown;
+			onMouseUp += &processMouseUp;
+			onMouseMove += &processMouseMove;
+			onMouseScroll += &processMouseScroll;
+			onMouseEnter += () { m_cursorInside = true; };
+			onMouseLeave += () { m_cursorInside = false; };
+		}
+
+		protected
+		{
+			int m_mousePrevX, m_mousePrevY;
+			bool m_panned;	/// true when mouse has moved by
+			bool m_cursorInside;
+		}
+
+		private void processMouseDown(int x, int y, sfMouseButton btn)
+		{
+			if (btn == sfMouseRight)
+			{
+				m_panned = false;
+				requestMouseFocus();
+				m_mousePrevX = x;
+				m_mousePrevY = y;
+			}
+		}
+
+		private void processMouseUp(int x, int y, sfMouseButton btn)
+		{
+			if (btn == sfMouseRight)
+				returnMouseFocus();
+		}
+
+		private void processMouseMove(int x, int y)
+		{
+			if (mouseFocused)
+			{
+				// we are panning
+				m_panned = true;
+				m_camera.pan(
+					vec2d(double(m_mousePrevX - x) / size.x * m_camViewportWidth,
+						  double(m_mousePrevY - y) / size.y * m_camViewportHeight)
+						/ m_camera.zoom);
+				onCameraChange();
+				m_mousePrevX = x;
+				m_mousePrevY = y;
+			}
+			updateCursorLabel(x - position.x, y - position.y);
+		}
+
+		private void processMouseScroll(int x, int y, float delta)
+		{
+			double oldZoom = m_camera.zoom;
+			m_camera.zoom = max(1.0, min(16.0, m_camera.zoom * (1 + m_zoomSpd * delta)));
+			if (delta > 0)
+			{
+				float ux = m_camViewportWidth * ((x - position.x) / float(size.x) - 0.5f);
+				float uy = m_camViewportHeight * ((y - position.y) / float(size.y) - 0.5f);
+				vec2d zoomPivot = 1.2f * vec2d(ux, uy);
+				vec2d topan = zoomPivot / oldZoom - zoomPivot / m_camera.zoom;
+				m_camera.pan(topan);
+			}
+			onCameraChange();
+		}
 	}
 }
 
 
 /// Zoomable waterfall display for hydrophone data
-final class Waterfall: PanoramicElement!ushort
+final class Waterfall: PanoramicDisplay!ushort
 {
 	private
 	{
@@ -449,7 +488,7 @@ final class Waterfall: PanoramicElement!ushort
 		params.camViewPortHeight = params.height;
 		blackLevel = 0.1f;
 		m_pyperworldy = 1.0f;		// 1 pixel = 1 second
-		super(params);
+		super(params, new WaterfallOverlay());
 		m_vertPos = -m_height - 1;
 
 		// director
@@ -462,9 +501,6 @@ final class Waterfall: PanoramicElement!ushort
 		sfFloatRect bounds = sfCircleShape_getLocalBounds(m_directorCircle);
 		sfCircleShape_setOrigin(m_directorCircle,
 			sfVector2f(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2));
-
-		// mouse and keyboard handlers
-		onMouseUp += &processMouseUp;
 	}
 
 	~this()
@@ -491,12 +527,45 @@ final class Waterfall: PanoramicElement!ushort
 		updateTexCoords();
 	}
 
-	private void processMouseUp(int x, int y, sfMouseButton btn)
+	private float pixelToDelay(int px)
 	{
-		if (btn == sfMouseLeft && m_cursorInside)
+		if (contentHeight <= 0)
+			return 0.0f;
+		float camCoord = px * m_camViewportHeight / contentHeight;
+		return m_camera.transform2world(vec2d(0, camCoord)).y;
+	}
+
+	private float delayToPixel(float delay)
+	{
+		float camCoord = m_camera.transform2screen(vec2d(0, m_height - delay - 0.5f)).y;
+		return camCoord * contentHeight / m_camViewportHeight;
+	}
+
+	final class WaterfallOverlay: PanoramicOverlay
+	{
+		this()
 		{
-			updateDirectorElement(x - position.x);
-			Game.ciccon.sendMessage(immutable CICListenDirReq(0, m_listenDir));
+			super();
+			onMouseUp += &processMouseUp;
+		}
+
+		/// world.x is bearing, world.y is age of data in seconds.
+		override vec2d world2screenPos(vec2d world)
+		{
+			return position +
+				vec2d(
+					bearingToPixel(world.x),
+					delayToPixel(world.y)
+				);
+		}
+
+		private void processMouseUp(int x, int y, sfMouseButton btn)
+		{
+			if (btn == sfMouseLeft && m_cursorInside)
+			{
+				updateDirectorElement(x - position.x);
+				Game.ciccon.sendMessage(immutable CICListenDirReq(0, m_listenDir));
+			}
 		}
 	}
 
@@ -535,5 +604,20 @@ final class Waterfall: PanoramicElement!ushort
 		super.drawHeaderShapes(wnd, usecsDelta);
 		m_sfRst.texture = null;
 		sfRenderWindow_drawCircleShape(wnd.wnd, m_directorCircle, &m_sfRst);
+	}
+
+	override void updateCursorLabel(int relCursorX, int relCursorY)
+	{
+		import std.format;
+
+		float worldBearing = clampAnglePi(pixelToBearing(relCursorX));
+		float delay = pixelToDelay(relCursorY);
+		int lblPosX = lrint(bearingToPixel(worldBearing)).to!int -
+				m_underCursorLabel.size.x / 2;
+		m_underCursorLabel.position = vec2i(position.x + lblPosX, position.y);
+		dmutstring labelContent = m_underCursorLabel.content;
+		auto rw = mutstringRewriter(labelContent);
+		formattedWrite!"%d, %dsec"(rw, -worldBearing.compassAngle.rad2dgr.to!int, -delay.to!int);
+		m_underCursorLabel.content = rw.get();
 	}
 }

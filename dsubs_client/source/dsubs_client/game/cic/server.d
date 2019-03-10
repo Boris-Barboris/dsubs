@@ -131,7 +131,7 @@ final class CICServer
 		m_bcon.sendMessage(cast(immutable EmitPingReq) req);
 	}
 
-	// contacting
+	// contac management
 
 	void handleCICCreateContactFromDataReq(CICCreateContactFromDataReq req)
 	{

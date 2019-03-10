@@ -75,7 +75,7 @@ alias ContactDataTree = RedBlackTree!(ContactData*,
 struct HydrophoneTracker
 {
 	int hydrophoneIdx;		/// index of a hydrophone
-	ContactId ctcId;			/// periodically adds ray data to this contact
+	ContactId ctcId;		/// periodically adds ray data to this contact
 	float bearing;			/// current world-space bearing
 }
 
@@ -103,7 +103,7 @@ struct Contact
 struct ContactSolution
 {
 	usecs_t time;
-	/// Solution may lie on the last known ray (ray tracking mode), or have a concrete
+	/// Solution may lie on the last known ray (ray tracking mode), or have a designated
 	/// position (absolute position mode). The last mode is indicated by posAvailable = true.
 	bool posAvailable;
 	PositionData posData;

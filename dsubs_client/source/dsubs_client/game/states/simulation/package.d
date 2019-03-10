@@ -167,7 +167,8 @@ final class SimulationGUI
 			tacticalTab,
 			psonarTab,
 			asonarTab
-		])).fixedSize(vec2i(1, TAB_SIZE)).backgroundColor(DIV_BCKGROUND).build;
+		])).fixedSize(vec2i(1, TAB_SIZE)).backgroundColor(DIV_BCKGROUND).
+			mouseTransparent(false).build;
 
 		// Course and speed labels
 
@@ -280,7 +281,7 @@ final class SimulationGUI
 						).fixedSize(vec2i(65, 1)).build
 				])
 			).fixedSize(vec2i(1, (BTN_FONT + 6) * 2)).
-			backgroundColor(DIV_BCKGROUND).build;
+			backgroundColor(DIV_BCKGROUND).mouseTransparent(false).build;
 
 		GuiElement tabFiller = filler();
 		m_passiveGui = createWaterfallPanel();
