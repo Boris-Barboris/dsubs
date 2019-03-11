@@ -1,4 +1,4 @@
-module dsubs_client.game.states.simulation.sonardisp;
+module dsubs_client.game.sonardisp;
 
 import std.algorithm: map;
 
@@ -8,7 +8,6 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 
 import dsubs_common.api.entities;
-import dsubs_common.math.angles;
 import dsubs_common.math;
 
 import dsubs_client.common;
@@ -16,7 +15,7 @@ import dsubs_client.gui;
 import dsubs_client.render.camera;
 import dsubs_client.core.window;
 import dsubs_client.game.cic.messages;
-import dsubs_client.game.states.simulation.waterfall: PanoramicDisplay;
+import dsubs_client.game.waterfall: PanoramicDisplay;
 import dsubs_client.game;
 
 
@@ -125,7 +124,8 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 		params.camViewPortWidth = to!int(params.width * st.fov / (1.9 * PI));
 		params.camViewPortHeight = params.height;
 		params.additionalRow = false;
-		super(params, new SonarOverlay());
+		m_overlay = new SonarOverlay();
+		super(params, m_overlay);
 	}
 
 	/// we require sonar rotation interpolation in order to correcly skew slice rows.
@@ -155,8 +155,11 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 			m_curPingId = data.pingId;
 			m_pingStartSnap = m_kinetSnaps[1];
 		}
-		finishCurSlice();
-		m_curSliceSnapIdx++;
+		if (m_curSliceSnapIdx == 0)
+		{
+			finishCurSlice();
+			m_curSliceSnapIdx++;
+		}
 		m_curSlice = data.sliceId;
 		m_sliceArrivedAt = MonoTime.currTime;
 		m_sliceRowsDrawn = 0;
@@ -198,7 +201,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 	/// draw new rows of the slice, based on timing
 	private void drawCurSlice()
 	{
-		if (m_sliceRowsDrawn >= m_st.radResol)
+		if (m_sliceRowsDrawn >= m_st.radResol || m_curSliceSnapIdx >= 2)
 			return;
 		auto timeSinceStart = MonoTime.currTime - m_sliceArrivedAt;
 		int mustHaveDrawnRows = to!int(m_st.radResol * timeSinceStart.total!"msecs" / 1000.0f);
@@ -221,19 +224,6 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 		return camCoord * contentHeight / m_camViewportHeight;
 	}
 
-	final class SonarOverlay: PanoramicOverlay
-	{
-		/// world.x is bearing, world.y is range in meters
-		override vec2d world2screenPos(vec2d world)
-		{
-			return position +
-				vec2d(
-					bearingToPixel(world.x),
-					rangeToPixel(world.y)
-				);
-		}
-	}
-
 	override void updateCursorLabel(int relCursorX, int relCursorY)
 	{
 		import std.format;
@@ -253,5 +243,68 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 	{
 		drawCurSlice();
 		super.draw(wnd, usecsDelta);
+	}
+
+	private SonarOverlay m_overlay;
+
+	@property final SonarOverlay overlay() { return m_overlay; };
+
+	final class SonarOverlay: PanoramicOverlay
+	{
+		this()
+		{
+			onMouseUp += &processMouseUp;
+		}
+
+		/// world.x is bearing, world.y is range in meters
+		override vec2d world2screenPos(vec2d world)
+		{
+			return position +
+				vec2d(
+					bearingToPixel(world.x),
+					rangeToPixel(world.y)
+				);
+		}
+
+		private void processMouseUp(int x, int y, sfMouseButton btn)
+		{
+			if (btn == sfMouseRight && !m_panned && m_curPingId >= 0)
+				spawnContextMenu(x, y);
+		}
+
+		/// x and y are relative
+		private void spawnContextMenu(int x, int y)
+		{
+			int xlocal = x - position.x;
+			int ylocal = y - position.y;
+			float bearing = pixelToBearing(xlocal);
+			float range = pixelToRange(ylocal);
+			vec2d pos = m_pingStartSnap.position.toGfm + courseVector(bearing) * range;
+			trace("clicked bearing: ", -rad2dgr(compassAngle(bearing)), ", range: ", range);
+			PositionData contactPos = PositionData(pos);
+			ContactDataUnion cdu = { position: contactPos };
+			CICCreateContactFromDataReq req = CICCreateContactFromDataReq(
+				'A',
+				ContactData(
+					-1,
+					ContactId(),
+					m_pingStartSnap.atTime,
+					DataSource(DataSourceType.ActiveSonar, 0),
+					DataType.Position,
+					cdu
+				));
+			Button[] buttons = [
+					builder(new Button()).fontSize(18).content("Mark new contact").build()
+			];
+			buttons[0].onClick += () {
+				Game.ciccon.sendMessage(cast(immutable) req);
+			};
+			ContextMenu menu = contextMenu(
+					Game.guiManager,
+					buttons,
+					Game.window.size,
+					vec2i(x, y),
+					24);
+		}
 	}
 }

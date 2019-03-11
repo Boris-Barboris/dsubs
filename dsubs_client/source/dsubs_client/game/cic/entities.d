@@ -55,6 +55,13 @@ struct ContactId
 {
 	char prefix;
 	int postfix;
+
+	void toString(scope void delegate(const(char)[]) sink) const
+	{
+		import std.format: formattedWrite;
+		sink.formattedWrite!"%c"(prefix);
+		sink.formattedWrite!"%d"(postfix);
+	}
 }
 
 /// Sensor data point that is related to one contact

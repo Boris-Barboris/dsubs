@@ -93,7 +93,7 @@ struct SpawnRes
 /// request to reconnect to existing submarine. Should be issued
 /// instead of SpawnReq when 'alreadySpawned' from LoginRes was true.
 /// Server will reply with ReconnectStateRes and resume normal
-/// streaming flow operations.
+/// simulator flow message streaming.
 struct ReconnectReq
 {
 	__gshared const int g_marshIdx;

@@ -24,8 +24,10 @@ final class CICState
 	private
 	{
 		ReconnectStateRes m_recState;
+		/// condition to block on when waiting for availability of m_recState
 		Condition m_recStateCond;
 		bool m_recStateInitialized;
+		/// mutex guarding m_recState
 		Mutex m_rsMut;
 	}
 
@@ -47,7 +49,7 @@ final class CICState
 		return cast(immutable) m_recState;
 	}
 
-	/// You must hold rsMut when entering this method
+	/// You must hold ctcMut and rsMut when entering this method
 	@property immutable(CICReconnectStateRes) awaitCicRecState()
 	{
 		if (!m_recStateInitialized)
@@ -116,7 +118,7 @@ final class CICState
 	}
 
 	/// Main contact menagement system mutex, provides contac state serialization.
-	/// Must not be taken after rsMut to prevent deadlocks.
+	/// Must be taken before rsMut to prevent deadlocks.
 	@property Mutex ctcMut() { return m_ctcMut; }
 
 	/// Allocate, initialize and register new Contact entity.
@@ -135,6 +137,7 @@ final class CICState
 		resctc.solution.time = resctc.createdAt;
 		ContactContext* resCtx = new ContactContext(resctc, new ContactDataTree());
 		m_ctcCtxHash[resctc.id] = resCtx;
+		trace("Created contact ", resctc.id);
 		return &resCtx.ctc;
 	}
 
@@ -151,7 +154,7 @@ final class CICState
 			ContactData* existing = m_ctcDataHash.get(newData.id, null);
 			if (existing is null)
 				return null;
-			// data contact may have been changed
+			// contact may have been changed
 			if (existing.ctcId != newData.ctcId)
 			{
 				// we need to remove the data from old contact

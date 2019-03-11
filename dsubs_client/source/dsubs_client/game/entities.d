@@ -102,7 +102,7 @@ final class ScrewPropulsor: Propulsor
 			if (blade.bladeSin >= 0.0)
 				break;
 			m_rotTransform.scale = vec2d(blade.bladeCos, 1.0);
-			m_shape.render(wnd, m_rotTransform.sfWorld);
+			m_shape.render(wnd, m_rotTransform.world);
 		}
 	}
 
@@ -113,7 +113,7 @@ final class ScrewPropulsor: Propulsor
 			if (blade.bladeSin < 0.0)
 				continue;
 			m_rotTransform.scale = vec2d(blade.bladeCos, 1.0);
-			m_shape.render(wnd, m_rotTransform.sfWorld);
+			m_shape.render(wnd, m_rotTransform.world);
 		}
 	}
 }
@@ -132,7 +132,7 @@ final class PumpPropulsor: Propulsor
 
 	override void renderFront(Window wnd)
 	{
-		m_shape.render(wnd, transform.sfWorld);
+		m_shape.render(wnd, transform.world);
 	}
 }
 
@@ -219,11 +219,11 @@ final class Submarine: WorldRenderable
 		foreach (prop; m_propulsors)
 			prop.renderBack(wnd);
 		for (int i = 0; i < m_tmpl.elevatedHullShapeIdx; i++)
-			m_shapes[i].render(wnd, transform.sfWorld);
+			m_shapes[i].render(wnd, transform.world);
 		foreach (prop; m_propulsors)
 			prop.renderFront(wnd);
 		for (int i = m_tmpl.elevatedHullShapeIdx; i < m_shapes.length; i++)
-			m_shapes[i].render(wnd, transform.sfWorld);
+			m_shapes[i].render(wnd, transform.world);
 	}
 
 	/// Remove existing propulsor and set a new one

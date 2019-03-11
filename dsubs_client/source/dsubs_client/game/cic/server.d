@@ -131,7 +131,7 @@ final class CICServer
 		m_bcon.sendMessage(cast(immutable EmitPingReq) req);
 	}
 
-	// contac management
+	// contact management
 
 	void handleCICCreateContactFromDataReq(CICCreateContactFromDataReq req)
 	{
@@ -172,6 +172,8 @@ final class CICServer
 				CICContactDataReq res = CICContactDataReq(*data);
 				m_listener.broadcast(cast(immutable) res);
 			}
+			// we do not throw here because contact could be deleted right after the
+			// message was sent
 		}
 	}
 

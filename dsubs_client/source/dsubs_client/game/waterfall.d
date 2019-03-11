@@ -1,4 +1,4 @@
-module dsubs_client.game.states.simulation.waterfall;
+module dsubs_client.game.waterfall;
 
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
@@ -30,10 +30,10 @@ struct WaterfallGui
 }
 
 
-WaterfallGui createWaterfallPanel()
+WaterfallGui createWaterfallPanel(const HydrophoneTemplate ht)
 {
 	WaterfallGui res;
-	res.wf = new Waterfall();
+	res.wf = new Waterfall(ht);
 	Slider volumeSlider = new Slider();
 	volumeSlider.value = 0.5f;
 
@@ -436,8 +436,8 @@ class PanoramicDisplay(DataIntType): GuiElement
 		{
 			if (mouseFocused)
 			{
-				// we are panning
-				m_panned = true;
+				if (m_mousePrevX != x || m_mousePrevY != y)
+					m_panned = true;	// we are panning
 				m_camera.pan(
 					vec2d(double(m_mousePrevX - x) / size.x * m_camViewportWidth,
 						  double(m_mousePrevY - y) / size.y * m_camViewportHeight)
@@ -472,6 +472,7 @@ final class Waterfall: PanoramicDisplay!ushort
 {
 	private
 	{
+		const HydrophoneTemplate m_ht;
 		// microphone director
 		sfCircleShape* m_directorCircle;
 		float m_listenDir = 0.0;
@@ -480,8 +481,9 @@ final class Waterfall: PanoramicDisplay!ushort
 		int m_vertPos;
 	}
 
-	this()
+	this(const HydrophoneTemplate ht)
 	{
+		m_ht = ht;
 		PanoramicParams params;
 		params.headerHeight = params.compassHeight + m_dirHeaderHeight;
 		params.height = 60 * 5;		// 5 minutes
@@ -508,10 +510,10 @@ final class Waterfall: PanoramicDisplay!ushort
 		sfCircleShape_destroy(m_directorCircle);
 	}
 
-	void drawData(const(ushort)[] data, float sectorAngle, float sectorCenterBearing)
+	void drawData(const(ushort)[] data, double subWrot, int antIdx)
 	{
 		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : m_height + 0.5f;
-		drawRow(data, row, sectorAngle, sectorCenterBearing);
+		drawRow(data, row, m_ht.fov, subWrot + m_ht.antRots[antIdx]);
 		completeRow();
 	}
 

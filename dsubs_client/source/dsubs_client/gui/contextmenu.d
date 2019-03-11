@@ -19,7 +19,7 @@ final class ContextMenu: Panel
 {
 	@property Div rootDiv() { return cast(Div) root; }
 
-	this(Button[] elements, int rowHeight = 22)
+	this(Button[] elements, int rowHeight)
 	{
 		Div div = vDiv(cast(GuiElement[]) elements);
 		div.fixedSize = vec2i(100, (rowHeight * elements.length).to!int);
@@ -68,7 +68,7 @@ final class ContextMenu: Panel
 
 /// Build, place and activate the context menu on a gui manager
 ContextMenu contextMenu(GuiManager mgr, Button[] elements,
-	vec2i wndSize, vec2i luCorner, int rowHeight = 18)
+	vec2i wndSize, vec2i luCorner, int rowHeight = 20)
 {
 	ContextMenu menu = new ContextMenu(elements, rowHeight);
 	menu.placeByLUCorner(wndSize, luCorner);

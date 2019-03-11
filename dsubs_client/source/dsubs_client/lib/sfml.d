@@ -163,3 +163,15 @@ sfTransform tosf(in mat3x3d m)
 		res.matrix[j] = -to!float(m.v[j]);
 	return res;
 }
+
+// precision upscaling
+mat3x3d togfm(in sfTransform m)
+{
+	mat3x3d res;
+	foreach (i; AliasSeq!(0, 1, 2, 6, 7, 8))
+		res.v[i] = to!double(m.matrix[i]);
+	// stupid screen-space sfml camera matrix with inverted Y
+	foreach (j; AliasSeq!(3, 4, 5))
+		res.v[j] = -to!double(m.matrix[j]);
+	return res;
+}

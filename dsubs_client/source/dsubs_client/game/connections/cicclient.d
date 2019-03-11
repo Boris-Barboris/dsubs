@@ -39,15 +39,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 					Game.activeState.handleCICDisconnect();
 				}
 			};
-		setHandler(&h_loginRes);
-		setHandler(&h_reconnectStateRes);
-		setHandler(&h_SubKinematicRes);
-		setHandler(&h_throttleReq);
-		setHandler(&h_courseReq);
-		setHandler(&h_entityDbRes);
-		setHandler(&h_acousticRes);
-		setHandler(&h_listenDirReq);
-		setHandler(&h_sonarRes);
+		mixinHandlers(this);
 	}
 
 	/// synchronous (in caller thread) connect to CIC server
@@ -149,6 +141,7 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
+			Game.simState.updateLastServerTime(res.snap.atTime);
 			Game.simState.playerSub.updateKinematics(res.snap);
 			Game.simState.gui.handleSubKinematicRes(res);
 		}
@@ -189,10 +182,7 @@ private:
 		StreamingSoundSource s;
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.gui.waterfall.drawData(
-				res.data[0].beams,
-				Game.simState.playerSub.tmpl.hydrophones[0].fov,
-				res.rotationAtTime);
+			Game.simState.gui.waterfall.drawData(res.data[0].beams, res.rotationAtTime, 0);
 			s = Game.simState.sonarSound;
 		}
 		if (s && res.audio.length > 0)
@@ -204,7 +194,9 @@ private:
 			{
 				// we delay first sample enqueing in order to reduce the risk of buffering
 				Game.delay(()
-					{ s.append(res.audio[0].samples, res.audio[0].samplingRate); }, msecs(250), null);
+					{
+						s.append(res.audio[0].samples, res.audio[0].samplingRate);
+					}, msecs(250), null);
 			}
 		}
 	}
@@ -216,6 +208,14 @@ private:
 		synchronized(Game.mainMutex)
 		{
 			Game.simState.gui.sonardisp.putSliceData(res.data[0]);
+		}
+	}
+
+	void h_contactCreatedRes(CICContactCreatedRes msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.contactManager.handleContactCreatedRes(msg);
 		}
 	}
 }

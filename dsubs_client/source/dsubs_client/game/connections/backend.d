@@ -30,14 +30,7 @@ final class BackendConnection: ProtocolConnection!BackendProtocol
 				synchronized(Game.mainMutex)
 					Game.activeState.handleBackendDisconnect();
 			};
-		setHandler(&h_serverStatus);
-		setHandler(&h_login);
-		setHandler(&h_entityDb);
-		setHandler(&h_reconnectState);
-		setHandler(&h_spawnRes);
-		setHandler(&h_subKinematicRes);
-		setHandler(&h_acousticStreamRes);
-		setHandler(&h_sonarStreamRes);
+		mixinHandlers(this);
 	}
 
 private:

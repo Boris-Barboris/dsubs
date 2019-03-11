@@ -80,9 +80,9 @@ class Overlay: GuiElement
 	}
 
 	/// must return coordinates, transformed from world space to screen space.
-	protected abstract vec2d world2screenPos(vec2d world);
+	abstract vec2d world2screenPos(vec2d world);
 	/// must return rotation, transformed from world space to screen space.
-	protected abstract double world2screenRot(double world);
+	abstract double world2screenRot(double world);
 
 	override void draw(Window wnd, long usecsDelta)
 	{

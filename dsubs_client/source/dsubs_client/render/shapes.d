@@ -9,15 +9,22 @@ import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
 
 
-private static sfRenderStates g_rendStates;
-
-static this()
+abstract class Shape
 {
-	g_rendStates.blendMode = sfBlendAlpha;
+	protected sfRenderStates m_rendStates;
+
+	this()
+	{
+		m_rendStates.blendMode = sfBlendAlpha;
+	}
+
+	void render(Window wnd);
+	void render(Window wnd, const mat3x3d trans);
+	void render(Window wnd, const sfTransform trans);
 }
 
 /// Convex polygon shape, backed by SFML ConvexShape. Vertices are immutable.
-final class ConvexShape
+final class ConvexShape: Shape
 {
 	private sfConvexShape* m_shape;
 
@@ -38,26 +45,38 @@ final class ConvexShape
 		sfConvexShape_destroy(m_shape);
 	}
 
-	void render(Window wnd, ref const(sfTransform) trans)
+	override void render(Window wnd)
 	{
-		g_rendStates.transform = trans;
-		sfRenderWindow_drawConvexShape(wnd.wnd, m_shape, &g_rendStates);
+		m_rendStates.transform = sfTransform_Identity;
+		sfRenderWindow_drawConvexShape(wnd.wnd, m_shape, &m_rendStates);
+	}
+
+	override void render(Window wnd, const mat3x3d trans)
+	{
+		m_rendStates.transform = trans.tosf;
+		sfRenderWindow_drawConvexShape(wnd.wnd, m_shape, &m_rendStates);
+	}
+
+	override void render(Window wnd, const sfTransform trans)
+	{
+		m_rendStates.transform = trans;
+		sfRenderWindow_drawConvexShape(wnd.wnd, m_shape, &m_rendStates);
 	}
 }
 
 
 /// Symmetric polygon, backed by SFML circle.
-final class CircleShape
+final class CircleShape: Shape
 {
 	private sfCircleShape* m_shape;
 
-	this(float radius = 10.0f, int vcount = 30)
+	this(float radius = 10.0f, int vcount = 30, sfColor color = sfWhite)
 	{
 		m_shape = sfCircleShape_create();
 		sfCircleShape_setRadius(m_shape, radius);
 		sfCircleShape_setPointCount(m_shape, vcount);
 		sfCircleShape_setFillColor(m_shape, sfTransparent);
-		sfCircleShape_setOutlineColor(m_shape, sfWhite);
+		sfCircleShape_setOutlineColor(m_shape, color);
 		sfCircleShape_setOutlineThickness(m_shape, 1.0f);
 		sfCircleShape_setOrigin(m_shape, sfVector2f(radius, radius));
 	}
@@ -134,17 +153,29 @@ final class CircleShape
 		return rhs;
 	}
 
-	void render(Window wnd, ref const(sfTransform) trans)
+	override void render(Window wnd)
 	{
-		g_rendStates.transform = trans;
-		sfRenderWindow_drawCircleShape(wnd.wnd, m_shape, &g_rendStates);
+		m_rendStates.transform = sfTransform_Identity;
+		sfRenderWindow_drawCircleShape(wnd.wnd, m_shape, &m_rendStates);
+	}
+
+	override void render(Window wnd, const mat3x3d trans)
+	{
+		m_rendStates.transform = trans.tosf;
+		sfRenderWindow_drawCircleShape(wnd.wnd, m_shape, &m_rendStates);
+	}
+
+	override void render(Window wnd, const sfTransform trans)
+	{
+		m_rendStates.transform = trans;
+		sfRenderWindow_drawCircleShape(wnd.wnd, m_shape, &m_rendStates);
 	}
 }
 
 
-/// Mutable variable-width line, SFML rectangle under the hood. Has it's own
-/// transform.
-final class LineShape
+/// Mutable variable-width line,
+/// SFML rectangle under the hood. Has it's own transform.
+final class LineShape: Shape
 {
 	private
 	{
@@ -152,7 +183,7 @@ final class LineShape
 		Transform m_transform;
 	}
 
-	@property Transform transform() { return m_transform; };
+	@property Transform transform() { return m_transform; }
 
 	this(vec2f p1, vec2f p2, sfColor color, float width = 1.0f)
 	{
@@ -193,10 +224,22 @@ final class LineShape
 		return rhs;
 	}
 
-	void render(Window wnd)
+	override void render(Window wnd)
 	{
-		g_rendStates.transform = m_transform.sfWorld;
-		sfRenderWindow_drawRectangleShape(wnd.wnd, m_shape, &g_rendStates);
+		m_rendStates.transform = m_transform.world.tosf;
+		sfRenderWindow_drawRectangleShape(wnd.wnd, m_shape, &m_rendStates);
+	}
+
+	override void render(Window wnd, const mat3x3d trans)
+	{
+		m_rendStates.transform = tosf(trans * m_transform.world);
+		sfRenderWindow_drawRectangleShape(wnd.wnd, m_shape, &m_rendStates);
+	}
+
+	override void render(Window wnd, const sfTransform trans)
+	{
+		m_rendStates.transform = tosf(trans.togfm * m_transform.world);
+		sfRenderWindow_drawRectangleShape(wnd.wnd, m_shape, &m_rendStates);
 	}
 
 	~this()

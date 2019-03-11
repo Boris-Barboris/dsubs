@@ -51,6 +51,18 @@ private string generateRandomString()
 	return result.data.filter!isAlphaNum.to!string;
 }
 
+/// register all methods of "this" ProtocolConnection that start with "h_" as message handlers.
+void mixinHandlers(T)(T that)
+{
+	foreach (memberName; __traits(allMembers, T))
+	{
+		static if (memberName.length > 2 && memberName[0..2] == "h_" &&
+			is(typeof(__traits(getMember, that, memberName)) == function))
+		{
+			that.setHandler(&__traits(getMember, that, memberName));
+		}
+	}
+}
 
 /// Duplex disciplined connection with timeouts. Each connection is managed by two
 /// threads - reader and writer.

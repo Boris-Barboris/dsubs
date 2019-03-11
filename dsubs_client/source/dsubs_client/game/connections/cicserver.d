@@ -24,13 +24,7 @@ final class CICServerConnection: ProtocolConnection!CICProtocol
 		super(sock);
 		m_expectedPw = expectedPw;
 		m_cicserv = cicserv;
-		setHandler(&h_loginReq);
-		setHandler(&h_entityDbReq);
-		setHandler(&h_enterSimFlowReq);
-		setHandler(&h_throttleReq);
-		setHandler(&h_courseReq);
-		setHandler(&h_listenDirReq);
-		setHandler(&h_emitPingReq);
+		mixinHandlers(this);
 	}
 
 	private
@@ -75,6 +69,7 @@ private:
 		enforce(!m_inSimFlow, "already in simulator flow");
 		synchronized(m_cicserv.state.ctcMut)
 		{
+			// required to wait on condition
 			synchronized(m_cicserv.state.rsMut)
 			{
 				sendMessage(m_cicserv.state.awaitCicRecState());
@@ -105,5 +100,17 @@ private:
 	{
 		enforce(m_inSimFlow, "not in simulator flow");
 		m_cicserv.handleCICEmitPingReq(req);
+	}
+
+	void h_createContactFromDataReq(CICCreateContactFromDataReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICCreateContactFromDataReq(req);
+	}
+
+	void h_contactUpdateReq(CICContactUpdateReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICContactUpdateReq(req);
 	}
 }

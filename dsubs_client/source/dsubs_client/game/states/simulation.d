@@ -18,8 +18,9 @@ import dsubs_client.game.states.mainmenu;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cameracontroller;
 import dsubs_client.game.overlay;
-import dsubs_client.game.states.simulation.waterfall;
-import dsubs_client.game.states.simulation.sonardisp;
+import dsubs_client.game.contacts;
+import dsubs_client.game.waterfall;
+import dsubs_client.game.sonardisp;
 import dsubs_client.lib.openal;
 
 
@@ -39,6 +40,9 @@ final class SimulatorState: GameState
 	mixin Readonly!(CameraController, "camController");
 	mixin Readonly!(SimulationGUI, "gui");
 	mixin Readonly!(StreamingSoundSource, "sonarSound");
+	mixin Readonly!(usecs_t, "lastServerTime");
+	mixin Readonly!(ContactOverlayShapeCahe, "contactOverlayShapeCache");
+	mixin Readonly!(ClientContactManager, "contactManager");
 
 	override void setup()
 	{
@@ -61,9 +65,11 @@ final class SimulatorState: GameState
 		m_gui = new SimulationGUI();
 		Game.worldManager.components ~= new PlayerSubIcon(m_playerSub);
 		m_gui.waterfall.listenDir = rawRecState.listenDirs[0];
-		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) m_recState.rawState.subSnap);
+		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) rawRecState.subSnap);
 
 		m_sonarSound = new StreamingSoundSource();
+		m_contactOverlayShapeCache = new ContactOverlayShapeCahe();
+		m_contactManager = new ClientContactManager(m_recState);
 	}
 
 	override void handleBackendDisconnect()
@@ -75,6 +81,11 @@ final class SimulatorState: GameState
 	{
 		error("CIC connection lost");
 		Game.activeState = new MainMenuState();
+	}
+
+	void updateLastServerTime(usecs_t newTime)
+	{
+		m_lastServerTime = newTime;
 	}
 }
 
@@ -284,7 +295,7 @@ final class SimulationGUI
 			backgroundColor(DIV_BCKGROUND).mouseTransparent(false).build;
 
 		GuiElement tabFiller = filler();
-		m_passiveGui = createWaterfallPanel();
+		m_passiveGui = createWaterfallPanel(playerSub.tmpl.hydrophones[0]);
 		m_sonarGui = createSonarGui(playerSub.tmpl.sonar);
 
 		m_topLevelDiv = builder(vDiv([

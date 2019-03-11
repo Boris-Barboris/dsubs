@@ -132,7 +132,7 @@ struct CICContactUpdateReq
 
 /// Sent by client to update or append new data sample to contact.
 /// Broadcasted by server when new data is produced by hydrophone tracker, or
-/// one of the clients has sent this message.
+/// one of the clients has sent this message and the update/create succeeded.
 struct CICContactDataReq
 {
 	__gshared const int g_marshIdx;
@@ -142,7 +142,7 @@ struct CICContactDataReq
 	ContactData data;
 }
 
-/// Request/broadcast to drop contact (drops related data).
+/// Request/broadcast to drop contact (drops all related data).
 struct CICDropContactReq
 {
 	__gshared const int g_marshIdx;
@@ -164,9 +164,9 @@ struct CICContactMergeReq
 	ContactId destCtcId;
 }
 
-/// Server broadcast the fact that it has deleted old ContactData.
-struct CICDataRetentionRes
-{
-	__gshared const int g_marshIdx;
-	usecs_t olderThan;
-}
+/// Server broadcasts the fact that it has deleted old ContactData.
+// struct CICDataRetentionRes
+// {
+// 	__gshared const int g_marshIdx;
+// 	usecs_t olderThan;
+// }

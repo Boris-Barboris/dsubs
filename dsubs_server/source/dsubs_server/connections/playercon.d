@@ -38,15 +38,7 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 	this(Socket sock)
 	{
 		super(sock);
-		setHandler(&h_serverStatus);
-		setHandler(&h_loginReq);
-		setHandler(&h_entityDbReq);
-		setHandler(&h_spawnReq);
-		setHandler(&h_throttleReq);
-		setHandler(&h_courseReq);
-		setHandler(&h_reconnectReq);
-		setHandler(&h_listenDirReq);
-		setHandler(&h_emitPingReq);
+		mixinHandlers(this);
 	}
 
 private:
