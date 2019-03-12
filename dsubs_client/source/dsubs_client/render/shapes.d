@@ -199,6 +199,11 @@ final class RectangleShape: Shape
 		return rhs;
 	}
 
+	@property void center(vec2f rhs)
+	{
+		position = rhs - 0.5f * size;
+	}
+
 	@property vec2f size() const
 	{
 		return cast(vec2f) sfRectangleShape_getSize(m_shape);

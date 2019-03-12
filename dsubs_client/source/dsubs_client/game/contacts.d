@@ -49,14 +49,17 @@ final class ClientContact
 			default:
 				break;
 		}
+		m_tactDispEl = new TacticalContactElement(Game.simState.tacticalOverlay, this);
 	}
 
 	this(Contact ctc)
 	{
 		m_data = ctc;
+		m_tactDispEl = new TacticalContactElement(Game.simState.tacticalOverlay, this);
 	}
 
 	private SonarDispContactDataElement m_sonarDispEl;
+	private TacticalContactElement m_tactDispEl;
 
 	/// collection of all data of this contact
 	private ClientContactData*[int] m_dataHash;

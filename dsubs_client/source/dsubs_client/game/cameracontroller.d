@@ -89,7 +89,7 @@ final class CameraController
 			targetZoom = m_camera.zoom;
 		double oldZoom = targetZoom;
 		double dzoom = oldZoom * zoomTgtK * delta;
-		targetZoom = fmin(25.0, fmax(0.001, targetZoom + dzoom));
+		targetZoom = fmin(25.0, fmax(0.0025, targetZoom + dzoom));
 		// point under cursor does not move on the screen during zoom
 		double ux = x - m_camera.screenSize.x / 2.0;
 		double uy = y - m_camera.screenSize.y / 2.0;

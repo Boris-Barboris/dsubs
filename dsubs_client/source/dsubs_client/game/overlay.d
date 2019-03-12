@@ -99,7 +99,6 @@ class SonarDispContactDataElement: ContactDataOverlayElement
 		// trace("caltulated bearing ", -m_bearing.compassAngle.rad2dgr, ", range ", m_range);
 		m_mainShape = ctcOverlayCache.forContactType(contact.data.type);
 		size = vec2i(20, 20);
-		m_mainShape.center = vec2f(10.0f, 10.0f);
 		m_contactName = new Label();
 		m_contactName.fontSize = 16;
 		m_contactName.content = contact.id.to!string;
@@ -120,11 +119,14 @@ class SonarDispContactDataElement: ContactDataOverlayElement
 
 	override void onPreDraw()
 	{
-		position = center2lu(owner.world2windowPos(vec2d(m_bearing, m_range)));
+		vec2d screenPos = owner.world2windowPos(vec2d(m_bearing, m_range));
+		position = center2lu(screenPos);
+		m_mainShape.center = cast(vec2f) screenPos;
 		if (hovered)
 		{
 			m_contactName.position = vec2i(position.x + size.x / 2 - m_contactName.size.x / 2,
 				position.y + 22);
+			ctcOverlayCache.onHoverRect.center = cast(vec2f) screenPos;
 		}
 	}
 
@@ -132,8 +134,8 @@ class SonarDispContactDataElement: ContactDataOverlayElement
 	{
 		super.draw(wnd, usecsDelta);
 		if (hovered)
-			ctcOverlayCache.onHoverRect.render(wnd, m_sfRst.transform);
-		m_mainShape.render(wnd, m_sfRst.transform);
+			ctcOverlayCache.onHoverRect.render(wnd);
+		m_mainShape.render(wnd);
 		if (hovered)
 			m_contactName.draw(wnd, usecsDelta);
 	}
@@ -253,10 +255,10 @@ final class PlayerSubIcon: OverlayElement
 
 	override void onPreDraw()
 	{
-		vec2d screenCenter = m_to.world2windowPos(m_sub.transform.position);
-		m_shape.center = cast(vec2f) screenCenter;
-		m_velLine.transform.position = vec2d(screenCenter.x, -screenCenter.y);
-		position = center2lu(screenCenter);
+		vec2d screenPos = m_to.world2windowPos(m_sub.transform.position);
+		m_shape.center = cast(vec2f) screenPos;
+		m_velLine.transform.position = vec2d(screenPos.x, -screenPos.y);
+		position = center2lu(screenPos);
 		KinematicSnapshot snap;
 		if (m_sub.getInterpolatedSnapshot(snap))
 		{
@@ -277,5 +279,73 @@ final class PlayerSubIcon: OverlayElement
 		super.draw(wnd, usecsDelta);
 		m_shape.render(wnd);
 		m_velLine.render(wnd);
+	}
+}
+
+
+final class TacticalContactElement: OverlayElement
+{
+	this(TacticalOverlay to, ClientContact contact)
+	{
+		m_to = to;
+		m_contact = contact;
+		super(to);
+		m_mainShape = ctcOverlayCache.forContactType(contact.data.type);
+		size = vec2i(20, 20);
+		m_contactName = new Label();
+		m_contactName.fontSize = 16;
+		m_contactName.content = contact.id.to!string;
+		m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
+			m_contactName.contentHeight + 2);
+
+		onMouseEnter += () { hovered = true; };
+		onMouseLeave += () { hovered = false; };
+	}
+
+	private
+	{
+		ClientContact m_contact;
+		TacticalOverlay m_to;
+		CircleShape m_mainShape;
+		Label m_contactName;
+		bool hovered = false;
+	}
+
+	private @property bool needDrawName()
+	{
+		return hovered || m_contact.data.type != ContactType.Environment;
+	}
+
+	override void onPreDraw()
+	{
+		// if pos unavailable, do nothing
+		if (!m_contact.data.solution.posAvailable)
+			return;
+		vec2d worldPos = m_contact.data.solution.posData.contactPos;
+		vec2d screenPos = m_to.world2windowPos(worldPos);
+		position = center2lu(screenPos);
+		m_mainShape.center = cast(vec2f) screenPos;
+		if (needDrawName)
+		{
+			m_contactName.position = vec2i(position.x + size.x / 2 - m_contactName.size.x / 2,
+				position.y + 22);
+		}
+		if (hovered)
+		{
+			ctcOverlayCache.onHoverRect.center = cast(vec2f) screenPos;
+		}
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		// if pos unavailable, do nothing
+		if (!m_contact.data.solution.posAvailable)
+			return;
+		super.draw(wnd, usecsDelta);
+		if (hovered)
+			ctcOverlayCache.onHoverRect.render(wnd);
+		m_mainShape.render(wnd);
+		if (needDrawName)
+			m_contactName.draw(wnd, usecsDelta);
 	}
 }
