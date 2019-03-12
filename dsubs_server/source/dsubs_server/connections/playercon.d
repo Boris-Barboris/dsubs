@@ -12,14 +12,7 @@ import dsubs_common.network.connection;
 import dsubs_server.common;
 import dsubs_server.player;
 
-private immutable string backendPrivKey = `AAABAJPL2uFvPdhups3a/ZFvv9lyZRaR0SbWsfLln8s4hqXDNOw8OWYnmPaNu5bsvDSAfccT4BatH8MR92nuBYAy0Nny7E6Tzs0MWZfj/zIGd4XWqIbq0WKsSosa3xSPmL1+0LmDcLg9NnWgeUjNWfNUvGnANm1XqbVvQeCkRhq3p91eftOYkS/jyTwszZZKOVyW4DkP4hk9+jY5w5860VYKBxE9ClPA8LCeBWIf6PUAXZxP722Gqdgg7cAbMdmbgjs7BhuWC7do4Rk7Pric7+VFp/A7noDMYW+mby+n5OYSS5G7RN6yRlit9QVFfYlqfJzCwu6yKTYelmCFH2hESNr8flEOO2JdfDWM06JVPJZwASRQEmAdH3o/b4VfZLeHwWAS6Lm1IqgBuASWNSftrH+oNBmKo72bsWM7oPkoa+uCZkGDZJAlyaU4EUHkUt64G4GDYVtO3O7M8zO9YvEYslDqWD7B2fl3DC7v2nrUwwTk1L0GrV7mXO7idXPoqeEMbR9MZ0xiQr5q9mewdpvJv1JGKaULcVxkIFTxs2gGfaWGUS+YAZpNonlnWyEbBqx0WuDQa1VGxrWBbJhcQOEeuWLycuuDzLuXzHS77ZKWStx0jIIPwUXLdirbhZqUMWZo18Y67MAB3xFTE27pv+vBt8Vmr2tKT6GINxDTap7wWkhzfERp`;
-
-private RSAKeyInfo backendPrivKeyInfo;
-
-static this()
-{
-	backendPrivKeyInfo = RSA.decodeKey(backendPrivKey);
-}
+private immutable string backendPrivKey = `AAAAQIhNNOl1mtHa10rEmT2cNlHRPpPnRZjbcKDVkxQ632xXvalu5FR+TBVntVprWNSWdU8+8eU9NEZTQM2J2+XCzwGFDL8MsqmcEiIcX75poV2js3UKvpoV7l8aQ/i7mWSg+Z0nLrhqJOk9Jc4gU7gUmUOkF5lECIoUC8QUm496M5Xz`;
 
 
 final class PlayerConnection: ProtocolConnection!BackendProtocol
@@ -28,6 +21,7 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 	{
 		Player m_player;
 		bool m_simulatorFlow;
+		RSAKeyInfo m_backendPrivKeyInfo;
 	}
 
 	@property Player player() { return m_player; }
@@ -54,9 +48,10 @@ private:
 		enforce!AuthException(m_player is null, "already authorized");
 		try
 		{
+			m_backendPrivKeyInfo = RSA.decodeKey(backendPrivKey);
 			m_player = Globals.players.authorizeConnection(this,
-				decrypt(req.username, &backendPrivKeyInfo),
-				decrypt(req.password, &backendPrivKeyInfo));
+				decrypt(req.username, &m_backendPrivKeyInfo),
+				decrypt(req.password, &m_backendPrivKeyInfo));
 			if (m_player.submarine)
 			{
 				// we are already spawned
