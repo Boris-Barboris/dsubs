@@ -10,6 +10,11 @@ import dsubs_common.api.utils;
 import dsubs_common.meta;
 
 
+version (BigEndian)
+{
+	static assert (0, "marshalling code does not work on big-endian machines");
+}
+
 alias MsgMarshallerFunc = immutable(ubyte)[] function(immutable(void)* inMsgPtr);
 alias MsgDemarshallerFunc = void function(void* outMsgPtr, const(ubyte)[] data);
 

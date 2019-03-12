@@ -40,7 +40,7 @@ final class Window
 		info("Creating window...");
 		m_wnd = sfRenderWindow_createUnicode(m_mode, windowName.ptr,
 											sfDefaultStyle, &m_ctxSettings);
-		sfRenderWindow_setVerticalSyncEnabled(m_wnd, true);
+		sfRenderWindow_setVerticalSyncEnabled(m_wnd, ture);
 		info("OK");
 		// register default handlers
 		registerHandler(sfEvtResized, &resizedHandler);

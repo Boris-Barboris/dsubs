@@ -408,18 +408,23 @@ class PanoramicDisplay(DataIntType): GuiElement
 		protected
 		{
 			int m_mousePrevX, m_mousePrevY;
-			bool m_panned;	/// true when mouse has moved by
+			bool m_panned;	/// true when mouse has moved since RMB down
 		}
 
 		private void processMouseDown(int x, int y, sfMouseButton btn)
 		{
 			if (btn == sfMouseRight)
 			{
-				m_panned = false;
+				onPanStart(x, y);
 				requestMouseFocus();
-				m_mousePrevX = x;
-				m_mousePrevY = y;
 			}
+		}
+
+		override void onPanStart(int x, int y)
+		{
+			m_panned = false;
+			m_mousePrevX = x;
+			m_mousePrevY = y;
 		}
 
 		private void processMouseUp(int x, int y, sfMouseButton btn)
@@ -428,31 +433,25 @@ class PanoramicDisplay(DataIntType): GuiElement
 				returnMouseFocus();
 		}
 
-		override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
-		{
-			GuiElement res = super.getFromPoint(evt, x, y);
-			if (res !is this && res !is null && evt.type == sfEvtMouseMoved)
-			{
-				// we force mouseMove event propagation
-				processMouseMove(x, y);
-			}
-			return res;
-		}
-
 		private void processMouseMove(int x, int y)
 		{
 			if (mouseFocused)
-			{
-				if (m_mousePrevX != x || m_mousePrevY != y)
-					m_panned = true;	// we are panning
-				m_camera.pan(
-					vec2d(double(m_mousePrevX - x) / size.x * m_camViewportWidth,
-						  double(m_mousePrevY - y) / size.y * m_camViewportHeight)
-						/ m_camera.zoom);
-				onCameraChange();
-				m_mousePrevX = x;
-				m_mousePrevY = y;
-			}
+				onPan(x, y);
+			else
+				updateCursorLabel(x - position.x, y - position.y);
+		}
+
+		override void onPan(int x, int y)
+		{
+			if (m_mousePrevX != x || m_mousePrevY != y)
+				m_panned = true;	// we have moved the mouse
+			m_camera.pan(
+				vec2d(double(m_mousePrevX - x) / size.x * m_camViewportWidth,
+						double(m_mousePrevY - y) / size.y * m_camViewportHeight)
+					/ m_camera.zoom);
+			onCameraChange();
+			m_mousePrevX = x;
+			m_mousePrevY = y;
 			updateCursorLabel(x - position.x, y - position.y);
 		}
 

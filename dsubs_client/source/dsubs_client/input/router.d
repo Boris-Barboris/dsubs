@@ -191,7 +191,8 @@ private:
 	void onMouseLeave(Window wnd, const sfEvent* evt)
 	{
 		assert(wnd == m_window);
-		underCursor = null;
+		if (g_mouseFocused is null)
+			underCursor = null;
 		m_mouseInside = false;
 	}
 

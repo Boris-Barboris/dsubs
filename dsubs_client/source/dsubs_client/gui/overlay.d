@@ -14,13 +14,14 @@ import dsubs_client.input.router;
 // private alias OverlayIndex = QuadTree!OverlayElement;
 
 /// Overlay elements are usually tracking some point in world space while keeping
-/// their screen-space size constant.
+/// their screen-space size constant. All overlay elements by convention play friendly with camera
+/// and therefore should pass or duplicate camera-related events to owner as well.
 class OverlayElement: GuiElement
 {
 	mixin Readonly!(Overlay, "owner");
 
 	/// Overlay elements may require hiding, or only small subset of them to be drawn
-	private bool m_hidden = false;
+	private bool m_hidden;
 
 	mixin FinalGetSet!(bool, "hidden", "if (rhs) onHide();");
 
@@ -32,6 +33,39 @@ class OverlayElement: GuiElement
 		// overlays are mostly for clickable objects
 		mouseTransparent = false;
 		owner.m_elements[this] = true;
+		// register handlers to proxy camera-related events to owner
+		onMouseDown += &processMouseDown;
+		onMouseUp += &processMouseUp;
+		onMouseMove += &processMouseMove;
+		onMouseScroll += &processMouseScroll;
+	}
+
+	private void processMouseDown(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight)
+		{
+			m_owner.onPanStart(x, y);
+			requestMouseFocus();
+		}
+	}
+
+	private void processMouseMove(int x, int y)
+	{
+		if (mouseFocused)
+			m_owner.onPan(x, y);
+		else
+			m_owner.onMouseMove(x, y);
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight)
+			returnMouseFocus();
+	}
+
+	private void processMouseScroll(int x, int y, float delta)
+	{
+		m_owner.onMouseScroll(x, y, delta);
 	}
 
 	/// transforms center in screen-space to rounded left upper angle to set position to
@@ -84,6 +118,10 @@ class Overlay: GuiElement
 				el.onHide();
 		}
 	}
+
+
+	abstract void onPanStart(int x, int y);
+	abstract void onPan(int x, int y);
 
 	/// must return coordinates, transformed from world space to window space.
 	abstract vec2d world2windowPos(vec2d world);
