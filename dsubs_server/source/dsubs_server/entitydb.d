@@ -82,9 +82,9 @@ private:
 				PropulsorType.SCREW,
 				5,
 				ConvexPolygon([
-					Vector2f(1.1f, 0.6f),
-					Vector2f(0.6f, -0.6f),
-					Vector2f(4.2f, -0.9f)
+					vec2f(1.1f, 0.6f),
+					vec2f(0.6f, -0.6f),
+					vec2f(4.2f, -0.9f)
 				], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 			));
 		bp.posThrustK = RolledF(2600.0f, 40.0f);
@@ -152,16 +152,16 @@ Active sonar:
 							0.0, -1.0
 						]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50))
 				],
-				[MountPoint(Vector2f(0.0, -34.0f))],
+				[MountPoint(vec2f(0.0, -34.0f))],
 				1,
 				[
 					HydrophoneTemplate(
 						"bow", HydrophoneType.STANDARD,
-						MountPoint(Vector2f(0.0f, 14.2f)),
+						MountPoint(vec2f(0.0f, 14.2f)),
 						dgr2rad(210), [0.0f]
 					)
 				],
-				SonarTemplate(MountPoint(Vector2f(0.0f, 13.0f)),
+				SonarTemplate(MountPoint(vec2f(0.0f, 13.0f)),
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
 					asp.getSliceResol(), asp.radialRes, asp.maxSec)
 			));
@@ -193,16 +193,16 @@ private:
 
 /// build axially-symmetric mesh from it's half. 'coords' array should be in form
 /// [ x1, y1, x2, y2 ... ]
-Vector2f[] xSymmetry(const float[] coords)
+vec2f[] xSymmetry(const float[] coords)
 {
 	assert(coords.length >= 4);
 	assert(coords.length % 2 == 0);
 	int len = coords.length.to!int / 2;
-	Vector2f[] res;
+	vec2f[] res;
 	for (int i = 0; i < len; i++)
-		res ~= Vector2f(coords[i*2], coords[i*2 + 1]);
+		res ~= vec2f(coords[i*2], coords[i*2 + 1]);
 	for (int i = len - 2; i > 0; i--)
-		res ~= Vector2f(-coords[i*2], coords[i*2 + 1]);
+		res ~= vec2f(-coords[i*2], coords[i*2 + 1]);
 	return res;
 }
 

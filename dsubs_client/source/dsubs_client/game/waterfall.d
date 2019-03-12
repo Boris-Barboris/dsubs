@@ -386,15 +386,14 @@ class PanoramicDisplay(DataIntType): GuiElement
 			&m_sfRst);
 		foreach (l; m_compassLabels)
 			l.draw(wnd, usecsDelta);
-		if (m_overlay.m_cursorInside)
-			m_underCursorLabel.draw(wnd, usecsDelta);
+		m_underCursorLabel.draw(wnd, usecsDelta);
 		m_overlay.draw(wnd, usecsDelta);
 	}
 
 	/// Overlay for PanoramicElement
 	class PanoramicOverlay: Overlay
 	{
-		override double world2screenRot(double world) { return world; }
+		override double world2windowRot(double world) { return world; }
 
 		this()
 		{
@@ -404,15 +403,12 @@ class PanoramicDisplay(DataIntType): GuiElement
 			onMouseUp += &processMouseUp;
 			onMouseMove += &processMouseMove;
 			onMouseScroll += &processMouseScroll;
-			onMouseEnter += () { m_cursorInside = true; };
-			onMouseLeave += () { m_cursorInside = false; };
 		}
 
 		protected
 		{
 			int m_mousePrevX, m_mousePrevY;
 			bool m_panned;	/// true when mouse has moved by
-			bool m_cursorInside;
 		}
 
 		private void processMouseDown(int x, int y, sfMouseButton btn)
@@ -430,6 +426,17 @@ class PanoramicDisplay(DataIntType): GuiElement
 		{
 			if (btn == sfMouseRight)
 				returnMouseFocus();
+		}
+
+		override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
+		{
+			GuiElement res = super.getFromPoint(evt, x, y);
+			if (res !is this && res !is null && evt.type == sfEvtMouseMoved)
+			{
+				// we force mouseMove event propagation
+				processMouseMove(x, y);
+			}
+			return res;
 		}
 
 		private void processMouseMove(int x, int y)
@@ -552,7 +559,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		}
 
 		/// world.x is bearing, world.y is age of data in seconds.
-		override vec2d world2screenPos(vec2d world)
+		override vec2d world2windowPos(vec2d world)
 		{
 			return position +
 				vec2d(
@@ -563,7 +570,7 @@ final class Waterfall: PanoramicDisplay!ushort
 
 		private void processMouseUp(int x, int y, sfMouseButton btn)
 		{
-			if (btn == sfMouseLeft && m_cursorInside)
+			if (btn == sfMouseLeft)
 			{
 				updateDirectorElement(x - position.x);
 				Game.ciccon.sendMessage(immutable CICListenDirReq(0, m_listenDir));

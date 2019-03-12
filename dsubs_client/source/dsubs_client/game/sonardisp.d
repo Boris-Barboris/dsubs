@@ -113,6 +113,9 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 		const(ubyte)[] m_hostImage;
 	}
 
+	@property bool havePingKinematicSnapshot() const { return m_curPingId >= 0; }
+	@property KinematicSnapshot pingStartSnap() const { return m_pingStartSnap; }
+
 	this(const SonarTemplate st)
 	{
 		m_st = st;
@@ -220,7 +223,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 
 	private float rangeToPixel(float range)
 	{
-		float camCoord = m_camera.transform2screen(vec2d(0, range)).y;
+		float camCoord = m_camera.transform2screen(vec2d(0, m_height - range * m_pyperworldy)).y;
 		return camCoord * contentHeight / m_camViewportHeight;
 	}
 
@@ -257,7 +260,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 		}
 
 		/// world.x is bearing, world.y is range in meters
-		override vec2d world2screenPos(vec2d world)
+		override vec2d world2windowPos(vec2d world)
 		{
 			return position +
 				vec2d(
@@ -279,7 +282,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 			int ylocal = y - position.y;
 			float bearing = pixelToBearing(xlocal);
 			float range = pixelToRange(ylocal);
-			vec2d pos = m_pingStartSnap.position.toGfm + courseVector(bearing) * range;
+			vec2d pos = m_pingStartSnap.position + courseVector(bearing) * range;
 			trace("clicked bearing: ", -rad2dgr(compassAngle(bearing)), ", range: ", range);
 			PositionData contactPos = PositionData(pos);
 			ContactDataUnion cdu = { position: contactPos };

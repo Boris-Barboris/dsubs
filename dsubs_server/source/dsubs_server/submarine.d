@@ -197,7 +197,7 @@ final class SubmarineFactory
 		foreach (i, ref hp; hprots)
 		{
 			Transform2D t = new Transform2D();
-			t.position = tmpl.hydrophones[i].mount.mountCenter.toGfm!double;
+			t.position = tmpl.hydrophones[i].mount.mountCenter.tod;
 			t.rotation = tmpl.hydrophones[i].mount.rotation;
 			res.transform.addChild(t);
 			res.m_hydrophones ~= new Hydrophone(Globals.sctx.queue(0), t, hp);
@@ -205,7 +205,7 @@ final class SubmarineFactory
 		// active sonar
 		{
 			Transform2D t = new Transform2D();
-			t.position = tmpl.sonar.mount.mountCenter.toGfm!double;
+			t.position = tmpl.sonar.mount.mountCenter.tod;
 			t.rotation = tmpl.sonar.mount.rotation;
 			res.transform.addChild(t);
 			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, asprot);

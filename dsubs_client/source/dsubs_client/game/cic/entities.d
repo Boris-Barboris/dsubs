@@ -16,18 +16,18 @@ enum DataType: byte
 
 struct RayData
 {
-	vec2d origin;		/// sensor position at the time
-	double bearing;		/// world-space direction from origin to contact
+	vec2d origin = vec2d(0, 0);		/// sensor position at the time
+	double bearing = 0.0;			/// world-space direction from origin to contact
 }
 
 struct PositionData
 {
-	vec2d contactPos;	/// world-space contact position
+	vec2d contactPos = vec2d(0, 0);	/// world-space contact position
 }
 
 struct SpeedData
 {
-	double speed;		/// absolute speed value
+	double speed = 0.0;		/// absolute speed value
 }
 
 union ContactDataUnion
@@ -83,7 +83,7 @@ struct HydrophoneTracker
 {
 	int hydrophoneIdx;		/// index of a hydrophone
 	ContactId ctcId;		/// periodically adds ray data to this contact
-	float bearing;			/// current world-space bearing
+	float bearing = 0.0f;	/// current world-space bearing
 }
 
 /// Most generic contact type classification
@@ -116,5 +116,5 @@ struct ContactSolution
 	PositionData posData;
 	/// Solution may or may not have velocity assigned.
 	bool velAvailable;
-	vec2d vel;
+	vec2d vel = vec2d(0, 0);
 }

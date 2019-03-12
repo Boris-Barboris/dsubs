@@ -55,7 +55,7 @@ class GuiElement: IInputReciever
 	}
 
 	/// cached viewport rectangle
-	private vec4i m_viewport;
+	protected vec4i m_viewport;
 	private LayoutType m_layoutType = LayoutType.GREEDY;
 
 	final @property ref const(vec4i) viewport() const { return m_viewport; }
@@ -183,7 +183,7 @@ class GuiElement: IInputReciever
 		sfRectangleShape_setSize(m_sfRect, m_size.tosf);
 	}
 
-	private void updateViewport()
+	protected void updateViewport()
 	{
 		if (m_parentViewport)
 			m_viewport = clampViewport(m_parentViewport);

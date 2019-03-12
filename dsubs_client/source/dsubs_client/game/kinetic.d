@@ -9,19 +9,6 @@ import dsubs_common.math;
 
 
 
-/// adaptation of KinematicSnapshot with gfm vectors
-struct BodySnapshot
-{
-	usecs_t atTime;
-	vec2d position;
-	vec2d velocity;
-	double rotation;
-	double angVel;
-}
-
-static assert (KinematicSnapshot.sizeof == BodySnapshot.sizeof);
-
-
 /// Trace of rigid body kinematics that is updated periodically from the server
 /// and is being interpolated on the client for smooth rendering purposes.
 /// https://en.wikipedia.org/wiki/Cubic_Hermite_spline
@@ -32,13 +19,13 @@ struct KinematicTrace
 		immutable int maxLen = 3;
 
 		// most recent snapshots received
-		BodySnapshot[maxLen] records;
+		KinematicSnapshot[maxLen] records;
 		// number of actual snapshots in trace, from 0 to 3
 		int len = 0;
 		// index of the oldest snapshot in the trace
 		int oldest = 0;
 		// client-side interpolated state
-		BodySnapshot curState;
+		KinematicSnapshot curState;
 		usecs_t curTime;
 	}
 
@@ -61,7 +48,7 @@ struct KinematicTrace
 				curState = records[newOldest];
 				curTime = curState.atTime;
 			}
-			records[oldest] = *cast(BodySnapshot*) &snapshot;
+			records[oldest] = *cast(KinematicSnapshot*) &snapshot;
 			oldest = newOldest;
 		}
 		else
@@ -69,22 +56,22 @@ struct KinematicTrace
 			if (len == 0)
 			{
 				curTime = snapshot.atTime;
-				curState = *cast(BodySnapshot*) &snapshot;
+				curState = *cast(KinematicSnapshot*) &snapshot;
 			}
-			records[(oldest + len) % maxLen] = *cast(BodySnapshot*) &snapshot;
+			records[(oldest + len) % maxLen] = *cast(KinematicSnapshot*) &snapshot;
 			len++;
 		}
 	}
 
 	/// result of an interpolation
-	@property ref const(BodySnapshot) result() const
+	@property ref const(KinematicSnapshot) result() const
 	{
 		assert(canInterpolate);
 		return curState;
 	}
 
 	/// the most recent snapshot received
-	@property ref const(BodySnapshot) mostRecent() const
+	@property ref const(KinematicSnapshot) mostRecent() const
 	{
 		assert(canInterpolate);
 		return records[(oldest + len - 1) % maxLen];

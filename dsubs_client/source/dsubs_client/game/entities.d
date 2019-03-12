@@ -180,7 +180,7 @@ final class Submarine: WorldRenderable
 	}
 
 	/// returns true if the snapshot was written to res
-	bool getLastSnapshot(out BodySnapshot res) const
+	bool getLastSnapshot(out KinematicSnapshot res) const
 	{
 		if (trace.canInterpolate)
 		{
@@ -191,7 +191,7 @@ final class Submarine: WorldRenderable
 	}
 
 	/// returns true if the snapshot was written to res
-	bool getInterpolatedSnapshot(out BodySnapshot res) const
+	bool getInterpolatedSnapshot(out KinematicSnapshot res) const
 	{
 		if (trace.canInterpolate)
 		{
@@ -239,8 +239,7 @@ final class Submarine: WorldRenderable
 			Propulsor p = createPropulsor(man, propName);
 			p.transform.scale = vec2d(mount.scale, mount.scale);
 			p.transform.rotation = mount.rotation;
-			p.transform.position =
-				vec2d(mount.mountCenter.data[0], mount.mountCenter.data[1]);
+			p.transform.position = mount.mountCenter.tod;
 			transform.addChild(p.transform);
 			m_propulsors ~= p;
 		}

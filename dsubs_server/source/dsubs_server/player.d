@@ -237,8 +237,8 @@ final class Player
 		double angVel = s.rigidBody.kinet.angVel;
 		return KinematicSnapshot(
 				Globals.sim.worldTime + timeShift,
-				Vector2d(shiftedPos.x, shiftedPos.y),
-				Vector2d(vel.x, vel.y),
+				vec2d(shiftedPos.x, shiftedPos.y),
+				vec2d(vel.x, vel.y),
 				shiftedRot,
 				angVel);
 	}

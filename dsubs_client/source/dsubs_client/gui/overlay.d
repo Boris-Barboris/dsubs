@@ -40,6 +40,12 @@ class OverlayElement: GuiElement
 		return cast(vec2i) centerOnScreen - size / 2;
 	}
 
+	// We do not apply in-rect scissor test to overlay elements
+	override void updateViewport()
+	{
+		m_viewport = *parentViewport;
+	}
+
 	/// Overlay elements must ignore mouse scroll in order to not block zooming
 	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
 	{
@@ -79,10 +85,10 @@ class Overlay: GuiElement
 		}
 	}
 
-	/// must return coordinates, transformed from world space to screen space.
-	abstract vec2d world2screenPos(vec2d world);
-	/// must return rotation, transformed from world space to screen space.
-	abstract double world2screenRot(double world);
+	/// must return coordinates, transformed from world space to window space.
+	abstract vec2d world2windowPos(vec2d world);
+	/// must return rotation, transformed from world space to window space.
+	abstract double world2windowRot(double world);
 
 	override void draw(Window wnd, long usecsDelta)
 	{

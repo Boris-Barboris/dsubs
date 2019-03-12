@@ -14,48 +14,9 @@ struct RgbaColor
 	ubyte a = 255;
 }
 
-/// Reflection-friendly POD vector. Needed because gfm vector uses anonymous union
-/// wich I don't even want to bother to reflect correctly.
-struct PODVector(T, size_t size)
-	if (isNumeric!T)
-{
-	T[size] data = 0;
-
-	this(T...)(T args)
-		if (T.length == size)
-	{
-		foreach (i, arg; args)
-			data[i] = arg;
-	}
-
-	/// reinterpret cast to gfm vector
-	pragma(inline) Vector!(FT, size) toGfm(FT = T)() const @trusted
-	{
-		static if (is(FT == T))
-			return *cast(Vector!(FT, size)*) &this;
-		else
-			return Vector!(FT, size)(data);
-	}
-
-	ref inout(T) opIndex(size_t i) inout
-	{
-		return data[i];
-	}
-}
-
-alias Vector2f = PODVector!(float, 2);
-alias Vector2d = PODVector!(double, 2);
-
-unittest
-{
-	Vector2f vec;
-	assert(vec[0] == 0.0f);
-	assert(vec[1] == 0.0f);
-}
-
 struct ConvexPolygon
 {
-	Vector2f[] points;	/// counter-clockwise vertices
+	vec2f[] points;	/// counter-clockwise vertices
 	RgbaColor fillColor;
 	float borderWidth = 0.0f;
 	RgbaColor borderColor;
@@ -86,7 +47,7 @@ struct PropulsorTemplate
 
 struct MountPoint
 {
-	Vector2f mountCenter;
+	vec2f mountCenter;
 	float rotation = 0.0f;
 	float scale = 1.0f;
 }
@@ -133,8 +94,8 @@ struct WeaponTemplate
 struct KinematicSnapshot
 {
 	usecs_t atTime;		/// game-world time
-	Vector2d position;
-	Vector2d velocity;
+	vec2d position;
+	vec2d velocity;
 	double rotation;
 	double angVel;
 }
