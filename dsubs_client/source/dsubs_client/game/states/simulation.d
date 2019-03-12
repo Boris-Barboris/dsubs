@@ -43,6 +43,8 @@ final class SimulatorState: GameState
 	mixin Readonly!(usecs_t, "lastServerTime");
 	mixin Readonly!(ContactOverlayShapeCahe, "contactOverlayShapeCache");
 	mixin Readonly!(ClientContactManager, "contactManager");
+	mixin Readonly!(TacticalOverlay, "tacticalOverlay");
+	mixin Readonly!(PlayerSubIcon, "playerSubIcon");
 
 	override void setup()
 	{
@@ -59,11 +61,14 @@ final class SimulatorState: GameState
 		// set up camera
 		Game.worldManager.camCtx.camera.center = rawRecState.subSnap.position;
 		Game.worldManager.camCtx.camera.zoom = 10.0;
-		m_camController = new CameraController();
-		Game.worldManager.backgroundMouseReceivers ~= m_camController;
+		m_camController = new CameraController(Game.worldManager.camCtx.camera);
+
+		// set tactical overlay
+		m_tacticalOverlay = new TacticalOverlay(m_camController);
+		Game.guiManager.addPanel(new Panel(m_tacticalOverlay));
+		m_playerSubIcon= new PlayerSubIcon(m_tacticalOverlay, m_playerSub);
 
 		m_gui = new SimulationGUI();
-		Game.worldManager.components ~= new PlayerSubIcon(m_playerSub);
 		m_gui.waterfall.listenDir = rawRecState.listenDirs[0];
 		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) rawRecState.subSnap);
 

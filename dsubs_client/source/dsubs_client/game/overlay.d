@@ -18,6 +18,7 @@ import dsubs_client.game;
 import dsubs_client.game.sonardisp;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.entities;
+import dsubs_client.game.cameracontroller;
 import dsubs_client.game.kinetic;
 import dsubs_client.game.contacts;
 
@@ -139,33 +140,83 @@ class SonarDispContactDataElement: ContactDataOverlayElement
 }
 
 
-class OverlayEntity: WorldRenderable
+
+final class TacticalOverlay: Overlay
 {
 	private
 	{
-		double prevZoom;
-		double prevRot;
+		CameraController m_camCtrl;
+		int m_mousePrevX, m_mousePrevY;
+		bool m_panned;	/// true when mouse has moved since RMB down
 	}
 
-	override void update(CameraContext camCtx, long usecsDelta)
+	this(CameraController camCtrl)
 	{
-		if (prevZoom != camCtx.camera.zoom || prevRot != camCtx.camera.rotation)
+		m_camCtrl = camCtrl;
+		mouseTransparent = false;
+		// mouse and keyboard handlers
+		onMouseDown += &processMouseDown;
+		onMouseUp += &processMouseUp;
+		onMouseMove += &processMouseMove;
+		onMouseScroll += &processMouseScroll;
+	}
+
+	private void processMouseDown(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight)
 		{
-			// camera has changed in a way that requires transform update
-			prevZoom = camCtx.camera.zoom;
-			double scaleX = 1.0 / prevZoom;
-			assert(!isNaN(scaleX));
-			transform.scale = vec2d(scaleX, scaleX);
-			prevRot = camCtx.camera.rotation;
-			transform.rotation = prevRot;
+			onPanStart(x, y);
+			requestMouseFocus();
 		}
-		super.update(camCtx, usecsDelta);
+	}
+
+	override void onPanStart(int x, int y)
+	{
+		m_panned = false;
+		m_mousePrevX = x;
+		m_mousePrevY = y;
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight)
+			returnMouseFocus();
+	}
+
+	private void processMouseMove(int x, int y)
+	{
+		if (mouseFocused)
+			onPan(x, y);
+	}
+
+	override void onPan(int x, int y)
+	{
+		if (m_mousePrevX != x || m_mousePrevY != y)
+			m_panned = true;	// we have moved the mouse
+		m_camCtrl.onPan(x - m_mousePrevX, y - m_mousePrevY);
+		m_mousePrevX = x;
+		m_mousePrevY = y;
+	}
+
+	private void processMouseScroll(int x, int y, float delta)
+	{
+		m_camCtrl.onScroll(x, y, delta);
+	}
+
+	override vec2d world2windowPos(vec2d world)
+	{
+		return m_camCtrl.camera.transform2screen(world);
+	}
+
+	override double world2windowRot(double world)
+	{
+		return world - m_camCtrl.camera.rotation;
 	}
 }
 
 
 /// Icon above the player submarine
-final class PlayerSubIcon: OverlayEntity
+final class PlayerSubIcon: OverlayElement
 {
 	private
 	{
@@ -173,17 +224,20 @@ final class PlayerSubIcon: OverlayEntity
 		LineShape m_velLine;
 		Submarine m_sub;
 		enum sfColor BASE_COLOR = sfColor(51, 204, 255, 230);
+		TacticalOverlay m_to;
 	}
 
-	this(Submarine sub)
+	this(TacticalOverlay to, Submarine sub)
 	{
 		assert(sub);
+		super(to);
+		m_to = to;
 		m_sub = sub;
+		size = vec2i(10, 10);
 		m_shape = new CircleShape(5.0f, 12);
 		m_shape.borderWidth = 2.0f;
 		m_shape.borderColor = BASE_COLOR;
-		m_velLine = new LineShape(vec2f(0.0f, 0.0f), vec2f(0.0f, 0.0f), BASE_COLOR, 2.0f);
-		transform.addChild(m_velLine.transform);
+		m_velLine = new LineShape(vec2d(5.0f, 5.0f), vec2d(6.0f, 5.0f), BASE_COLOR, 2.0f);
 	}
 
 	private static sfColor getColorFromZoom(double zoom)
@@ -197,28 +251,31 @@ final class PlayerSubIcon: OverlayEntity
 		return res;
 	}
 
-	override void update(CameraContext camCtx, long usecsDelta)
+	override void onPreDraw()
 	{
-		super.update(camCtx, usecsDelta);
-		transform.position = m_sub.transform.position;
+		vec2d screenCenter = m_to.world2windowPos(m_sub.transform.position);
+		m_shape.center = cast(vec2f) screenCenter;
+		m_velLine.transform.position = vec2d(screenCenter.x, -screenCenter.y);
+		position = center2lu(screenCenter);
 		KinematicSnapshot snap;
 		if (m_sub.getInterpolatedSnapshot(snap))
 		{
-			double velRot = courseAngle(snap.velocity);
+			double velRot = m_to.world2windowRot(courseAngle(snap.velocity));
 			double velLen = 2.0 * snap.velocity.length;
 			// LineShape is horizontal when transform rotation is zero, so we need
 			// to add PI_2 in order to match it with dsubs rotation frame
-			m_velLine.transform.rotation = -transform.rotation + velRot + PI_2;
+			m_velLine.transform.rotation = velRot + PI_2;
 			m_velLine.transform.scale = vec2d(velLen, 2.0f);
 		}
-		sfColor color = getColorFromZoom(camCtx.camera.zoom);
+		sfColor color = getColorFromZoom(m_to.m_camCtrl.camera.zoom);
 		m_shape.borderColor = color;
 		m_velLine.color = color;
 	}
 
-	override void render(Window wnd)
+	override void draw(Window wnd, long usecsDelta)
 	{
-		m_shape.render(wnd, transform.world);
-		m_velLine.render(wnd, );
+		super.draw(wnd, usecsDelta);
+		m_shape.render(wnd);
+		m_velLine.render(wnd);
 	}
 }

@@ -280,7 +280,7 @@ final class LineShape: Shape
 
 	@property Transform transform() { return m_transform; }
 
-	this(vec2f p1, vec2f p2, sfColor color, float width = 1.0f)
+	this(vec2d p1, vec2d p2, sfColor color, float width = 1.0f)
 	{
 		m_transform = new Transform();
 		m_shape = sfRectangleShape_create();
@@ -291,7 +291,7 @@ final class LineShape: Shape
 		rebuild(p1, p2, width);
 	}
 
-	void setPoints(vec2f p1, vec2f p2)
+	void setPoints(vec2d p1, vec2d p2)
 	{
 		rebuild(p1, p2, width);
 	}
@@ -302,9 +302,9 @@ final class LineShape: Shape
 		return rhs;
 	}
 
-	private void rebuild(vec2f p1, vec2f p2, float width)
+	private void rebuild(vec2d p1, vec2d p2, float width)
 	{
-		m_transform.position = p1.tod;
+		m_transform.position = p1;
 		m_transform.rotation = courseAngle(p2 - p1) + PI_2;
 		m_transform.scale = vec2d((p2 - p1).length, width);
 	}
