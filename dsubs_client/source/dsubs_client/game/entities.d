@@ -240,6 +240,7 @@ final class Submarine: WorldRenderable
 			p.transform.scale = vec2d(mount.scale, mount.scale);
 			p.transform.rotation = mount.rotation;
 			p.transform.position = mount.mountCenter.tod;
+			p.targetThrottle = m_targetThrottle;
 			transform.addChild(p.transform);
 			m_propulsors ~= p;
 		}

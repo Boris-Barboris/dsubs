@@ -87,6 +87,7 @@ final class LoadoutState: GameState
 						Game.worldManager.components.length = 0;
 						curSelectedSub = new Submarine(Game.entityManager, hullname,
 							curSelectedPropulsor);
+						curSelectedSub.targetThrottle = 0.1f;
 						curSelectedSub.transform.rotation = -PI_2;
 						Game.worldManager.components ~= curSelectedSub;
 					}
@@ -99,7 +100,9 @@ final class LoadoutState: GameState
 			if (i == 0)
 			{
 				assert(curSelectedSub is null);
-				hullSelector.simulateClick();	// select first submarine in the list
+				// select first submarine in the list
+				hullSelector.simulateClick();
+				hullSelector.onMouseEnter();
 				assert(curSelectedSub !is null);
 			}
 		}
@@ -157,7 +160,7 @@ final class LoadoutState: GameState
 
 		auto prepareGui = hDiv([
 			builder(vDiv([
-						builder(new Label()).content("Available submarines:").
+						builder(new Label()).content("Hulls:").
 							fontSize(BTN_FONT).fontColor(HINT_COLOR).
 							fixedSize(vec2i(1, 30)).build,
 						hullsScrollbar
@@ -171,7 +174,7 @@ final class LoadoutState: GameState
 				new ScrollBar(hullDescriptionBox)
 			]),
 			builder(vDiv([
-						builder(new Label()).content("Available propulsors:").
+						builder(new Label()).content("Propulsors:").
 							fontSize(BTN_FONT).fontColor(HINT_COLOR).
 							fixedSize(vec2i(1, 30)).build,
 						propsScrollbar,
@@ -179,12 +182,15 @@ final class LoadoutState: GameState
 					])
 				).fraction(0.25f).build(),
 		]);
-		prepareGui.borderColor = sfColor(50, 50, 50, 100);
-		prepareGui.borderWidth = 1;
 
 		Game.guiManager.addPanel(new Panel(prepareGui));
 		Game.worldManager.camCtx.camera.zoom = 10.0;
 		Game.worldManager.camCtx.camera.center = vec2d(0.0, 0.0);
+
+		Game.render.onPreRender += (delta) {
+			int wndX = Game.window.size.x;
+			Game.worldManager.camCtx.camera.zoom = wndX / 120.0f;
+		};
 	}
 
 	void handleSpawnRes(SpawnRes res)

@@ -23,22 +23,20 @@ import dsubs_client.game.kinetic;
 import dsubs_client.game.contacts;
 
 
-
-
 final class ContactOverlayShapeCahe
 {
 	this()
 	{
 		m_shapes[ContactType.Unknown] =
-			new CircleShape(9.0f, 4, sfColor(244, 241, 66, 255), 2);
+			new CircleShape(8.0f, 4, sfColor(244, 241, 66, 255), 2);
 		m_shapes[ContactType.Environment] =
-			new CircleShape(8.0f, 6, sfColor(107, 244, 65, 255), 2);
+			new CircleShape(7.0f, 6, sfColor(107, 244, 65, 255), 2);
 		m_shapes[ContactType.Submarine] =
-			new CircleShape(9.0f, 12, sfColor(255, 132, 10, 255), 2);
+			new CircleShape(8.0f, 12, sfColor(255, 132, 10, 255), 2);
 		m_shapes[ContactType.Weapon] =
-			new CircleShape(8.0f, 3, sfRed, 2);
+			new CircleShape(5.0f, 3, sfRed, 2);
 		m_shapes[ContactType.Decoy] =
-			new CircleShape(8.0f, 5, sfColor(152, 9, 255, 255), 2);
+			new CircleShape(5.0f, 5, sfColor(152, 9, 255, 255), 2);
 		m_onHoverRect = new RectangleShape(vec2f(22.0f, 22.0f), sfWhite);
 		m_onHoverRect.position = -vec2f(1, 1);
 	}
@@ -98,9 +96,9 @@ class SonarDispContactDataElement: ContactDataOverlayElement
 		m_range = direction.length;
 		// trace("caltulated bearing ", -m_bearing.compassAngle.rad2dgr, ", range ", m_range);
 		m_mainShape = ctcOverlayCache.forContactType(contact.data.type);
-		size = vec2i(20, 20);
+		size = cast(vec2i) vec2f(2 * m_mainShape.radius, 2 * m_mainShape.radius);
 		m_contactName = new Label();
-		m_contactName.fontSize = 16;
+		m_contactName.fontSize = 15;
 		m_contactName.content = contact.id.to!string;
 		m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
 			m_contactName.contentHeight + 2);
@@ -125,7 +123,7 @@ class SonarDispContactDataElement: ContactDataOverlayElement
 		if (hovered)
 		{
 			m_contactName.position = vec2i(position.x + size.x / 2 - m_contactName.size.x / 2,
-				position.y + 22);
+				position.y + size.y + 2);
 			ctcOverlayCache.onHoverRect.center = cast(vec2f) screenPos;
 		}
 	}
@@ -291,7 +289,7 @@ final class TacticalContactElement: OverlayElement
 		m_contact = contact;
 		super(to);
 		m_mainShape = ctcOverlayCache.forContactType(contact.data.type);
-		size = vec2i(20, 20);
+		size = cast(vec2i) vec2f(2 * m_mainShape.radius, 2 * m_mainShape.radius);
 		m_contactName = new Label();
 		m_contactName.fontSize = 16;
 		m_contactName.content = contact.id.to!string;
@@ -328,7 +326,7 @@ final class TacticalContactElement: OverlayElement
 		if (needDrawName)
 		{
 			m_contactName.position = vec2i(position.x + size.x / 2 - m_contactName.size.x / 2,
-				position.y + 22);
+				position.y + size.y + 2);
 		}
 		if (hovered)
 		{
