@@ -16,6 +16,7 @@ import dsubs_client.render.camera;
 import dsubs_client.core.window;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.waterfall: PanoramicDisplay;
+import dsubs_client.game.overlay: SonarDispContactDataElement;
 import dsubs_client.game;
 
 
@@ -113,8 +114,17 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 		const(ubyte)[] m_hostImage;
 	}
 
-	@property bool havePingKinematicSnapshot() const { return m_curPingId >= 0; }
-	@property KinematicSnapshot pingStartSnap() const { return m_pingStartSnap; }
+	@property bool havePingSourcePosition() const { return m_curPingId >= 0; }
+	@property vec2d pingSourcePosition() const
+	{
+		assert(havePingSourcePosition);
+		return m_pingStartSnap.position;
+	}
+	@property usecs_t pingTime() const
+	{
+		assert(havePingSourcePosition);
+		return m_pingStartSnap.atTime;
+	}
 
 	this(const SonarTemplate st)
 	{
@@ -141,6 +151,8 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 		}
 		m_kinetSnaps[0] = m_kinetSnaps[1];
 		m_kinetSnaps[1] = m_kinetSnaps[2];
+		// apply sonar mount translation to res
+		res.snap.position += rotateVector(m_st.mount.mountCenter, res.snap.rotation);
 		m_kinetSnaps[2] = res.snap;
 		m_curSliceSnapIdx = max(0, m_curSliceSnapIdx - 1);
 	}
@@ -157,6 +169,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 			// completely new ping has arrived
 			m_curPingId = data.pingId;
 			m_pingStartSnap = m_kinetSnaps[1];
+			m_overlay.processNewPing();
 		}
 		if (m_curSliceSnapIdx == 0)
 		{
@@ -212,11 +225,11 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 		ensureRowNumberDrawn(mustHaveDrawnRows);
 	}
 
-	private float pixelToRange(int px)
+	private float pixelToRange(float px)
 	{
 		if (contentHeight <= 0)
 			return 0.0f;
-		float ty = m_vertices[1].texCoords.y + (float(px) / contentHeight) *
+		float ty = m_vertices[1].texCoords.y + (px / contentHeight) *
 			(m_vertices[2].texCoords.y - m_vertices[1].texCoords.y);
 		return (m_height - ty) / m_pyperworldy;
 	}
@@ -259,6 +272,17 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 			onMouseUp += &processMouseUp;
 		}
 
+		/// Called by display when it has received new ping
+		void processNewPing()
+		{
+			foreach (OverlayElement el; m_elements.byKey)
+			{
+				SonarDispContactDataElement sdel = cast(SonarDispContactDataElement) el;
+				if (sdel !is null)
+					sdel.processNewPing(pingSourcePosition);
+			}
+		}
+
 		/// world.x is bearing, world.y is range in meters
 		override vec2d world2windowPos(vec2d world)
 		{
@@ -267,6 +291,15 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 					bearingToPixel(world.x),
 					rangeToPixel(world.y)
 				);
+		}
+
+		override vec2d screen2worldPos(vec2d screen)
+		{
+			vec2d local = screen - position;
+			return vec2d(
+				pixelToBearing(local.x),
+				pixelToRange(local.y)
+			);
 		}
 
 		private void processMouseUp(int x, int y, sfMouseButton btn)
@@ -283,7 +316,6 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 			float bearing = pixelToBearing(xlocal);
 			float range = pixelToRange(ylocal);
 			vec2d pos = m_pingStartSnap.position + courseVector(bearing) * range;
-			trace("clicked bearing: ", -rad2dgr(compassAngle(bearing)), ", range: ", range);
 			PositionData contactPos = PositionData(pos);
 			ContactDataUnion cdu = { position: contactPos };
 			CICCreateContactFromDataReq req = CICCreateContactFromDataReq(
@@ -297,7 +329,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 					cdu
 				));
 			Button[] buttons = [
-					builder(new Button()).fontSize(18).content("Mark new contact").build()
+					builder(new Button()).fontSize(15).content("Mark new contact").build()
 			];
 			buttons[0].onClick += () {
 				Game.ciccon.sendMessage(cast(immutable) req);

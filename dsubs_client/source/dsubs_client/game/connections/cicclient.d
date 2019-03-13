@@ -218,4 +218,12 @@ private:
 			Game.simState.contactManager.handleContactCreatedRes(msg);
 		}
 	}
+
+	void h_contactDataReq(CICContactDataReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.contactManager.handleContactData(msg.data);
+		}
+	}
 }

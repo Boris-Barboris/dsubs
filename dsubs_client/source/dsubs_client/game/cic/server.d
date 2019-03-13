@@ -197,8 +197,7 @@ final class CICServer
 
 	void handleCICContactMergeReq(CICContactMergeReq req)
 	{
-		if (req.sourceCtcId == req.destCtcId)
-			return;
+		enforce(req.sourceCtcId != req.destCtcId, "cannot merge into itself");
 		synchronized(m_state.ctcMut)
 		{
 			if (m_state.mergeContacts(req.sourceCtcId, req.destCtcId))

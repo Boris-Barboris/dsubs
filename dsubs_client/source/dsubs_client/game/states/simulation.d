@@ -312,6 +312,10 @@ final class SimulationGUI
 		void setMiddlePane(GuiElement el)
 		{
 			m_topLevelDiv.setChild(el, 1);
+			if (el is tabFiller)
+				Game.simState.tacticalOverlay.hidden = false;
+			else
+				Game.simState.tacticalOverlay.hidden = true;
 			Game.inputRouter.clearFocused();
 		}
 

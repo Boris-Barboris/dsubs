@@ -99,7 +99,6 @@ final class CameraController
 
 	private
 	{
-		int prevX, prevY;
 		bool smoothing = false;
 		double targetZoom;
 		vec2d zoomPivot;

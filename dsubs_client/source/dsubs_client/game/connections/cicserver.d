@@ -75,6 +75,7 @@ private:
 				sendMessage(m_cicserv.state.awaitCicRecState());
 				m_inSimFlow = true;
 			}
+			sendBytes(m_cicserv.state.serializeLastNData(100));
 		}
 	}
 
@@ -112,5 +113,29 @@ private:
 	{
 		enforce(m_inSimFlow, "not in simulator flow");
 		m_cicserv.handleCICContactUpdateReq(req);
+	}
+
+	void h_contactDataReq(CICContactDataReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICContactDataReq(req);
+	}
+
+	void h_dropContactReq(CICDropContactReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICDropContactReq(req);
+	}
+
+	void h_dropDataReq(CICDropDataReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICDropDataReq(req);
+	}
+
+	void h_contactMergeReq(CICContactMergeReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICContactMergeReq(req);
 	}
 }

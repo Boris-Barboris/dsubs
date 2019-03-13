@@ -338,7 +338,7 @@ class PanoramicDisplay(DataIntType): GuiElement
 		return camCoord * size.x / m_camViewportWidth;
 	}
 
-	protected final float pixelToBearing(int px)
+	protected final float pixelToBearing(float px)
 	{
 		float tx = m_vertices[0].texCoords.x + (float(px) / size.x) *
 			(m_vertices[1].texCoords.x - m_vertices[0].texCoords.x);
@@ -394,6 +394,7 @@ class PanoramicDisplay(DataIntType): GuiElement
 	class PanoramicOverlay: Overlay
 	{
 		override double world2windowRot(double world) { return world; }
+		override double screen2worldRot(double screen) { return screen; }
 
 		this()
 		{
@@ -535,7 +536,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		updateTexCoords();
 	}
 
-	private float pixelToDelay(int px)
+	private float pixelToDelay(float px)
 	{
 		if (contentHeight <= 0)
 			return 0.0f;
@@ -565,6 +566,15 @@ final class Waterfall: PanoramicDisplay!ushort
 					bearingToPixel(world.x),
 					delayToPixel(world.y)
 				);
+		}
+
+		override vec2d screen2worldPos(vec2d screen)
+		{
+			vec2d local = screen - position;
+			return vec2d(
+				pixelToBearing(local.x),
+				pixelToDelay(local.y)
+			);
 		}
 
 		private void processMouseUp(int x, int y, sfMouseButton btn)

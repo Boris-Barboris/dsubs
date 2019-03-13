@@ -151,25 +151,6 @@ final class MainMenuState: GameState
 			fixedSize(vec2i(400, btnSize)).build();
 		exitButton.onClick += () { Game.window.stopEventProcessing(); };
 
-		// context menu test
-		exitButton.onMouseUp += (int x, int y, sfMouseButton b) {
-			if (b == sfMouseRight)
-			{
-				Button[] buttons = [
-					builder(new Button()).content("print").build(),
-					builder(new Button()).content("quit").build()
-				];
-				buttons[0].onClick += () { info("print button pressed"); };
-				buttons[1].onClick += () { Game.window.stopEventProcessing(); };
-				ContextMenu menu = contextMenu(
-					Game.guiManager,
-					buttons,
-					Game.window.size,
-					vec2i(x, y)
-				);
-			}
-		};
-
 		Div mainMenuDiv = builder(vDiv([
 			filler(),
 			credDiv,

@@ -103,6 +103,13 @@ vec2d rotateVector(vec2d v, double rot)
 	return len * courseVector(course);
 }
 
+vec2d rotateVector(vec2f v, double rot)
+{
+	double course = courseAngle(v) + rot;
+	double len = v.length;
+	return len * courseVector(course);
+}
+
 unittest
 {
 	assert((vec2d(-1.0, 0.0) - rotateVector(vec2d(0.0, 1.0), PI_2)).length < 0.001);

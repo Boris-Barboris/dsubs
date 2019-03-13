@@ -191,6 +191,13 @@ class GuiElement: IInputReciever
 			m_viewport = vec4i(m_position.x, m_position.y, m_size.x, m_size.y);
 	}
 
+	final VecT clampInsideRect(VecT)(VecT pos, VecT boxSize = VecT(0, 0)) const
+	{
+		pos.x = clamp(pos.x, m_position.x, m_position.x + m_size.x - boxSize.x);
+		pos.y = clamp(pos.y, m_position.y, m_position.y + m_size.y - boxSize.y);
+		return pos;
+	}
+
 	/// return intersection between rhs and this element's rectangle
 	private vec4i clampViewport(const(vec4i)* rhs) const
 	{

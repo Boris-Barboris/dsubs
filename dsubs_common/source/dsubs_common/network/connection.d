@@ -85,6 +85,8 @@ class ProtocolConnection(alias Protocol)
 		void delegate(ubyte[] msgBody)[] m_handlers;
 	}
 
+	alias MessageProtocol = Protocol;
+
 	/// Create connection by adopting the socket.
 	this(Socket sock)
 	{

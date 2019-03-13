@@ -124,6 +124,7 @@ struct CICContactCreatedRes
 }
 
 /// Request/broadcast to update contact properties (type, comment, solution).
+/// Id and createdAt cannot be updated.
 struct CICContactUpdateReq
 {
 	__gshared const int g_marshIdx;
@@ -136,9 +137,10 @@ struct CICContactUpdateReq
 struct CICContactDataReq
 {
 	__gshared const int g_marshIdx;
-	/// data.id should be set to -1 on client for the new data sample to be created.
+	/// data.id should be set to -1 on client for the new data sample to be appended.
 	/// If id >= 0, it tries to update the data sample with the same id. ContactData can
-	/// be reassigned from one contact to another using this method.
+	/// be reassigned from one contact to another using this method. Contact source and
+	/// type cannot be changed.
 	ContactData data;
 }
 

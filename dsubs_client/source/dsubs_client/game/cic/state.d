@@ -1,6 +1,6 @@
 module dsubs_client.game.cic.state;
 
-import std.array: array;
+import std.array: array, appender;
 import std.algorithm: map;
 import std.ascii: isUpper;
 
@@ -8,6 +8,7 @@ import core.sync.mutex: Mutex;
 import core.sync.condition: Condition;
 
 import dsubs_common.api.protocols.backend;
+import dsubs_client.game.cic.protocol;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cic.entities;
 import dsubs_client.common;
@@ -147,13 +148,15 @@ final class CICState
 		// verify that the contact exists
 		ContactContext* ctcCtx = m_ctcCtxHash.get(newData.ctcId, null);
 		if (ctcCtx is null)
-			return null;
+			return null;	// ok, contact was deleted
 		if (newData.id >= 0)
 		{
 			// if we are updating the data, verify that it exists
 			ContactData* existing = m_ctcDataHash.get(newData.id, null);
 			if (existing is null)
-				return null;
+				return null;	// ok, data was deleted
+			enforce(existing.source == newData.source, "cannot change data source");
+			enforce(existing.type == newData.type, "cannot change data type");
 			// contact may have been changed
 			if (existing.ctcId != newData.ctcId)
 			{
@@ -166,13 +169,11 @@ final class CICState
 			}
 			else if (existing.time != newData.time)
 			{
-				// timestamp differs, we need to reinsert it into the tree
+				// timestamp differs, we need to reindex it
 				ctcCtx.dataTree.removeKey(existing);
 				existing.time = newData.time;
 				ctcCtx.dataTree.insert(existing);
 			}
-			existing.source = newData.source;
-			existing.type = newData.type;
 			existing.data = newData.data;
 			return existing;
 		}
@@ -180,7 +181,7 @@ final class CICState
 		{
 			// new data sample
 			if (m_dataIdSeq == int.max)
-				assert(0, "sequence overflow");
+				assert(0, "dataId sequence integer overflow");
 			m_dataIdSeq++;
 			ContactData* res = new ContactData(m_dataIdSeq, newData.ctcId, newData.time,
 				newData.source, newData.type, newData.data);
@@ -190,7 +191,7 @@ final class CICState
 		}
 	}
 
-	/// Try to set initial solution of the contact based on one data
+	/// Try to set initial solution of the contact based on one data sample
 	void initializeSolution(Contact* ctc, ContactData* fromData)
 	{
 		assert(ctc.id == fromData.ctcId);
@@ -210,9 +211,10 @@ final class CICState
 	{
 		ContactContext* ctcCtx = m_ctcCtxHash.get(from.id, null);
 		if (ctcCtx is null)
-			return false;
+			return false;	// ok, it was deleted
 		enforce(from.createdAt == ctcCtx.ctc.createdAt,
 			"Contact createdAt is immutable");
+		ctcCtx.ctc.type = from.type;
 		ctcCtx.ctc.comment = from.comment;
 		ctcCtx.ctc.solution = from.solution;
 		return true;
@@ -222,7 +224,7 @@ final class CICState
 	{
 		ContactContext* ctcCtx = m_ctcCtxHash.get(ctcId, null);
 		if (ctcCtx is null)
-			return false;
+			return false;	// ok, it was already dropped
 		m_ctcCtxHash.remove(ctcId);
 		// we need to remove all data of this contact
 		foreach (ContactData* data; ctcCtx.dataTree[])
@@ -235,7 +237,7 @@ final class CICState
 	{
 		ContactData* data = m_ctcDataHash.get(id, null);
 		if (data is null)
-			return false;
+			return false;	// ok, it was already dropped
 		m_ctcDataHash.remove(id);
 		ContactContext* ctcCtx = m_ctcCtxHash[data.ctcId];
 		ctcCtx.dataTree.removeKey(data);
@@ -251,6 +253,7 @@ final class CICState
 		ContactContext* destCtx = m_ctcCtxHash.get(dest, null);
 		if (destCtx is null)
 			return false;
+		trace("Merging ", source, " into ", dest);
 		foreach (ContactData* data; sourceCtx.dataTree[])
 		{
 			data.ctcId = dest;
@@ -258,5 +261,23 @@ final class CICState
 		}
 		sourceCtx.dataTree.clear();
 		return m_ctcCtxHash.remove(source);
+	}
+
+	/// Write last n contact data samples to the buffer, ready to send
+	immutable(ubyte)[] serializeLastNData(int n)
+	{
+		auto result = appender!(immutable(ubyte)[]);
+		int idx = m_dataIdSeq;
+		while(n > 0 && idx >= 0)
+		{
+			ContactData** data = idx in m_ctcDataHash;
+			if (data !is null)
+			{
+				result.put(CICProtocol.marshal(immutable CICContactDataReq(**data)));
+				n--;
+			}
+			idx--;
+		}
+		return result.data();
 	}
 }

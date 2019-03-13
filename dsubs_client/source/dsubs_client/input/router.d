@@ -142,6 +142,10 @@ final class InputRouter
 	private bool m_mouseInside = true;
 	private bool m_wndHasFocus;
 
+	private int m_prevMouseX, m_prevMouseY;
+	@property int prevMouseX() const { return m_prevMouseX; }
+	@property int prevMouseY() const { return m_prevMouseY; }
+
 	/// In dynamic, moving environment it's simpler to just generate
 	/// mouseMove event every time screen is redrawn in order to get new
 	/// object under the cursor. Routers with expensive lookup
@@ -156,6 +160,8 @@ final class InputRouter
 			moveEvent.mouseMove.x = mp.x;
 			moveEvent.mouseMove.y = mp.y;
 			routeMouseEvent(m_window, &moveEvent);
+			m_prevMouseX = mp.x;
+			m_prevMouseY = mp.y;
 		}
 	}
 

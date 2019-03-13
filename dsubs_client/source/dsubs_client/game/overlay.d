@@ -64,6 +64,8 @@ private ContactOverlayShapeCahe ctcOverlayCache()
 	return Game.simState.contactOverlayShapeCache;
 }
 
+private __gshared vec2i s_dragOffset;
+
 
 class ContactDataOverlayElement: OverlayElement
 {
@@ -74,45 +76,73 @@ class ContactDataOverlayElement: OverlayElement
 	}
 
 	mixin Readonly!(ClientContactData*, "data");
+
+	/// When the contact data updates from CIC message, this method is called;
+	abstract void updateFromData();
 }
 
-class SonarDispContactDataElement: ContactDataOverlayElement
+
+final class SonarDispContactDataElement: ContactDataOverlayElement
 {
 	this(SonarDisplay.SonarOverlay owner, ClientContactData* data, ClientContact contact)
 	{
-		assert(data.data.type == DataType.Position);
-		assert(data.data.source.type == DataSourceType.ActiveSonar);
-		assert(data.data.source.sensorIdx == 0);
+		assert(data.type == DataType.Position);
+		assert(data.source.type == DataSourceType.ActiveSonar);
+		assert(data.source.sensorIdx == 0);
 		super(owner, data);
-		// we need to calculate bearing and range in order to be able to draw it
-		KinematicSnapshot lastSnap;
-		if (owner.outer.havePingKinematicSnapshot)
-			lastSnap = owner.outer.pingStartSnap;
-		else
-			enforce(Game.simState.playerSub.getLastSnapshot(lastSnap));
-		vec2d contactPos = data.data.data.position.contactPos;
-		vec2d direction = contactPos - lastSnap.position;
-		m_bearing = courseAngle(direction);
-		m_range = direction.length;
-		// trace("caltulated bearing ", -m_bearing.compassAngle.rad2dgr, ", range ", m_range);
-		m_mainShape = ctcOverlayCache.forContactType(contact.data.type);
-		size = cast(vec2i) vec2f(2 * m_mainShape.radius, 2 * m_mainShape.radius);
+		// we need to calculate bearing and range relative to last ping source
+		// in order to be able to draw it
+		if (owner.outer.havePingSourcePosition)
+			processNewPing(owner.outer.pingSourcePosition);
+		m_mainShape = ctcOverlayCache.forContactType(contact.type);
+		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 4, 2 * m_mainShape.radius + 4);
 		m_contactName = new Label();
 		m_contactName.fontSize = 15;
 		m_contactName.content = contact.id.to!string;
 		m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
 			m_contactName.contentHeight + 2);
 
-		onMouseEnter += () { hovered = true; };
-		onMouseLeave += () { hovered = false; };
+		onMouseEnter += { m_hovered = true; };
+		onMouseLeave += { m_hovered = false; };
+		onMouseDown += &processMouseDown;
+		onMouseMove += &processMouseMove;
+		onMouseUp += &processMouseUp;
+	}
+
+	private @property SonarDisplay.SonarOverlay owner()
+	{
+		return cast(SonarDisplay.SonarOverlay) super.owner;
+	}
+
+	override void updateFromData()
+	{
+		if (owner.outer.havePingSourcePosition)
+			processNewPing(owner.outer.pingSourcePosition);
+	}
+
+	override @property bool hidden() {
+		return !m_initialized || super.hidden();
+	}
+
+	/// Rebuilds bearing and range for current ping source from ContactData
+	void processNewPing(vec2d pingSourcePos)
+	{
+		returnMouseFocus();
+		vec2d contactPos = data.data.position.contactPos;
+		vec2d direction = contactPos - pingSourcePos;
+		m_bearing = courseAngle(direction);
+		m_range = direction.length;
+		m_initialized = true;
 	}
 
 	private
 	{
+		/// True when m_bearing and range were initialized from ping source
+		bool m_initialized;
 		double m_bearing, m_range;
 		CircleShape m_mainShape;
 		Label m_contactName;
-		bool hovered = false;
+		bool m_hovered;
 	}
 
 	override void onPreDraw()
@@ -120,7 +150,7 @@ class SonarDispContactDataElement: ContactDataOverlayElement
 		vec2d screenPos = owner.world2windowPos(vec2d(m_bearing, m_range));
 		position = center2lu(screenPos);
 		m_mainShape.center = cast(vec2f) screenPos;
-		if (hovered)
+		if (m_hovered)
 		{
 			m_contactName.position = vec2i(position.x + size.x / 2 - m_contactName.size.x / 2,
 				position.y + size.y + 2);
@@ -131,11 +161,57 @@ class SonarDispContactDataElement: ContactDataOverlayElement
 	override void draw(Window wnd, long usecsDelta)
 	{
 		super.draw(wnd, usecsDelta);
-		if (hovered)
+		if (m_hovered)
 			ctcOverlayCache.onHoverRect.render(wnd);
 		m_mainShape.render(wnd);
-		if (hovered)
+		if (m_hovered)
 			m_contactName.draw(wnd, usecsDelta);
+	}
+
+	private void processMouseDown(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseLeft)
+		{
+			m_dragging = true;
+			s_dragOffset = vec2i(x, y) - position;
+			requestMouseFocus();
+		}
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseLeft && m_dragging)
+		{
+			m_dragging = false;
+			if (!m_panning)
+				returnMouseFocus();
+			requestDataUpdate();
+		}
+	}
+
+	/// Send updated data to cic
+	private void requestDataUpdate()
+	{
+		vec2d pingSource = owner.outer.pingSourcePosition;
+		vec2d newWorldPos = pingSource + m_range * courseVector(m_bearing);
+		usecs_t newTime = owner.outer.pingTime;
+		ContactData updated = data.cdata;
+		updated.time = newTime;
+		updated.data.position.contactPos = newWorldPos;
+		Game.ciccon.sendMessage(immutable CICContactDataReq(updated));
+	}
+
+	private void processMouseMove(int x, int y)
+	{
+		if (m_dragging)
+		{
+			vec2i newPos = vec2i(x, y) - s_dragOffset;
+			vec2d newCenter = owner.clampInsideRect(lu2center(newPos));
+			// we now need to update bearing and range from screen-space position
+			vec2d newWorldCoord = owner.screen2worldPos(newCenter);
+			m_bearing = newWorldCoord.x;
+			m_range = newWorldCoord.y;
+		}
 	}
 }
 
@@ -211,6 +287,16 @@ final class TacticalOverlay: Overlay
 	override double world2windowRot(double world)
 	{
 		return world - m_camCtrl.camera.rotation;
+	}
+
+	override vec2d screen2worldPos(vec2d screen)
+	{
+		return m_camCtrl.camera.transform2world(screen);
+	}
+
+	override double screen2worldRot(double screen)
+	{
+		return screen + m_camCtrl.camera.rotation;
 	}
 }
 
@@ -288,16 +374,16 @@ final class TacticalContactElement: OverlayElement
 		m_to = to;
 		m_contact = contact;
 		super(to);
-		m_mainShape = ctcOverlayCache.forContactType(contact.data.type);
-		size = cast(vec2i) vec2f(2 * m_mainShape.radius, 2 * m_mainShape.radius);
+		m_mainShape = ctcOverlayCache.forContactType(contact.type);
+		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 4, 2 * m_mainShape.radius + 4);
 		m_contactName = new Label();
 		m_contactName.fontSize = 16;
 		m_contactName.content = contact.id.to!string;
 		m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
 			m_contactName.contentHeight + 2);
 
-		onMouseEnter += () { hovered = true; };
-		onMouseLeave += () { hovered = false; };
+		onMouseEnter += { m_hovered = true; };
+		onMouseLeave += { m_hovered = false; };
 	}
 
 	private
@@ -306,20 +392,21 @@ final class TacticalContactElement: OverlayElement
 		TacticalOverlay m_to;
 		CircleShape m_mainShape;
 		Label m_contactName;
-		bool hovered = false;
+		bool m_hovered = false;
 	}
 
 	private @property bool needDrawName()
 	{
-		return hovered || m_contact.data.type != ContactType.Environment;
+		return m_hovered || m_contact.type != ContactType.Environment;
+	}
+
+	override @property bool hidden() {
+		return !m_contact.solution.posAvailable || super.hidden();
 	}
 
 	override void onPreDraw()
 	{
-		// if pos unavailable, do nothing
-		if (!m_contact.data.solution.posAvailable)
-			return;
-		vec2d worldPos = m_contact.data.solution.posData.contactPos;
+		vec2d worldPos = m_contact.solution.posData.contactPos;
 		vec2d screenPos = m_to.world2windowPos(worldPos);
 		position = center2lu(screenPos);
 		m_mainShape.center = cast(vec2f) screenPos;
@@ -328,7 +415,7 @@ final class TacticalContactElement: OverlayElement
 			m_contactName.position = vec2i(position.x + size.x / 2 - m_contactName.size.x / 2,
 				position.y + size.y + 2);
 		}
-		if (hovered)
+		if (m_hovered)
 		{
 			ctcOverlayCache.onHoverRect.center = cast(vec2f) screenPos;
 		}
@@ -336,11 +423,8 @@ final class TacticalContactElement: OverlayElement
 
 	override void draw(Window wnd, long usecsDelta)
 	{
-		// if pos unavailable, do nothing
-		if (!m_contact.data.solution.posAvailable)
-			return;
 		super.draw(wnd, usecsDelta);
-		if (hovered)
+		if (m_hovered)
 			ctcOverlayCache.onHoverRect.render(wnd);
 		m_mainShape.render(wnd);
 		if (needDrawName)

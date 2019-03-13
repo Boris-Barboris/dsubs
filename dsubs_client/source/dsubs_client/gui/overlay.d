@@ -2,16 +2,12 @@ module dsubs_client.gui.overlay;
 
 import derelict.sfml2.graphics;
 
-// import dsubs_common.containers.quadtree;
-
 import dsubs_client.math.transform;
 import dsubs_client.render.camera;
 import dsubs_client.core.utils;
 import dsubs_client.gui.element;
 import dsubs_client.input.router;
 
-
-// private alias OverlayIndex = QuadTree!OverlayElement;
 
 /// Overlay elements are usually tracking some point in world space while keeping
 /// their screen-space size constant. All overlay elements by convention play friendly with camera
@@ -22,8 +18,15 @@ class OverlayElement: GuiElement
 
 	/// Overlay elements may require hiding, or only small subset of them to be drawn
 	private bool m_hidden;
+	@property bool hidden() { return m_hidden; }
+	@property void hidden(bool rhs)
+	{
+		if (rhs)
+			onHide();
+		m_hidden = rhs;
+	}
 
-	mixin FinalGetSet!(bool, "hidden", "if (rhs) onHide();");
+	protected bool m_panning, m_dragging;
 
 	this(Overlay owner)
 	{
@@ -38,6 +41,18 @@ class OverlayElement: GuiElement
 		onMouseUp += &processMouseUp;
 		onMouseMove += &processMouseMove;
 		onMouseScroll += &processMouseScroll;
+		onMouseFocusLoss += { m_panning = m_dragging = false; };
+	}
+
+	/// Remove overlay element from owner
+	final void drop()
+	{
+		if (m_owner)
+		{
+			onHide();
+			m_owner.remove(this);
+			m_owner = null;
+		}
 	}
 
 	private void processMouseDown(int x, int y, sfMouseButton btn)
@@ -45,13 +60,14 @@ class OverlayElement: GuiElement
 		if (btn == sfMouseRight)
 		{
 			m_owner.onPanStart(x, y);
+			m_panning = true;
 			requestMouseFocus();
 		}
 	}
 
 	private void processMouseMove(int x, int y)
 	{
-		if (mouseFocused)
+		if (mouseFocused && m_panning)
 			m_owner.onPan(x, y);
 		else
 			m_owner.onMouseMove(x, y);
@@ -60,7 +76,11 @@ class OverlayElement: GuiElement
 	private void processMouseUp(int x, int y, sfMouseButton btn)
 	{
 		if (btn == sfMouseRight)
-			returnMouseFocus();
+		{
+			m_panning = false;
+			if (!m_dragging)
+				returnMouseFocus();
+		}
 	}
 
 	private void processMouseScroll(int x, int y, float delta)
@@ -68,13 +88,19 @@ class OverlayElement: GuiElement
 		m_owner.onMouseScroll(x, y, delta);
 	}
 
-	/// transforms center in screen-space to rounded left upper angle to set position to
+	/// transforms center in screen-space to rounded left upper corner
 	final vec2i center2lu(vec2d centerOnScreen)
 	{
 		return cast(vec2i) centerOnScreen - size / 2;
 	}
 
-	// We do not apply in-rect scissor test to overlay elements
+	/// transforms left upper corner to center
+	final vec2d lu2center(vec2i luOnScreen)
+	{
+		return cast(vec2d) luOnScreen + size / 2;
+	}
+
+	// We do not apply in-rect scissor test to overlay elements, we use overlay's viewport
 	override void updateViewport()
 	{
 		m_viewport = *parentViewport;
@@ -99,7 +125,7 @@ class OverlayElement: GuiElement
 /// standard input events to them.
 class Overlay: GuiElement
 {
-	private bool[OverlayElement] m_elements;
+	protected bool[OverlayElement] m_elements;
 
 	/// remove child overlay element
 	void remove(OverlayElement el)
@@ -107,7 +133,11 @@ class Overlay: GuiElement
 		m_elements.remove(el);
 		if (!el.hidden)
 			el.onHide();
+		el.m_owner = null;
 	}
+
+	private bool m_hidden;
+	mixin FinalGetSet!(bool, "hidden", "if (rhs) onHide();");
 
 	override void onHide()
 	{
@@ -119,7 +149,6 @@ class Overlay: GuiElement
 		}
 	}
 
-
 	abstract void onPanStart(int x, int y);
 	abstract void onPan(int x, int y);
 
@@ -127,9 +156,14 @@ class Overlay: GuiElement
 	abstract vec2d world2windowPos(vec2d world);
 	/// must return rotation, transformed from world space to window space.
 	abstract double world2windowRot(double world);
+	// ditto
+	abstract vec2d screen2worldPos(vec2d screen);
+	abstract double screen2worldRot(double screen);
 
 	override void draw(Window wnd, long usecsDelta)
 	{
+		if (m_hidden)
+			return;
 		super.draw(wnd, usecsDelta);
 		foreach (OverlayElement el; m_elements.byKey)
 		{
@@ -143,6 +177,8 @@ class Overlay: GuiElement
 
 	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
 	{
+		if (m_hidden)
+			return null;
 		if (rectContainsPoint(x, y))
 		{
 			// now let's find the element to route event to
