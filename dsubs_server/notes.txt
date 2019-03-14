@@ -53,3 +53,9 @@ First is that Johannen's Cd (which in Naval Arch is usually named Ct since it wo
 6. repeat 2->5 and concatenate the newer sequences.
 
 https://openacs.org/
+
+Forum engine:
+phpBB,
+vBulletin,
+https://www.discourse.org/
+https://flarum.org/features/
