@@ -372,8 +372,8 @@ float areaUnderNormDist(float mean, float a, float b, float disp)
 float angleDist(float a, float b)
 {
 	float val = fmod(a - b, 2 * M_PI_F);
-	if (fabs(val) > M_PI_F)
-		val -= sign(val) * 2 * M_PI_F;
+	// if (fabs(val) > M_PI_F)
+	val -= (fabs(val) > M_PI_F) * (sign(val) * 2 * M_PI_F);
 	return val;
 }
 
