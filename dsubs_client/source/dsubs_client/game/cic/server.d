@@ -171,6 +171,9 @@ final class CICServer
 			{
 				CICContactDataReq res = CICContactDataReq(*data);
 				m_listener.broadcast(cast(immutable) res);
+				Contact* updatedContact = m_state.updateSolutionFromNewData(data);
+				if (updatedContact)
+					m_listener.broadcast(immutable CICContactUpdateReq(*updatedContact));
 			}
 			// we do not throw here because contact could be deleted right after the
 			// message was sent

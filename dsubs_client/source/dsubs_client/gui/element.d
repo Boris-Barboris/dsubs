@@ -35,7 +35,7 @@ enum Axis: byte
 }
 
 /// GUI tree element. This is not an abstract class, just an empty rectangle.
-class GuiElement: IInputReciever
+class GuiElement: IInputReceiver
 {
 	private
 	{
@@ -219,7 +219,7 @@ class GuiElement: IInputReciever
 	}
 
 	//
-	// IInputReciever interface implementation
+	// IInputReceiver interface implementation
 	//
 
 	// Example implementation
@@ -259,14 +259,14 @@ class GuiElement: IInputReciever
 		return HandleResult(mouseTransparent);
 	}
 
-	void handleMouseEnter()
+	void handleMouseEnter(IInputReceiver oldOwner)
 	{
-		onMouseEnter();
+		onMouseEnter(oldOwner);
 	}
 
-	void handleMouseLeave()
+	void handleMouseLeave(IInputReceiver newOwner)
 	{
-		onMouseLeave();
+		onMouseLeave(newOwner);
 	}
 
 	// focuses
@@ -350,8 +350,8 @@ class GuiElement: IInputReciever
 	}
 
 	// events for users to subscribe to
-	Event!(void delegate()) onMouseEnter;
-	Event!(void delegate()) onMouseLeave;
+	Event!(void delegate(IInputReceiver oldOwner)) onMouseEnter;
+	Event!(void delegate(IInputReceiver newOwner)) onMouseLeave;
 	Event!(void delegate()) onMouseFocusLoss;
 	Event!(void delegate()) onKbFocusLoss;
 	Event!(void delegate(int x, int y)) onMouseMove;

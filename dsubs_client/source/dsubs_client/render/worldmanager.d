@@ -61,7 +61,7 @@ final class CameraContext
 
 
 /// Something that may receive mouse events in the context of world space
-interface IWorldMouseReceiver: IInputReciever
+interface IWorldMouseReceiver: IInputReceiver
 {
 	bool isMouseEventInteresting(Window wnd, const sfEvent* evt, int x, int y);
 }

@@ -191,6 +191,26 @@ final class CICState
 		}
 	}
 
+	/// If the solution was updated, returns the new contact body to broadcast.
+	/// Otherwise returns null.
+	Contact* updateSolutionFromNewData(ContactData* newData)
+	{
+		if (newData.type != DataType.Position)
+			return null;
+		ContactContext* ctcCtx = m_ctcCtxHash.get(newData.ctcId, null);
+		if (ctcCtx is null)
+			return null;
+		// fully specified solution
+		if (ctcCtx.ctc.solution.posAvailable && ctcCtx.ctc.solution.velAvailable)
+			return null;
+		ContactData* lastData = ctcCtx.dataTree.back;
+		if (lastData !is newData)
+			return null;
+		ctcCtx.ctc.solution.posData = newData.data.position;
+		ctcCtx.ctc.solution.posAvailable = true;
+		return &ctcCtx.ctc;
+	}
+
 	/// Try to set initial solution of the contact based on one data sample
 	void initializeSolution(Contact* ctc, ContactData* fromData)
 	{

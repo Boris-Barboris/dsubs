@@ -12,6 +12,7 @@ import dsubs_common.api.protocols.backend: EntityDbRes;
 import dsubs_client.common;
 import dsubs_client.core.scheduler;
 import dsubs_client.core.window;
+import dsubs_client.lib.openal: cleanupSoundResources;
 import dsubs_client.input.router;
 import dsubs_client.input.hotkeymanager;
 import dsubs_client.gui.manager;
@@ -153,6 +154,10 @@ __gshared:
 		try
 		{
 			window.pollEvents(mainMutex);
+			synchronized (mainMutex)
+			{
+				clearEntities();
+			}
 		}
 		catch (Throwable tw)
 		{
@@ -165,6 +170,7 @@ __gshared:
 	/// game state.
 	private static void clearEntities()
 	{
+		cleanupSoundResources();
 		inputRouter.clearFocused();
 		guiManager.clearPanels();
 		render.clearHandlers();

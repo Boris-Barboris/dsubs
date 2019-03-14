@@ -27,15 +27,15 @@ final class ContactOverlayShapeCahe
 {
 	this()
 	{
-		m_shapes[ContactType.Unknown] =
+		m_shapes[ContactType.unknown] =
 			new CircleShape(8.0f, 4, sfColor(244, 241, 66, 255), 2);
-		m_shapes[ContactType.Environment] =
+		m_shapes[ContactType.environment] =
 			new CircleShape(7.0f, 6, sfColor(107, 244, 65, 255), 2);
-		m_shapes[ContactType.Submarine] =
+		m_shapes[ContactType.submarine] =
 			new CircleShape(8.0f, 12, sfColor(255, 132, 10, 255), 2);
-		m_shapes[ContactType.Weapon] =
+		m_shapes[ContactType.weapon] =
 			new CircleShape(5.0f, 3, sfRed, 2);
-		m_shapes[ContactType.Decoy] =
+		m_shapes[ContactType.decoy] =
 			new CircleShape(5.0f, 5, sfColor(152, 9, 255, 255), 2);
 		m_onHoverRect = new RectangleShape(vec2f(22.0f, 22.0f), sfWhite);
 		m_onHoverRect.position = -vec2f(1, 1);
@@ -94,16 +94,10 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 		// in order to be able to draw it
 		if (owner.outer.havePingSourcePosition)
 			processNewPing(owner.outer.pingSourcePosition);
-		m_mainShape = ctcOverlayCache.forContactType(contact.type);
-		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 4, 2 * m_mainShape.radius + 4);
-		m_contactName = new Label();
-		m_contactName.fontSize = 15;
-		m_contactName.content = contact.id.to!string;
-		m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
-			m_contactName.contentHeight + 2);
+		updateFromContact(contact);
 
-		onMouseEnter += { m_hovered = true; };
-		onMouseLeave += { m_hovered = false; };
+		onMouseEnter += (o) { m_hovered = true; };
+		onMouseLeave += (o) { m_hovered = false; };
 		onMouseDown += &processMouseDown;
 		onMouseMove += &processMouseMove;
 		onMouseUp += &processMouseUp;
@@ -118,6 +112,20 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 	{
 		if (owner.outer.havePingSourcePosition)
 			processNewPing(owner.outer.pingSourcePosition);
+	}
+
+	void updateFromContact(ClientContact contact)
+	{
+		m_mainShape = ctcOverlayCache.forContactType(contact.type);
+		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 4, 2 * m_mainShape.radius + 4);
+		if (m_contactName is null)
+		{
+			m_contactName = new Label();
+			m_contactName.fontSize = 15;
+			m_contactName.content = contact.id.to!string;
+			m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
+				m_contactName.contentHeight + 2);
+		}
 	}
 
 	override @property bool hidden() {
@@ -180,6 +188,18 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 
 	private void processMouseUp(int x, int y, sfMouseButton btn)
 	{
+		if (btn == sfMouseRight && !m_panning)
+		{
+			Button[] buttons = commonContactContextMenu(
+				Game.simState.contactManager.get(data.ctcId));
+			ContextMenu menu = contextMenu(
+					Game.guiManager,
+					buttons,
+					Game.window.size,
+					vec2i(x, y),
+					20);
+			return;
+		}
 		if (btn == sfMouseLeft && m_dragging)
 		{
 			m_dragging = false;
@@ -196,6 +216,8 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 		vec2d newWorldPos = pingSource + m_range * courseVector(m_bearing);
 		usecs_t newTime = owner.outer.pingTime;
 		ContactData updated = data.cdata;
+		if (newTime != data.cdata.time)
+			updated.id = -1;	// different time = new data sample
 		updated.time = newTime;
 		updated.data.position.contactPos = newWorldPos;
 		Game.ciccon.sendMessage(immutable CICContactDataReq(updated));
@@ -374,16 +396,25 @@ final class TacticalContactElement: OverlayElement
 		m_to = to;
 		m_contact = contact;
 		super(to);
-		m_mainShape = ctcOverlayCache.forContactType(contact.type);
-		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 4, 2 * m_mainShape.radius + 4);
-		m_contactName = new Label();
-		m_contactName.fontSize = 16;
-		m_contactName.content = contact.id.to!string;
-		m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
-			m_contactName.contentHeight + 2);
+		updateFromContact();
+		onMouseEnter += (o) { m_hovered = true; };
+		onMouseLeave += (o) { m_hovered = false; };
+		onMouseUp += &processMouseUp;
+	}
 
-		onMouseEnter += { m_hovered = true; };
-		onMouseLeave += { m_hovered = false; };
+	void updateFromContact()
+	{
+		m_mainShape = ctcOverlayCache.forContactType(m_contact.type);
+		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 4, 2 * m_mainShape.radius + 4);
+		// contact id cannot change, so m_contactName is constant
+		if (m_contactName is null)
+		{
+			m_contactName = new Label();
+			m_contactName.fontSize = 16;
+			m_contactName.content = m_contact.id.to!string;
+			m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
+				m_contactName.contentHeight + 2);
+		}
 	}
 
 	private
@@ -397,7 +428,8 @@ final class TacticalContactElement: OverlayElement
 
 	private @property bool needDrawName()
 	{
-		return m_hovered || m_contact.type != ContactType.Environment;
+		return m_hovered || (m_contact.type != ContactType.environment &&
+			m_contact.type != ContactType.decoy);
 	}
 
 	override @property bool hidden() {
@@ -429,5 +461,20 @@ final class TacticalContactElement: OverlayElement
 		m_mainShape.render(wnd);
 		if (needDrawName)
 			m_contactName.draw(wnd, usecsDelta);
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight && !m_panning)
+		{
+			Button[] buttons = commonContactContextMenu(m_contact);
+			ContextMenu menu = contextMenu(
+					Game.guiManager,
+					buttons,
+					Game.window.size,
+					vec2i(x, y),
+					20);
+			return;
+		}
 	}
 }

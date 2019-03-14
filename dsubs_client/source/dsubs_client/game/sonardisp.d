@@ -168,8 +168,11 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 		{
 			// completely new ping has arrived
 			m_curPingId = data.pingId;
-			m_pingStartSnap = m_kinetSnaps[1];
-			m_overlay.processNewPing();
+			if (data.sliceId == 0)
+			{
+				m_pingStartSnap = m_kinetSnaps[1];
+				m_overlay.processNewPing();
+			}
 		}
 		if (m_curSliceSnapIdx == 0)
 		{
@@ -329,7 +332,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 					cdu
 				));
 			Button[] buttons = [
-					builder(new Button()).fontSize(15).content("Mark new contact").build()
+					builder(new Button()).fontSize(15).content("new contact").build()
 			];
 			buttons[0].onClick += () {
 				Game.ciccon.sendMessage(cast(immutable) req);
@@ -339,7 +342,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 					buttons,
 					Game.window.size,
 					vec2i(x, y),
-					24);
+					20);
 		}
 	}
 }

@@ -11,6 +11,7 @@ import dsubs_common.event;
 import dsubs_client.core.window;
 import dsubs_client.core.utils;
 import dsubs_client.gui.label;
+import dsubs_client.input.router: IInputReceiver;
 
 
 enum ButtonType: ubyte
@@ -96,13 +97,13 @@ class Button: Label
 
 	private bool m_underCursor = false;
 
-	private void handleMouseLeave()
+	private void handleMouseLeave(IInputReceiver newOwner)
 	{
 		m_underCursor = false;
 		pressed = false;
 	}
 
-	private void handleMouseEnter()
+	private void handleMouseEnter(IInputReceiver oldOwner)
 	{
 		m_underCursor = true;
 		updateFontColor();

@@ -28,23 +28,44 @@ final class ContextMenu: Panel
 			e => (e.contentWidth + 2 * e.padding)).reduce!(max);
 		div.fixedSize = vec2i(lrint(maxContentWidth).to!int, div.size.y);
 		div.backgroundColor = sfColor(15, 15, 15, 255);
-		// handle a click outside of the context menu
-		div.onMouseDown += (int x, int y, sfMouseButton btn) {
-			if (!div.rectContainsPoint(x, y))
-				div.returnMouseFocus();
-		};
-		// handle mouse focus loss
-		div.onMouseFocusLoss += () {
-			if (this.manager)
-				this.manager.removePanel(this);
-		};
 		// apply shanges to buttons
 		foreach (Button btn; elements)
 		{
-			btn.onClick += () { div.returnMouseFocus(); };
 			btn.htextAlign = HTextAlign.LEFT;
+			NestedContextBtn ncb = cast(NestedContextBtn) btn;
+			if (ncb !is null)
+				ncb.m_parentMenu = this;
+			else
+				btn.onClick += &teardownFromTopParent;
 		}
 		super(div);
+	}
+
+	private ContextMenu m_childMenu;
+	private ContextMenu m_parentMenu;
+
+	private void teardownFromTopParent()
+	{
+		if (m_parentMenu)
+			m_parentMenu.teardownFromTopParent();
+		else
+			teardownWithChildren();
+	}
+
+	private void teardownWithChildren()
+	{
+		if (m_parentMenu)
+		{
+			m_parentMenu.m_childMenu = null;
+			m_parentMenu = null;
+		}
+		if (m_childMenu)
+		{
+			m_childMenu.teardownWithChildren();
+			m_childMenu = null;
+		}
+		if (manager)
+			manager.removePanel(this);
 	}
 
 	/// Place the root div in such a way that it's left upper corner
@@ -57,11 +78,112 @@ final class ContextMenu: Panel
 		rootDiv.position = pos;
 	}
 
+	/// Called by top-level menu. Returns true if for some reason top-level
+	/// menu should not immediately destroy itself, but should wait
+	private bool leftClickAllowed(const sfEvent* evt, int x, int y)
+	{
+		if (m_childMenu && m_childMenu.leftClickAllowed(evt, x, y))
+			return true;
+		GuiElement el = rootDiv.getFromPoint(evt, x, y);
+		return (el !is null);
+	}
+
 	/// Add this context menu to GuiManager and aquire mouse focus
 	void activate(GuiManager mgr)
 	{
+		foreach (GuiElement btn; rootDiv.children)
+		{
+			NestedContextBtn ncb = cast(NestedContextBtn) btn;
+			if (ncb)
+				ncb.m_mgr = mgr;
+		}
+		// handle focus loss
+		rootDiv.onMouseFocusLoss += &teardownWithChildren;
+
+		rootDiv.onMouseDown += (int x, int y, sfMouseButton btn) {
+			// handle a click outside of the context menu
+			if (btn == sfMouseLeft)
+			{
+				sfEvent evt;
+				evt.mouseButton = sfMouseButtonEvent(sfEvtMouseButtonPressed,
+					sfMouseLeft, x, y);
+				if (leftClickAllowed(&evt, x, y))
+					return;
+			}
+			rootDiv.returnMouseFocus();
+		};
 		mgr.addPanel(this);
 		rootDiv.requestMouseFocus();
+	}
+
+	void activateChained(GuiManager mgr, ContextMenu parentMenu)
+	{
+		m_parentMenu = parentMenu;
+		parentMenu.m_childMenu = this;
+		mgr.addPanel(this);
+	}
+
+	/// returns true if need to remove panel
+	private bool checkNewOwnerForChained(IInputReceiver newOwner)
+	{
+		if (newOwner is null)
+			return true;
+		if (rootDiv is newOwner)
+			return false;
+		if (divOwnsInputReceiver(rootDiv, newOwner))
+			return false;
+		if (m_childMenu)
+			return m_childMenu.checkNewOwnerForChained(newOwner);
+		return true;
+	}
+}
+
+bool divOwnsInputReceiver(Div d, IInputReceiver r)
+{
+	GuiElement el = cast(GuiElement) r;
+	return (el && el.parent is d);
+}
+
+
+/// Button that on hover spawns the inner context menu
+class NestedContextBtn: Button
+{
+	this(Button[] elements, int rowHeight = 20)
+	{
+		m_toSpawn = elements;
+		m_rowHeight = rowHeight;
+		onMouseEnter += &processMouseEnter;
+		onMouseLeave += &processMouseLeave;
+	}
+
+	private void processMouseEnter(IInputReceiver oldOwner)
+	{
+		if (m_spawnedMenu)
+			m_spawnedMenu.teardownWithChildren();
+		m_spawnedMenu = new ContextMenu(m_toSpawn, m_rowHeight);
+		vec2i unclamped = position + vec2i(size.x, 0);
+		m_spawnedMenu.placeByLUCorner(m_mgr.window.size, unclamped);
+		if (m_spawnedMenu.rootDiv.position.x < unclamped.x)
+			m_spawnedMenu.placeByLUCorner(m_mgr.window.size,
+				position - vec2i(m_spawnedMenu.rootDiv.size.x, 0));
+		m_spawnedMenu.activateChained(m_mgr, m_parentMenu);
+	}
+
+	private void processMouseLeave(IInputReceiver newOwner)
+	{
+		if (!m_spawnedMenu || !m_spawnedMenu.checkNewOwnerForChained(newOwner))
+			return;
+		m_spawnedMenu.teardownWithChildren();
+		m_spawnedMenu = null;
+	}
+
+	private
+	{
+		GuiManager m_mgr;
+		ContextMenu m_parentMenu;
+		ContextMenu m_spawnedMenu;
+		Button[] m_toSpawn;
+		int m_rowHeight;
 	}
 }
 

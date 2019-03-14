@@ -92,7 +92,7 @@ final class LoadoutState: GameState
 						Game.worldManager.components ~= curSelectedSub;
 					}
 				};
-			hullSelector.onMouseEnter += ()
+			hullSelector.onMouseEnter += (o)
 				{
 					hullDescriptionBox.content =
 						Game.entityManager.submarineTemplates[hullname].description;
@@ -102,7 +102,7 @@ final class LoadoutState: GameState
 				assert(curSelectedSub is null);
 				// select first submarine in the list
 				hullSelector.simulateClick();
-				hullSelector.onMouseEnter();
+				hullSelector.onMouseEnter(null);
 				assert(curSelectedSub !is null);
 			}
 		}
@@ -125,7 +125,7 @@ final class LoadoutState: GameState
 					if (curSelectedSub)
 						curSelectedSub.setPropulsor(Game.entityManager, propName);
 				};
-			propSelector.onMouseEnter += ()
+			propSelector.onMouseEnter += (o)
 				{
 					hullDescriptionBox.content =
 						Game.entityManager.propTemplates[propName].description;

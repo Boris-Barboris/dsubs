@@ -19,10 +19,9 @@ void loadAudioLib()
 		environment["ALSOFT_CONF"] = "alsoft.ini";
 	DerelictAL.load();
 	s_device = alcOpenDevice(null);
-	ALenum err = alcGetError(s_device);
 	if (s_device is null)
 	{
-		error("OpenAL unable to open audio device: ", err);
+		error("OpenAL unable to open audio device");
 		s_noAudio = true;
 		return;
 	}
@@ -43,6 +42,10 @@ void unloadAudioLib()
 {
 	if (s_noAudio)
 		return;
+	info("unloadAudioLib called");
+	cleanupSoundResources();
+	alcMakeContextCurrent(null);
+	alcDestroyContext(s_context);
 	alcCloseDevice(s_device);
 }
 
@@ -51,6 +54,7 @@ private __gshared
 	ALCdevice* s_device;
 	ALCcontext* s_context;
 	bool s_noAudio;
+	StreamingSoundSource[] s_sources;
 }
 
 pragma(inline)
@@ -67,6 +71,16 @@ private void openalCheckErr(string msgStart)
 	enforce(err == AL_NO_ERROR, msgStart ~ err.to!string);
 }
 
+/// Dispose of all sound sources
+void cleanupSoundResources()
+{
+	if (s_noAudio)
+		return;
+	foreach (s; s_sources)
+		s.dispose();
+	s_sources.length = 0;
+}
+
 /// Sound source that can be appended to. At most one buffer is enqueued, new
 /// buffers will cause rewind.
 final class StreamingSoundSource
@@ -80,6 +94,7 @@ final class StreamingSoundSource
 		alSourcef(source, AL_MAX_GAIN, MAX_GAIN);
 		openalCheckErr("Cannot set max gain: ");
 		gain = 0.0f;
+		s_sources ~= this;
 	}
 
 	private
@@ -89,20 +104,28 @@ final class StreamingSoundSource
 
 		// enum float TARGET_MAX = short.max * 0.8f;
 		enum float MAX_GAIN = float.max;	// +30 dB
+
+		ALuint[] m_buffers;
 	}
 
 	@property int queuedCount() const { return m_queuedCount; }
 
 	~this()
 	{
-		if (s_noAudio)
+		dispose();
+	}
+
+	private bool m_disposed;
+
+	void dispose() @nogc
+	{
+		if (s_noAudio || m_disposed)
 			return;
 		alSourceStop(source);
-		ALenum err = alGetError();
 		alDeleteSources(1, &source);
-		err = alGetError();
-		if (err != AL_NO_ERROR)
-			error("error during source deletion: " ~ err.to!string);
+		foreach (buf; m_buffers)
+			alDeleteBuffers(1, &buf);
+		m_disposed = true;
 	}
 
 	/// append sound to the source
@@ -114,6 +137,7 @@ final class StreamingSoundSource
 		ALuint newBuf;
 		alGenBuffers(1, &newBuf);
 		openalCheckErr("Cannot create new buffer: ");
+		m_buffers ~= newBuf;
 		// short smax = samples.map!(s => abs(s).to!short).maxElement();
 		// float mgain = 1.0f;
 		// if (gain != 0.0f)
@@ -187,6 +211,8 @@ final class StreamingSoundSource
 			assert(m_queuedCount >= 0);
 			alDeleteBuffers(1, &oldBuf);
 			openalCheckErr("Unable to delete unqueued buffer: ");
+			assert(oldBuf == m_buffers[0]);
+			m_buffers = m_buffers.remove(0);
 			processed--;
 		}
 	}

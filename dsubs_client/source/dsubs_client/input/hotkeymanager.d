@@ -51,7 +51,7 @@ alias HoldAction = void delegate(long usecs, Modifier curMods);
 
 /// Class that stores and manages hotkey mapping. Deals with two kinds of
 /// inputs: key releases and raw keyboard access.
-final class HotkeyManager: IWindowEventSubrouter, IInputReciever
+final class HotkeyManager: IWindowEventSubrouter, IInputReceiver
 {
 	private
 	{
@@ -121,7 +121,7 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 
 	void handleWindowResize(Window wnd, const sfSizeEvent* evt) {}
 
-	// IInputReciever implementation
+	// IInputReceiver implementation
 
 	void handleKbFocusGain() {}
 
@@ -179,9 +179,9 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReciever
 		return res;
 	}
 
-	// dummy IInputReciever interface functions
-	void handleMouseEnter() {}
-	void handleMouseLeave() {}
+	// dummy IInputReceiver interface functions
+	void handleMouseEnter(IInputReceiver oldOwner) {}
+	void handleMouseLeave(IInputReceiver newOwner) {}
 	void handleMouseFocusGain() {}
 	void handleMouseFocusLoss() {}
 

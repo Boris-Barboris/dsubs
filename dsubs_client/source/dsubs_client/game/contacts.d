@@ -1,5 +1,7 @@
 module dsubs_client.game.contacts;
 
+import std.traits: EnumMembers;
+
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 
@@ -29,6 +31,7 @@ struct ClientContactData
 
 	void drop() {}
 }
+
 
 /// Client representation of a contact object
 final class ClientContact
@@ -78,6 +81,14 @@ final class ClientContact
 		}
 	}
 
+	void updateContact(Contact ctc)
+	{
+		m_ctc = ctc;
+		m_tactDispEl.updateFromContact();
+		if (m_sonarDispEl)
+			m_sonarDispEl.updateFromContact(this);
+	}
+
 	void updateData(ClientContactData* cdata)
 	{
 		if (m_sonarDispEl !is null && m_sonarDispEl.data is cdata)
@@ -92,6 +103,7 @@ final class ClientContact
 		m_sonarDispEl = null;
 	}
 }
+
 
 /// Contacts and their data that the client knows about. May be out of sync with CIC server.
 final class ClientContactManager
@@ -141,4 +153,39 @@ final class ClientContactManager
 		m_dataHash[cdata.id] = cdata;
 		ctc.addData(cdata);
 	}
+
+	void handleContactUpdate(Contact msg)
+	{
+		m_contactHash[msg.id].updateContact(msg);
+	}
+}
+
+
+/// Generate buttons, that contain common actions to perform on contact
+Button[] commonContactContextMenu(ClientContact ctc)
+{
+	Button[] res;
+	Button btn = builder(new Button()).fontSize(15).content("drop contact").build();
+	btn.onClick += {
+		Game.ciccon.sendMessage(immutable CICDropContactReq(ctc.id));
+	};
+	res ~= btn;
+	Button[] classifications;
+	foreach (ctype; EnumMembers!ContactType)
+	{
+		btn = builder(new Button()).fontSize(15).content(ctype.to!string).build();
+		btn.onClick += {
+			Contact curContact = ctc.ctc;
+			if (curContact.type != ctype)
+			{
+				curContact.type = ctype;
+				Game.ciccon.sendMessage(immutable CICContactUpdateReq(curContact));
+			}
+		};
+		classifications ~= btn;
+	}
+	NestedContextBtn classifySubmenu = builder(new NestedContextBtn(classifications, 20)).
+		fontSize(15).content("classify as").build();
+	res ~= classifySubmenu;
+	return res;
 }

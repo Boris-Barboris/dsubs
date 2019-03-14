@@ -89,11 +89,11 @@ struct HydrophoneTracker
 /// Most generic contact type classification
 enum ContactType: byte
 {
-	Unknown,
-	Environment,
-	Submarine,
-	Weapon,
-	Decoy
+	unknown,
+	environment,
+	submarine,
+	weapon,
+	decoy
 }
 
 /// Unique tracked contact.

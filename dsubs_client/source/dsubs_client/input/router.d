@@ -11,15 +11,15 @@ public import dsubs_client.core.window;
 
 
 /// Generic input event reciever
-interface IInputReciever
+interface IInputReceiver
 {
 	// Every frame artificial MouseMove event is generated
 	// in order to react to scene itself changing under the cursor. When mouse
 	// first enters reciever, he gets MouseEnter call from the router.
 	// When mouse leaves window, reciever, or reciever itself moves out
 	// of the cursor, it gets MouseLeave.
-	void handleMouseEnter();
-	void handleMouseLeave();
+	void handleMouseEnter(IInputReceiver oldOwner);
+	void handleMouseLeave(IInputReceiver newOwner);
 	// By focus we mean keyboard input priority. Keyboard events are
 	// routed in this element first, then they go through the subrouter cascade.
 	// These two functions are called on keyboard focus gain\loss.
@@ -49,7 +49,7 @@ struct RouteResult
 {
 	/// Entity that should recieve the event. Null sends event further down
 	/// the chain.
-	IInputReciever reciever;
+	IInputReceiver reciever;
 }
 
 /// Particular subsystem should implement this interface, that allows to
@@ -73,23 +73,23 @@ final class InputRouter
 	// components are global and static. Only one reciever is under cursor.
 	// Only one reciever is focused. Only one window is actively getting
 	// events. Dsubs GUI code is not thread-safe.
-	private __gshared IInputReciever g_underCursor, g_kbFocused, g_mouseFocused;
+	private __gshared IInputReceiver g_underCursor, g_kbFocused, g_mouseFocused;
 
-	static @property IInputReciever underCursor() { return g_underCursor; }
-	static @property IInputReciever underCursor(IInputReciever rhs)
+	static @property IInputReceiver underCursor() { return g_underCursor; }
+	static @property IInputReceiver underCursor(IInputReceiver rhs)
 	{
 		if (g_underCursor !is rhs)
 		{
 			if (g_underCursor !is null)
-				g_underCursor.handleMouseLeave();
+				g_underCursor.handleMouseLeave(rhs);
 			if (rhs !is null)
-				rhs.handleMouseEnter();
+				rhs.handleMouseEnter(g_underCursor);
 		}
 		return g_underCursor = rhs;
 	}
 
-	static @property IInputReciever kbFocused() { return g_kbFocused; }
-	static @property IInputReciever kbFocused(IInputReciever rhs)
+	static @property IInputReceiver kbFocused() { return g_kbFocused; }
+	static @property IInputReceiver kbFocused(IInputReceiver rhs)
 	{
 		if (g_kbFocused !is rhs)
 		{
@@ -101,8 +101,8 @@ final class InputRouter
 		return g_kbFocused = rhs;
 	}
 
-	static @property IInputReciever mouseFocused() { return g_mouseFocused; }
-	static @property IInputReciever mouseFocused(IInputReciever rhs)
+	static @property IInputReceiver mouseFocused() { return g_mouseFocused; }
+	static @property IInputReceiver mouseFocused(IInputReceiver rhs)
 	{
 		if (g_mouseFocused !is rhs)
 		{

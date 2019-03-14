@@ -42,5 +42,5 @@ void main(string[] argv)
 		error(t.toString);
 		throw t;
 	}
-	exit(0);
+	exit(0);	// workaround for openal that segfaults
 }
