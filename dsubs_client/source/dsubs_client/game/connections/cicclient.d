@@ -234,4 +234,12 @@ private:
 			Game.simState.contactManager.handleContactUpdate(msg.contact);
 		}
 	}
+
+	void h_dropContactReq(CICDropContactReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.contactManager.handleDropContact(msg.ctcId);
+		}
+	}
 }

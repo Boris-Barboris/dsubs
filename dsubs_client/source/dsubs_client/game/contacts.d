@@ -28,8 +28,6 @@ struct ClientContactData
 	private ContactData m_data;
 	@property const(ContactData) cdata() const { return m_data; }
 	alias cdata this;
-
-	void drop() {}
 }
 
 
@@ -52,7 +50,16 @@ final class ClientContact
 	@property const(Contact) ctc() const { return m_ctc; }
 	alias ctc this;
 
-	void drop() {}
+	void drop()
+	{
+		m_tactDispEl.drop();
+		if (m_sonarDispEl)
+		{
+			m_sonarDispEl.drop();
+			m_sonarDispEl = null;
+		}
+		m_dataHash.clear();
+	}
 
 	void addData(ClientContactData* cdata)
 	{
@@ -157,6 +164,12 @@ final class ClientContactManager
 	void handleContactUpdate(Contact msg)
 	{
 		m_contactHash[msg.id].updateContact(msg);
+	}
+
+	void handleDropContact(ContactId id)
+	{
+		m_contactHash[id].drop();
+		m_contactHash.remove(id);
 	}
 }
 

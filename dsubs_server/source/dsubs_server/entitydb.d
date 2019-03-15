@@ -115,8 +115,8 @@ private:
 		ActiveSonarPrototype asp = ActiveSonarPrototype();
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
-				"Nautilus",
-`Light attack submarine "Nautilus" offers good balance of stealth, ` ~
+				"Stork",
+`Light attack submarine "Stork" offers good balance of stealth, ` ~
 `offensive capabilities and survivability.
 
 Length: 70m
@@ -169,11 +169,11 @@ Active sonar:
 		sp.Cd0 = RolledF(10.0, 0.25f);
 		sp.Cd1 = RolledF(8.6, 0.1f);
 		sp.Cda = 0.8;
-		sp.Cl = RolledF(60.0, 0.4f);
+		sp.Cl = RolledF(50.0, 0.4f);
 		sp.Cr0 = RolledF(5e4, 100);
 		sp.Cr1 = RolledF(0.5e6, 1e2);
 		sp.Cm = RolledF(250.0f, 4.0f);
-		sp.equilDrift = dgr2rad(16);
+		sp.equilDrift = dgr2rad(21);
 		vec2f dims = getHullDims(sp.tmpl.hullModel);
 		trace("dims: ", dims);
 		sp.hullLength = dims.y;
