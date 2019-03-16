@@ -40,8 +40,7 @@ final class ContactOverlayShapeCahe
 			new CircleShape(5.0f, 5, sfColor(152, 9, 255, 255), 2);
 		m_onHoverRect = new RectangleShape(vec2f(22.0f, 22.0f), sfWhite);
 		m_onHoverRect.position = -vec2f(1, 1);
-		m_posDataMainShape = new RectangleShape(vec2f(5, 5)), sfRed);
-		m_posDataMainShape = -vec2f(1, 1);
+		m_posDataMainShape = new RectangleShape(vec2f(5, 5), sfRed);
 		m_posDataOnHoverRect = new RectangleShape(vec2f(8.0f, 8.0f), sfWhite);
 		m_posDataOnHoverRect.position = -vec2f(1, 1);
 	}
@@ -86,6 +85,7 @@ private __gshared vec2i s_dragOffset;
 
 
 
+/// Overlay element that draws a rectange when the mouse hovers over it
 class OverlayElementWithHover: OverlayElement
 {
 	this(Overlay owner)
@@ -102,7 +102,7 @@ class OverlayElementWithHover: OverlayElement
 	}
 }
 
-
+/// Overlay element that is bound to ClientContactData.
 class ContactDataOverlayElement: OverlayElementWithHover
 {
 	this(Overlay owner, ClientContactData* data)
@@ -117,7 +117,7 @@ class ContactDataOverlayElement: OverlayElementWithHover
 	abstract void updateFromData();
 }
 
-
+/// Active sonar data sample on sonar display.
 final class SonarDispContactDataElement: ContactDataOverlayElement
 {
 	this(SonarDisplay.SonarOverlay owner, ClientContactData* data, ClientContact contact)
@@ -272,7 +272,7 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 }
 
 
-
+/// Main overlay of F1 screen
 final class TacticalOverlay: Overlay
 {
 	private
@@ -280,6 +280,8 @@ final class TacticalOverlay: Overlay
 		CameraController m_camCtrl;
 		int m_mousePrevX, m_mousePrevY;
 		bool m_panned;	/// true when mouse has moved since RMB down
+		TacticalContactElement m_selectedContact;
+		ContactDataOverlayElement[int] m_selectedContactData;
 	}
 
 	this(CameraController camCtrl)
@@ -354,10 +356,124 @@ final class TacticalOverlay: Overlay
 	{
 		return screen + m_camCtrl.camera.rotation;
 	}
+
+	@property TacticalContactElement selectedContact() { return m_selectedContact; }
+
+	@property void selectedContact(TacticalContactElement rhs)
+	{
+		// we need to start drawing all data of this contact
+		if (rhs is m_selectedContact)
+			return;
+		if (m_selectedContact !is null)
+		{
+			// clear all data of this contact
+			foreach (ContactDataOverlayElement el; m_selectedContactData.byValue)
+				el.onHide();
+			m_selectedContactData.clear();
+		}
+		if (rhs !is null)
+		{
+			// generate data for this contact
+			foreach (ClientContactData* ctd; rhs.contact.contactDataRange)
+			{
+				ContactDataOverlayElement newElement;
+				switch (ctd.type)
+				{
+					case (DataType.Position):
+						newElement = new PositionDataTacticalElement(this, ctd);
+						break;
+					default:
+						break;
+				}
+				m_selectedContactData[ctd.id] = newElement;
+			}
+		}
+		m_selectedContact = rhs;
+	}
+
+	override void add(OverlayElement el)
+	{
+		ContactDataOverlayElement cdoe = cast(ContactDataOverlayElement) el;
+		if (cdoe)
+		{
+			m_selectedContactData[cdoe.data.id] = cdoe;
+			return;
+		}
+		m_elements[el] = true;
+	}
+
+	override void remove(OverlayElement el)
+	{
+		ContactDataOverlayElement cdoe = cast(ContactDataOverlayElement) el;
+		if (cdoe)
+		{
+			m_selectedContactData.remove(cdoe.data.id);
+			if (!cdoe.hidden)
+				cdoe.onHide();
+			return;
+		}
+		if (selectedContact is el)
+			selectedContact = null;
+		super.remove(el);
+	}
+
+	override void onHide()
+	{
+		super.onHide();
+		foreach (ContactDataOverlayElement el; m_selectedContactData.byValue)
+		{
+			if (!el.hidden)
+				el.onHide();
+		}
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		if (hidden)
+			return;
+		super.draw(wnd, usecsDelta);
+		foreach (ContactDataOverlayElement el; m_selectedContactData.byValue)
+		{
+			if (!el.hidden)
+			{
+				el.onPreDraw();
+				el.draw(wnd, usecsDelta);
+			}
+		}
+	}
+
+	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
+	{
+		if (hidden)
+			return null;
+		if (rectContainsPoint(x, y))
+		{
+			foreach (ContactDataOverlayElement el; m_selectedContactData.byValue)
+			{
+				if (!el.hidden)
+				{
+					GuiElement res = el.getFromPoint(evt, x, y);
+					if (res)
+						return res;
+				}
+			}
+			foreach (OverlayElement el; m_elements.byKey)
+			{
+				if (!el.hidden)
+				{
+					GuiElement res = el.getFromPoint(evt, x, y);
+					if (res)
+						return res;
+				}
+			}
+			return this;
+		}
+		return null;
+	}
 }
 
 
-/// Icon above the player submarine
+/// Icon and velocity vector above the player submarine
 final class PlayerSubIcon: OverlayElement
 {
 	private
@@ -423,7 +539,7 @@ final class PlayerSubIcon: OverlayElement
 }
 
 
-/// Contact has an overlay element in F1 tactical screen
+/// Contact's icon on F1 screen
 final class TacticalContactElement: OverlayElementWithHover
 {
 	this(TacticalOverlay to, ClientContact contact)
@@ -456,8 +572,9 @@ final class TacticalContactElement: OverlayElementWithHover
 		CircleShape m_mainShape;
 		RectangleShape m_onHoverRect;
 		Label m_contactName;
-		bool m_hovered = false;
 	}
+
+	@property ClientContact contact() { return m_contact; }
 
 	private @property bool needDrawName()
 	{
@@ -498,6 +615,10 @@ final class TacticalContactElement: OverlayElementWithHover
 	{
 		if (btn == sfMouseRight && !m_panning)
 		{
+			(cast(TacticalOverlay)owner).selectedContact = this;
+		}
+		if (btn == sfMouseRight && !m_panning)
+		{
 			Button[] buttons = commonContactContextMenu(m_contact);
 			ContextMenu menu = contextMenu(
 					Game.guiManager,
@@ -532,7 +653,7 @@ final class PositionDataTacticalElement: ContactDataOverlayElement
 
 	override void onPreDraw()
 	{
-		vec2d worldPos = data.data.posData.contactPos;
+		vec2d worldPos = data.data.position.contactPos;
 		vec2d screenPos = owner.world2windowPos(worldPos);
 		position = center2lu(screenPos);
 		m_mainShape.center = cast(vec2f) screenPos;

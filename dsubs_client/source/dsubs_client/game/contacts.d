@@ -45,6 +45,8 @@ final class ClientContact
 
 	/// collection of all data of this contact
 	private ClientContactData*[int] m_dataHash;
+	/// get ContactData iterator
+	auto contactDataRange() { return m_dataHash.byValue; }
 
 	private Contact m_ctc;
 	@property const(Contact) ctc() const { return m_ctc; }

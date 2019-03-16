@@ -35,7 +35,7 @@ class OverlayElement: GuiElement
 		parentViewport = &owner.viewport();
 		// overlays are mostly for clickable objects
 		mouseTransparent = false;
-		owner.m_elements[this] = true;
+		m_owner.add(this);
 		// register handlers to proxy camera-related events to owner
 		onMouseDown += &processMouseDown;
 		onMouseUp += &processMouseUp;
@@ -45,7 +45,7 @@ class OverlayElement: GuiElement
 	}
 
 	/// Remove overlay element from owner
-	final void drop()
+	void drop()
 	{
 		if (m_owner)
 		{
@@ -117,7 +117,7 @@ class OverlayElement: GuiElement
 	/// Called by overlay when new coordinates of all tracked objects and camera
 	/// state are ready to be applied to the element,
 	/// right before actually drawing the element.
-	protected abstract void onPreDraw();
+	abstract void onPreDraw();
 }
 
 
@@ -134,6 +134,11 @@ class Overlay: GuiElement
 		if (!el.hidden)
 			el.onHide();
 		el.m_owner = null;
+	}
+
+	void add(OverlayElement el)
+	{
+		m_elements[el] = true;
 	}
 
 	private bool m_hidden;
@@ -165,6 +170,7 @@ class Overlay: GuiElement
 		if (m_hidden)
 			return;
 		super.draw(wnd, usecsDelta);
+		// fixme: render z-order is the same as mouse lookup z-order, must be inverse
 		foreach (OverlayElement el; m_elements.byKey)
 		{
 			if (!el.hidden)
