@@ -92,11 +92,10 @@ final class CircleShape: Shape
 		return sfCircleShape_getRadius(m_shape);
 	}
 
-	@property float radius(float rhs)
+	@property void radius(float rhs)
 	{
 		sfCircleShape_setRadius(m_shape, rhs);
 		sfCircleShape_setOrigin(m_shape, sfVector2f(rhs, rhs));
-		return rhs;
 	}
 
 	@property vec2f center() const
@@ -104,10 +103,9 @@ final class CircleShape: Shape
 		return cast(vec2f) sfCircleShape_getPosition(m_shape);
 	}
 
-	@property vec2f center(vec2f rhs)
+	@property void center(vec2f rhs)
 	{
 		sfCircleShape_setPosition(m_shape, rhs.tosf);
-		return rhs;
 	}
 
 	@property size_t vertexCount() const
@@ -115,10 +113,9 @@ final class CircleShape: Shape
 		return sfCircleShape_getPointCount(m_shape);
 	}
 
-	@property size_t vertexCount(int rhs)
+	@property void vertexCount(int rhs)
 	{
 		sfCircleShape_setPointCount(m_shape, rhs);
-		return rhs;
 	}
 
 	@property sfColor fillColor() const
@@ -126,10 +123,9 @@ final class CircleShape: Shape
 		return sfCircleShape_getFillColor(m_shape);
 	}
 
-	@property sfColor fillColor(sfColor rhs)
+	@property void fillColor(sfColor rhs)
 	{
 		sfCircleShape_setFillColor(m_shape, rhs);
-		return rhs;
 	}
 
 	@property sfColor borderColor() const
@@ -137,10 +133,9 @@ final class CircleShape: Shape
 		return sfCircleShape_getOutlineColor(m_shape);
 	}
 
-	@property sfColor borderColor(sfColor rhs)
+	@property void borderColor(sfColor rhs)
 	{
 		sfCircleShape_setOutlineColor(m_shape, rhs);
-		return rhs;
 	}
 
 	@property float borderWidth() const
@@ -148,10 +143,9 @@ final class CircleShape: Shape
 		return sfCircleShape_getOutlineThickness(m_shape);
 	}
 
-	@property float borderWidth(float rhs)
+	@property void borderWidth(float rhs)
 	{
 		sfCircleShape_setOutlineThickness(m_shape, rhs);
-		return rhs;
 	}
 
 	override void render(Window wnd)
@@ -193,10 +187,9 @@ final class RectangleShape: Shape
 		return cast(vec2f) sfRectangleShape_getPosition(m_shape);
 	}
 
-	@property vec2f position(vec2f rhs)
+	@property void position(vec2f rhs)
 	{
 		sfRectangleShape_setPosition(m_shape, rhs.tosf);
-		return rhs;
 	}
 
 	@property void center(vec2f rhs)
@@ -209,10 +202,9 @@ final class RectangleShape: Shape
 		return cast(vec2f) sfRectangleShape_getSize(m_shape);
 	}
 
-	@property vec2f size(vec2f rhs)
+	@property void size(vec2f rhs)
 	{
 		sfRectangleShape_setSize(m_shape, rhs.tosf);
-		return rhs;
 	}
 
 	@property sfColor fillColor() const
@@ -220,10 +212,9 @@ final class RectangleShape: Shape
 		return sfRectangleShape_getFillColor(m_shape);
 	}
 
-	@property sfColor fillColor(sfColor rhs)
+	@property void fillColor(sfColor rhs)
 	{
 		sfRectangleShape_setFillColor(m_shape, rhs);
-		return rhs;
 	}
 
 	@property sfColor borderColor() const
@@ -231,10 +222,9 @@ final class RectangleShape: Shape
 		return sfRectangleShape_getOutlineColor(m_shape);
 	}
 
-	@property sfColor borderColor(sfColor rhs)
+	@property void borderColor(sfColor rhs)
 	{
 		sfRectangleShape_setOutlineColor(m_shape, rhs);
-		return rhs;
 	}
 
 	@property float borderWidth() const
@@ -242,10 +232,9 @@ final class RectangleShape: Shape
 		return sfRectangleShape_getOutlineThickness(m_shape);
 	}
 
-	@property float borderWidth(float rhs)
+	@property void borderWidth(float rhs)
 	{
 		sfRectangleShape_setOutlineThickness(m_shape, rhs);
-		return rhs;
 	}
 
 	override void render(Window wnd)
@@ -301,10 +290,9 @@ final class LineShape: Shape
 		rebuild(p1, p2, width);
 	}
 
-	@property sfColor color(sfColor rhs)
+	@property void color(sfColor rhs)
 	{
 		sfRectangleShape_setFillColor(m_shape, rhs);
-		return rhs;
 	}
 
 	private void rebuild(vec2d p1, vec2d p2, float width)
@@ -316,12 +304,11 @@ final class LineShape: Shape
 
 	@property float width() const { return m_transform.scale.y; }
 
-	@property float width(float rhs)
+	@property void width(float rhs)
 	{
 		vec2d curScale = m_transform.scale;
 		curScale.y = rhs;
 		m_transform.scale = curScale;
-		return rhs;
 	}
 
 	override void render(Window wnd)
