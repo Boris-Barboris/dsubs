@@ -298,6 +298,7 @@ final class CICState
 			dc.solution.time <= sc.solution.time))
 		{
 			dc.solution.pos = sc.solution.pos;
+			dc.solution.time = sc.solution.time;
 			dc.solution.posAvailable = true;
 		}
 		if (sc.solution.velAvailable && (!dc.solution.velAvailable ||

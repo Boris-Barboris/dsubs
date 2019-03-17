@@ -192,6 +192,11 @@ final class RectangleShape: Shape
 		sfRectangleShape_setPosition(m_shape, rhs.tosf);
 	}
 
+	@property vec2f center() const
+	{
+		return position + 0.5f * size;
+	}
+
 	@property void center(vec2f rhs)
 	{
 		position = rhs - 0.5f * size;
