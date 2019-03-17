@@ -206,12 +206,13 @@ final class CICState
 		if (ctcCtx is null)
 			return null;
 		// fully specified solution
-		if (ctcCtx.ctc.solution.posAvailable && ctcCtx.ctc.solution.velAvailable)
+		if (ctcCtx.ctc.solution.posAvailable && (
+			ctcCtx.ctc.solution.velAvailable || ctcCtx.ctc.solution.time > newData.time))
 			return null;
 		ContactData* lastData = ctcCtx.dataTree.back;
 		if (lastData !is newData)
 			return null;
-		ctcCtx.ctc.solution.posData = newData.data.position;
+		ctcCtx.ctc.solution.pos = newData.data.position.contactPos;
 		ctcCtx.ctc.solution.posAvailable = true;
 		return &ctcCtx.ctc;
 	}
@@ -225,7 +226,7 @@ final class CICState
 		if (fromData.type == DataType.Position)
 		{
 			ctc.solution.posAvailable = true;
-			ctc.solution.posData = fromData.data.position;
+			ctc.solution.pos = fromData.data.position.contactPos;
 		}
 		else
 			ctc.solution.posAvailable = false;
@@ -296,7 +297,7 @@ final class CICState
 		if (sc.solution.posAvailable && (!dc.solution.posAvailable ||
 			dc.solution.time <= sc.solution.time))
 		{
-			dc.solution.posData = sc.solution.posData;
+			dc.solution.pos = sc.solution.pos;
 			dc.solution.posAvailable = true;
 		}
 		if (sc.solution.velAvailable && (!dc.solution.velAvailable ||

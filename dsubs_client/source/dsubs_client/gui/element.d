@@ -211,9 +211,14 @@ class GuiElement: IInputReceiver
 		return res;
 	}
 
+	/// If true, in the start of draw call, element will set windos's scissor test state
+	/// to this element's rectange, clamped to parent's viewport.
+	bool enableScissorTest = true;
+
 	void draw(Window wnd, long usecsDelta)
 	{
-		sfRenderWindow_setScissor(wnd.wnd, m_viewport.tosf);
+		if (enableScissorTest)
+			sfRenderWindow_setScissor(wnd.wnd, m_viewport.tosf);
 		if (backgroundVisible)
 			sfRenderWindow_drawRectangleShape(wnd.wnd, m_sfRect, &m_sfRst);
 	}

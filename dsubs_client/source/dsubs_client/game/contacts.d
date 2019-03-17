@@ -48,9 +48,8 @@ final class ClientContact
 	/// get ContactData iterator
 	auto contactDataRange() { return m_dataHash.byValue; }
 
-	private Contact m_ctc;
-	@property const(Contact) ctc() const { return m_ctc; }
-	alias ctc this;
+	Contact m_ctc;
+	alias m_ctc this;
 
 	void drop()
 	{
@@ -215,7 +214,7 @@ Button[] commonContactContextMenu(ClientContact ctc)
 	{
 		btn = builder(new Button()).fontSize(15).content(ctype.to!string).build();
 		btn.onClick += {
-			Contact curContact = ctc.ctc;
+			Contact curContact = ctc.m_ctc;
 			if (curContact.type != ctype)
 			{
 				curContact.type = ctype;

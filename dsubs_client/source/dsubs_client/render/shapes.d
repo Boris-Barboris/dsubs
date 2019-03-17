@@ -285,8 +285,18 @@ final class LineShape: Shape
 		rebuild(p1, p2, width);
 	}
 
-	void setPoints(vec2d p1, vec2d p2)
+	~this()
 	{
+		sfRectangleShape_destroy(m_shape);
+	}
+
+	void setPoints(vec2d p1, vec2d p2, bool invertY = false)
+	{
+		if (invertY)
+		{
+			p1.y = -p1.y;
+			p2.y = -p2.y;
+		}
 		rebuild(p1, p2, width);
 	}
 
@@ -298,7 +308,9 @@ final class LineShape: Shape
 	private void rebuild(vec2d p1, vec2d p2, float width)
 	{
 		m_transform.position = p1;
-		m_transform.rotation = courseAngle(p2 - p1) + PI_2;
+		double rot = courseAngle(p2 - p1) + PI_2;
+		if (!isNaN(rot))
+			m_transform.rotation = rot;
 		m_transform.scale = vec2d((p2 - p1).length, width);
 	}
 
@@ -327,10 +339,5 @@ final class LineShape: Shape
 	{
 		m_rendStates.transform = tosf(trans.togfm * m_transform.world);
 		sfRenderWindow_drawRectangleShape(wnd.wnd, m_shape, &m_rendStates);
-	}
-
-	~this()
-	{
-		sfRectangleShape_destroy(m_shape);
 	}
 }

@@ -4,6 +4,8 @@ import std.algorithm;
 import std.array;
 import std.format;
 
+import core.time;
+
 import derelict.sfml2.window;
 
 import dsubs_common.math;
@@ -45,6 +47,9 @@ final class SimulatorState: GameState
 	mixin Readonly!(ClientContactManager, "contactManager");
 	mixin Readonly!(TacticalOverlay, "tacticalOverlay");
 	mixin Readonly!(PlayerSubIcon, "playerSubIcon");
+
+	private MonoTimeImpl!(ClockType.normal) m_lastServerTimeOnClient;
+	@property auto lastServerTimeOnClient() { return m_lastServerTimeOnClient; }
 
 	override void setup()
 	{
@@ -91,6 +96,7 @@ final class SimulatorState: GameState
 	void updateLastServerTime(usecs_t newTime)
 	{
 		m_lastServerTime = newTime;
+		m_lastServerTimeOnClient = MonoTime.currTime;
 	}
 }
 

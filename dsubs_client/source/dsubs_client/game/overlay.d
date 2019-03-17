@@ -4,9 +4,12 @@ import std.conv: to;
 import std.math;
 import std.experimental.logger;
 
+import core.time;
+
 import derelict.sfml2.graphics;
 
 import dsubs_common.math;
+import dsubs_common.mutstring;
 
 import dsubs_client.common;
 import dsubs_client.core.window;
@@ -43,34 +46,24 @@ final class ContactOverlayShapeCahe
 		m_posDataMainShape = new RectangleShape(vec2f(5, 5), sfRed);
 		m_posDataOnHoverRect = new RectangleShape(vec2f(12.0f, 12.0f), sfWhite);
 		m_posDataOnHoverRect.position = -vec2f(1, 1);
+		m_velCircle = new CircleShape(40.0f, 30, sfWhite, 3);
+		m_velDragLine = new LineShape(vec2d(0, 0), vec2d(0, 0), sfColor(137, 182, 255, 255), 5);
 	}
 
 	private
 	{
 		CircleShape[ContactType.max + 1] m_shapes;
-		RectangleShape m_onHoverRect;
-		RectangleShape m_posDataMainShape;
-		RectangleShape m_posDataOnHoverRect;
 	}
+
+	mixin Readonly!(RectangleShape, "onHoverRect");
+	mixin Readonly!(RectangleShape, "posDataMainShape");
+	mixin Readonly!(RectangleShape, "posDataOnHoverRect");
+	mixin Readonly!(CircleShape, "velCircle");
+	mixin Readonly!(LineShape, "velDragLine");
 
 	CircleShape forContactType(ContactType t)
 	{
 		return m_shapes[t];
-	}
-
-	@property RectangleShape onHoverRect()
-	{
-		return m_onHoverRect;
-	}
-
-	@property RectangleShape posDataMainShape()
-	{
-		return m_posDataMainShape;
-	}
-
-	@property RectangleShape posDataOnHoverRect()
-	{
-		return m_posDataOnHoverRect;
 	}
 }
 
@@ -82,7 +75,6 @@ private ContactOverlayShapeCahe ctcOverlayCache()
 }
 
 private __gshared vec2i g_dragOffset;
-
 
 
 /// Overlay element that draws a rectange when the mouse hovers over it
@@ -155,8 +147,10 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 		if (m_contactName is null)
 		{
 			m_contactName = new Label();
+			m_contactName.enableScissorTest = false;
 			m_contactName.fontSize = 15;
 			m_contactName.content = contact.id.to!string;
+			m_contactName.fontColor = sfRed;
 			m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
 				m_contactName.contentHeight + 2);
 		}
@@ -605,10 +599,26 @@ final class TacticalContactElement: OverlayElementWithHover
 	this(TacticalOverlay to, ClientContact contact)
 	{
 		m_contact = contact;
+		m_solution = contact.solution;
 		super(to);
 		m_onHoverRect = ctcOverlayCache.onHoverRect;
+		m_velCircle = ctcOverlayCache.velCircle;
+		m_velDragLine = ctcOverlayCache.velDragLine;
 		updateFromContact();
 		onMouseUp += &processMouseUp;
+		onMouseMove += &processMouseMove;
+		onMouseDown += &processMouseDown;
+
+		if (g_velLabel is null)
+		{
+			g_velLabel = new Label();
+			g_velLabel.mouseTransparent = true;
+			g_velLabel.fontSize = 12;
+			g_velLabel.htextAlign = HTextAlign.LEFT;
+			g_velLabel.vtextAlign = VTextAlign.CENTER;
+			g_velLabel.size = vec2i(60, 16);
+			g_velLabel.enableScissorTest = false;
+		}
 	}
 
 	void updateFromContact()
@@ -619,6 +629,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		if (m_contactName is null)
 		{
 			m_contactName = new Label();
+			m_contactName.enableScissorTest = false;
 			m_contactName.fontSize = 15;
 			m_contactName.content = m_contact.id.to!string;
 			m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
@@ -629,10 +640,16 @@ final class TacticalContactElement: OverlayElementWithHover
 	private
 	{
 		ClientContact m_contact;
-		CircleShape m_mainShape;
+		ContactSolution m_solution;
+		CircleShape m_mainShape, m_velCircle;
 		RectangleShape m_onHoverRect;
+		LineShape m_velDragLine;
 		Label m_contactName;
+		vec2d m_lastScreenPos;
+		bool m_velDragMode;
 	}
+
+	private __gshared Label g_velLabel;
 
 	@property ClientContact contact() { return m_contact; }
 
@@ -642,13 +659,56 @@ final class TacticalContactElement: OverlayElementWithHover
 			m_contact.type != ContactType.decoy);
 	}
 
-	override @property bool hidden() {
+	override @property bool hidden()
+	{
 		return !m_contact.solution.posAvailable || super.hidden();
+	}
+
+	@property bool isSelected()
+	{
+		return tacowner.selectedContact is this;
+	}
+
+	/// Overlay elements must ignore mouse scroll in order to not block zooming
+	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
+	{
+		if (evt.type == sfEvtMouseWheelScrolled)
+			return null;
+		// velCircle check
+		if (isSelected)
+		{
+			// check if cursor is inside the circle
+			if (pointOnCircle(vec2i(x, y)))
+				return this;
+		}
+		return GuiElement.getFromPoint(evt, x, y);
+	}
+
+	private bool pointOnCircle(vec2i point)
+	{
+		double rad = (m_lastScreenPos - point).length;
+		return (rad >= (m_velCircle.radius - 3) &&
+				rad <= (m_velCircle.radius + m_velCircle.borderWidth + 3));
+	}
+
+	private double secsSinceSolution()
+	{
+		usecs_t usecsSince =
+			Game.simState.lastServerTime +
+			(MonoTime.currTime - Game.simState.lastServerTimeOnClient).total!"usecs" -
+			m_contact.solution.time;
+		return usecsSince / 1.0e6;
 	}
 
 	override void onPreDraw()
 	{
-		vec2d worldPos = m_contact.solution.posData.contactPos;
+		if (!isSelected)
+		{
+			m_solution = m_contact.solution;
+			if (m_solution.velAvailable)
+				m_solution.pos += secsSinceSolution * m_solution.vel;
+		}
+		vec2d worldPos = m_solution.pos;
 		vec2d screenPos = owner.world2windowPos(worldPos);
 		position = center2lu(screenPos);
 		m_mainShape.center = cast(vec2f) screenPos;
@@ -659,11 +719,62 @@ final class TacticalContactElement: OverlayElementWithHover
 		}
 		if (m_hovered)
 			m_onHoverRect.center = cast(vec2f) screenPos;
+		if (isSelected)
+		{
+			m_velCircle.center = cast(vec2f) screenPos;
+			if (m_solution.velAvailable)
+			{
+				double speed = m_solution.vel.length;
+				double vecLen = speed2lineLength(speed);
+				vec2d velDelta = speed > 1e-3 ?
+					m_solution.vel.normalized * vecLen :
+					vec2d(0, 0);
+				velDelta.y = - velDelta.y;
+				vec2d point2 = screenPos + velDelta;
+				m_velDragLine.setPoints(screenPos, point2, true);
+				g_velLabel.position = cast(vec2i) vec2d(point2.x + 15, point2.y);
+				dmutstring spdStr = g_velLabel.content;
+				mutsformat!"%.2f m/s"(spdStr, speed);
+				g_velLabel.content = spdStr;
+			}
+		}
+		m_lastScreenPos = screenPos;
+	}
+
+	private enum double PIXEL_PER_MPS = 8;
+	private enum double ZERO_SPD_PIXEL_MARGIN = 15;
+
+	private static double lineLength2speed(double len)
+	{
+		if (len < ZERO_SPD_PIXEL_MARGIN)
+			return 0.0;
+		return (len - ZERO_SPD_PIXEL_MARGIN) / PIXEL_PER_MPS;
+	}
+
+	private static double speed2lineLength(double speed)
+	{
+		return ZERO_SPD_PIXEL_MARGIN + speed * PIXEL_PER_MPS;
 	}
 
 	override void draw(Window wnd, long usecsDelta)
 	{
 		super.draw(wnd, usecsDelta);
+		if (isSelected)
+		{
+			if (m_solution.velAvailable)
+			{
+				m_velDragLine.render(wnd);
+				g_velLabel.draw(wnd, usecsDelta);
+			}
+			if (!m_dragging)
+			{
+				if (m_hovered)
+					m_velCircle.borderColor = sfRed;
+				else
+					m_velCircle.borderColor = sfWhite;
+				m_velCircle.render(wnd);
+			}
+		}
 		if (m_hovered)
 			m_onHoverRect.render(wnd);
 		m_mainShape.render(wnd);
@@ -675,17 +786,33 @@ final class TacticalContactElement: OverlayElementWithHover
 
 	private void processMouseUp(int x, int y, sfMouseButton btn)
 	{
-		if (btn == sfMouseLeft && !m_panning)
+		if (btn == sfMouseLeft)
 		{
-			if (g_inMerge)
+			if (m_dragging)
 			{
-				if (g_mergeSourceId != m_contact.id)
-					Game.ciccon.sendMessage(immutable CICContactMergeReq(
-						g_mergeSourceId, m_contact.id));
-				g_inMerge = false;
+				m_dragging = false;
+				m_velDragMode = false;
+				if (!m_panning)
+					returnMouseFocus();
+				m_contact.m_ctc.solution = m_solution;
+				requestSolutionUpdate();
 			}
-			else
-				tacowner.selectedContact = this;
+			if (!m_panning)
+			{
+				if (g_inMerge)
+				{
+					if (g_mergeSourceId != m_contact.id)
+						Game.ciccon.sendMessage(immutable CICContactMergeReq(
+							g_mergeSourceId, m_contact.id));
+					g_inMerge = false;
+				}
+				else
+				{
+					m_solution.time = Game.simState.lastServerTime +
+						(MonoTime.currTime - Game.simState.lastServerTimeOnClient).total!"usecs";
+					tacowner.selectedContact = this;
+				}
+			}
 		}
 		if (btn == sfMouseRight && !m_panning)
 		{
@@ -707,6 +834,42 @@ final class TacticalContactElement: OverlayElementWithHover
 		}
 	}
 
+	private void processMouseMove(int x, int y)
+	{
+		if (m_dragging)
+		{
+			if (m_velDragMode)
+			{
+				// velocity dragging
+				vec2d center = m_mainShape.center;
+				vec2d delta = vec2d(x, y) - center;
+				delta.y = -delta.y;	// screen-space y
+				double lineLen = delta.length;
+				double speed = lineLength2speed(lineLen);
+				m_solution.velAvailable = true;
+				if (speed > 0.001)
+					m_solution.vel = speed * delta.normalized;
+				else
+					m_solution.vel = vec2d(0, 0);
+			}
+			else
+			{
+				vec2i newPos = vec2i(x, y) - g_dragOffset;
+				vec2d newCenter = owner.clampInsideRect(lu2center(newPos));
+				// we now need to update bearing and range from screen-space position
+				vec2d newWorldCoord = owner.screen2worldPos(newCenter);
+				m_solution.posAvailable = true;
+				m_solution.pos = newWorldCoord;
+			}
+		}
+	}
+
+	/// Send updated solution to CIC
+	private void requestSolutionUpdate()
+	{
+		Game.ciccon.sendMessage(immutable CICContactUpdateReq(contact.m_ctc));
+	}
+
 	override void drop()
 	{
 		if (g_inMerge && m_contact.id == g_mergeSourceId)
@@ -716,14 +879,25 @@ final class TacticalContactElement: OverlayElementWithHover
 
 	void addData(ClientContactData* cdata)
 	{
-		if (tacowner.selectedContact is this)
+		if (isSelected)
 			tacowner.addSelectedContactData(cdata);
 	}
 
 	void removeData(int id)
 	{
-		if (tacowner.selectedContact is this)
+		if (isSelected)
 			tacowner.dropSelectedContactData(id);
+	}
+
+	private void processMouseDown(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseLeft && isSelected)
+		{
+			m_dragging = true;
+			g_dragOffset = vec2i(x, y) - position;
+			m_velDragMode = pointOnCircle(vec2i(x, y));
+			requestMouseFocus();
+		}
 	}
 }
 
