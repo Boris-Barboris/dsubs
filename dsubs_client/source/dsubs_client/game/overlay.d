@@ -41,7 +41,7 @@ final class ContactOverlayShapeCahe
 		m_onHoverRect = new RectangleShape(vec2f(22.0f, 22.0f), sfWhite);
 		m_onHoverRect.position = -vec2f(1, 1);
 		m_posDataMainShape = new RectangleShape(vec2f(5, 5), sfRed);
-		m_posDataOnHoverRect = new RectangleShape(vec2f(8.0f, 8.0f), sfWhite);
+		m_posDataOnHoverRect = new RectangleShape(vec2f(12.0f, 12.0f), sfWhite);
 		m_posDataOnHoverRect.position = -vec2f(1, 1);
 	}
 
@@ -107,8 +107,8 @@ class ContactDataOverlayElement: OverlayElementWithHover
 {
 	this(Overlay owner, ClientContactData* data)
 	{
-		super(owner);
 		m_data = data;
+		super(owner);
 	}
 
 	mixin Readonly!(ClientContactData*, "data");
@@ -313,6 +313,8 @@ final class TacticalOverlay: Overlay
 
 	private void processMouseUp(int x, int y, sfMouseButton btn)
 	{
+		if (btn == sfMouseLeft)
+			selectedContact = null;
 		if (btn == sfMouseRight)
 			returnMouseFocus();
 	}
@@ -364,6 +366,7 @@ final class TacticalOverlay: Overlay
 		// we need to start drawing all data of this contact
 		if (rhs is m_selectedContact)
 			return;
+		trace("setting owner to ", rhs);
 		if (m_selectedContact !is null)
 		{
 			// clear all data of this contact
@@ -389,6 +392,32 @@ final class TacticalOverlay: Overlay
 			}
 		}
 		m_selectedContact = rhs;
+	}
+
+	/// Completely new contact data must be rendered for selectedContact
+	void addSelectedContactData(ClientContactData* ctd)
+	{
+		ContactDataOverlayElement newElement;
+		switch (ctd.type)
+		{
+			case (DataType.Position):
+				newElement = new PositionDataTacticalElement(this, ctd);
+				break;
+			default:
+				break;
+		}
+		m_selectedContactData[ctd.id] = newElement;
+	}
+
+	/// Contact data must no longer be rendered for selectedContact
+	void dropSelectedContactData(int id)
+	{
+		ContactDataOverlayElement* existing = id in m_selectedContactData;
+		if (existing)
+		{
+			existing.onHide();
+			m_selectedContactData.remove(id);
+		}
 	}
 
 	override void add(OverlayElement el)
@@ -611,12 +640,12 @@ final class TacticalContactElement: OverlayElementWithHover
 			m_contactName.draw(wnd, usecsDelta);
 	}
 
+	@property TacticalOverlay tacowner() { return cast(TacticalOverlay) owner; }
+
 	private void processMouseUp(int x, int y, sfMouseButton btn)
 	{
-		if (btn == sfMouseRight && !m_panning)
-		{
-			(cast(TacticalOverlay)owner).selectedContact = this;
-		}
+		if (btn == sfMouseLeft && !m_panning)
+			tacowner.selectedContact = this;
 		if (btn == sfMouseRight && !m_panning)
 		{
 			Button[] buttons = commonContactContextMenu(m_contact);
@@ -628,6 +657,18 @@ final class TacticalContactElement: OverlayElementWithHover
 					20);
 			return;
 		}
+	}
+
+	void addData(ClientContactData* cdata)
+	{
+		if (tacowner.selectedContact is this)
+			tacowner.addSelectedContactData(cdata);
+	}
+
+	void removeData(int id)
+	{
+		if (tacowner.selectedContact is this)
+			tacowner.dropSelectedContactData(id);
 	}
 }
 
@@ -641,6 +682,7 @@ final class PositionDataTacticalElement: ContactDataOverlayElement
 		super(owner, data);
 		m_mainShape = ctcOverlayCache.posDataMainShape;
 		m_onHoverRect = ctcOverlayCache.posDataOnHoverRect;
+		size = cast(vec2i) (m_onHoverRect.size + vec2f(2, 2));
 	}
 
 	private

@@ -88,6 +88,7 @@ final class ClientContact
 			default:
 				break;
 		}
+		m_tactDispEl.addData(cdata);
 	}
 
 	void updateContact(Contact ctc)
@@ -109,6 +110,7 @@ final class ClientContact
 		m_dataHash.remove(cdata.id);
 		if (m_sonarDispEl.data is cdata)
 			m_sonarDispEl.drop();
+		m_tactDispEl.removeData(cdata.id);
 		m_sonarDispEl = null;
 	}
 }
