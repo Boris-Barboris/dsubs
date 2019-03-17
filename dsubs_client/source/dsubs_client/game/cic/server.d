@@ -131,7 +131,9 @@ final class CICServer
 		m_bcon.sendMessage(cast(immutable EmitPingReq) req);
 	}
 
-	// contact management
+	/*
+	Contact management.
+	*/
 
 	void handleCICCreateContactFromDataReq(CICCreateContactFromDataReq req)
 	{
@@ -204,7 +206,12 @@ final class CICServer
 		synchronized(m_state.ctcMut)
 		{
 			if (m_state.mergeContacts(req.sourceCtcId, req.destCtcId))
+			{
 				m_listener.broadcast(cast(immutable) req);
+				// destination contact is often updated
+				m_listener.broadcast(immutable CICContactUpdateReq(
+					m_state.getContact(req.destCtcId)));
+			}
 		}
 	}
 }

@@ -122,6 +122,11 @@ final class CICState
 	/// Must be taken before rsMut to prevent deadlocks.
 	@property Mutex ctcMut() { return m_ctcMut; }
 
+	Contact getContact(ContactId id)
+	{
+		return m_ctcCtxHash[id].ctc;
+	}
+
 	/// Allocate, initialize and register new Contact entity.
 	Contact* createContact(char prefix)
 	{
@@ -269,17 +274,37 @@ final class CICState
 		assert(source != dest);
 		ContactContext* sourceCtx = m_ctcCtxHash.get(source, null);
 		if (sourceCtx is null)
-			return false;
+			return false;	// ok, source was removed
 		ContactContext* destCtx = m_ctcCtxHash.get(dest, null);
 		if (destCtx is null)
-			return false;
-		trace("Merging ", source, " into ", dest);
+			return false;	// ok, dest was removed
+		trace("Merging contacts: ", source, " into ", dest);
 		foreach (ContactData* data; sourceCtx.dataTree[])
 		{
 			data.ctcId = dest;
 			destCtx.dataTree.insert(data);
 		}
 		sourceCtx.dataTree.clear();
+		// update destination contact according to source
+		Contact* sc, dc;
+		sc = &sourceCtx.ctc;
+		dc = &destCtx.ctc;
+		if (dc.type == ContactType.unknown)
+			dc.type = sc.type;
+		if (dc.comment.length == 0)
+			dc.comment = sc.comment;
+		if (sc.solution.posAvailable && (!dc.solution.posAvailable ||
+			dc.solution.time <= sc.solution.time))
+		{
+			dc.solution.posData = sc.solution.posData;
+			dc.solution.posAvailable = true;
+		}
+		if (sc.solution.velAvailable && (!dc.solution.velAvailable ||
+			dc.solution.time <= sc.solution.time))
+		{
+			dc.solution.vel = sc.solution.vel;
+			dc.solution.velAvailable = true;
+		}
 		return m_ctcCtxHash.remove(source);
 	}
 

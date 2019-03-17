@@ -71,7 +71,7 @@ final class ClientContact
 			case DataSourceType.ActiveSonar:
 				if (m_sonarDispEl !is null)
 				{
-					if (m_sonarDispEl.data.time <= cdata.time)
+					if (m_sonarDispEl.data.time < cdata.time)
 					{
 						// old m_sonarDispEl must go
 						m_sonarDispEl.drop();
@@ -101,16 +101,16 @@ final class ClientContact
 
 	void updateData(ClientContactData* cdata)
 	{
-		if (m_sonarDispEl !is null && m_sonarDispEl.data is cdata)
+		if (m_sonarDispEl && m_sonarDispEl.data is cdata)
 			m_sonarDispEl.updateFromData();
 	}
 
-	void removeData(ClientContactData* cdata)
+	void removeData(int dataId)
 	{
-		m_dataHash.remove(cdata.id);
-		if (m_sonarDispEl.data is cdata)
+		m_dataHash.remove(dataId);
+		if (m_sonarDispEl && m_sonarDispEl.data.id == dataId)
 			m_sonarDispEl.drop();
-		m_tactDispEl.removeData(cdata.id);
+		m_tactDispEl.removeData(dataId);
 		m_sonarDispEl = null;
 	}
 }
@@ -149,7 +149,7 @@ final class ClientContactManager
 			if (ctc.id != (*existing).ctcId)
 			{
 				// data changed owner
-				m_contactHash[(*existing).ctcId].removeData(*existing);
+				m_contactHash[(*existing).ctcId].removeData((*existing).id);
 				(*existing).m_data = newData;
 				ctc.addData(*existing);
 			}
@@ -172,8 +172,31 @@ final class ClientContactManager
 
 	void handleDropContact(ContactId id)
 	{
+		foreach (ClientContactData* ctd; m_contactHash[id].contactDataRange)
+			m_dataHash.remove(ctd.id);
 		m_contactHash[id].drop();
 		m_contactHash.remove(id);
+	}
+
+	void handleDropData(int dataId)
+	{
+		ContactId ctcId = m_dataHash[dataId].ctcId;
+		m_contactHash[ctcId].removeData(dataId);
+		m_dataHash.remove(dataId);
+	}
+
+	void hadleMergeContact(ContactId srcId, ContactId destId)
+	{
+		assert(srcId != destId);
+		ClientContact cs = m_contactHash[srcId];
+		ClientContact cd = m_contactHash[destId];
+		foreach (ClientContactData* ctd; cs.contactDataRange)
+		{
+			ctd.m_data.ctcId = destId;
+			cd.addData(ctd);
+		}
+		cs.drop();
+		m_contactHash.remove(srcId);
 	}
 }
 

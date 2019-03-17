@@ -242,4 +242,20 @@ private:
 			Game.simState.contactManager.handleDropContact(msg.ctcId);
 		}
 	}
+
+	void h_dropDataReq(CICDropDataReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.contactManager.handleDropData(msg.dataId);
+		}
+	}
+
+	void h_contectMergeReq(CICContactMergeReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.contactManager.hadleMergeContact(msg.sourceCtcId, msg.destCtcId);
+		}
+	}
 }

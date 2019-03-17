@@ -81,7 +81,7 @@ private ContactOverlayShapeCahe ctcOverlayCache()
 	return Game.simState.contactOverlayShapeCache;
 }
 
-private __gshared vec2i s_dragOffset;
+private __gshared vec2i g_dragOffset;
 
 
 
@@ -215,7 +215,7 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 		if (btn == sfMouseLeft)
 		{
 			m_dragging = true;
-			s_dragOffset = vec2i(x, y) - position;
+			g_dragOffset = vec2i(x, y) - position;
 			requestMouseFocus();
 		}
 	}
@@ -250,7 +250,7 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 		vec2d newWorldPos = pingSource + m_range * courseVector(m_bearing);
 		usecs_t newTime = owner.outer.pingTime;
 		ContactData updated = data.cdata;
-		if (newTime != data.cdata.time)
+		if (newTime != data.time)
 			updated.id = -1;	// different time = new data sample
 		updated.time = newTime;
 		updated.data.position.contactPos = newWorldPos;
@@ -261,7 +261,7 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 	{
 		if (m_dragging)
 		{
-			vec2i newPos = vec2i(x, y) - s_dragOffset;
+			vec2i newPos = vec2i(x, y) - g_dragOffset;
 			vec2d newCenter = owner.clampInsideRect(lu2center(newPos));
 			// we now need to update bearing and range from screen-space position
 			vec2d newWorldCoord = owner.screen2worldPos(newCenter);
@@ -282,17 +282,39 @@ final class TacticalOverlay: Overlay
 		bool m_panned;	/// true when mouse has moved since RMB down
 		TacticalContactElement m_selectedContact;
 		ContactDataOverlayElement[int] m_selectedContactData;
+		Label m_mergeHint;
 	}
 
 	this(CameraController camCtrl)
 	{
 		m_camCtrl = camCtrl;
 		mouseTransparent = false;
+		m_mergeHint = new Label();
+		m_mergeHint.fontSize = 25;
+		m_mergeHint.fontColor = sfColor(255, 255, 255, 50);
+		m_mergeHint.htextAlign = HTextAlign.CENTER;
+		m_mergeHint.vtextAlign = VTextAlign.CENTER;
+		m_mergeHint.content = "Click on the contact to merge into";
+		m_mergeHint.mouseTransparent = true;
+		m_mergeHint.size = cast(vec2i) vec2f(
+			m_mergeHint.contentWidth(), m_mergeHint.contentHeight());
 		// mouse and keyboard handlers
 		onMouseDown += &processMouseDown;
 		onMouseUp += &processMouseUp;
 		onMouseMove += &processMouseMove;
 		onMouseScroll += &processMouseScroll;
+	}
+
+	override void updatePosition()
+	{
+		super.updatePosition();
+		m_mergeHint.position = position + (size - m_mergeHint.size) / 2;
+	}
+
+	override void updateSize()
+	{
+		super.updateSize();
+		m_mergeHint.position = position + (size - m_mergeHint.size) / 2;
 	}
 
 	private void processMouseDown(int x, int y, sfMouseButton btn)
@@ -454,6 +476,7 @@ final class TacticalOverlay: Overlay
 			if (!el.hidden)
 				el.onHide();
 		}
+		g_inMerge = false;
 	}
 
 	override void draw(Window wnd, long usecsDelta)
@@ -469,6 +492,8 @@ final class TacticalOverlay: Overlay
 				el.draw(wnd, usecsDelta);
 			}
 		}
+		if (g_inMerge)
+			m_mergeHint.draw(wnd, usecsDelta);
 	}
 
 	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
@@ -567,6 +592,12 @@ final class PlayerSubIcon: OverlayElement
 	}
 }
 
+private __gshared
+{
+	bool g_inMerge;
+	ContactId g_mergeSourceId;
+}
+
 
 /// Contact's icon on F1 screen
 final class TacticalContactElement: OverlayElementWithHover
@@ -645,10 +676,27 @@ final class TacticalContactElement: OverlayElementWithHover
 	private void processMouseUp(int x, int y, sfMouseButton btn)
 	{
 		if (btn == sfMouseLeft && !m_panning)
-			tacowner.selectedContact = this;
+		{
+			if (g_inMerge)
+			{
+				if (g_mergeSourceId != m_contact.id)
+					Game.ciccon.sendMessage(immutable CICContactMergeReq(
+						g_mergeSourceId, m_contact.id));
+				g_inMerge = false;
+			}
+			else
+				tacowner.selectedContact = this;
+		}
 		if (btn == sfMouseRight && !m_panning)
 		{
 			Button[] buttons = commonContactContextMenu(m_contact);
+			// add merge to button
+			Button mbtn = builder(new Button()).fontSize(15).content("merge into").build();
+			mbtn.onClick += {
+				g_inMerge = true;
+				g_mergeSourceId = m_contact.id;
+			};
+			buttons ~= mbtn;
 			ContextMenu menu = contextMenu(
 					Game.guiManager,
 					buttons,
@@ -657,6 +705,13 @@ final class TacticalContactElement: OverlayElementWithHover
 					20);
 			return;
 		}
+	}
+
+	override void drop()
+	{
+		if (g_inMerge && m_contact.id == g_mergeSourceId)
+			g_inMerge = false;
+		super.drop();
 	}
 
 	void addData(ClientContactData* cdata)
@@ -673,8 +728,43 @@ final class TacticalContactElement: OverlayElementWithHover
 }
 
 
+class DataTacticalElement: ContactDataOverlayElement
+{
+	this(TacticalOverlay owner, ClientContactData* data)
+	{
+		super(owner, data);
+		onMouseUp += &processMouseUp;
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight && !m_panning)
+		{
+			Button[] buttons = dataContextMenuOptions();
+			ContextMenu menu = contextMenu(
+					Game.guiManager,
+					buttons,
+					Game.window.size,
+					vec2i(x, y),
+					20);
+			return;
+		}
+	}
+
+	protected Button[] dataContextMenuOptions()
+	{
+		Button[] res;
+		Button btn = builder(new Button()).fontSize(15).content("drop data sample").build();
+		btn.onClick += {
+			Game.ciccon.sendMessage(immutable CICDropDataReq(data.id));
+		};
+		res ~= btn;
+		return res;
+	}
+}
+
 /// Tactical overlay element, bound to positional data.
-final class PositionDataTacticalElement: ContactDataOverlayElement
+final class PositionDataTacticalElement: DataTacticalElement
 {
 	this(TacticalOverlay owner, ClientContactData* data)
 	{
