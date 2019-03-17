@@ -349,9 +349,10 @@ struct ActiveSonarPrototype
 	float dissMod = 4.0f;
 	/// gain for flow noise
 	dB flowNoiseGain = 10.0f;
-	/// reflector bearing and range is randomized around true value by this ratio
-	float reflBearingNoise = 0.02f;
-	float reflRangeNoise = 0.02f;
+	/// contact bearing error magnitude
+	float reflBearingNoise = asin(250 / 10000.0f);
+	/// contact range error magnitude gain per meter of range
+	float reflRangeNoise = 200 / 10000.0f;
 	/// reverb gains gotten from getReverbGains function
 	immutable(float)[] reverbk = getReverbGains(
 		[1.0f, 0.5f, 0.2f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.01f);
