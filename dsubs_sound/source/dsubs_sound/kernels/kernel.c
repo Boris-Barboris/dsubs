@@ -433,7 +433,7 @@ void __kernel sonarReflectorPass(
 	{
 		struct reflector ref = reflectors[ri];
 		uint randState = getRngState(seed, ri);
-		ref.relBearing += uniform(&randState, -reflParamNoise.x, reflParamNoise.x));
+		ref.relBearing += uniform(&randState, -reflParamNoise.x, reflParamNoise.x);
 		ref.range *= (1.0f + uniform(&randState, -reflParamNoise.y, reflParamNoise.y));
 		dB targetReflect = getILatRange2(wrdk, pingIntens, 2 * ref.range, dissMod);
 		targetReflect += ref.reflectivity;

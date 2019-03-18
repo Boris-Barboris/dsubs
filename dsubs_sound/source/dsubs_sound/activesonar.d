@@ -350,7 +350,7 @@ struct ActiveSonarPrototype
 	/// gain for flow noise
 	dB flowNoiseGain = 10.0f;
 	/// contact bearing error magnitude
-	float reflBearingNoise = asin(250 / 10000.0f);
+	float reflBearingNoise = 0.025f;
 	/// contact range error magnitude gain per meter of range
 	float reflRangeNoise = 200 / 10000.0f;
 	/// reverb gains gotten from getReverbGains function
