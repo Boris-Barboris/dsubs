@@ -337,7 +337,10 @@ final class TacticalOverlay: Overlay
 	private void processMouseUp(int x, int y, sfMouseButton btn)
 	{
 		if (btn == sfMouseLeft)
+		{
 			selectedContact = null;
+			g_inMerge = false;
+		}
 		if (btn == sfMouseRight)
 			returnMouseFocus();
 	}
@@ -626,6 +629,7 @@ final class TacticalContactElement: OverlayElementWithHover
 			g_velLabel.vtextAlign = VTextAlign.CENTER;
 			g_velLabel.size = vec2i(60, 16);
 			g_velLabel.enableScissorTest = false;
+			g_velLabel.fontColor = sfColor(255, 60, 30, 255);
 		}
 	}
 
@@ -645,6 +649,13 @@ final class TacticalContactElement: OverlayElementWithHover
 		}
 	}
 
+	private enum DragMode: ubyte
+	{
+		main,
+		circle,
+		tail
+	}
+
 	private
 	{
 		ClientContact m_contact;
@@ -655,7 +666,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		LineShape m_pastTrailLine;
 		Label m_contactName;
 		vec2d m_lastScreenPos;
-		bool m_velDragMode;
+		DragMode m_dragMode;
 		bool m_drawPastTrail;
 	}
 
@@ -690,6 +701,8 @@ final class TacticalContactElement: OverlayElementWithHover
 			// check if cursor is inside the circle
 			if (pointOnCircle(vec2i(x, y)))
 				return this;
+			if (pointOnTail(vec2i(x, y)))
+				return this;
 		}
 		return GuiElement.getFromPoint(evt, x, y);
 	}
@@ -699,6 +712,22 @@ final class TacticalContactElement: OverlayElementWithHover
 		double rad = (m_lastScreenPos - point).length;
 		return (rad >= (m_velCircle.radius - 3) &&
 				rad <= (m_velCircle.radius + m_velCircle.borderWidth + 3));
+	}
+
+	private __gshared vec2d g_altBase;
+	private __gshared double g_tailDragVelPerPixel;
+
+	private bool pointOnTail(vec2i point)
+	{
+		if (!m_drawPastTrail)
+			return false;
+		bool inside;
+		double k;
+		point.y = -point.y;
+		g_altBase = m_pastTrailLine.getAltitudeBase(cast(vec2d) point, inside, k);
+		double altHeight = (g_altBase - point).length;
+		g_altBase.y = -g_altBase.y;
+		return (inside && altHeight < 5 && (k >= m_velCircle.radius / m_pastTrailLine.length));
 	}
 
 	private void extrapolateTime(out usecs_t extrapolatedTime, out double secs)
@@ -744,10 +773,11 @@ final class TacticalContactElement: OverlayElementWithHover
 				vec2d velDelta = speed > 1e-20 ?
 					m_solution.vel.normalized * vecLen :
 					vec2d(0, 0);
-				velDelta.y = - velDelta.y;
+				velDelta.y = -velDelta.y;
 				vec2d point2 = screenPos + velDelta;
 				m_velDragLine.setPoints(screenPos, point2, true);
-				g_velLabel.position = cast(vec2i) vec2d(point2.x + 15, point2.y);
+				g_velLabel.position = cast(vec2i) vec2d(
+					point2.x + (velDelta.x >= 0 ? 15 : -70), point2.y);
 				dmutstring spdStr = g_velLabel.content;
 				mutsformat!"%.2f m/s"(spdStr, speed);
 				g_velLabel.content = spdStr;
@@ -782,7 +812,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		return ZERO_SPD_PIXEL_MARGIN + sqrt(speed) * PIXEL_PER_MPS;
 	}
 
-	private void drawPastTrailAndDataLines(Window wnd, long usecsDelta)
+	private void drawPastTrailAndDataLines(Window wnd)
 	{
 		m_pastTrailLine.render(wnd);
 		// iterate all active sonar points
@@ -810,9 +840,8 @@ final class TacticalContactElement: OverlayElementWithHover
 			if (m_solution.velAvailable)
 			{
 				if (m_drawPastTrail)
-					drawPastTrailAndDataLines(wnd, usecsDelta);
+					drawPastTrailAndDataLines(wnd);
 				m_velDragLine.render(wnd);
-				g_velLabel.draw(wnd, usecsDelta);
 			}
 			if (!m_dragging)
 			{
@@ -822,6 +851,8 @@ final class TacticalContactElement: OverlayElementWithHover
 					m_velCircle.borderColor = sfWhite;
 				m_velCircle.render(wnd);
 			}
+			if (m_solution.velAvailable)
+				g_velLabel.draw(wnd, usecsDelta);
 		}
 		if (m_hovered)
 			m_onHoverRect.render(wnd);
@@ -839,7 +870,7 @@ final class TacticalContactElement: OverlayElementWithHover
 			if (m_dragging)
 			{
 				m_dragging = false;
-				m_velDragMode = false;
+				m_dragMode = DragMode.main;
 				if (!m_panning)
 					returnMouseFocus();
 				requestSolutionUpdate();
@@ -881,28 +912,43 @@ final class TacticalContactElement: OverlayElementWithHover
 	{
 		if (m_dragging)
 		{
-			if (m_velDragMode)
+			final switch (m_dragMode)
 			{
-				// velocity dragging
-				vec2d center = m_mainShape.center;
-				vec2d delta = vec2d(x, y) - center;
-				delta.y = -delta.y;	// screen-space y
-				double lineLen = delta.length;
-				double speed = lineLength2speed(lineLen);
-				m_solution.velAvailable = true;
-				if (speed >= 1e-20)
-					m_solution.vel = speed * delta.normalized;
-				else
-					m_solution.vel = vec2d(0, 0);
-			}
-			else
-			{
-				vec2i newPos = vec2i(x, y) - g_dragOffset;
-				vec2d newCenter = owner.clampInsideRect(lu2center(newPos));
-				// we now need to update bearing and range from screen-space position
-				vec2d newWorldCoord = owner.screen2worldPos(newCenter);
-				m_solution.posAvailable = true;
-				m_solution.pos = newWorldCoord;
+				case (DragMode.circle):
+				{
+					// velocity dragging
+					vec2d center = m_mainShape.center;
+					vec2d delta = vec2d(x, y) - center;
+					delta.y = -delta.y;	// screen-space y
+					double lineLen = delta.length;
+					double speed = lineLength2speed(lineLen);
+					m_solution.velAvailable = true;
+					if (speed >= 1e-20)
+						m_solution.vel = speed * delta.normalized;
+					else
+						m_solution.vel = vec2d(0, 0);
+					break;
+				}
+				case (DragMode.main):
+				{
+					vec2i newPos = vec2i(x, y) - g_dragOffset;
+					vec2d newCenter = owner.clampInsideRect(lu2center(newPos));
+					// we now need to update bearing and range from screen-space position
+					vec2d newWorldCoord = owner.screen2worldPos(newCenter);
+					m_solution.posAvailable = true;
+					m_solution.pos = newWorldCoord;
+					break;
+				}
+				case (DragMode.tail):
+				{
+					vec2i newPos = vec2i(x, y);
+					vec2d newDelta = m_mainShape.center - newPos;
+					vec2d newVel = newDelta * g_tailDragVelPerPixel /
+						tacowner.m_camCtrl.camera.zoom;
+					newVel.y = - newVel.y;
+					m_solution.vel = newVel;
+					break;
+				}
 			}
 		}
 	}
@@ -939,8 +985,21 @@ final class TacticalContactElement: OverlayElementWithHover
 		if (btn == sfMouseLeft && isSelected)
 		{
 			m_dragging = true;
-			g_dragOffset = vec2i(x, y) - position;
-			m_velDragMode = pointOnCircle(vec2i(x, y));
+			if (pointOnCircle(vec2i(x, y)))
+				m_dragMode = DragMode.circle;
+			else if (pointOnTail(vec2i(x, y)))
+			{
+				m_dragMode = DragMode.tail;
+				double speed = m_solution.vel.length;
+				double vecScreenLen = (m_mainShape.center - vec2f(x, y)).length;
+				assert(vecScreenLen > 1e-20);
+				g_tailDragVelPerPixel = speed / vecScreenLen * tacowner.m_camCtrl.camera.zoom;
+			}
+			else
+			{
+				m_dragMode = DragMode.main;
+				g_dragOffset = vec2i(x, y) - position;
+			}
 			requestMouseFocus();
 		}
 	}

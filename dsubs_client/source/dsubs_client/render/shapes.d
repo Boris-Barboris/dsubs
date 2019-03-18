@@ -275,6 +275,7 @@ final class LineShape: Shape
 	{
 		sfRectangleShape* m_shape;
 		Transform m_transform;
+		vec2d m_p2;
 	}
 
 	@property Transform transform() { return m_transform; }
@@ -313,13 +314,33 @@ final class LineShape: Shape
 	private void rebuild(vec2d p1, vec2d p2, float width)
 	{
 		m_transform.position = p1;
+		m_p2 = p2;
 		double rot = courseAngle(p2 - p1) + PI_2;
 		if (!isNaN(rot))
 			m_transform.rotation = rot;
 		m_transform.scale = vec2d((p2 - p1).length, width);
 	}
 
-	@property float width() const { return m_transform.scale.y; }
+	@property double length() { return m_transform.scale.x; }
+
+	/// Get base of the altitude from point 'from'. 'inside' is set to true if
+	/// the base is between p1 and p2.
+	vec2d getAltitudeBase(vec2d from, out bool inside, out double k)
+	{
+		// https://math.stackexchange.com/questions/1317578/how-to-find-the-coordinates-where-the-altitude-of-a-triangle-intersects-the-base#comment6169024_2674944
+		vec2d A = m_transform.position;
+		vec2d C = m_p2;
+		vec2d B = from;
+		vec2d D;
+		k = ((B.x - A.x) * (C.x - A.x) + (B.y - A.y) * (C.y - A.y)) /
+			(pow(C.x - A.x, 2) + pow(C.y - A.y, 2));
+		D.x = A.x + k * (C.x - A.x);
+		D.y = A.y + k * (C.y - A.y);
+		inside = (k >= 0.0 && k <= 1.0);
+		return D;
+	}
+
+	@property float width() { return m_transform.scale.y; }
 
 	@property void width(float rhs)
 	{
