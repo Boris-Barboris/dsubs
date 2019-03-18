@@ -165,18 +165,20 @@ unittest
 	FloatImage reverbImg = FloatImage(ctx, fimg.w, fimg.h);
 
 	PreparedReflector[] reflectors = [
-		PreparedReflector(0.0f, 1000.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(0.0f, 2000.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(-1.0f, 3000.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(-1.5f, 3000.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(-2.0f, 3000.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(-2.5f, 3000.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(-3.14f, 3000.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(3.14f, 3300.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(0.0f, 5000.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(0.0f, 7500.0f, 75.0f, 12.0f, -10.0f),
-		PreparedReflector(0.0f, 10000.0f, 75.0f, 12.0f, -10.0f)
+		PreparedReflector(0.0f, 1000.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(0.0f, 2000.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(-1.0f, 3000.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(-1.5f, 3000.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(-2.0f, 3000.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(-2.5f, 3000.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(-3.14f, 3000.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(3.14f, 3300.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(0.0f, 5000.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(0.0f, 7500.0f, 75.0f, 12.0f, -20.0f),
+		PreparedReflector(0.0f, 10000.0f, 75.0f, 12.0f, -20.0f)
 	];
+	foreach (ref r; reflectors)
+		r.reflectivity = -20.0f;
 
 	Buffer reflectBuf = Buffer(q, reflectors);
 	float rangePerRow = SOUND_SPD / proto.radialRes / 2;
@@ -341,12 +343,12 @@ struct ActiveSonarPrototype
 	float pingDirPower = 2.0f;
 	/// base uniform picture noise
 	dB baseNoise = 2.0f;
-	/// antennae directivity gain
-	dB directivity = -15.0f;
+	/// antennae directivity gain, used in isotopic sea noise calculation
+	dB directivity = 30.0f;
 	/// water mass reflectivity
 	float waterReflectivity = 1e-3f;
 	/// main sound dissipation modifier
-	float dissMod = 4.0f;
+	float dissMod = 20.0f;
 	/// gain for flow noise
 	dB flowNoiseGain = 10.0f;
 	/// contact bearing error magnitude
@@ -363,9 +365,9 @@ struct ActiveSonarPrototype
 	/// perlin noise amplitudes (two noise passes are added)
 	dB[2] perlinGain = [7.9f, 4.3f];
 	/// sonar image will be black on this pixel intensity level
-	dB zeroLevel = dB(seaNoiseIL(1200).val + 40.0f);
+	dB zeroLevel = dB(seaNoiseIL(1200).val + 15.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
-	float endScale = 1 / 80.0f;
+	float endScale = 1 / 110.0f;
 
 	/// Slice horizontal resolution
 	int getSliceResol() const

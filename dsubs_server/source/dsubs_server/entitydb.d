@@ -182,7 +182,7 @@ Active sonar:
 				3.0f, 4e-3, 5e-5, 1e-3)
 		];
 		sp.asprot = asp;
-		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-12.0f, -9.0f, -5.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-25.0f, -19.0f, -10.0f]);
 		g_submarines[sp.tmpl.name] = sp;
 	}
 

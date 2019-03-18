@@ -1136,6 +1136,7 @@ final class PositionDataTacticalElement: DataTacticalElement
 				ce.m_solution.posAvailable = true;
 				ce.m_solution.pos = data.data.position.contactPos;
 				ce.m_solution.time = data.time;
+				ce.requestSolutionUpdate();
 			}
 		};
 		res ~= btn;
