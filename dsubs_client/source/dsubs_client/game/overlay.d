@@ -284,6 +284,9 @@ final class TacticalOverlay: Overlay
 		TacticalContactElement m_selectedContact;
 		ContactDataOverlayElement[int] m_selectedContactData;
 		Label m_mergeHint;
+		HoveredContactDescription m_hoverDesc;
+
+		enum int HOVER_DESC_YSHIFT = 28;
 	}
 
 	this(CameraController camCtrl)
@@ -304,18 +307,24 @@ final class TacticalOverlay: Overlay
 		onMouseUp += &processMouseUp;
 		onMouseMove += &processMouseMove;
 		onMouseScroll += &processMouseScroll;
+
+		m_hoverDesc = new HoveredContactDescription();
 	}
 
 	override void updatePosition()
 	{
 		super.updatePosition();
 		m_mergeHint.position = position + (size - m_mergeHint.size) / 2;
+		m_hoverDesc.mainDiv.position = position + vec2i(size.x, HOVER_DESC_YSHIFT) -
+			vec2i(m_hoverDesc.mainDiv.size.x, 0);
 	}
 
 	override void updateSize()
 	{
 		super.updateSize();
 		m_mergeHint.position = position + (size - m_mergeHint.size) / 2;
+		m_hoverDesc.mainDiv.position = position + vec2i(size.x, HOVER_DESC_YSHIFT) -
+			vec2i(m_hoverDesc.mainDiv.size.x, 0);
 	}
 
 	private void processMouseDown(int x, int y, sfMouseButton btn)
@@ -342,7 +351,47 @@ final class TacticalOverlay: Overlay
 			g_inMerge = false;
 		}
 		if (btn == sfMouseRight)
+		{
 			returnMouseFocus();
+			if (!m_panned)
+			{
+				// spawn context menu
+				Button[] buttons;
+				Button cmsBtn = builder(new Button()).fontSize(15).
+					content("create manual contact").build();
+				vec2d pos = screen2worldPos(vec2d(x, y));
+				usecs_t atTime = Game.simState.extrapolatedServerTime;
+				ContactDataUnion cdu;
+				cdu.position = PositionData(pos);
+				cmsBtn.onClick += {
+					Game.ciccon.sendMessage(immutable CICCreateContactFromDataReq(
+						'M',
+						ContactData(
+							-1, ContactId(), atTime,
+							DataSource(DataSourceType.Manual, 0), DataType.Position,
+							cdu)
+					));
+				};
+				buttons ~= cmsBtn;
+				vec2d dir = pos - Game.simState.playerSub.transform.wposition;
+				if (dir.length > 1e-20)
+				{
+					float courseReq = courseAngle(dir);
+					Button setCourseBtn = builder(new Button()).fontSize(15).
+						content("set course towards").build();
+					setCourseBtn.onClick += {
+						Game.ciccon.sendMessage(CICCourseReq(courseReq));
+					};
+					buttons ~= setCourseBtn;
+				}
+				ContextMenu menu = contextMenu(
+						Game.guiManager,
+						buttons,
+						Game.window.size,
+						vec2i(x, y),
+						20);
+			}
+		}
 	}
 
 	private void processMouseMove(int x, int y)
@@ -498,6 +547,11 @@ final class TacticalOverlay: Overlay
 		}
 		if (g_inMerge)
 			m_mergeHint.draw(wnd, usecsDelta);
+		if (m_hoverDesc.followedContact)
+		{
+			m_hoverDesc.update();
+			m_hoverDesc.mainDiv.draw(wnd, usecsDelta);
+		}
 	}
 
 	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
@@ -619,6 +673,8 @@ final class TacticalContactElement: OverlayElementWithHover
 		onMouseUp += &processMouseUp;
 		onMouseMove += &processMouseMove;
 		onMouseDown += &processMouseDown;
+		onMouseEnter += &processMouseEnter;
+		onMouseLeave += &processMouseLeave;
 
 		if (g_velLabel is null)
 		{
@@ -649,11 +705,23 @@ final class TacticalContactElement: OverlayElementWithHover
 		}
 	}
 
+	private void processMouseEnter(IInputReceiver oldOwner)
+	{
+		tacowner.m_hoverDesc.followedContact = this;
+	}
+
+	private void processMouseLeave(IInputReceiver newOwner)
+	{
+		TacticalContactElement newEl = cast(TacticalContactElement) newOwner;
+		if (newEl is null)
+			tacowner.m_hoverDesc.followedContact = null;
+	}
+
 	private enum DragMode: ubyte
 	{
 		main,
 		circle,
-		tail
+		trail
 	}
 
 	private
@@ -701,7 +769,7 @@ final class TacticalContactElement: OverlayElementWithHover
 			// check if cursor is inside the circle
 			if (pointOnCircle(vec2i(x, y)))
 				return this;
-			if (pointOnTail(vec2i(x, y)))
+			if (pointOnTrail(vec2i(x, y)))
 				return this;
 		}
 		return GuiElement.getFromPoint(evt, x, y);
@@ -714,29 +782,24 @@ final class TacticalContactElement: OverlayElementWithHover
 				rad <= (m_velCircle.radius + m_velCircle.borderWidth + 3));
 	}
 
-	private __gshared vec2d g_altBase;
-	private __gshared double g_tailDragVelPerPixel;
+	private __gshared double g_trailDragVelPerPixel = 1.0;
 
-	private bool pointOnTail(vec2i point)
+	private bool pointOnTrail(vec2i point)
 	{
 		if (!m_drawPastTrail)
 			return false;
 		bool inside;
 		double k;
 		point.y = -point.y;
-		g_altBase = m_pastTrailLine.getAltitudeBase(cast(vec2d) point, inside, k);
-		double altHeight = (g_altBase - point).length;
-		g_altBase.y = -g_altBase.y;
-		return (inside && altHeight < 5 && (k >= m_velCircle.radius / m_pastTrailLine.length));
+		vec2d altBase = m_pastTrailLine.getAltitudeBase(cast(vec2d) point, inside, k);
+		double altHeight = (altBase - point).length;
+		return (inside && altHeight < 5 && (k >= 15 / m_pastTrailLine.length));
 	}
 
 	private void extrapolateTime(out usecs_t extrapolatedTime, out double secs)
 	{
-		usecs_t usecsSince =
-			Game.simState.lastServerTime +
-			(MonoTime.currTime - Game.simState.lastServerTimeOnClient).total!"usecs" -
-			m_contact.solution.time;
-		extrapolatedTime = m_contact.solution.time + usecsSince;
+		extrapolatedTime = Game.simState.extrapolatedServerTime;
+		usecs_t usecsSince = extrapolatedTime - m_contact.solution.time;
 		secs = usecsSince / 1.0e6;
 	}
 
@@ -752,18 +815,19 @@ final class TacticalContactElement: OverlayElementWithHover
 		}
 		vec2d worldPos = m_solution.pos;
 		vec2d screenPos = owner.world2windowPos(worldPos);
+		vec2f screenPosF = cast(vec2f) screenPos;
 		position = center2lu(screenPos);
-		m_mainShape.center = cast(vec2f) screenPos;
+		m_mainShape.center = screenPosF;
 		if (needDrawName)
 		{
 			m_contactName.position = vec2i(position.x + size.x / 2 - m_contactName.size.x / 2,
 				position.y + size.y + 2);
 		}
 		if (m_hovered)
-			m_onHoverRect.center = cast(vec2f) screenPos;
+			m_onHoverRect.center = screenPosF;
 		if (isSelected)
 		{
-			m_velCircle.center = cast(vec2f) screenPos;
+			m_velCircle.center = screenPosF;
 			if (m_solution.velAvailable)
 			{
 				// let's update velocity line
@@ -778,9 +842,7 @@ final class TacticalContactElement: OverlayElementWithHover
 				m_velDragLine.setPoints(screenPos, point2, true);
 				g_velLabel.position = cast(vec2i) vec2d(
 					point2.x + (velDelta.x >= 0 ? 15 : -70), point2.y);
-				dmutstring spdStr = g_velLabel.content;
-				mutsformat!"%.2f m/s"(spdStr, speed);
-				g_velLabel.content = spdStr;
+				g_velLabel.format!"%.2f m/s"(speed);
 				// update past trail
 				if (speed > 1e-20)
 				{
@@ -825,7 +887,7 @@ final class TacticalContactElement: OverlayElementWithHover
 			if (pel is null)
 				continue;
 			vec2d dataPosScreen = owner.world2windowPos(pel.data.data.position.contactPos);
-			vec2d dataOnTrail = m_mainShape.center +
+			vec2d dataOnTrail = m_lastScreenPos +
 				deltaPerUsec * (m_solution.time - pel.data.time);
 			deltaShape.setPoints(dataPosScreen, dataOnTrail, true);
 			deltaShape.render(wnd);
@@ -917,7 +979,7 @@ final class TacticalContactElement: OverlayElementWithHover
 				case (DragMode.circle):
 				{
 					// velocity dragging
-					vec2d center = m_mainShape.center;
+					vec2d center = m_lastScreenPos;
 					vec2d delta = vec2d(x, y) - center;
 					delta.y = -delta.y;	// screen-space y
 					double lineLen = delta.length;
@@ -939,11 +1001,11 @@ final class TacticalContactElement: OverlayElementWithHover
 					m_solution.pos = newWorldCoord;
 					break;
 				}
-				case (DragMode.tail):
+				case (DragMode.trail):
 				{
 					vec2i newPos = vec2i(x, y);
-					vec2d newDelta = m_mainShape.center - newPos;
-					vec2d newVel = newDelta * g_tailDragVelPerPixel /
+					vec2d newDelta = m_lastScreenPos - newPos;
+					vec2d newVel = newDelta * g_trailDragVelPerPixel /
 						tacowner.m_camCtrl.camera.zoom;
 					newVel.y = - newVel.y;
 					m_solution.vel = newVel;
@@ -987,13 +1049,13 @@ final class TacticalContactElement: OverlayElementWithHover
 			m_dragging = true;
 			if (pointOnCircle(vec2i(x, y)))
 				m_dragMode = DragMode.circle;
-			else if (pointOnTail(vec2i(x, y)))
+			else if (pointOnTrail(vec2i(x, y)))
 			{
-				m_dragMode = DragMode.tail;
+				m_dragMode = DragMode.trail;
 				double speed = m_solution.vel.length;
-				double vecScreenLen = (m_mainShape.center - vec2f(x, y)).length;
+				double vecScreenLen = (m_lastScreenPos - vec2f(x, y)).length;
 				assert(vecScreenLen > 1e-20);
-				g_tailDragVelPerPixel = speed / vecScreenLen * tacowner.m_camCtrl.camera.zoom;
+				g_trailDragVelPerPixel = speed / vecScreenLen * tacowner.m_camCtrl.camera.zoom;
 			}
 			else
 			{
@@ -1096,5 +1158,89 @@ final class PositionDataTacticalElement: DataTacticalElement
 		if (m_hovered)
 			m_onHoverRect.render(wnd);
 		m_mainShape.render(wnd);
+	}
+}
+
+
+final class HoveredContactDescription
+{
+	private
+	{
+		Div m_mainDiv;
+		Label[] m_labels;
+		TacticalContactElement m_followedContact;
+		int m_counter = UPDATE_FREQ - 1;
+
+		enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
+		enum int UPDATE_FREQ = 20;
+		enum int DIV_WIDTH = 150;
+	}
+
+	@property TacticalContactElement followedContact() { return m_followedContact; }
+
+	@property void followedContact(TacticalContactElement rhs)
+	{
+		m_followedContact = rhs;
+		m_counter = UPDATE_FREQ - 1;
+	}
+
+	@property Div mainDiv() { return m_mainDiv; }
+
+	this()
+	{
+		m_labels = new Label[8];
+		for (int i = 0; i < m_labels.length; i++)
+		{
+			Label lbl = new Label();
+			lbl.mouseTransparent = true;
+			lbl.fontSize = 14;
+			lbl.htextAlign = HTextAlign.LEFT;
+			m_labels[i] = lbl;
+		}
+		m_mainDiv = new Div(DivType.VERT, cast(GuiElement[]) m_labels);
+		m_mainDiv.backgroundVisible = true;
+		m_mainDiv.backgroundColor = DIV_BCKGROUND;
+		m_mainDiv.mouseTransparent = true;
+		m_mainDiv.size = vec2i(DIV_WIDTH, (m_labels.length * 20).to!int);
+	}
+
+	void update()
+	{
+		if (m_followedContact is null)
+			return;
+		m_counter = (m_counter + 1) % UPDATE_FREQ;
+		if (m_counter != 0)
+			return;
+		m_labels[0].format!"id: %s"(m_followedContact.contact.id);
+		m_labels[1].format!"desc: %s"(m_followedContact.contact.comment);
+		m_labels[2].format!"type: %s"(m_followedContact.contact.type);
+		m_labels[3].format!"age: %ss"(
+			(Game.simState.lastServerTime - m_followedContact.contact.createdAt).
+			dur!"usecs".total!"seconds");
+		if (m_followedContact.m_solution.posAvailable)
+		{
+			vec2d dirVec = m_followedContact.m_solution.pos -
+					Game.simState.playerSub.transform.wposition;
+			m_labels[4].format!"bearing: %.1f"(
+				-courseAngle(dirVec).compassAngle.rad2dgr);
+			m_labels[5].format!"range: %dm"(dirVec.length.to!int);
+		}
+		else
+		{
+			m_labels[4].format!"bearing: ?"();
+			m_labels[5].format!"range: ?"();
+		}
+		if (m_followedContact.m_solution.velAvailable)
+		{
+			vec2d velVec = m_followedContact.m_solution.vel;
+			m_labels[6].format!"course: %.1f"(
+				-courseAngle(velVec).compassAngle.rad2dgr);
+			m_labels[7].format!"speed: %.2fm/s"(velVec.length);
+		}
+		else
+		{
+			m_labels[6].format!"course: ?"();
+			m_labels[7].format!"speed: ?"();
+		}
 	}
 }

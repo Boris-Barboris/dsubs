@@ -26,12 +26,7 @@ final class PasswordField: TextField
 
 	@property override dmutstring content() { return m_hiddenContent; }
 
-	@property override dmutstring content(dstring rhs)
-	out (result)
-	{
-		assert(m_hiddenContent.length == m_content.length);
-	}
-	body
+	@property override void content(dstring rhs)
 	{
 		str2mutCopy(rhs, m_hiddenContent);
 		m_content.length = m_hiddenContent.length;
@@ -39,7 +34,6 @@ final class PasswordField: TextField
 		m_content[$-1] = 0;
 		sfText_setUnicodeString(m_sfText, m_content.ptr);
 		updateText();
-		return m_hiddenContent;
 	}
 
 	override void insertAt(dchar c, size_t idx)

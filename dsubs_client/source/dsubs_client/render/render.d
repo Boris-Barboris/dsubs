@@ -94,14 +94,18 @@ final class Render
 
 	private enum int FPS_UPDATE_FREQ = 300;
 
+	private MonoTime m_frameEndTime, m_frameStartTime;
+	@property MonoTime frameEndTime() const { return m_frameEndTime; }
+	@property MonoTime frameStartTime() const { return m_frameStartTime; }
+
 	/// Thread function
 	private void render(scope Mutex mutex)
 	{
 		try
 		{
 			MonoTime lastFpsMark = MonoTime.currTime;
-			MonoTime curTime = lastFpsMark;
-			MonoTime prevTime = curTime;
+			m_frameStartTime = m_frameEndTime = lastFpsMark;
+			MonoTime prevTime = m_frameEndTime;
 			long usecsDelta = 0;
 			int frameCounter = 0;
 			while (!m_stopFlag)
@@ -112,6 +116,7 @@ final class Render
 					break;
 				synchronized(mutex)
 				{
+					m_frameStartTime = MonoTime.currTime;
 					if (m_router)
 						m_router.simulateMouseMove();
 					onPreRender(usecsDelta);
@@ -130,17 +135,17 @@ final class Render
 				// present backbuffer, blocks until vsync
 				sfRenderWindow_display(m_window.wnd);
 				// update timings
-				prevTime = curTime;
-				curTime = MonoTime.currTime;
-				usecsDelta = (curTime - prevTime).total!"usecs";
+				prevTime = m_frameEndTime;
+				m_frameEndTime = MonoTime.currTime;
+				usecsDelta = (m_frameEndTime - prevTime).total!"usecs";
 				// update fps
 				if (++frameCounter > FPS_UPDATE_FREQ - 1)
 				{
-					long totalMsecs = (curTime - lastFpsMark).total!"msecs";
+					long totalMsecs = (m_frameEndTime - lastFpsMark).total!"msecs";
 					m_avgFps = FPS_UPDATE_FREQ * 1000.0f / totalMsecs;
 					trace("FPS: ", m_avgFps);
 					frameCounter = 0;
-					lastFpsMark = curTime;
+					lastFpsMark = m_frameEndTime;
 				}
 			}
 		}

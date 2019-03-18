@@ -76,25 +76,30 @@ class Label: GuiElement
 
 	@property dmutstring content() { return m_content; }
 
-	@property dmutstring content(dmutstring rhs)
+	@property void content(dmutstring rhs)
 	{
 		m_content = rhs;
 		sfText_setUnicodeString(m_sfText, m_content.ptr);
 		updateText();
-		return m_content;
 	}
 
-	@property dmutstring content(dstring rhs)
+	@property void content(dstring rhs)
 	{
 		str2mutCopy(rhs, m_content);
 		sfText_setUnicodeString(m_sfText, m_content.ptr);
 		updateText();
-		return m_content;
 	}
 
-	@property dmutstring content(string rhs)
+	@property void content(string rhs)
 	{
-		return content = toUTF32(rhs);
+		content = toUTF32(rhs);
+	}
+
+	void format(string fmt, Args...)(Args args)
+	{
+		mutsformat!(fmt, Args)(m_content, args);
+		sfText_setUnicodeString(m_sfText, m_content.ptr);
+		updateText();
 	}
 
 	invariant

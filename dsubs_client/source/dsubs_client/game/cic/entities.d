@@ -56,7 +56,7 @@ struct ContactId
 	char prefix;
 	int postfix;
 
-	void toString(scope void delegate(const(char)[]) sink) const
+	void toString(scope void delegate(const(char)[]) sink) const @trusted
 	{
 		import std.format: formattedWrite;
 		sink.formattedWrite!"%c"(prefix);

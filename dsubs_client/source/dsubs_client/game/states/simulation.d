@@ -48,8 +48,16 @@ final class SimulatorState: GameState
 	mixin Readonly!(TacticalOverlay, "tacticalOverlay");
 	mixin Readonly!(PlayerSubIcon, "playerSubIcon");
 
-	private MonoTimeImpl!(ClockType.normal) m_lastServerTimeOnClient;
-	@property auto lastServerTimeOnClient() { return m_lastServerTimeOnClient; }
+	private MonoTime m_lastServerTimeOnClient;
+
+	@property MonoTime lastServerTimeOnClient() const { return m_lastServerTimeOnClient; }
+
+	@property usecs_t extrapolatedServerTime() const
+	{
+		return m_lastServerTime +
+			max(0, (Game.render.frameStartTime -
+				Game.simState.lastServerTimeOnClient).total!"usecs");
+	}
 
 	override void setup()
 	{
@@ -130,16 +138,12 @@ final class SimulationGUI
 	void handleSubKinematicRes(CICSubKinematicRes res)
 	{
 		// course
-		dmutstring cc = curCourse.content;
-		mutsformat!"course: %.1f"(cc, -res.snap.rotation.compassAngle.rad2dgr);
-		curCourse.content = cc;
+		curCourse.format!"course: %.1f"(-res.snap.rotation.compassAngle.rad2dgr);
 		// speed
-		cc = curSpeed.content;
 		vec2d vel = cast(vec2d) res.snap.velocity;
 		vec2d fwd = courseVector(res.snap.rotation);
 		double proj = dot(vel, fwd);
-		mutsformat!"speed: %.1f"(cc, proj);
-		curSpeed.content = cc;
+		curSpeed.format!"speed: %.1f"(proj);
 		// pass to other classes that need it
 		m_sonarGui.sonar.handleSubKinematicRes(res);
 	}
