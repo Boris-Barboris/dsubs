@@ -88,7 +88,7 @@ SonarGui createSonarGui(const SonarTemplate st)
 final class SonarDisplay: PanoramicDisplay!ubyte
 {
 	/// assumed speed of sound
-	enum float SOUND_SPD = 1450.0f;
+	enum float SOUND_SPD = 1498.0f;
 
 	private
 	{
@@ -129,7 +129,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 	this(const SonarTemplate st)
 	{
 		m_st = st;
-		m_pyperworldy = st.radResol / SOUND_SPD;
+		m_pyperworldy = st.radResol * 2 / SOUND_SPD;	// sonar event horizon speed is half sound speed
 		m_sliceRowsDrawn = st.radResol;		// initial position of slice is fully drawn
 
 		PanoramicParams params;

@@ -50,9 +50,9 @@ final class ContactOverlayShapeCahe
 			30, sfWhite, 3);
 		m_velDragLine = new LineShape(vec2d(0, 0), vec2d(0, 0), sfColor(137, 182, 255, 255), 4);
 		m_pastTrailLine = new LineShape(vec2d(0, 0), vec2d(0, 0),
-			sfColor(255, 0, 0, 100), 1);
+			sfColor(232, 244, 63, 100), 1);
 		m_dataTrailDelta = new LineShape(vec2d(0, 0), vec2d(0, 0),
-			sfColor(255, 22, 154, 100), 1);
+			sfColor(255, 22, 154, 200), 2);
 	}
 
 	private
@@ -761,11 +761,13 @@ final class TacticalContactElement: OverlayElementWithHover
 				else
 					m_drawPastTrail = false;
 			}
+			else
+				m_velCircle.radius = ZERO_SPD_PIXEL_MARGIN;
 		}
 		m_lastScreenPos = screenPos;
 	}
 
-	private enum double PIXEL_PER_MPS = 24;
+	private enum double PIXEL_PER_MPS = 20;
 	private enum double ZERO_SPD_PIXEL_MARGIN = 30;
 
 	private static double lineLength2speed(double len)
