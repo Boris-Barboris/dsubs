@@ -8,6 +8,7 @@ import dsubs_client.game;
 import dsubs_client.game.cic.listener;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cic.state;
+import dsubs_client.game.cic.tracking;
 import dsubs_client.game.connections.backend;
 
 public import dsubs_client.game.connections.cicclient;
@@ -24,6 +25,7 @@ final class CICServer
 		CICListener m_listener;
 		CICState m_state;
 		BackendConnection m_bcon;
+		WaterfallAnalyzer[] m_wfAnalizers;
 	}
 
 	mixin Readonly!(int, "spawnId");
@@ -57,6 +59,10 @@ final class CICServer
 		enforce(!m_state.recStateInitialized,
 			"protocol flow error: unexpected duplicate ReconnectStateRes");
 		m_state.handleReconnectStateRes(res);
+		const SubmarineTemplate sbmTpl = *Game.entityManager.
+			submarineTemplates[res.submarineName];
+		foreach (const HydrophoneTemplate ht; sbmTpl.hydrophones)
+			m_wfAnalizers ~= new WaterfallAnalyzer(ht);
 	}
 
 	void handleSubKinematicRes(SubKinematicRes res)
@@ -116,6 +122,16 @@ final class CICServer
 		enforce(res.atTime == m_state.recState.subSnap.atTime);
 		bdcst.rotationAtTime = m_state.recState.subSnap.rotation;
 		m_listener.broadcast(cast(immutable) bdcst);
+		KinematicSnapshot snap;
+		synchronized(m_state.rsMut)
+		{
+			snap = m_state.recState.subSnap;
+		}
+		synchronized(m_state.ctcMut)
+		{
+			foreach (HydrophoneData hd; res.data)
+				m_wfAnalizers[hd.hydrophoneIdx].processNewData(hd.antennaes, snap);
+		}
 	}
 
 	void handleSonarStreamRes(SonarStreamRes res)

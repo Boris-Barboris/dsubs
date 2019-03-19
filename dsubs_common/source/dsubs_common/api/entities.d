@@ -156,12 +156,17 @@ struct SonarSliceData
 /// sound intensity level data from some antennae
 struct AntennaeData
 {
-	int hydrophoneIdx;	// index of the sub's hydrophone
 	int antennaeIdx;	// index of the antennae on that hydrophone
 	/// Each sample corresponds to one antennae beam.
 	/// Units are decibells, scaled to [0, ushort.max] interval.
 	/// Rotation from first beam to last one is clockwise.
 	ushort[] beams;
+}
+
+struct HydrophoneData
+{
+	int hydrophoneIdx;	// index of the sub's hydrophone
+	AntennaeData[] antennaes;
 }
 
 /// hydrophone time-domain sound signal

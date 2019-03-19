@@ -75,18 +75,33 @@ struct ContactData
 	ContactDataUnion data;
 }
 
-/// RB-tree of ContactData pointers, ordered by time.
+/// RB-tree of ContactData pointers, ordered first by time, then by id.
 alias ContactDataTree = RedBlackTree!(ContactData*,
 	"a.time < b.time || (a.time == b.time && a.id < b.id)", false);
 
-struct HydrophoneTracker
+/// Uniquely identifies a tracker
+struct TrackerId
 {
-	int hydrophoneIdx;		/// index of a hydrophone
-	ContactId ctcId;		/// periodically adds ray data to this contact
-	float bearing = 0.0f;	/// current world-space bearing
+	int sensorIdx;
+	ContactId ctcId;
 }
 
-/// Most generic contact type classification
+enum TrackerState: byte
+{
+	inactive,	/// tracker is not generating ray data.
+	manual,		/// tracker is not automatically moved, but is generating ray data.
+	tracking	/// tracker has captured the contact and is generating ray data.
+}
+
+/// CIC entity that follows contact passive trail on the waterfall
+struct HydrophoneTracker
+{
+	TrackerId id;
+	double bearing = 0.0f;	/// current world-space bearing
+	TrackerState state;
+}
+
+/// Generic contact type classification
 enum ContactType: byte
 {
 	unknown,
@@ -100,7 +115,7 @@ enum ContactType: byte
 struct Contact
 {
 	ContactId id;		// unique
-	@MaxLenAttr(128) string comment;
+	@MaxLenAttr(128) string description;
 	ContactType type;
 	usecs_t createdAt;
 	ContactSolution solution;

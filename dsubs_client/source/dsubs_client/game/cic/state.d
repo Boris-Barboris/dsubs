@@ -241,7 +241,7 @@ final class CICState
 		enforce(from.createdAt == ctcCtx.ctc.createdAt,
 			"Contact createdAt is immutable");
 		ctcCtx.ctc.type = from.type;
-		ctcCtx.ctc.comment = from.comment;
+		ctcCtx.ctc.description = from.description;
 		ctcCtx.ctc.solution = from.solution;
 		return true;
 	}
@@ -292,8 +292,8 @@ final class CICState
 		dc = &destCtx.ctc;
 		if (dc.type == ContactType.unknown)
 			dc.type = sc.type;
-		if (dc.comment.length == 0)
-			dc.comment = sc.comment;
+		if (dc.description.length == 0)
+			dc.description = sc.description;
 		if (sc.solution.posAvailable && (!dc.solution.posAvailable ||
 			dc.solution.time <= sc.solution.time))
 		{

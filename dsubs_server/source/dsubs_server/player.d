@@ -251,13 +251,14 @@ final class Player
 		if (con && con.isOpen && con.simulatorFlow && s)
 		{
 			con.sendMessage(immutable SubKinematicRes(genSubSnapshot()));
-			immutable(AntennaeData)[] acdata;
+			immutable(HydrophoneData)[] hdata;
 			foreach (int i, const h; s.hydrophones)
 			{
+				HydrophoneData hd;
+				hd.hydrophoneIdx = i;
 				for (int j = 0; j < h.antennaCount; j++)
-				{
-					acdata ~= immutable AntennaeData(i, j, h.getBroadbandData(j));
-				}
+					hd.antennaes ~= AntennaeData(j, h.getBroadbandData(j));
+				hdata ~= cast(immutable) hd;
 			}
 			immutable(HydrophoneAudio)[] haudio;
 			foreach (int i, h; s.hydrophones)
@@ -272,7 +273,7 @@ final class Player
 				}
 			}
 			con.sendMessage(immutable AcousticStreamRes(
-				Globals.sim.worldTime + timeShift, acdata, haudio));
+				Globals.sim.worldTime + timeShift, hdata, haudio));
 			// now active sonar
 			if (s.sonar.active && s.sonar.hasSliceToSend)
 			{

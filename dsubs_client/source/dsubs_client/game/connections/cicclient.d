@@ -178,11 +178,12 @@ private:
 	{
 		assert(res.data.length == 1);
 		assert(res.data[0].hydrophoneIdx == 0);
-		assert(res.data[0].antennaeIdx == 0);
+		assert(res.data[0].antennaes[0].antennaeIdx == 0);
 		StreamingSoundSource s;
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.gui.waterfall.drawData(res.data[0].beams, res.rotationAtTime, 0);
+			Game.simState.gui.waterfall.drawData(
+				res.data[0].antennaes[0].beams, res.rotationAtTime, 0);
 			s = Game.simState.sonarSound;
 		}
 		if (s && res.audio.length > 0)

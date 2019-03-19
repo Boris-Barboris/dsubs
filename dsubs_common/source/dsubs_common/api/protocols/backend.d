@@ -155,7 +155,7 @@ struct AcousticStreamRes
 {
 	__gshared const int g_marshIdx;
 	usecs_t atTime;
-	AntennaeData[] data;
+	HydrophoneData[] data;
 	HydrophoneAudio[] audio;
 }
 

@@ -66,7 +66,7 @@ struct CICSubAcousticRes
 {
 	__gshared const int g_marshIdx;
 	double rotationAtTime;
-	AntennaeData[] data;
+	HydrophoneData[] data;
 	HydrophoneAudio[] audio;
 }
 

@@ -529,11 +529,11 @@ final class Hydrophone
 		return res;
 	}
 
-	immutable(ushort)[] getBroadbandData(int antennaIdx) const
+	ushort[] getBroadbandData(int antennaIdx) const
 	{
 		ushort[] res;
 		m_ant[antennaIdx].imprint(res);
-		return cast(immutable) res;
+		return res;
 	}
 
 	/// Continuous block of hydrophone elements

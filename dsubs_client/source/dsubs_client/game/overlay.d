@@ -1213,7 +1213,7 @@ final class HoveredContactDescription
 		if (m_counter != 0)
 			return;
 		m_labels[0].format!"id: %s"(m_followedContact.contact.id);
-		m_labels[1].format!"desc: %s"(m_followedContact.contact.comment);
+		m_labels[1].format!"desc: %s"(m_followedContact.contact.description);
 		m_labels[2].format!"type: %s"(m_followedContact.contact.type);
 		m_labels[3].format!"age: %ss"(
 			(Game.simState.lastServerTime - m_followedContact.contact.createdAt).
