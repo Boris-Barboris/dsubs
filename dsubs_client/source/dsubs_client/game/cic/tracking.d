@@ -35,7 +35,7 @@ final class WaterfallAnalyzer
 		double[] m_peaks;
 		int m_min;
 
-		enum DETECT_MARGIN = ushort.max / 16;
+		enum DETECT_MARGIN = ushort.max / 20;
 	}
 
 	this(const HydrophoneTemplate tmpl)
