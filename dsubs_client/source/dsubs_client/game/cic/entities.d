@@ -89,15 +89,14 @@ struct TrackerId
 enum TrackerState: byte
 {
 	inactive,	/// tracker is not generating ray data.
-	manual,		/// tracker is not automatically moved, but is generating ray data.
-	tracking	/// tracker has captured the contact and is generating ray data.
+	active		/// tracker has captured the contact and is generating ray data.
 }
 
 /// CIC entity that follows contact passive trail on the waterfall
 struct HydrophoneTracker
 {
 	TrackerId id;
-	double bearing = 0.0f;	/// current world-space bearing
+	float bearing = 0.0f;	/// current world-space bearing
 	TrackerState state;
 }
 

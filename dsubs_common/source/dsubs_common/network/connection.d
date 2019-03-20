@@ -143,7 +143,7 @@ class ProtocolConnection(alias Protocol)
 	{
 		if (m_closed)
 			return;
-		if (atomicOp!"+="(m_writeQueueSize, 1) > 32)
+		if (atomicOp!"+="(m_writeQueueSize, 1) > 64)
 		{
 			error(conId, " write queue overflow, closing");
 			close();

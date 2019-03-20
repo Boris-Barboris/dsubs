@@ -8,6 +8,7 @@ import dsubs_common.math;
 import dsubs_client.common;
 import dsubs_client.gui;
 import dsubs_client.render.camera;
+import dsubs_client.render.shapes;
 import dsubs_client.core.window;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game;
@@ -374,6 +375,7 @@ class PanoramicDisplay(DataIntType): GuiElement
 
 	protected void drawHeaderShapes(Window wnd, long usecsDelta)
 	{
+		m_sfRst.texture = null;
 		sfRenderWindow_drawRectangleShape(wnd.wnd, m_headerRect, &m_sfRst);
 	}
 
@@ -483,10 +485,14 @@ final class Waterfall: PanoramicDisplay!ushort
 		// microphone director
 		sfCircleShape* m_directorCircle;
 		float m_listenDir = 0.0;
-		int m_dirHeaderHeight = 12;
+		int m_dirHeaderHeight = 18;
 		/// in waterfall render texture is sliding from top to bottom cyclically.
 		int m_vertPos;
+
+		TrackerOverlay m_trackerOverlay;
 	}
+
+	@property TrackerOverlay trackerOverlay() { return m_trackerOverlay; }
 
 	this(const HydrophoneTemplate ht)
 	{
@@ -499,22 +505,41 @@ final class Waterfall: PanoramicDisplay!ushort
 		m_pyperworldy = 1.0f;		// 1 pixel = 1 second
 		super(params, new WaterfallOverlay());
 		m_vertPos = -m_height - 1;
+		m_trackerOverlay = new TrackerOverlay();
 
 		// director
 		m_directorCircle = sfCircleShape_create();
 		sfCircleShape_setPointCount(m_directorCircle, 3);
 		sfCircleShape_setRotation(m_directorCircle, 180.0f);
-		sfCircleShape_setRadius(m_directorCircle, m_dirHeaderHeight / 2);
+		sfCircleShape_setRadius(m_directorCircle, m_dirHeaderHeight / 3);
 		sfCircleShape_setFillColor(m_directorCircle, sfWhite);
 		sfCircleShape_setOutlineThickness(m_directorCircle, 0.0f);
 		sfFloatRect bounds = sfCircleShape_getLocalBounds(m_directorCircle);
 		sfCircleShape_setOrigin(m_directorCircle,
-			sfVector2f(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2));
+			sfVector2f(bounds.left + bounds.width / 2, bounds.top));
 	}
 
 	~this()
 	{
 		sfCircleShape_destroy(m_directorCircle);
+	}
+
+	override void updatePosition()
+	{
+		super.updatePosition();
+		m_trackerOverlay.position = vec2i(position.x, position.y + m_compassHeight);
+	}
+
+	override void updateSize()
+	{
+		super.updateSize();
+		m_trackerOverlay.size = vec2i(size.x, m_dirHeaderHeight);
+	}
+
+	override void onHide()
+	{
+		super.onHide();
+		m_trackerOverlay.onHide();
 	}
 
 	void drawData(const(ushort)[] data, double subWrot, int antIdx)
@@ -599,7 +624,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		super.updateHeaderElements();
 		float dirX = bearingToPixel(m_listenDir);
 		sfCircleShape_setPosition(m_directorCircle,
-			sfVector2f(dirX, m_compassHeight + m_dirHeaderHeight / 2));
+			sfVector2f(dirX, m_compassHeight + m_dirHeaderHeight));
 	}
 
 	@property void listenDir(float rhs)
@@ -607,20 +632,20 @@ final class Waterfall: PanoramicDisplay!ushort
 		m_listenDir = rhs;
 		float dirX = bearingToPixel(m_listenDir);
 		sfCircleShape_setPosition(m_directorCircle,
-			sfVector2f(dirX, m_compassHeight + m_dirHeaderHeight / 2));
+			sfVector2f(dirX, m_compassHeight + m_dirHeaderHeight));
 	}
 
 	private void updateDirectorElement(int relCursorX)
 	{
 		m_listenDir = pixelToBearing(relCursorX);
 		sfCircleShape_setPosition(m_directorCircle,
-			sfVector2f(relCursorX, m_compassHeight + m_dirHeaderHeight / 2));
+			sfVector2f(relCursorX, m_compassHeight + m_dirHeaderHeight));
 	}
 
 	override void drawHeaderShapes(Window wnd, long usecsDelta)
 	{
 		super.drawHeaderShapes(wnd, usecsDelta);
-		m_sfRst.texture = null;
+		m_trackerOverlay.draw(wnd, usecsDelta);
 		sfRenderWindow_drawCircleShape(wnd.wnd, m_directorCircle, &m_sfRst);
 	}
 
@@ -637,5 +662,62 @@ final class Waterfall: PanoramicDisplay!ushort
 		auto rw = mutstringRewriter(labelContent);
 		formattedWrite!"%d, %dsec"(rw, -worldBearing.compassAngle.rad2dgr.to!int, -delay.to!int);
 		m_underCursorLabel.content = rw.get();
+	}
+
+	/// Small overlay, located in display header, occupied by tracker and peak elements
+	final class TrackerOverlay: Overlay
+	{
+		override void onPanStart(int x, int y) {}
+		override void onPan(int x, int y) {}
+		override double world2windowRot(double world) { return world; }
+		override double screen2worldRot(double screen) { return screen; }
+
+		this()
+		{
+			enableScissorTest = false;
+		}
+
+		override vec2d world2windowPos(vec2d world)
+		{
+			return position + vec2d(bearingToPixel(world.x), 0);
+		}
+
+		override vec2d screen2worldPos(vec2d screen)
+		{
+			vec2d local = screen - position;
+			return vec2d(pixelToBearing(local.x), 0);
+		}
+	}
+
+	private final class PeakOverlayElement: OverlayElement
+	{
+		private
+		{
+			float m_bearing;
+			LineShape m_line;
+			enum sfColor PEAK_COLOR = sfColor(100, 100, 100, 255);
+			enum float PEAK_HEIGHT = 5;
+		}
+
+		this(TrackerOverlay to, float bearing)
+		{
+			m_bearing = bearing;
+			enableScissorTest = false;
+			super(to);
+			mouseTransparent = true;
+			m_line = new LineShape(vec2d(0, m_dirHeaderHeight), vec2d(0, m_dirHeaderHeight - PEAK_HEIGHT), PEAK_COLOR, 2);
+		}
+
+		override void onPreDraw()
+		{
+			double screenX = owner.world2windowPos(vec2d(m_bearing, 0)).x;
+			m_line.transform.position = vec2d(screenX, m_dirHeaderHeight);
+		}
+
+		override void draw(Window wnd, long usecsDelta)
+		{
+			super.draw(wnd, usecsDelta);
+			m_line.render(wnd, owner.sftransform);
+		}
 	}
 }

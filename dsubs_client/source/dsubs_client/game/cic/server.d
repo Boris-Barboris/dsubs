@@ -61,8 +61,8 @@ final class CICServer
 		m_state.handleReconnectStateRes(res);
 		const SubmarineTemplate sbmTpl = *Game.entityManager.
 			submarineTemplates[res.submarineName];
-		foreach (const HydrophoneTemplate ht; sbmTpl.hydrophones)
-			m_wfAnalizers ~= new WaterfallAnalyzer(ht);
+		foreach (int i, const HydrophoneTemplate ht; sbmTpl.hydrophones)
+			m_wfAnalizers ~= new WaterfallAnalyzer(ht, i);
 	}
 
 	void handleSubKinematicRes(SubKinematicRes res)
@@ -127,10 +127,22 @@ final class CICServer
 		{
 			snap = m_state.recState.subSnap;
 		}
+		// waterfall analyzers
 		synchronized(m_state.ctcMut)
 		{
 			foreach (HydrophoneData hd; res.data)
-				m_wfAnalizers[hd.hydrophoneIdx].processNewData(hd.antennaes, snap);
+			{
+				WaterfallAnalyzer al = m_wfAnalizers[hd.hydrophoneIdx];
+				al.processNewData(hd.antennaes, snap);
+				CICWaterfallUpdateRes wfu;
+				wfu.hydrophoneIdx = hd.hydrophoneIdx;
+				wfu.peaks = al.getPeaks();
+				wfu.trackers = al.getTrackers();
+				m_listener.broadcast(cast(immutable) wfu);
+				ContactData[] newCdata = al.generateRayData();
+				foreach (cd; newCdata)
+					processContactData(cd);
+			}
 		}
 	}
 
@@ -180,21 +192,26 @@ final class CICServer
 		}
 	}
 
+	private void processContactData(ContactData cd)
+	{
+		ContactData* data = m_state.updateOrCreateData(cd);
+		if (data !is null)
+		{
+			CICContactDataReq res = CICContactDataReq(*data);
+			m_listener.broadcast(cast(immutable) res);
+			Contact* updatedContact = m_state.updateSolutionFromNewData(data);
+			if (updatedContact)
+				m_listener.broadcast(immutable CICContactUpdateReq(*updatedContact));
+		}
+		// we do not throw here because contact could be deleted right after the
+		// message was sent
+	}
+
 	void handleCICContactDataReq(CICContactDataReq req)
 	{
 		synchronized (m_state.ctcMut)
 		{
-			ContactData* data = m_state.updateOrCreateData(req.data);
-			if (data !is null)
-			{
-				CICContactDataReq res = CICContactDataReq(*data);
-				m_listener.broadcast(cast(immutable) res);
-				Contact* updatedContact = m_state.updateSolutionFromNewData(data);
-				if (updatedContact)
-					m_listener.broadcast(immutable CICContactUpdateReq(*updatedContact));
-			}
-			// we do not throw here because contact could be deleted right after the
-			// message was sent
+			processContactData(req.data);
 		}
 	}
 

@@ -170,6 +170,8 @@ class GuiElement: IInputReceiver
 	/// set to true in order to render background
 	bool backgroundVisible = false;
 
+	@property sfTransform sftransform() const { return m_sfRst.transform; }
+
 	protected void updatePosition()
 	{
 		updateViewport();

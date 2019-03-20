@@ -259,4 +259,12 @@ private:
 			Game.simState.contactManager.hadleMergeContact(msg.sourceCtcId, msg.destCtcId);
 		}
 	}
+
+	void h_waterfallUpdateRes(CICWaterfallUpdateRes msg)
+	{
+		// synchronized(Game.mainMutex)
+		// {
+		// 	Game.simState.contactManager.hadleMergeContact(msg.sourceCtcId, msg.destCtcId);
+		// }
+	}
 }

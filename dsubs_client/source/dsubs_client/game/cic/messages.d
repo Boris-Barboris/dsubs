@@ -166,9 +166,12 @@ struct CICContactMergeReq
 	ContactId destCtcId;
 }
 
-/// Server broadcasts the fact that it has deleted old ContactData.
-// struct CICDataRetentionRes
-// {
-// 	__gshared const int g_marshIdx;
-// 	usecs_t olderThan;
-// }
+/// Broadcasted by CIC when it finished analyzing new acoustic slice and contains all peaks and tracker states
+/// for one hydrophone
+struct CICWaterfallUpdateRes
+{
+	__gshared const int g_marshIdx;
+	int hydrophoneIdx;
+	float[] peaks;
+	HydrophoneTracker[] trackers;
+}
