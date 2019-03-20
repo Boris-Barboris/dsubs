@@ -4,6 +4,7 @@ import std.array: array, appender;
 import std.algorithm;
 import std.range;
 
+import dsubs_common.math.angles;
 import dsubs_common.api.entities;
 
 import dsubs_client.game.cic.protocol;
@@ -68,8 +69,8 @@ final class WaterfallAnalyzer
 					ilevel >= ilevelPrev && ilevel > ilevelNext)
 				{
 					// we've found the peak
-					double beamRot = andLeftWrot -
-						(j + 0.5f) * (m_tmpl.fov / beamCount);
+					double beamRot = clampAngle(andLeftWrot -
+						(j + 0.5f) * (m_tmpl.fov / beamCount));
 					m_peaks ~= beamRot;
 				}
 			}

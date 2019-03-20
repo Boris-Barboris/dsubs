@@ -631,7 +631,7 @@ final class PlayerSubIcon: OverlayElement
 		if (m_sub.getInterpolatedSnapshot(snap))
 		{
 			double velRot = m_to.world2windowRot(courseAngle(snap.velocity));
-			double velLen = 2.0 * snap.velocity.length;
+			double velLen = snap.velocity.length;
 			// LineShape is horizontal when transform rotation is zero, so we need
 			// to add PI_2 in order to match it with dsubs rotation frame
 			m_velLine.transform.rotation = velRot + PI_2;
@@ -669,6 +669,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		m_velCircle = ctcOverlayCache.velCircle;
 		m_velDragLine = ctcOverlayCache.velDragLine;
 		m_pastTrailLine = ctcOverlayCache.pastTrailLine;
+		m_velLine = new LineShape(vec2d(5.0f, 5.0f), vec2d(6.0f, 5.0f), sfWhite, 2.0f);
 		updateFromContact();
 		onMouseUp += &processMouseUp;
 		onMouseMove += &processMouseMove;
@@ -692,6 +693,7 @@ final class TacticalContactElement: OverlayElementWithHover
 	void updateFromContact()
 	{
 		m_mainShape = ctcOverlayCache.forContactType(m_contact.type);
+		m_velLine.color = m_mainShape.borderColor;
 		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 4, 2 * m_mainShape.radius + 4);
 		// contact id cannot change, so m_contactName is constant
 		if (m_contactName is null)
@@ -732,6 +734,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		RectangleShape m_onHoverRect;
 		LineShape m_velDragLine;
 		LineShape m_pastTrailLine;
+		LineShape m_velLine;
 		Label m_contactName;
 		vec2d m_lastScreenPos;
 		DragMode m_dragMode;
@@ -856,6 +859,12 @@ final class TacticalContactElement: OverlayElementWithHover
 			else
 				m_velCircle.radius = ZERO_SPD_PIXEL_MARGIN;
 		}
+		else if (m_solution.velAvailable)
+		{
+			vec2d velYInv = m_solution.vel;
+			velYInv.y = - velYInv.y;
+			m_velLine.setPoints(screenPos, screenPos + velYInv, true);
+		}
 		m_lastScreenPos = screenPos;
 	}
 
@@ -916,6 +925,8 @@ final class TacticalContactElement: OverlayElementWithHover
 			if (m_solution.velAvailable)
 				g_velLabel.draw(wnd, usecsDelta);
 		}
+		else if (m_solution.velAvailable)
+			m_velLine.render(wnd);
 		if (m_hovered)
 			m_onHoverRect.render(wnd);
 		m_mainShape.render(wnd);
