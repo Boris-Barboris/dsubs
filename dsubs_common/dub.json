@@ -9,11 +9,7 @@
 		"painlesstraits": "0.3.0",
 		"crypto": "~>0.1.8"
 	},
-	"dflags": [
-		"-transition=dtorfields",
-		"-transition=intpromote",
-		"-transition=import"
-	],
+	"dflags": [],
 	"description": "Common library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
 	"targetType": "library"

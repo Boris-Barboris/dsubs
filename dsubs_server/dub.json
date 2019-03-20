@@ -11,10 +11,7 @@
 		"dsubs_sound": { "path": "../dsubs_sound" }
 	},
 	"dflags": [
-		"-J /home/boris/src/dsubs/dsubs_sound/source/dsubs_sound/kernels",
-		"-transition=dtorfields",
-		"-transition=intpromote",
-		"-transition=import"
+		"-J /home/boris/src/dsubs/dsubs_sound/source/dsubs_sound/kernels"
 	],
 	"description": "dsubs server",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin"

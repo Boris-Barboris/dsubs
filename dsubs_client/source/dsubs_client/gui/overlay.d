@@ -44,14 +44,16 @@ class OverlayElement: GuiElement
 		onMouseFocusLoss += { m_panning = m_dragging = false; };
 	}
 
+	private bool m_dropped;
+
 	/// Remove overlay element from owner
 	void drop()
 	{
-		if (m_owner)
+		if (!m_dropped)
 		{
 			onHide();
 			m_owner.remove(this);
-			m_owner = null;
+			m_dropped = true;
 		}
 	}
 

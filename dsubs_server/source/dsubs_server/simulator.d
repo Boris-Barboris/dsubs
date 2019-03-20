@@ -78,9 +78,9 @@ final class Simulator
 				loopStart = loopStart + seconds(1);
 				now = MonoTime.currTime();
 				Duration toSleep = loopStart - now;
-				if (toSleep < Duration.zero)
+				if (toSleep < msecs(100))
 				{
-					error("simulator stalling");
+					warning("simulator loop stalling");
 					loopStart = now + msecs(100);
 					toSleep = msecs(100);
 				}

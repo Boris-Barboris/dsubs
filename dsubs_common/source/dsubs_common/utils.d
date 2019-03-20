@@ -1,6 +1,6 @@
 module dsubs_common.utils;
 
-public import std.experimental.logger: info, trace, error;
+public import std.experimental.logger: info, trace, error, warning;
 
 
 /// Standard std-like exception constructors

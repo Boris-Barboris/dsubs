@@ -23,6 +23,8 @@ private struct WaterfallSlice
 private struct HydrophoneTrackerContext
 {
 	HydrophoneTracker tracker;
+	short counter = short.max;
+	short missedCounter = 0;
 }
 
 

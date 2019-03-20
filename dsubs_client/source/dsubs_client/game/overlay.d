@@ -301,7 +301,7 @@ final class TacticalOverlay: Overlay
 		m_mergeHint.content = "Click on the contact to merge into";
 		m_mergeHint.mouseTransparent = true;
 		m_mergeHint.size = cast(vec2i) vec2f(
-			m_mergeHint.contentWidth(), m_mergeHint.contentHeight());
+			m_mergeHint.contentWidth(), m_mergeHint.contentHeight() + 10);
 		// mouse and keyboard handlers
 		onMouseDown += &processMouseDown;
 		onMouseUp += &processMouseUp;
