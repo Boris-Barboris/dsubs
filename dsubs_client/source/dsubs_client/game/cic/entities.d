@@ -127,7 +127,7 @@ struct ContactSolution
 	/// Solution may lie on the last known ray (ray tracking mode), or have a designated
 	/// position (absolute position mode). The last mode is indicated by posAvailable = true.
 	bool posAvailable;
-	vec2d pos;
+	vec2d pos = vec2d(0, 0);
 	/// Solution may or may not have velocity assigned.
 	bool velAvailable;
 	vec2d vel = vec2d(0, 0);

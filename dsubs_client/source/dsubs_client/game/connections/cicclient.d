@@ -212,11 +212,19 @@ private:
 		}
 	}
 
-	void h_contactCreatedRes(CICContactCreatedRes msg)
+	void h_contactCreatedFromDataRes(CICContactCreatedFromDataRes msg)
 	{
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.contactManager.handleContactCreatedRes(msg);
+			Game.simState.contactManager.handleContactCreated(msg);
+		}
+	}
+
+	void h_contactCreatedFromHTrackerRes(CICContactCreatedFromHTrackerRes msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.contactManager.handleContactCreated(msg);
 		}
 	}
 
@@ -262,9 +270,14 @@ private:
 
 	void h_waterfallUpdateRes(CICWaterfallUpdateRes msg)
 	{
-		// synchronized(Game.mainMutex)
-		// {
-		// 	Game.simState.contactManager.hadleMergeContact(msg.sourceCtcId, msg.destCtcId);
-		// }
+		synchronized(Game.mainMutex)
+		{
+			assert(msg.hydrophoneIdx == 0);
+			auto wto = Game.simState.gui.waterfall.trackerOverlay;
+			wto.updatePeaks(msg.peaks);
+			auto manager = Game.simState.contactManager;
+			foreach (ht; msg.trackers)
+				manager.handleTracker(ht);
+		}
 	}
 }

@@ -138,4 +138,10 @@ private:
 		enforce(m_inSimFlow, "not in simulator flow");
 		m_cicserv.handleCICContactMergeReq(req);
 	}
+
+	void h_createContactFromHTrackerReq(CICCreateContactFromHTrackerReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICCreateContactFromHTrackerReq(req);
+	}
 }

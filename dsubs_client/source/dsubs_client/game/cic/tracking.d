@@ -86,11 +86,11 @@ final class WaterfallAnalyzer
 		m_peaks.length = 0;
 		m_freePeaks.length = 0;
 		int beamCount = data[0].beams.length.to!int;
-		foreach (int i, AntennaeData d; data)
+		foreach (i, AntennaeData d; data)
 		{
 			double andLeftWrot = m_lastSlice.worldRot + m_tmpl.antRots[i] + m_tmpl.fov / 2;
 			ushort[] beams = m_lastSlice.data[i].beams;
-			foreach (int j, ushort ilevel; beams)
+			foreach (j, ushort ilevel; beams)
 			{
 				ushort ilevelPrev = j > 0 ? beams[j - 1] : ushort.max;
 				ushort ilevelNext = j < beams.length - 2 ? beams[j + 1] : ushort.max;
@@ -117,7 +117,6 @@ final class WaterfallAnalyzer
 			float sinceLast = (subSnap.atTime - htc.prevTime) / 1e6f;
 			float expextedWrot = htc.prevWrot + htc.angVel * sinceLast;
 			assert(!isNaN(expextedWrot));
-			htc.counter = (htc.counter + 1) % TRACKER_GEN_FREQ;
 			if (m_freePeaks.length > 0)
 			{
 				// try to find the closest to expextedWrot peak
@@ -131,6 +130,7 @@ final class WaterfallAnalyzer
 					htc.angVel = m_freePeaks[0].dist / sinceLast;
 					htc.prevTime = subSnap.atTime;
 					htc.tracker.bearing = htc.prevWrot = m_freePeaks[0].rot;
+					htc.counter = (htc.counter + 1) % TRACKER_GEN_FREQ;
 					m_freePeaks = m_freePeaks[1 .. $];
 				}
 				else

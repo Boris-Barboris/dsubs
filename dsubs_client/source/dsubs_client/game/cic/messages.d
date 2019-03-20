@@ -116,11 +116,28 @@ struct CICCreateContactFromDataReq
 }
 
 /// Broadcasted by CIC server when the new contact is created.
-struct CICContactCreatedRes
+struct CICContactCreatedFromDataRes
 {
 	__gshared const int g_marshIdx;
 	Contact newContact;
 	ContactData initialData;
+}
+
+/// Sent by client to create new contact and a hydrophone tracker.
+struct CICCreateContactFromHTrackerReq
+{
+	__gshared const int g_marshIdx;
+	char ctcIdPrefix;
+	int hydrophoneIdx;
+	float bearing;
+}
+
+/// Broadcasted by CIC server when the new contact is created.
+struct CICContactCreatedFromHTrackerRes
+{
+	__gshared const int g_marshIdx;
+	Contact newContact;
+	HydrophoneTracker tracker;
 }
 
 /// Request/broadcast to update contact properties (type, comment, solution).

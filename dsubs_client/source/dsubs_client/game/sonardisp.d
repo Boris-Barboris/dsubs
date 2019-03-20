@@ -311,7 +311,6 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 				spawnContextMenu(x, y);
 		}
 
-		/// x and y are relative
 		private void spawnContextMenu(int x, int y)
 		{
 			int xlocal = x - position.x;

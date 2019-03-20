@@ -168,7 +168,7 @@ final class CICServer
 		enforce(req.initialData.id < 0, "ContactData mus be new sample");
 		enforce(req.initialData.type != DataType.Speed,
 			"Cannot create contact from speed data");
-		CICContactCreatedRes res;
+		CICContactCreatedFromDataRes res;
 		synchronized (m_state.ctcMut)
 		{
 			Contact* ctc = m_state.createContact(req.ctcIdPrefix);
@@ -179,6 +179,20 @@ final class CICServer
 			m_state.initializeSolution(ctc, data);
 			res.newContact = *ctc;
 			res.initialData = *data;
+			m_listener.broadcast(cast(immutable) res);
+		}
+	}
+
+	void handleCICCreateContactFromHTrackerReq(CICCreateContactFromHTrackerReq req)
+	{
+		enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < m_wfAnalizers.length);
+		CICContactCreatedFromHTrackerRes res;
+		synchronized (m_state.ctcMut)
+		{
+			Contact* ctc = m_state.createContact(req.ctcIdPrefix);
+			res.newContact = *ctc;
+			TrackerId tid = TrackerId(req.hydrophoneIdx, ctc.id);
+			res.tracker = m_wfAnalizers[req.hydrophoneIdx].createTracker(tid, req.bearing);
 			m_listener.broadcast(cast(immutable) res);
 		}
 	}

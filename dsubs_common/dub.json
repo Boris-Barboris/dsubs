@@ -10,6 +10,9 @@
 		"crypto": "~>0.1.8"
 	},
 	"dflags": [],
+	"buildRequirements": [
+		"requireBoundsCheck"
+	],
 	"description": "Common library for dsubs",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
 	"targetType": "library"

@@ -32,6 +32,7 @@ class OverlayElement: GuiElement
 	{
 		m_owner = owner;
 		// we clamp all overlay elements with overlay's viewport
+		enableScissorTest = false;
 		parentViewport = &owner.viewport();
 		// overlays are mostly for clickable objects
 		mouseTransparent = false;
@@ -192,7 +193,7 @@ class Overlay: GuiElement
 			// now let's find the element to route event to
 			foreach (OverlayElement el; m_elements.byKey)
 			{
-				if (!el.hidden)
+				if (!el.hidden && !el.mouseTransparent)
 				{
 					GuiElement res = el.getFromPoint(evt, x, y);
 					if (res)

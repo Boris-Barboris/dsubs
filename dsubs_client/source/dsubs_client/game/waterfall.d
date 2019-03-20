@@ -34,7 +34,7 @@ struct WaterfallGui
 WaterfallGui createWaterfallPanel(const HydrophoneTemplate ht)
 {
 	WaterfallGui res;
-	res.wf = new Waterfall(ht);
+	res.wf = new Waterfall(ht, 0);
 	Slider volumeSlider = new Slider();
 	volumeSlider.value = 0.5f;
 
@@ -482,21 +482,22 @@ final class Waterfall: PanoramicDisplay!ushort
 	private
 	{
 		const HydrophoneTemplate m_ht;
+		const int m_hydrophoneIdx;
 		// microphone director
 		sfCircleShape* m_directorCircle;
 		float m_listenDir = 0.0;
 		int m_dirHeaderHeight = 18;
 		/// in waterfall render texture is sliding from top to bottom cyclically.
 		int m_vertPos;
-
 		TrackerOverlay m_trackerOverlay;
 	}
 
 	@property TrackerOverlay trackerOverlay() { return m_trackerOverlay; }
 
-	this(const HydrophoneTemplate ht)
+	this(const HydrophoneTemplate ht, int hydrophoneIdx)
 	{
 		m_ht = ht;
+		m_hydrophoneIdx = hydrophoneIdx;
 		PanoramicParams params;
 		params.headerHeight = params.compassHeight + m_dirHeaderHeight;
 		params.height = 60 * 5;		// 5 minutes
@@ -506,6 +507,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		super(params, new WaterfallOverlay());
 		m_vertPos = -m_height - 1;
 		m_trackerOverlay = new TrackerOverlay();
+		m_trackerOverlay.onMouseScroll += &m_overlay.processMouseScroll;
 
 		// director
 		m_directorCircle = sfCircleShape_create();
@@ -540,6 +542,21 @@ final class Waterfall: PanoramicDisplay!ushort
 	{
 		super.onHide();
 		m_trackerOverlay.onHide();
+	}
+
+	override GuiElement getFromPoint(const sfEvent* evt, int x, int y)
+	{
+		if (rectContainsPoint(x, y))
+		{
+			GuiElement res = m_overlay.getFromPoint(evt, x, y);
+			if (res)
+				return res;
+			res = m_trackerOverlay.getFromPoint(evt, x, y);
+			if (res)
+				return res;
+			return this;
+		}
+		return null;
 	}
 
 	void drawData(const(ushort)[] data, double subWrot, int antIdx)
@@ -579,7 +596,6 @@ final class Waterfall: PanoramicDisplay!ushort
 	{
 		this()
 		{
-			super();
 			onMouseUp += &processMouseUp;
 		}
 
@@ -672,20 +688,69 @@ final class Waterfall: PanoramicDisplay!ushort
 		override double world2windowRot(double world) { return world; }
 		override double screen2worldRot(double screen) { return screen; }
 
+		private PeakOverlayElement[] m_peaks;
+
 		this()
 		{
+			mouseTransparent = false;
 			enableScissorTest = false;
+			onMouseUp += &processMouseUp;
 		}
 
 		override vec2d world2windowPos(vec2d world)
 		{
-			return position + vec2d(bearingToPixel(world.x), 0);
+			return position + vec2d(bearingToPixel(world.x), m_dirHeaderHeight / 2);
 		}
 
 		override vec2d screen2worldPos(vec2d screen)
 		{
 			vec2d local = screen - position;
 			return vec2d(pixelToBearing(local.x), 0);
+		}
+
+		private void processMouseUp(int x, int y, sfMouseButton btn)
+		{
+			if (btn == sfMouseRight)
+				spawnContextMenu(x, y);
+		}
+
+		private void spawnContextMenu(int x, int y)
+		{
+			int xlocal = x - position.x;
+			float bearing = pixelToBearing(xlocal);
+			CICCreateContactFromHTrackerReq req = CICCreateContactFromHTrackerReq(
+				'S', m_hydrophoneIdx, bearing);
+			Button[] buttons = [
+					builder(new Button()).fontSize(15).content("new tracker").build()
+			];
+			buttons[0].onClick += () {
+				Game.ciccon.sendMessage(cast(immutable) req);
+			};
+			ContextMenu menu = contextMenu(
+					Game.guiManager,
+					buttons,
+					Game.window.size,
+					vec2i(x, y),
+					20);
+		}
+
+		void updatePeaks(float[] peaks)
+		{
+			if (m_peaks.length > peaks.length)
+			{
+				for (int i = m_peaks.length.to!int; i > peaks.length; i--)
+					m_peaks[i - 1].drop();
+				m_peaks.length = peaks.length;
+			}
+			else if (m_peaks.length < peaks.length)
+			{
+				int missing = (peaks.length - m_peaks.length).to!int;
+				m_peaks.length = peaks.length;
+				for (int i = 0; i < missing; i++)
+					m_peaks[$ - 1 - i] = new PeakOverlayElement(this, 0);
+			}
+			foreach (i, p; peaks)
+				m_peaks[i].m_bearing = p;
 		}
 	}
 

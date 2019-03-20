@@ -38,10 +38,12 @@ final class ClientContact
 	{
 		m_ctc = ctc;
 		m_tactDispEl = new TacticalContactElement(Game.simState.tacticalOverlay, this);
+		m_trackerEls.length = 4;	// better safe than sorry
 	}
 
 	private SonarDispContactDataElement m_sonarDispEl;
 	private TacticalContactElement m_tactDispEl;
+	private HydrophoneTrackerElement[] m_trackerEls;
 
 	/// collection of all data of this contact
 	private ClientContactData*[int] m_dataHash;
@@ -58,6 +60,11 @@ final class ClientContact
 		{
 			m_sonarDispEl.drop();
 			m_sonarDispEl = null;
+		}
+		foreach (hte; m_trackerEls)
+		{
+			if (hte !is null)
+				hte.drop();
 		}
 		m_dataHash.clear();
 	}
@@ -104,6 +111,28 @@ final class ClientContact
 			m_sonarDispEl.updateFromData();
 	}
 
+	void updateTracker(HydrophoneTracker ht)
+	{
+		if (m_trackerEls[ht.id.sensorIdx] is null)
+		{
+			// new tracker
+			Waterfall.TrackerOverlay wto = Game.simState.gui.waterfall.trackerOverlay;
+			m_trackerEls[ht.id.sensorIdx] = new HydrophoneTrackerElement(wto, ht);
+		}
+		else
+		{
+			// update old one
+			m_trackerEls[ht.id.sensorIdx].updateFromTracker(ht);
+		}
+	}
+
+	void dropTracker(int hydrophoneIdx)
+	{
+		if (m_trackerEls[hydrophoneIdx])
+			m_trackerEls[hydrophoneIdx].drop();
+		m_trackerEls[hydrophoneIdx] = null;
+	}
+
 	void removeData(int dataId)
 	{
 		m_dataHash.remove(dataId);
@@ -131,11 +160,25 @@ final class ClientContactManager
 
 	ClientContact get(ContactId id) { return m_contactHash[id]; }
 
-	void handleContactCreatedRes(CICContactCreatedRes msg)
+	void handleContactCreated(CICContactCreatedFromDataRes msg)
 	{
 		enforce((msg.newContact.id in m_contactHash) is null, "contact already exists");
 		m_contactHash[msg.newContact.id] = new ClientContact(msg.newContact);
 		handleContactData(msg.initialData);
+	}
+
+	void handleContactCreated(CICContactCreatedFromHTrackerRes msg)
+	{
+		enforce((msg.newContact.id in m_contactHash) is null, "contact already exists");
+		m_contactHash[msg.newContact.id] = new ClientContact(msg.newContact);
+		handleTracker(msg.tracker);
+	}
+
+	void handleTracker(HydrophoneTracker tracker)
+	{
+		ContactId cid = tracker.id.ctcId;
+		ClientContact cc = m_contactHash[cid];
+		cc.updateTracker(tracker);
 	}
 
 	void handleContactData(ContactData newData)
@@ -182,6 +225,13 @@ final class ClientContactManager
 		ContactId ctcId = m_dataHash[dataId].ctcId;
 		m_contactHash[ctcId].removeData(dataId);
 		m_dataHash.remove(dataId);
+	}
+
+	void handleDropTracker(TrackerId tid)
+	{
+		ContactId cid = tid.ctcId;
+		ClientContact cc = m_contactHash[cid];
+		cc.dropTracker(tid.sensorIdx);
 	}
 
 	void hadleMergeContact(ContactId srcId, ContactId destId)

@@ -18,6 +18,7 @@ import dsubs_client.render.worldmanager;
 import dsubs_client.math.transform;
 import dsubs_client.gui;
 import dsubs_client.game;
+import dsubs_client.game.waterfall;
 import dsubs_client.game.sonardisp;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.entities;
@@ -269,6 +270,67 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 			m_bearing = newWorldCoord.x;
 			m_range = newWorldCoord.y;
 		}
+	}
+}
+
+
+/// Overlay element in the header of waterfall display
+final class HydrophoneTrackerElement: OverlayElementWithHover
+{
+	private
+	{
+		Label m_label;
+		HydrophoneTracker m_tracker;
+		float m_bearing;
+	}
+
+	@property Waterfall.TrackerOverlay towner() { return cast(Waterfall.TrackerOverlay) owner; }
+
+	this(Waterfall.TrackerOverlay owner, HydrophoneTracker tracker)
+	{
+		m_tracker = tracker;
+		super(owner);
+		m_label = new Label();
+		m_label.enableScissorTest = false;
+		m_label.content = m_tracker.id.ctcId.to!string;
+		m_label.fontSize = 12;
+		m_label.fontColor = sfWhite;
+		m_label.htextAlign = HTextAlign.CENTER;
+		m_label.size = vec2i(m_label.contentWidth.to!int, m_label.contentHeight.to!int + 4);
+		m_onHoverRect = new RectangleShape(cast(vec2f) m_label.size, sfWhite);
+		size = m_label.size;
+	}
+
+	void updateFromTracker(HydrophoneTracker ht)
+	{
+		m_tracker = ht;
+		if (ht.state == TrackerState.inactive)
+			m_label.fontColor = sfColor(150, 150, 150, 255);
+		else
+			m_label.fontColor = sfWhite;
+	}
+
+	override void onPreDraw()
+	{
+		if (!m_dragging)
+		{
+			m_bearing = m_tracker.bearing;
+		}
+		vec2d screenPos = owner.world2windowPos(vec2d(m_bearing, 0));
+		position = center2lu(screenPos);
+		m_label.position = position;
+		if (m_hovered)
+		{
+			m_onHoverRect.center = cast(vec2f) screenPos;
+		}
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		if (m_hovered)
+			m_onHoverRect.render(wnd);
+		m_label.draw(wnd, usecsDelta);
 	}
 }
 

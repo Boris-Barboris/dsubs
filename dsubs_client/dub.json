@@ -11,6 +11,9 @@
 		"derelict-sfml2": { "path": "../DerelictSFML2" },
 		"dsubs_common": { "path": "../dsubs_common" }
 	},
+	"buildRequirements": [
+		"requireBoundsCheck"
+	],
 	"description": "dsubs client",
 	"copyright": "Copyright (C) 2017-2018, Alexander Baranin",
 	"copyFiles-windows": ["libs-win-x86/*.dll"]
