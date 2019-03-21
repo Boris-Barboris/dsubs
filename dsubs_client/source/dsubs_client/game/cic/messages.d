@@ -192,3 +192,10 @@ struct CICWaterfallUpdateRes
 	float[] peaks;
 	HydrophoneTracker[] trackers;
 }
+
+/// Sent by client and then broadcasted back to update tracker's bearing
+struct CICUpdateTrackerReq
+{
+	__gshared const int g_marshIdx;
+	HydrophoneTracker tracker;
+}

@@ -54,6 +54,8 @@ final class ContactOverlayShapeCahe
 			sfColor(232, 244, 63, 100), 1);
 		m_dataTrailDelta = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(255, 22, 154, 200), 2);
+		m_rayTracker = new LineShape(vec2d(0, 0), vec2d(0, 0),
+			sfColor(117, 79, 255, 100), 1.0);
 	}
 
 	private
@@ -68,6 +70,13 @@ final class ContactOverlayShapeCahe
 	mixin Readonly!(LineShape, "velDragLine");
 	mixin Readonly!(LineShape, "pastTrailLine");
 	mixin Readonly!(LineShape, "dataTrailDelta");
+	mixin Readonly!(LineShape, "rayTracker");
+
+	@property LineShape rayDataLine()
+	{
+		return new LineShape(vec2d(0, 0), vec2d(0, 0),
+			sfColor(155, 244, 66, 150), 0.5);
+	}
 
 	CircleShape forContactType(ContactType t)
 	{
@@ -513,21 +522,9 @@ final class TacticalOverlay: Overlay
 		}
 		if (rhs !is null)
 		{
-			// generate data for this contact
+			// generate data elements from data of this contact
 			foreach (ClientContactData* ctd; rhs.contact.contactDataRange)
-			{
-				ContactDataOverlayElement newElement;
-				switch (ctd.type)
-				{
-					case (DataType.Position):
-						newElement = new PositionDataTacticalElement(this, ctd);
-						break;
-					default:
-						break;
-				}
-				if (newElement)
-					m_selectedContactData[ctd.id] = newElement;
-			}
+				addSelectedContactData(ctd);
 		}
 		m_selectedContact = rhs;
 	}
@@ -541,8 +538,11 @@ final class TacticalOverlay: Overlay
 			case (DataType.Position):
 				newElement = new PositionDataTacticalElement(this, ctd);
 				break;
-			default:
+			case (DataType.Ray):
+				newElement = new RayDataTacticalElement(this, ctd);
 				break;
+			default:
+				return;
 		}
 		m_selectedContactData[ctd.id] = newElement;
 	}
@@ -732,6 +732,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		m_velCircle = ctcOverlayCache.velCircle;
 		m_velDragLine = ctcOverlayCache.velDragLine;
 		m_pastTrailLine = ctcOverlayCache.pastTrailLine;
+		m_rayTracker = ctcOverlayCache.rayTracker;
 		m_velLine = new LineShape(vec2d(5.0f, 5.0f), vec2d(6.0f, 5.0f), sfWhite, 2.0f);
 		updateFromContact();
 		onMouseUp += &processMouseUp;
@@ -798,10 +799,14 @@ final class TacticalContactElement: OverlayElementWithHover
 		LineShape m_velDragLine;
 		LineShape m_pastTrailLine;
 		LineShape m_velLine;
+		LineShape m_rayTracker;
 		Label m_contactName;
 		vec2d m_lastScreenPos;
 		DragMode m_dragMode;
 		bool m_drawPastTrail;
+		bool m_drawRayTracker;
+		float m_lastRayTrackerBearing;
+		vec2d m_lastRayTrackerOrigin;
 
 		enum double RAY_LENGTH = 1000;
 	}
@@ -871,8 +876,12 @@ final class TacticalContactElement: OverlayElementWithHover
 		secs = usecsSince / 1.0e6;
 	}
 
+	@property bool rayTrackingMode() { return m_drawRayTracker; }
+	@property float rayTrackerBearing() { return m_lastRayTrackerBearing; }
+
 	override void onPreDraw()
 	{
+		m_drawRayTracker = false;
 		if (!isSelected)
 		{
 			m_solution = m_contact.solution;
@@ -883,7 +892,11 @@ final class TacticalContactElement: OverlayElementWithHover
 				if (cd !is null)
 				{
 					m_solution.time = cd.time;
-					m_solution.pos = cd.data.ray.origin + courseVector(cd.data.ray.bearing) * RAY_LENGTH;
+					m_lastRayTrackerBearing = cd.data.ray.bearing;
+					m_lastRayTrackerOrigin = cd.data.ray.origin;
+					m_solution.pos = m_lastRayTrackerOrigin +
+						courseVector(m_lastRayTrackerBearing) * RAY_LENGTH;
+					m_drawRayTracker = true;
 				}
 				else
 				{
@@ -891,7 +904,7 @@ final class TacticalContactElement: OverlayElementWithHover
 					double secsSince;
 					extrapolateTime(m_solution.time, secsSince);
 					m_solution.pos = Game.simState.playerSub.transform.position +
-						courseVector(m_contact.id.postfix + 0.42 * cast(byte) m_contact.id.prefix) * RAY_LENGTH;
+						courseVector(m_contact.id.postfix + 0.42 * cast(byte) m_contact.id.prefix) * RAY_LENGTH / 2;
 				}
 			}
 			else
@@ -914,6 +927,11 @@ final class TacticalContactElement: OverlayElementWithHover
 		}
 		if (m_hovered)
 			m_onHoverRect.center = screenPosF;
+		if (m_drawRayTracker)
+		{
+			m_rayTracker.setPoints(
+				owner.world2windowPos(m_lastRayTrackerOrigin), screenPos, true);
+		}
 		if (isSelected)
 		{
 			m_velCircle.center = screenPosF;
@@ -979,19 +997,38 @@ final class TacticalContactElement: OverlayElementWithHover
 		foreach (ContactDataOverlayElement el; tacowner.m_selectedContactData.byValue)
 		{
 			PositionDataTacticalElement pel = cast(PositionDataTacticalElement) el;
-			if (pel is null)
+			if (pel !is null)
+			{
+				vec2d dataPosScreen = owner.world2windowPos(
+					pel.data.data.position.contactPos);
+				vec2d dataOnTrail = m_lastScreenPos +
+					deltaPerUsec * (m_solution.time - pel.data.time);
+				deltaShape.setPoints(dataPosScreen, dataOnTrail, true);
+				deltaShape.render(wnd);
 				continue;
-			vec2d dataPosScreen = owner.world2windowPos(pel.data.data.position.contactPos);
-			vec2d dataOnTrail = m_lastScreenPos +
-				deltaPerUsec * (m_solution.time - pel.data.time);
-			deltaShape.setPoints(dataPosScreen, dataOnTrail, true);
-			deltaShape.render(wnd);
+			}
+			RayDataTacticalElement rel = cast(RayDataTacticalElement) el;
+			if (rel !is null)
+			{
+				vec2d dataOnTrail = m_lastScreenPos +
+					deltaPerUsec * (m_solution.time - rel.data.time);
+				dataOnTrail.y = -dataOnTrail.y;
+				bool inside;
+				double k;
+				vec2d dataPosScreen = rel.m_mainShape.getAltitudeBase(
+					dataOnTrail, inside, k);
+				deltaShape.setPoints(dataPosScreen, dataOnTrail, false);
+				deltaShape.render(wnd);
+				continue;
+			}
 		}
 	}
 
 	override void draw(Window wnd, long usecsDelta)
 	{
 		super.draw(wnd, usecsDelta);
+		if (m_drawRayTracker)
+			m_rayTracker.render(wnd);
 		if (isSelected)
 		{
 			if (m_solution.velAvailable)
@@ -1260,6 +1297,43 @@ final class PositionDataTacticalElement: DataTacticalElement
 }
 
 
+/// Tactical overlay element, bound to ray data.
+final class RayDataTacticalElement: DataTacticalElement
+{
+	this(TacticalOverlay owner, ClientContactData* data)
+	{
+		assert(data.type == DataType.Ray);
+		super(owner, data);
+		m_mainShape = ctcOverlayCache.rayDataLine;
+		size = vec2i(0, 0);
+		mouseTransparent = true;
+		onPreDraw();	/// we rely on m_mainShape being initialized after construction
+	}
+
+	private
+	{
+		LineShape m_mainShape;
+	}
+
+	override void updateFromData() {}
+
+	override void onPreDraw()
+	{
+		vec2d worldPos = data.data.ray.origin;
+		vec2d screenPos = owner.world2windowPos(worldPos);
+		m_mainShape.setPoints(screenPos, screenPos -
+			1e4 * courseVector(-data.data.ray.bearing), true);
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		m_mainShape.render(wnd);
+	}
+}
+
+
+
 final class HoveredContactDescription
 {
 	private
@@ -1325,7 +1399,11 @@ final class HoveredContactDescription
 		}
 		else
 		{
-			m_labels[4].format!"bearing: ?"();
+			if (m_followedContact.rayTrackingMode)
+				m_labels[4].format!"bearing: %.1f"(
+					-compassAngle(m_followedContact.rayTrackerBearing).rad2dgr);
+			else
+				m_labels[4].format!"bearing: ?"();
 			m_labels[5].format!"range: ?"();
 		}
 		if (m_followedContact.m_solution.velAvailable)

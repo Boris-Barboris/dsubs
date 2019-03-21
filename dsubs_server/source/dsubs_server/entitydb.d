@@ -157,11 +157,11 @@ Active sonar:
 				[
 					HydrophoneTemplate(
 						"bow", HydrophoneType.STANDARD,
-						MountPoint(vec2f(0.0f, 14.2f)),
+						MountPoint(vec2f(0.0f, 31.0f)),
 						dgr2rad(210), [0.0f]
 					)
 				],
-				SonarTemplate(MountPoint(vec2f(0.0f, 13.0f)),
+				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
 					asp.getSliceResol(), asp.radialRes, asp.maxSec)
 			));

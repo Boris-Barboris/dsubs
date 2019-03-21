@@ -267,4 +267,19 @@ final class CICServer
 			}
 		}
 	}
+
+	void handleCICUpdateTrackerReq(CICUpdateTrackerReq req)
+	{
+		enforce(req.tracker.id.sensorIdx >= 0 &&
+			req.tracker.id.sensorIdx < m_wfAnalizers.length);
+		synchronized (m_state.ctcMut)
+		{
+			HydrophoneTracker newState;
+			if (m_wfAnalizers[req.tracker.id.sensorIdx].updateTracker(
+				req.tracker.id.ctcId, req.tracker.bearing, newState))
+			{
+				m_listener.broadcast(immutable CICUpdateTrackerReq(newState));
+			}
+		}
+	}
 }

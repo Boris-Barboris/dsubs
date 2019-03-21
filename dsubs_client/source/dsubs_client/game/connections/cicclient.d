@@ -280,4 +280,14 @@ private:
 				manager.handleTracker(ht);
 		}
 	}
+
+	void h_updateTrackerReq(CICUpdateTrackerReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			assert(msg.tracker.id.sensorIdx == 0);
+			auto manager = Game.simState.contactManager;
+			manager.handleTracker(msg.tracker);
+		}
+	}
 }

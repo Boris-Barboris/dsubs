@@ -4,7 +4,7 @@ import std.array: array, appender;
 import std.algorithm;
 import std.range;
 
-import dsubs_common.math.angles;
+import dsubs_common.math;
 import dsubs_common.api.entities;
 
 import dsubs_client.game.cic.protocol;
@@ -41,11 +41,13 @@ private struct Peak
 private
 {
 	/// ray data will be generated after each TRACKER_GEN_FREQ data were received
-	enum short TRACKER_GEN_FREQ = 6;
+	enum short TRACKER_GEN_FREQ = 8;
 	/// tracker is automatically switched to inactive state after this many update cycles with
 	/// no signal found.
 	enum short TRACKER_LOSS_MARGIN = 5;
 	enum float EXTRAPOLATION_MARGIN = dgr2rad(10);
+	enum float ANGVEL_FILTER_K = 0.66;
+	enum DETECT_MARGIN = ushort.max / 24;
 }
 
 final class WaterfallAnalyzer
@@ -58,8 +60,6 @@ final class WaterfallAnalyzer
 		HydrophoneTrackerContext*[TrackerId] m_trackers;
 		Peak[] m_peaks, m_freePeaks;
 		int m_min;
-
-		enum DETECT_MARGIN = ushort.max / 20;
 	}
 
 	this(const HydrophoneTemplate tmpl, int sensorIdx)
@@ -117,20 +117,22 @@ final class WaterfallAnalyzer
 			float sinceLast = (subSnap.atTime - htc.prevTime) / 1e6f;
 			float expextedWrot = htc.prevWrot + htc.angVel * sinceLast;
 			assert(!isNaN(expextedWrot));
+			htc.counter = (htc.counter + 1) % TRACKER_GEN_FREQ;
 			if (m_freePeaks.length > 0)
 			{
 				// try to find the closest to expextedWrot peak
 				foreach (ref Peak p; m_freePeaks)
 					p.dist = angleDist(p.rot, expextedWrot).fabs;
 				m_freePeaks.sort!"a.dist < b.dist";
-				if (m_freePeaks[0].dist <= EXTRAPOLATION_MARGIN * min(sinceLast, TRACKER_LOSS_MARGIN))
+				if (m_freePeaks[0].dist <= EXTRAPOLATION_MARGIN *
+					min(sinceLast, TRACKER_LOSS_MARGIN))
 				{
 					m_freePeaks[0].locked = true;
 					htc.lossCounter = 0;
-					htc.angVel = m_freePeaks[0].dist / sinceLast;
+					double newAngVel = angleDist(m_freePeaks[0].rot, htc.prevWrot) / sinceLast;
+					htc.angVel = lerp(htc.angVel, newAngVel, ANGVEL_FILTER_K);
 					htc.prevTime = subSnap.atTime;
 					htc.tracker.bearing = htc.prevWrot = m_freePeaks[0].rot;
-					htc.counter = (htc.counter + 1) % TRACKER_GEN_FREQ;
 					m_freePeaks = m_freePeaks[1 .. $];
 				}
 				else
@@ -223,7 +225,8 @@ final class WaterfallAnalyzer
 		ContactData[] res;
 		foreach (tc; m_trackers.byValue)
 		{
-			if (tc.tracker.state == TrackerState.active && tc.counter == 0 && tc.lossCounter == 0)
+			if (tc.tracker.state == TrackerState.active &&
+				tc.counter == 0 && tc.lossCounter == 0)
 			{
 				ContactData data = ContactData(-1, tc.tracker.id.ctcId, m_lastSlice.atTime,
 					DataSource(DataSourceType.Hydrophone, m_sensorIdx), DataType.Ray);
