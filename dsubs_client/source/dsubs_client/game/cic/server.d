@@ -234,7 +234,11 @@ final class CICServer
 		synchronized (m_state.ctcMut)
 		{
 			if (m_state.dropContact(req.ctcId))
+			{
+				foreach (WaterfallAnalyzer wa; m_wfAnalizers)
+					wa.dropTracker(req.ctcId);
 				m_listener.broadcast(cast(immutable) req);
+			}
 		}
 	}
 
@@ -254,6 +258,8 @@ final class CICServer
 		{
 			if (m_state.mergeContacts(req.sourceCtcId, req.destCtcId))
 			{
+				foreach (WaterfallAnalyzer wa; m_wfAnalizers)
+					wa.mergeTrackers(req.sourceCtcId, req.destCtcId);
 				m_listener.broadcast(cast(immutable) req);
 				// destination contact is often updated
 				m_listener.broadcast(immutable CICContactUpdateReq(

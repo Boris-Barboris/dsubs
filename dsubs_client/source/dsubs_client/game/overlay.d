@@ -525,7 +525,8 @@ final class TacticalOverlay: Overlay
 					default:
 						break;
 				}
-				m_selectedContactData[ctd.id] = newElement;
+				if (newElement)
+					m_selectedContactData[ctd.id] = newElement;
 			}
 		}
 		m_selectedContact = rhs;
@@ -801,6 +802,8 @@ final class TacticalContactElement: OverlayElementWithHover
 		vec2d m_lastScreenPos;
 		DragMode m_dragMode;
 		bool m_drawPastTrail;
+
+		enum double RAY_LENGTH = 1000;
 	}
 
 	private __gshared Label g_velLabel;
@@ -813,10 +816,10 @@ final class TacticalContactElement: OverlayElementWithHover
 			m_contact.type != ContactType.decoy);
 	}
 
-	override @property bool hidden()
-	{
-		return !m_contact.solution.posAvailable || super.hidden();
-	}
+	// override @property bool hidden()
+	// {
+	// 	return !m_contact.solution.posAvailable || super.hidden();
+	// }
 
 	@property bool isSelected()
 	{
@@ -873,10 +876,31 @@ final class TacticalContactElement: OverlayElementWithHover
 		if (!isSelected)
 		{
 			m_solution = m_contact.solution;
-			double secsSince;
-			extrapolateTime(m_solution.time, secsSince);
-			if (m_solution.velAvailable)
-				m_solution.pos += secsSince * m_solution.vel;
+			if (!m_solution.posAvailable)
+			{
+				// ray tracking mode, update m_solution position from ray
+				ClientContactData* cd = m_contact.lastRay;
+				if (cd !is null)
+				{
+					m_solution.time = cd.time;
+					m_solution.pos = cd.data.ray.origin + courseVector(cd.data.ray.bearing) * RAY_LENGTH;
+				}
+				else
+				{
+					// pick deterministic ray bearing accordint to contact id
+					double secsSince;
+					extrapolateTime(m_solution.time, secsSince);
+					m_solution.pos = Game.simState.playerSub.transform.position +
+						courseVector(m_contact.id.postfix + 0.42 * cast(byte) m_contact.id.prefix) * RAY_LENGTH;
+				}
+			}
+			else
+			{
+				double secsSince;
+				extrapolateTime(m_solution.time, secsSince);
+				if (m_solution.velAvailable)
+					m_solution.pos += secsSince * m_solution.vel;
+			}
 		}
 		vec2d worldPos = m_solution.pos;
 		vec2d screenPos = owner.world2windowPos(worldPos);

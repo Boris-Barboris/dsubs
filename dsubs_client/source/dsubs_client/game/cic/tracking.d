@@ -41,11 +41,11 @@ private struct Peak
 private
 {
 	/// ray data will be generated after each TRACKER_GEN_FREQ data were received
-	enum short TRACKER_GEN_FREQ = 10;
+	enum short TRACKER_GEN_FREQ = 6;
 	/// tracker is automatically switched to inactive state after this many update cycles with
 	/// no signal found.
-	enum short TRACKER_LOSS_MARGIN = 8;
-	enum float EXTRAPOLATION_MARGIN = dgr2rad(4);
+	enum short TRACKER_LOSS_MARGIN = 5;
+	enum float EXTRAPOLATION_MARGIN = dgr2rad(10);
 }
 
 final class WaterfallAnalyzer
@@ -173,13 +173,18 @@ final class WaterfallAnalyzer
 		HydrophoneTrackerContext** sourceCtx = sourceId in m_trackers;
 		if (sourceCtx is null)
 			return;
-		m_trackers[destId] = *sourceCtx;
+		HydrophoneTrackerContext** destCtx = destId in m_trackers;
+		if (destCtx is null || (*sourceCtx).tracker.state == TrackerState.active)
+		{
+			(*sourceCtx).tracker.id.ctcId = dest;
+			m_trackers[destId] = *sourceCtx;
+		}
 		m_trackers.remove(sourceId);
 	}
 
-	bool dropTracker(TrackerId tid)
+	bool dropTracker(ContactId cid)
 	{
-		assert(tid.sensorIdx == m_sensorIdx);
+		TrackerId tid = TrackerId(m_sensorIdx, cid);
 		return m_trackers.remove(tid);
 	}
 
@@ -218,7 +223,7 @@ final class WaterfallAnalyzer
 		ContactData[] res;
 		foreach (tc; m_trackers.byValue)
 		{
-			if (tc.tracker.state == TrackerState.active && tc.counter == 0)
+			if (tc.tracker.state == TrackerState.active && tc.counter == 0 && tc.lossCounter == 0)
 			{
 				ContactData data = ContactData(-1, tc.tracker.id.ctcId, m_lastSlice.atTime,
 					DataSource(DataSourceType.Hydrophone, m_sensorIdx), DataType.Ray);

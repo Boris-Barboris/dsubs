@@ -34,21 +34,25 @@ struct ClientContactData
 /// Client representation of a contact object
 final class ClientContact
 {
-	this(Contact ctc)
+	this(Contact ctc, int hydrophoneCount)
 	{
 		m_ctc = ctc;
 		m_tactDispEl = new TacticalContactElement(Game.simState.tacticalOverlay, this);
-		m_trackerEls.length = 4;	// better safe than sorry
+		m_trackerEls.length = hydrophoneCount;
 	}
 
 	private SonarDispContactDataElement m_sonarDispEl;
 	private TacticalContactElement m_tactDispEl;
 	private HydrophoneTrackerElement[] m_trackerEls;
 
+	mixin Readonly!(ClientContactData*, "lastRay");
+
 	/// collection of all data of this contact
 	private ClientContactData*[int] m_dataHash;
 	/// get ContactData iterator
 	auto contactDataRange() { return m_dataHash.byValue; }
+
+	HydrophoneTrackerElement[] trackerElements() { return m_trackerEls; }
 
 	Contact m_ctc;
 	alias m_ctc this;
@@ -72,6 +76,13 @@ final class ClientContact
 	void addData(ClientContactData* cdata)
 	{
 		m_dataHash[cdata.id] = cdata;
+		if (cdata.type == DataType.Ray)
+		{
+			if (m_lastRay is null)
+				m_lastRay = cdata;
+			else if (m_lastRay.time <= cdata.time)
+				m_lastRay = cdata;
+		}
 		switch (cdata.source.type)
 		{
 			case DataSourceType.ActiveSonar:
@@ -147,10 +158,13 @@ final class ClientContact
 /// Contacts and their data that the client knows about. May be out of sync with CIC server.
 final class ClientContactManager
 {
-	this(CICReconnectStateRes msg)
+	private int m_hydrophoneCount;
+
+	this(CICReconnectStateRes msg, int hydrophoneCount)
 	{
+		m_hydrophoneCount = hydrophoneCount;
 		foreach (Contact ctc; msg.contacts)
-			m_contactHash[ctc.id] = new ClientContact(ctc);
+			m_contactHash[ctc.id] = new ClientContact(ctc, hydrophoneCount);
 	}
 
 	/// collection of all data of this contact
@@ -163,14 +177,14 @@ final class ClientContactManager
 	void handleContactCreated(CICContactCreatedFromDataRes msg)
 	{
 		enforce((msg.newContact.id in m_contactHash) is null, "contact already exists");
-		m_contactHash[msg.newContact.id] = new ClientContact(msg.newContact);
+		m_contactHash[msg.newContact.id] = new ClientContact(msg.newContact, m_hydrophoneCount);
 		handleContactData(msg.initialData);
 	}
 
 	void handleContactCreated(CICContactCreatedFromHTrackerRes msg)
 	{
 		enforce((msg.newContact.id in m_contactHash) is null, "contact already exists");
-		m_contactHash[msg.newContact.id] = new ClientContact(msg.newContact);
+		m_contactHash[msg.newContact.id] = new ClientContact(msg.newContact, m_hydrophoneCount);
 		handleTracker(msg.tracker);
 	}
 

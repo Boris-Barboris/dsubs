@@ -87,7 +87,7 @@ final class SimulatorState: GameState
 
 		m_sonarSound = new StreamingSoundSource();
 		m_contactOverlayShapeCache = new ContactOverlayShapeCahe();
-		m_contactManager = new ClientContactManager(m_recState);
+		m_contactManager = new ClientContactManager(m_recState, m_playerSub.tmpl.hydrophones.length.to!int);
 	}
 
 	override void handleBackendDisconnect()
