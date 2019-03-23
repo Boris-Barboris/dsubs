@@ -261,8 +261,9 @@ final class ClientContactManager
 	void handleDropTracker(TrackerId tid)
 	{
 		ContactId cid = tid.ctcId;
-		ClientContact cc = m_contactHash[cid];
-		cc.dropTracker(tid.sensorIdx);
+		ClientContact cc = m_contactHash.get(cid, null);
+		if (cc)
+			cc.dropTracker(tid.sensorIdx);
 	}
 
 	void hadleMergeContact(ContactId srcId, ContactId destId)
