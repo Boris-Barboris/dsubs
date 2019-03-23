@@ -251,6 +251,8 @@ final class ClientContactManager
 
 	void handleDropData(int dataId)
 	{
+		if (dataId !in m_dataHash)
+			return;
 		ContactId ctcId = m_dataHash[dataId].ctcId;
 		m_contactHash[ctcId].removeData(dataId);
 		m_dataHash.remove(dataId);
