@@ -45,7 +45,7 @@ private
 	/// tracker is automatically switched to inactive state after this many update cycles with
 	/// no signal found.
 	enum short TRACKER_LOSS_MARGIN = 5;
-	enum float EXTRAPOLATION_MARGIN = dgr2rad(10);
+	enum float EXTRAPOLATION_MARGIN = dgr2rad(5);
 	enum float ANGVEL_FILTER_K = 0.66;
 	enum DETECT_MARGIN = ushort.max / 24;
 }
@@ -105,12 +105,12 @@ final class WaterfallAnalyzer
 			}
 		}
 		trace("current peaks: ", m_peaks);
-
 		// Update active trackers
 		HydrophoneTrackerContext*[] trackers = m_trackers.byValue.
 			filter!(t => t.tracker.state == TrackerState.active).array;
 		// trackers without lost signals must bind to peaks first
 		trackers.sort!"a.lossCounter < b.lossCounter";
+		trace("current tracker contexts: ", trackers.map!(a => *a));
 		m_freePeaks = m_peaks;
 		foreach (HydrophoneTrackerContext* htc; trackers)
 		{
@@ -212,6 +212,7 @@ final class WaterfallAnalyzer
 		HydrophoneTrackerContext* ctx = *ctxPtr;
 		ctx.angVel = 0.0;
 		ctx.prevTime = m_lastSlice.atTime;
+		ctx.prevWrot = bearing;
 		ctx.lossCounter = TRACKER_LOSS_MARGIN - 2;
 		ctx.tracker.state = TrackerState.active;
 		ctx.tracker.bearing = bearing;

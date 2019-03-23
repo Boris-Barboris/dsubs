@@ -143,8 +143,9 @@ final class SimulationGUI
 		vec2d vel = cast(vec2d) res.snap.velocity;
 		vec2d fwd = courseVector(res.snap.rotation);
 		double proj = dot(vel, fwd);
-		curSpeed.format!"speed: %.1f"(proj);
+		curSpeed.format!"speed: %.2f"(proj);
 		// pass to other classes that need it
+		m_passiveGui.wf.handleSubKinematicRes(res);
 		m_sonarGui.sonar.handleSubKinematicRes(res);
 	}
 

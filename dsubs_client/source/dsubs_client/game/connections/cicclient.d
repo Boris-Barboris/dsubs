@@ -290,4 +290,14 @@ private:
 			manager.handleTracker(msg.tracker);
 		}
 	}
+
+	void h_dropTrackerReq(CICDropTrackerReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			assert(msg.tid.sensorIdx == 0);
+			auto manager = Game.simState.contactManager;
+			manager.handleDropTracker(msg.tid);
+		}
+	}
 }

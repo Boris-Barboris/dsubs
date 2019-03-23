@@ -1,7 +1,7 @@
 module dsubs_common.containers.circqueue;
 
 
-/// Fixed-capacity queue backed by circular buffer
+/// Fixed-capacity circular buffer
 struct CircQueue(T)
 {
 	private
@@ -44,5 +44,13 @@ struct CircQueue(T)
 		arr[backIdx] = val;
 		len++;
 		return arr[backIdx];
+	}
+
+	/// Get idx'th element, counting from the back of the queue
+	@property ref T fromBack(size_t idx)
+	{
+		assert(idx < len);
+		idx = (ifront + len - idx) % capacity;
+		return arr[idx];
 	}
 }

@@ -282,4 +282,16 @@ final class CICServer
 			}
 		}
 	}
+
+	void handleCICDropTrackerReq(CICDropTrackerReq req)
+	{
+		enforce(req.tid.sensorIdx >= 0 && req.tid.sensorIdx < m_wfAnalizers.length);
+		synchronized (m_state.ctcMut)
+		{
+			if (m_wfAnalizers[req.tid.sensorIdx].dropTracker(req.tid.ctcId))
+			{
+				m_listener.broadcast(req);
+			}
+		}
+	}
 }

@@ -4,6 +4,7 @@ import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 
 import dsubs_common.math;
+import dsubs_common.containers.circqueue;
 
 import dsubs_client.common;
 import dsubs_client.gui;
@@ -490,6 +491,8 @@ final class Waterfall: PanoramicDisplay!ushort
 		/// in waterfall render texture is sliding from top to bottom cyclically.
 		int m_vertPos;
 		TrackerOverlay m_trackerOverlay;
+		/// Circular buffer to contain history of ray origins
+		CircQueue!vec2d m_originQueue;
 	}
 
 	@property TrackerOverlay trackerOverlay() { return m_trackerOverlay; }
@@ -502,6 +505,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		params.headerHeight = params.compassHeight + m_dirHeaderHeight;
 		params.height = 60 * 5;		// 5 minutes
 		params.camViewPortHeight = params.height;
+		m_originQueue = CircQueue!vec2d(params.height.to!size_t);
 		blackLevel = 0.1f;
 		m_pyperworldy = 1.0f;		// 1 pixel = 1 second
 		super(params, new WaterfallOverlay());
@@ -557,6 +561,15 @@ final class Waterfall: PanoramicDisplay!ushort
 			return this;
 		}
 		return null;
+	}
+
+	void handleSubKinematicRes(CICSubKinematicRes res)
+	{
+		// update m_originQueue
+		if (m_originQueue.length == m_originQueue.capacity)
+			m_originQueue.popFront();
+		m_originQueue.pushBack(res.snap.position +
+			rotateVector(m_ht.mount.mountCenter, res.snap.rotation));
 	}
 
 	void drawData(const(ushort)[] data, double subWrot, int antIdx)
@@ -624,6 +637,44 @@ final class Waterfall: PanoramicDisplay!ushort
 			{
 				updateDirectorElement(x - position.x);
 				Game.ciccon.sendMessage(immutable CICListenDirReq(0, m_listenDir));
+			}
+			if (btn == sfMouseRight && !m_panned)
+				spawnContextMenu(x, y);
+		}
+
+		private void spawnContextMenu(int x, int y)
+		{
+			int xlocal = x - position.x;
+			int ylocal = y - position.y;
+			float bearing = pixelToBearing(xlocal);
+			float delay = pixelToDelay(ylocal);
+			size_t delayIdx = delay.to!size_t;
+			if (delayIdx < m_originQueue.length)
+			{
+				vec2d rayOrigin = m_originQueue.fromBack(delayIdx);
+				RayData rayData = RayData(rayOrigin, bearing);
+				ContactDataUnion cdu = { ray: rayData };
+				CICCreateContactFromDataReq req = CICCreateContactFromDataReq(
+					'E',
+					ContactData(
+						-1,
+						ContactId(),
+						Game.simState.lastServerTime - delayIdx,
+						DataSource(DataSourceType.Hydrophone, m_hydrophoneIdx),
+						DataType.Ray,
+						cdu));
+				Button[] buttons = [
+						builder(new Button()).fontSize(15).content("new contact").build()
+				];
+				buttons[0].onClick += () {
+					Game.ciccon.sendMessage(cast(immutable) req);
+				};
+				ContextMenu menu = contextMenu(
+						Game.guiManager,
+						buttons,
+						Game.window.size,
+						vec2i(x, y),
+						20);
 			}
 		}
 	}

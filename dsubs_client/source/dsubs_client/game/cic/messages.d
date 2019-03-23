@@ -199,3 +199,10 @@ struct CICUpdateTrackerReq
 	__gshared const int g_marshIdx;
 	HydrophoneTracker tracker;
 }
+
+/// Sent by client and then broadcasted back to drop a tracker
+struct CICDropTrackerReq
+{
+	__gshared const int g_marshIdx;
+	TrackerId tid;
+}

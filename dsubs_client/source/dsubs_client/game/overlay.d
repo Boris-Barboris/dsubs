@@ -308,6 +308,10 @@ final class HydrophoneTrackerElement: OverlayElementWithHover
 		m_label.size = vec2i(m_label.contentWidth.to!int, m_label.contentHeight.to!int + 4);
 		m_onHoverRect = new RectangleShape(cast(vec2f) m_label.size, sfWhite);
 		size = m_label.size;
+
+		onMouseDown += &processMouseDown;
+		onMouseUp += &processMouseUp;
+		onMouseMove += &processMouseMove;
 	}
 
 	void updateFromTracker(HydrophoneTracker ht)
@@ -317,14 +321,11 @@ final class HydrophoneTrackerElement: OverlayElementWithHover
 			m_label.fontColor = sfColor(150, 150, 150, 255);
 		else
 			m_label.fontColor = sfWhite;
+		m_bearing = m_tracker.bearing;
 	}
 
 	override void onPreDraw()
 	{
-		if (!m_dragging)
-		{
-			m_bearing = m_tracker.bearing;
-		}
 		vec2d screenPos = owner.world2windowPos(vec2d(m_bearing, 0));
 		position = center2lu(screenPos);
 		m_label.position = position;
@@ -340,6 +341,55 @@ final class HydrophoneTrackerElement: OverlayElementWithHover
 		if (m_hovered)
 			m_onHoverRect.render(wnd);
 		m_label.draw(wnd, usecsDelta);
+	}
+
+	private void processMouseMove(int x, int y)
+	{
+		if (m_dragging)
+		{
+			vec2i newPos = vec2i(x, y) - g_dragOffset;
+			vec2d newCenter = owner.clampInsideRect(lu2center(newPos));
+			// we now need to update bearing and range from screen-space position
+			vec2d newWorldCoord = owner.screen2worldPos(newCenter);
+			m_bearing = newWorldCoord.x;
+		}
+	}
+
+	private void processMouseDown(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseLeft)
+		{
+			m_dragging = true;
+			g_dragOffset = vec2i(x, y) - position;
+			requestMouseFocus();
+		}
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseRight)
+		{
+			Button[] buttons = commonContactContextMenu(
+				Game.simState.contactManager.get(m_tracker.id.ctcId));
+			Button dropTrackerBtn = builder(new Button()).fontSize(15).content("drop tracker").build();
+			dropTrackerBtn.onClick +=
+				{ Game.ciccon.sendMessage(immutable CICDropTrackerReq(m_tracker.id)); };
+			ContextMenu menu = contextMenu(
+					Game.guiManager,
+					dropTrackerBtn ~ buttons,
+					Game.window.size,
+					vec2i(x, y),
+					20);
+			return;
+		}
+		if (btn == sfMouseLeft && m_dragging)
+		{
+			m_dragging = false;
+			if (!m_panning)
+				returnMouseFocus();
+			Game.ciccon.sendMessage(immutable CICUpdateTrackerReq(
+				HydrophoneTracker(m_tracker.id, m_bearing)));
+		}
 	}
 }
 
@@ -758,7 +808,7 @@ final class TacticalContactElement: OverlayElementWithHover
 	{
 		m_mainShape = ctcOverlayCache.forContactType(m_contact.type);
 		m_velLine.color = m_mainShape.borderColor;
-		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 4, 2 * m_mainShape.radius + 4);
+		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 8, 2 * m_mainShape.radius + 8);
 		// contact id cannot change, so m_contactName is constant
 		if (m_contactName is null)
 		{
@@ -923,7 +973,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		if (needDrawName)
 		{
 			m_contactName.position = vec2i(position.x + size.x / 2 - m_contactName.size.x / 2,
-				position.y + size.y + 2);
+				position.y + size.y - 1);
 		}
 		if (m_hovered)
 			m_onHoverRect.center = screenPosF;
@@ -974,6 +1024,7 @@ final class TacticalContactElement: OverlayElementWithHover
 
 	private enum double PIXEL_PER_MPS = 20;
 	private enum double ZERO_SPD_PIXEL_MARGIN = 30;
+	private enum float DELTA_ALTITUDE = 8;
 
 	private static double lineLength2speed(double len)
 	{
@@ -1017,7 +1068,20 @@ final class TacticalContactElement: OverlayElementWithHover
 				double k;
 				vec2d dataPosScreen = rel.m_mainShape.getAltitudeBase(
 					dataOnTrail, inside, k);
-				deltaShape.setPoints(dataPosScreen, dataOnTrail, false);
+				// it looks shit if delta line is close to parallel with any of the lines,
+				// so we'll always draw two lines.
+				vec2d deltaVec = dataOnTrail - dataPosScreen;
+				if (deltaVec.squaredLength < 1e-2)
+					continue;
+				vec2d deltaNorm = deltaVec.normalized;
+				vec2d deltaAlt = vec2d(deltaNorm.y, -deltaNorm.x);
+				if (rel.data.id % 2 == 0)
+					deltaAlt = -deltaAlt;
+				vec2d deltaMiddlePos = dataPosScreen + 0.5 * deltaVec +
+					deltaAlt * DELTA_ALTITUDE;
+				deltaShape.setPoints(dataPosScreen, deltaMiddlePos, false);
+				deltaShape.render(wnd);
+				deltaShape.setPoints(deltaMiddlePos, dataOnTrail, false);
 				deltaShape.render(wnd);
 				continue;
 			}

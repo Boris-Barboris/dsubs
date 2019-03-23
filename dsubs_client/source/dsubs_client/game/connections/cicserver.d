@@ -150,4 +150,10 @@ private:
 		enforce(m_inSimFlow, "not in simulator flow");
 		m_cicserv.handleCICUpdateTrackerReq(req);
 	}
+
+	void h_dropTrackerReq(CICDropTrackerReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICDropTrackerReq(req);
+	}
 }
