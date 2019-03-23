@@ -321,7 +321,8 @@ Button[] commonContactContextMenu(ClientContact ctc)
 	return res;
 }
 
-// workaround to DMD lambda capturing rules
+// workaround to D lambda capturing rules. Another solution:
+// https://forum.dlang.org/post/imtygxgjovnvrrfmxpok@forum.dlang.org
 private final class TrimBtn: Button
 {
 	private
