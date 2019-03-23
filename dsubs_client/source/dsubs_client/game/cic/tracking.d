@@ -104,13 +104,13 @@ final class WaterfallAnalyzer
 				}
 			}
 		}
-		trace("current peaks: ", m_peaks);
+		//trace("current peaks: ", m_peaks);
 		// Update active trackers
 		HydrophoneTrackerContext*[] trackers = m_trackers.byValue.
 			filter!(t => t.tracker.state == TrackerState.active).array;
 		// trackers without lost signals must bind to peaks first
 		trackers.sort!"a.lossCounter < b.lossCounter";
-		trace("current tracker contexts: ", trackers.map!(a => *a));
+		//trace("current tracker contexts: ", trackers.map!(a => *a));
 		m_freePeaks = m_peaks;
 		foreach (HydrophoneTrackerContext* htc; trackers)
 		{

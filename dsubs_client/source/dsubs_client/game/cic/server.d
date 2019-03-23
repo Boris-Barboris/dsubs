@@ -294,4 +294,13 @@ final class CICServer
 			}
 		}
 	}
+
+	void handleCICTrimContactData(CICTrimContactData req)
+	{
+		synchronized (m_state.ctcMut)
+		{
+			if (m_state.trimData(req.ctcId, req.olderThan))
+				m_listener.broadcast(req);
+		}
+	}
 }

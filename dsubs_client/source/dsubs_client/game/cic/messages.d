@@ -206,3 +206,12 @@ struct CICDropTrackerReq
 	__gshared const int g_marshIdx;
 	TrackerId tid;
 }
+
+/// Sent by client and then broadcasted back to drop all data of a contact older than
+/// specific time point.
+struct CICTrimContactData
+{
+	__gshared const int g_marshIdx;
+	ContactId ctcId;
+	usecs_t olderThan;
+}

@@ -1152,7 +1152,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		{
 			Button[] buttons = commonContactContextMenu(m_contact);
 			// add merge to button
-			Button mbtn = builder(new Button()).fontSize(15).content("merge into").build();
+			Button mbtn = builder(new Button()).fontSize(15).content("merge").build();
 			mbtn.onClick += {
 				g_inMerge = true;
 				g_mergeSourceId = m_contact.id;

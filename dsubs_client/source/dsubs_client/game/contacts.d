@@ -221,6 +221,21 @@ final class ClientContactManager
 		ctc.addData(cdata);
 	}
 
+	void handleTrimContactData(ContactId ctcId, usecs_t olderThan)
+	{
+		ClientContact* ctc = ctcId in m_contactHash;
+		enforce(ctc !is null, "contact does not exist");
+		ClientContactData*[] contactData = ctc.m_dataHash.values;
+		foreach (ClientContactData* ccd; contactData)
+		{
+			if (ccd.time < olderThan)
+			{
+				ctc.removeData(ccd.id);
+				m_dataHash.remove(ccd.id);
+			}
+		}
+	}
+
 	void handleContactUpdate(Contact msg)
 	{
 		m_contactHash[msg.id].updateContact(msg);
@@ -268,11 +283,13 @@ final class ClientContactManager
 Button[] commonContactContextMenu(ClientContact ctc)
 {
 	Button[] res;
+	// drop
 	Button btn = builder(new Button()).fontSize(15).content("drop contact").build();
 	btn.onClick += {
 		Game.ciccon.sendMessage(immutable CICDropContactReq(ctc.id));
 	};
 	res ~= btn;
+	// classification
 	Button[] classifications;
 	foreach (ctype; EnumMembers!ContactType)
 	{
@@ -290,5 +307,41 @@ Button[] commonContactContextMenu(ClientContact ctc)
 	NestedContextBtn classifySubmenu = builder(new NestedContextBtn(classifications, 20)).
 		fontSize(15).content("classify as").build();
 	res ~= classifySubmenu;
+	// trimming
+	Button[] trimmingBtns;
+	foreach (int secsToLeave; [30, 60, 180, 300])
+	{
+		btn = builder(new TrimBtn(ctc.id, secsToLeave)).fontSize(15).
+			content(secsToLeave.to!string ~ "s").build();
+		trimmingBtns ~= btn;
+	}
+	NestedContextBtn trimSubmenu = builder(new NestedContextBtn(trimmingBtns, 20)).
+		fontSize(15).content("trim to last").build();
+	res ~= trimSubmenu;
 	return res;
+}
+
+// workaround to DMD lambda capturing rules
+private final class TrimBtn: Button
+{
+	private
+	{
+		ContactId m_ctcId;
+		int m_secsToLeave;
+	}
+
+	this(ContactId ctcId, int secsToLeave)
+	{
+		super(ButtonType.SYNC);
+		m_ctcId = ctcId;
+		m_secsToLeave = secsToLeave;
+		onClick += &processClick;
+	}
+
+	private void processClick()
+	{
+		auto msg = immutable CICTrimContactData(
+			m_ctcId, Game.simState.lastServerTime - m_secsToLeave * 1000_000);
+		Game.ciccon.sendMessage(msg);
+	}
 }

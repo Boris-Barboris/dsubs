@@ -300,4 +300,13 @@ private:
 			manager.handleDropTracker(msg.tid);
 		}
 	}
+
+	void h_trimContactData(CICTrimContactData msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			auto manager = Game.simState.contactManager;
+			manager.handleTrimContactData(msg.ctcId, msg.olderThan);
+		}
+	}
 }

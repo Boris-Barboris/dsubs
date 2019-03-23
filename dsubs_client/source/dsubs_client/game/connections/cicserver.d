@@ -156,4 +156,10 @@ private:
 		enforce(m_inSimFlow, "not in simulator flow");
 		m_cicserv.handleCICDropTrackerReq(req);
 	}
+
+	void h_trimContactDataReq(CICTrimContactData req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICTrimContactData(req);
+	}
 }

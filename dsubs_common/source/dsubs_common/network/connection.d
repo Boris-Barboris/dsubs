@@ -224,11 +224,11 @@ class ProtocolConnection(alias Protocol)
 			header[0] < m_handlers.length.to!int, "Unknown message " ~ header[0].to!string);
 		enforce!ProtocolException(header[1] >= 0 &&
 			header[1] <= MAX_MSG_SIZE, "Message length invalid");
-		if (header[0] >= 0)
-			trace(conId, " received message header ",
-				Protocol.msgTypeNames[header[0]], " ", header[1]);
-		else
-			trace(conId, " received message header ", header);
+		// if (header[0] >= 0)
+		// 	trace(conId, " received message header ",
+		// 		Protocol.msgTypeNames[header[0]], " ", header[1]);
+		// else
+		// 	trace(conId, " received message header ", header);
 		return header;
 	}
 

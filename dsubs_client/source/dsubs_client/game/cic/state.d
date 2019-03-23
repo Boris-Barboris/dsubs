@@ -270,6 +270,27 @@ final class CICState
 		return true;
 	}
 
+	/// Drop all data of contact that is older than specified timestamp.
+	/// Returns false if contact was not found, otherwise true.
+	bool trimData(ContactId ctcId, usecs_t olderThan)
+	{
+		ContactContext* ctcCtx = m_ctcCtxHash.get(ctcId, null);
+		if (ctcCtx is null)
+			return false;
+		ContactData edgeDisctiminator = ContactData(-1, ctcId, olderThan);
+		auto olderDataRange = ctcCtx.dataTree.lowerBound(&edgeDisctiminator);
+		auto savedRange = olderDataRange.save();
+		int counter = 0;
+		foreach (ContactData* old; olderDataRange)
+		{
+			m_ctcDataHash.remove(old.id);
+			counter++;
+		}
+		ctcCtx.dataTree.remove(savedRange);
+		trace("trimmed out ", counter, " data points");
+		return true;
+	}
+
 	bool mergeContacts(ContactId source, ContactId dest)
 	{
 		assert(source != dest);

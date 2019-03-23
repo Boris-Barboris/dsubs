@@ -133,7 +133,7 @@ final class StreamingSoundSource
 	{
 		if (s_noAudio)
 			return;
-		trace("appending sound, ", samples.length, " samples, ", srate, " srate");
+		// trace("appending sound, ", samples.length, " samples, ", srate, " srate");
 		ALuint newBuf;
 		alGenBuffers(1, &newBuf);
 		openalCheckErr("Cannot create new buffer: ");
@@ -189,7 +189,7 @@ final class StreamingSoundSource
 		openalCheckErr("Cannot get source state: ");
 		if (propVal != AL_PLAYING)
 		{
-			trace("audio source was not playing");
+			// trace("audio source was not playing");
 			alSourcePlay(source);
 			openalCheckErr("Cannot play an audio source: ");
 		}
