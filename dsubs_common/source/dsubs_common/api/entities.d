@@ -77,6 +77,45 @@ struct SubmarineTemplate
 	SonarTemplate sonar;
 }
 
+/// Weapons need to be configured before launch. This is a set of generally available parameters.
+enum WeaponParamType: byte
+{
+	sensorType,		/// sensor type can be selected
+	marchSpeed, 	/// speed before activation
+	activeSpeed,	/// speed after activation
+	searchPattern,
+	activationRange
+}
+
+/// Bit flag
+enum WeaponSensorType: byte
+{
+	none = 0,
+	active = 1,
+	passive = 2
+}
+
+struct WeaponParamDescSpeed
+{
+	float minSpeed;
+	float maxSpeed;
+}
+
+/// Bit flag
+enum WeaponSearchPattern: byte
+{
+	straight = 0,	/// straight running
+	snake = 1,		/// snake
+	spiral = 2		/// spiral
+}
+
+struct WeaponParamDescSearchPattern
+{
+	WeaponSearchPattern availablePatterns,
+	float snakeWidth;
+	float spiralStep;	/// each spiral loop radius is increased by this many meters
+}
+
 /// Self-propelled weapon
 struct WeaponTemplate
 {
@@ -88,6 +127,9 @@ struct WeaponTemplate
 
 	/// hull model. First elements are drawn first.
 	ConvexPolygon[] hullModel;
+
+	/// Approximate turning radius, useful for firing solution calculations
+	float turningRadius;
 }
 
 /// Some rigid body kinematics at specific time
