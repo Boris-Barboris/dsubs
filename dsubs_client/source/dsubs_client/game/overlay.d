@@ -1051,44 +1051,50 @@ final class TacticalContactElement: OverlayElementWithHover
 		deltaPerUsec.y = -deltaPerUsec.y;
 		foreach (ContactDataOverlayElement el; tacowner.m_selectedContactData.byValue)
 		{
+			vec2d dataPosScreen;
+			vec2d dataOnTrail;
 			PositionDataTacticalElement pel = cast(PositionDataTacticalElement) el;
+			RayDataTacticalElement rel = cast(RayDataTacticalElement) el;
 			if (pel !is null)
 			{
-				vec2d dataPosScreen = owner.world2windowPos(
+				dataPosScreen = owner.world2windowPos(
 					pel.data.data.position.contactPos);
-				vec2d dataOnTrail = m_lastScreenPos +
+				dataOnTrail = m_lastScreenPos +
 					deltaPerUsec * (m_solution.time - pel.data.time);
-				deltaShape.setPoints(dataPosScreen, dataOnTrail, true);
-				deltaShape.render(wnd);
-				continue;
-			}
-			RayDataTacticalElement rel = cast(RayDataTacticalElement) el;
-			if (rel !is null)
-			{
-				vec2d dataOnTrail = m_lastScreenPos +
-					deltaPerUsec * (m_solution.time - rel.data.time);
+				// necessary
+				dataPosScreen.y = -dataPosScreen.y;
 				dataOnTrail.y = -dataOnTrail.y;
-				bool inside;
-				double k;
-				vec2d dataPosScreen = rel.m_mainShape.getAltitudeBase(
-					dataOnTrail, inside, k);
-				// it looks shit if delta line is close to parallel with any of the lines,
-				// so we'll always draw two lines.
-				vec2d deltaVec = dataOnTrail - dataPosScreen;
-				if (deltaVec.squaredLength < 1e-2)
-					continue;
-				vec2d deltaNorm = deltaVec.normalized;
-				vec2d deltaAlt = vec2d(deltaNorm.y, -deltaNorm.x);
-				if (rel.data.id % 2 == 0)
-					deltaAlt = -deltaAlt;
-				vec2d deltaMiddlePos = dataPosScreen + 0.5 * deltaVec +
-					deltaAlt * DELTA_ALTITUDE;
-				deltaShape.setPoints(dataPosScreen, deltaMiddlePos, false);
-				deltaShape.render(wnd);
-				deltaShape.setPoints(deltaMiddlePos, dataOnTrail, false);
-				deltaShape.render(wnd);
-				continue;
 			}
+			else
+			{
+				if (rel !is null)
+				{
+					dataOnTrail = m_lastScreenPos +
+						deltaPerUsec * (m_solution.time - rel.data.time);
+					dataOnTrail.y = -dataOnTrail.y;
+					bool inside;
+					double k;
+					dataPosScreen = rel.m_mainShape.getAltitudeBase(
+						dataOnTrail, inside, k);
+				}
+				else
+					continue;
+			}
+			// it looks shit if delta line is close to parallel with any of the lines,
+			// so we'll always draw two lines.
+			vec2d deltaVec = dataOnTrail - dataPosScreen;
+			if (deltaVec.squaredLength < 1e-2)
+				continue;	// do not draw delta
+			vec2d deltaNorm = deltaVec.normalized;
+			vec2d deltaAlt = vec2d(deltaNorm.y, -deltaNorm.x);
+			if (el.data.id % 2 == 0)
+				deltaAlt = -deltaAlt;
+			vec2d deltaMiddlePos = dataPosScreen + 0.5 * deltaVec +
+				deltaAlt * DELTA_ALTITUDE;
+			deltaShape.setPoints(dataPosScreen, deltaMiddlePos, false);
+			deltaShape.render(wnd);
+			deltaShape.setPoints(deltaMiddlePos, dataOnTrail, false);
+			deltaShape.render(wnd);
 		}
 	}
 
