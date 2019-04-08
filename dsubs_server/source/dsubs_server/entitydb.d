@@ -178,8 +178,7 @@ Active sonar:
 		trace("dims: ", dims);
 		sp.hullLength = dims.y;
 		sp.hprots = [
-			HydrophonePrototype([0.0f], 500, 2048, dgr2rad(210), 210, 2 / 90.0f,
-				3.0f, 4e-3, 5e-5, 1e-3)
+			HydrophonePrototype([0.0f], 500, 2048, dgr2rad(210), 210, 2 / 90.0f, 3.0f)
 		];
 		sp.asprot = asp;
 		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-25.0f, -19.0f, -10.0f]);

@@ -31,9 +31,9 @@ struct HydrophonePrototype
 	int beamCount;
 	float directivity;
 	dB baseNoise = 3.0f;
-	float bearingErrNoise = 0.001f;
-	float flowNoiseMult = 0.001f;
-	float omniNoiseMult = 5e-3f;
+	float bearingErrNoise = 4e-3f;
+	float flowNoiseMult = 5e-6f;
+	float omniNoiseMult = 1e-3f;
 	/// client listens to beam of this size
 	float listenSpan = dgr2rad(2);
 }
@@ -744,7 +744,7 @@ unittest
 
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2048, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f, 4e-3, 2e-5);
+		500, 2048, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f);
 	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
 	h.transform.rotation = PI; // good corner case
 	h.onPreSimulation();
@@ -780,7 +780,7 @@ unittest
 		foreach (j, float spd; speeds)
 		{
 			float freq = spd * freqPerMs;
-			propTrans.position = rotateVector(vec2d(0.0, -5000.0), relBearings[j]);
+			propTrans.position = rotateVector(vec2d(0.0, -2000.0), relBearings[j]);
 			prop.preUpdate(freq, spd);
 			prop.postUpdate(freq, spd, 1.0f);
 			h.applySoundSource(q, prop);
@@ -789,7 +789,7 @@ unittest
 		h.endIsotropic();
 		h.m_ant[0].imprint(ilevels[i]);
 	}
-	printToPng("std_hydrophone_0-17ms.png", ilevels, 0.0f, 90.0f);
+	printToPng("std_hydrophone_0-17ms_2km_target.png", ilevels, 0.0f, 90.0f);
 
 	// generate sound sample of std_propeller on 1km range
 	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
