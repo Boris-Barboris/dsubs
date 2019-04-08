@@ -45,10 +45,10 @@ final class ContactOverlayShapeCahe
 		m_onHoverRect = new RectangleShape(vec2f(22.0f, 22.0f), sfWhite);
 		m_onHoverRect.position = -vec2f(1, 1);
 		m_posDataMainShape = new RectangleShape(vec2f(5, 5), sfRed);
-		m_posDataOnHoverRect = new RectangleShape(vec2f(12.0f, 12.0f), sfWhite);
+		m_posDataOnHoverRect = new RectangleShape(vec2f(11.0f, 11.0f), sfWhite);
 		m_posDataOnHoverRect.position = -vec2f(1, 1);
 		m_velCircle = new CircleShape(TacticalContactElement.ZERO_SPD_PIXEL_MARGIN,
-			30, sfWhite, 3);
+			30, sfColor(255, 255, 255, 150), 6);
 		m_velDragLine = new LineShape(vec2d(0, 0), vec2d(0, 0), sfColor(137, 182, 255, 255), 4);
 		m_pastTrailLine = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(232, 244, 63, 100), 1);
@@ -1005,6 +1005,10 @@ final class TacticalContactElement: OverlayElementWithHover
 				{
 					m_pastTrailLine.setPoints(screenPos,
 						screenPos - velDelta.normalized * 1e4, true);
+					if (m_hovered)
+						m_pastTrailLine.color = sfColor(244, 126, 63, 100);
+					else
+						m_pastTrailLine.color = sfColor(232, 244, 63, 100);
 					m_drawPastTrail = true;
 				}
 				else
@@ -1104,9 +1108,9 @@ final class TacticalContactElement: OverlayElementWithHover
 			if (!m_dragging)
 			{
 				if (m_hovered)
-					m_velCircle.borderColor = sfRed;
+					m_velCircle.borderColor = sfColor(255, 0, 0, 150);
 				else
-					m_velCircle.borderColor = sfWhite;
+					m_velCircle.borderColor = sfColor(255, 255, 255, 150);
 				m_velCircle.render(wnd);
 			}
 			if (m_solution.velAvailable)
@@ -1310,7 +1314,7 @@ final class PositionDataTacticalElement: DataTacticalElement
 		super(owner, data);
 		m_mainShape = ctcOverlayCache.posDataMainShape;
 		m_onHoverRect = ctcOverlayCache.posDataOnHoverRect;
-		size = cast(vec2i) (m_onHoverRect.size + vec2f(2, 2));
+		size = cast(vec2i) (m_onHoverRect.size);
 	}
 
 	private
