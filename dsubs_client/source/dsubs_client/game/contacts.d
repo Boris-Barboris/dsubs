@@ -148,9 +148,11 @@ final class ClientContact
 	{
 		m_dataHash.remove(dataId);
 		if (m_sonarDispEl && m_sonarDispEl.data.id == dataId)
+		{
 			m_sonarDispEl.drop();
+			m_sonarDispEl = null;
+		}
 		m_tactDispEl.removeData(dataId);
-		m_sonarDispEl = null;
 	}
 }
 
