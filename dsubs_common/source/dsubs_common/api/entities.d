@@ -77,7 +77,8 @@ struct SubmarineTemplate
 	SonarTemplate sonar;
 }
 
-/// Weapons need to be configured before launch. This is a set of generally available parameters.
+/// Weapons need to be configured before launch. This is a set of available parameters.
+/// Course is always available.
 enum WeaponParamType: byte
 {
 	sensorType,		/// sensor type can be selected
@@ -87,21 +88,22 @@ enum WeaponParamType: byte
 	activationRange
 }
 
-/// Bit flag
-enum WeaponSensorType: byte
+enum WeaponSensorMode: byte
 {
-	none = 0,
-	active = 1,
-	passive = 2
+	none,
+	active,
+	passive,
+	activePassive	/// alternating active/passive search
 }
 
-struct WeaponParamDescSpeed
+/// Generic clamped float
+struct WeaponParamDescMinMax
 {
-	float minSpeed;
-	float maxSpeed;
+	float min;
+	float max;
 }
 
-/// Bit flag
+/// Bit flags
 enum WeaponSearchPattern: byte
 {
 	straight = 0,	/// straight running
@@ -111,15 +113,29 @@ enum WeaponSearchPattern: byte
 
 struct WeaponParamDescSearchPattern
 {
-	WeaponSearchPattern availablePatterns,
+	WeaponSearchPattern availablePatterns;
 	float snakeWidth;
 	float spiralStep;	/// each spiral loop radius is increased by this many meters
+}
+
+/// Tagged union of weapon parameter description
+struct WeaponParamDesc
+{
+	WeaponParamType type;
+	union
+	{
+		WeaponSensorMode sensorMode;
+		WeaponParamDescMinMax marchSpeed;
+		WeaponParamDescMinMax activeSpeed;
+		WeaponParamDescSearchPattern searchPattern;
+		WeaponParamDescMinMax activationRange;
+	}
 }
 
 /// Self-propelled weapon
 struct WeaponTemplate
 {
-	/// human-readable name
+	/// unique human-readable name
 	string name;
 
 	/// description to present to the player on prepare screen
@@ -130,6 +146,33 @@ struct WeaponTemplate
 
 	/// Approximate turning radius, useful for firing solution calculations
 	float turningRadius;
+
+	/// Available weapon parameters
+	WeaponParamDesc[] paramDescs;
+}
+
+/// Torpedo tube
+struct TorpedoTubeTemplate
+{
+	int id;			/// submarine-unique id of the tube
+	MountPoint mount;
+	/// submarine-unique id of torpedo room. Only weapons from this room can be loaded
+	/// into this tube.
+	int roomId;
+	/// set of weapon names that can be loaded into this tube
+	string[] allowedWeapons;
+}
+
+/// Torpedo storage
+struct TorpedoRoomTemplate
+{
+	int id;			/// submarine-unique id of the room
+	/// human-readable name of the room
+	string name;
+	/// set of weapon names that can be stored in this room
+	string[] allowedWeapons;
+	/// max number of torpedoes that can be stored in this room
+	int capacity;
 }
 
 /// Some rigid body kinematics at specific time

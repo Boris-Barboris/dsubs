@@ -45,6 +45,30 @@ immutable(ubyte)[] marshalMessage(MsgT)(immutable(MsgT)* msg)
 
 private:
 
+void getArrayMarshLen(ArrayT)(immutable ref ArrayT arr, ref int byteCount)
+{
+	static if (!isStaticArray!ArrayT)
+		byteCount += 4;		// we write element count
+	static if (isBasicType!(ArrayElementT!ArrayT))
+	{
+		byteCount += (arr.length * ArrayElementSize!ArrayT).to!int;
+	}
+	else static if (is(ArrayElementT!ArrayT == struct))
+	{
+		// array of structures
+		foreach (el; arr)
+			getStructMarshLen!(ArrayElementT!ArrayT)(el, byteCount);
+	}
+	else static if (isArray!(ArrayElementT!ArrayT))
+	{
+		// array of structures
+		foreach (el; arr)
+			getArrayMarshLen!(ArrayElementT!ArrayT)(el, byteCount);
+	}
+	else
+		static assert(0, "Unable to marshal " ~ ArrayT.stringof);
+}
+
 void getStructMarshLen(StructT)(immutable ref StructT ptr, ref int byteCount)
 {
 	foreach (field; FieldNames!StructT)
@@ -57,33 +81,53 @@ void getStructMarshLen(StructT)(immutable ref StructT ptr, ref int byteCount)
 		}
 		else static if (isArray!MemberT)
 		{
-			static if (!isStaticArray!MemberT)
-				byteCount += 4;		// we write element count
-			static if (HasUda!(StructT, field, MaxLenAttr))
+			static if (!isStaticArray!MemberT && HasUda!(StructT, field, MaxLenAttr))
 			{
-				// validate length
+				// validate length of sender side
 				int maxLen = GetUda!(StructT, field, MaxLenAttr).maxLength;
 				int actualLength = __traits(getMember, ptr, field).length.to!int;
 				if (actualLength > maxLen)
 					throw new MaxLenExceeded(actualLength, maxLen);
 			}
-			static if (isBasicType!(ArrayElementT!MemberT))
-				byteCount += (__traits(getMember, ptr, field).length *
-					ArrayElementSize!MemberT).to!int;
-			else static if (is(ArrayElementT!MemberT == struct))
-			{
-				// array of structures
-				foreach (el; __traits(getMember, ptr, field))
-					getStructMarshLen!(ArrayElementT!MemberT)(el, byteCount);
-			}
-			else
-				static assert(0, "Unable to marshal " ~ MemberT.stringof);
+			getArrayMarshLen!MemberT(__traits(getMember, ptr, field), byteCount);
 		}
 		else static if (is(MemberT == struct))
 			getStructMarshLen!(MemberT)(__traits(getMember, ptr, field), byteCount);
 		else
 			static assert(0, "Unable to marshal " ~ MemberT.stringof);
 	}
+}
+
+void marshalArray(ArrayT)(immutable ref ArrayT arr, ref ubyte[] outBuf)
+{
+	static if (!isStaticArray!ArrayT)
+	{
+		*(cast(int*) outBuf.ptr) = arr.length.to!int;
+		outBuf = outBuf[4 .. $];
+	}
+	static if (isBasicType!(ArrayElementT!ArrayT))
+	{
+		foreach (el; arr)
+		{
+			// Unqual because of immutable arrays (strings)
+			*(cast(Unqual!(ArrayElementT!ArrayT) *) outBuf.ptr) = el;
+			outBuf = outBuf[ArrayElementSize!ArrayT .. $];
+		}
+	}
+	else static if (is(ArrayElementT!ArrayT == struct))
+	{
+		// array of structures
+		foreach (el; arr)
+			marshalStruct!(ArrayElementT!ArrayT)(el, outBuf);
+	}
+	else static if (isArray!(ArrayElementT!ArrayT))
+	{
+		// array of arrays
+		foreach (el; arr)
+			marshalArray!(ArrayElementT!ArrayT)(el, outBuf);
+	}
+	else
+		static assert(0, "Unable to marshal " ~ ArrayT.stringof);
 }
 
 void marshalStruct(StructT)(immutable ref StructT ptr, ref ubyte[] outBuf)
@@ -98,30 +142,7 @@ void marshalStruct(StructT)(immutable ref StructT ptr, ref ubyte[] outBuf)
 			outBuf = outBuf[MemberT.sizeof .. $];
 		}
 		else static if (isArray!MemberT)
-		{
-			static if (!isStaticArray!MemberT)
-			{
-				*(cast(int*) outBuf.ptr) = __traits(getMember, ptr, field).length.to!int;
-				outBuf = outBuf[4 .. $];
-			}
-			static if (isBasicType!(ArrayElementT!MemberT))
-			{
-				foreach (el; __traits(getMember, ptr, field))
-				{
-					// Unqual because of immutable arrays (strings)
-					*(cast(Unqual!(ArrayElementT!MemberT) *) outBuf.ptr) = el;
-					outBuf = outBuf[ArrayElementSize!MemberT .. $];
-				}
-			}
-			else static if (is(ArrayElementT!MemberT == struct))
-			{
-				// array of structures
-				foreach (el; __traits(getMember, ptr, field))
-					marshalStruct!(ArrayElementT!MemberT)(el, outBuf);
-			}
-			else
-				static assert(0, "Unable to marshal " ~ MemberT.stringof);
-		}
+			marshalArray!(MemberT)(__traits(getMember, ptr, field), outBuf);
 		else static if (is(MemberT == struct))
 			marshalStruct!(MemberT)(__traits(getMember, ptr, field), outBuf);
 		else
@@ -130,6 +151,75 @@ void marshalStruct(StructT)(immutable ref StructT ptr, ref ubyte[] outBuf)
 }
 
 static assert (isStaticArray!(float[2]));
+
+
+void demarshalArray(ArrayT)(ref ArrayT arr, ref const(ubyte)[] from, int maxLen = int.max)
+{
+	int arrLen = 0;
+	static if (!isStaticArray!ArrayT)
+	{
+		enforce!ProtocolException(from.length >= 4);
+		arrLen = *(cast(int*) from.ptr);
+		from = from[4 .. $];
+		if (arrLen < 0)
+			throw new ProtocolException("Negative array length");
+		if (arrLen > maxLen)
+			throw new MaxLenExceeded(arrLen, maxLen);
+		arr.reserve(arrLen);
+	}
+	else
+		arrLen = arr.length.to!int;
+	static if (isBasicType!(ArrayElementT!ArrayT))
+	{
+		enforce!ProtocolException(from.length >= ArrayElementSize!ArrayT * arrLen);
+		for (int i = 0; i < arrLen; i++)
+		{
+			static if (!isStaticArray!ArrayT)
+			{
+				arr ~= *(cast(ArrayElementT!ArrayT *) from.ptr);
+			}
+			else
+			{
+				arr[i] = *(cast(ArrayElementT!ArrayT *) from.ptr);
+			}
+			static if (isFloatingPoint!(ArrayElementT!ArrayT))
+			{
+				if (isNaN(arr[i]))
+					throw new ProtocolException("NaN poisoning");
+				if (isInfinity(arr[i]))
+					throw new ProtocolException("Infinity poisoning");
+			}
+			from = from[ArrayElementSize!ArrayT .. $];
+		}
+	}
+	else static if (is(ArrayElementT!ArrayT == struct))
+	{
+		for (int i = 0; i < arrLen; i++)
+		{
+			ArrayElementT!ArrayT newEl;
+			demarshalStruct!(ArrayElementT!ArrayT)(newEl, from);
+			static if (!isStaticArray!ArrayT)
+				arr ~= newEl;
+			else
+				arr[i] = newEl;
+		}
+	}
+	else static if (isArray!(ArrayElementT!ArrayT))
+	{
+		for (int i = 0; i < arrLen; i++)
+		{
+			ArrayElementT!ArrayT newEl;
+			demarshalArray!(ArrayElementT!ArrayT)(newEl, from);
+			static if (!isStaticArray!ArrayT)
+				arr ~= newEl;
+			else
+				arr[i] = newEl;
+		}
+	}
+	else
+		static assert(0, "Unable to demarshal " ~ ArrayT.stringof);
+}
+
 
 void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 {
@@ -152,63 +242,10 @@ void demarshalStruct(StructT)(ref StructT ptr, ref const(ubyte)[] from)
 		}
 		else static if (isArray!MemberT)
 		{
-			int arrLen = 0;
-			static if (!isStaticArray!MemberT)
-			{
-				arrLen = *(cast(int*) from.ptr);
-				enforce!ProtocolException(from.length >= 4);
-				from = from[4 .. $];
-				if (arrLen < 0)
-					throw new ProtocolException("Negative array length");
-				static if (HasUda!(StructT, field, MaxLenAttr))
-				{
-					int maxLen = GetUda!(StructT, field, MaxLenAttr).maxLength;
-					if (arrLen > maxLen)
-						throw new MaxLenExceeded(arrLen, maxLen);
-				}
-				__traits(getMember, ptr, field).reserve(arrLen);
-			}
-			else
-				arrLen = __traits(getMember, ptr, field).length.to!int;
-			static if (isBasicType!(ArrayElementT!MemberT))
-			{
-				enforce!ProtocolException(from.length >= ArrayElementSize!MemberT * arrLen);
-				for (int i = 0; i < arrLen; i++)
-				{
-					static if (!isStaticArray!MemberT)
-					{
-						__traits(getMember, ptr, field) ~=
-							*(cast(ArrayElementT!MemberT *) from.ptr);
-					}
-					else
-					{
-						__traits(getMember, ptr, field)[i] =
-							*(cast(ArrayElementT!MemberT *) from.ptr);
-					}
-					static if (isFloatingPoint!(ArrayElementT!MemberT))
-					{
-						if (isNaN(__traits(getMember, ptr, field)[i]))
-							throw new ProtocolException("NaN poisoning");
-						if (isInfinity(__traits(getMember, ptr, field)[i]))
-							throw new ProtocolException("Infinity poisoning");
-					}
-					from = from[ArrayElementSize!MemberT .. $];
-				}
-			}
-			else static if (is(ArrayElementT!MemberT == struct))
-			{
-				for (int i = 0; i < arrLen; i++)
-				{
-					ArrayElementT!MemberT newEl;
-					demarshalStruct!(ArrayElementT!MemberT)(newEl, from);
-					static if (!isStaticArray!MemberT)
-						__traits(getMember, ptr, field) ~= newEl;
-					else
-						__traits(getMember, ptr, field)[i] = newEl;
-				}
-			}
-			else
-				static assert(0, "Unable to demarshal " ~ MemberT.stringof);
+			int maxLen = int.max;
+			static if (!isStaticArray!MemberT && HasUda!(StructT, field, MaxLenAttr))
+				maxLen = GetUda!(StructT, field, MaxLenAttr).maxLength;
+			demarshalArray!(MemberT)(__traits(getMember, ptr, field), from, maxLen);
 		}
 		else static if (is(MemberT == struct))
 			demarshalStruct!(MemberT)(__traits(getMember, ptr, field), from);
@@ -224,12 +261,14 @@ unittest
 		__gshared const int g_marshIdx = 3;
 		@MaxLenAttr(64) string username;
 		@MaxLenAttr(64) string password;
+		string[] arrayOfStrings;
 	}
 
-	immutable TetsMsg req = TetsMsg("uname", "password");
+	immutable TetsMsg req = TetsMsg("uname", "password", ["asdf", "foobar"]);
 	immutable(ubyte)[] buf = marshalMessage(&req);
 	TetsMsg res;
 	demarshalMessage(&res, buf[8 .. $]);
 	assert(res.username == req.username);
 	assert(res.password == req.password);
+	assert(res.arrayOfStrings == req.arrayOfStrings);
 }
