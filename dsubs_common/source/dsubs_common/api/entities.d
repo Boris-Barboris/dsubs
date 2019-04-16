@@ -137,6 +137,22 @@ struct WeaponParamDesc
 	}
 }
 
+/// Tagged union of weapon parameter values, required upon weapon launch.
+struct WeaponParamValue
+{
+	WeaponParamType type;
+	union
+	{
+		float course;
+		WeaponSensorMode sensorMode;
+		float marchSpeed;
+		float activeSpeed;
+		WeaponSearchPattern searchPattern;
+		float activationRange;
+		float activeCourse;
+	}
+}
+
 /// Self-propelled weapon
 struct WeaponTemplate
 {
