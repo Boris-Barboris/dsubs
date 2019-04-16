@@ -78,57 +78,62 @@ struct SubmarineTemplate
 }
 
 /// Weapons need to be configured before launch. This is a set of available parameters.
-/// Course is always available.
-enum WeaponParamType: byte
+/// Bit flags.
+enum WeaponParamType: ubyte
 {
-	sensorType,		/// sensor type can be selected
-	marchSpeed, 	/// speed before activation
-	activeSpeed,	/// speed after activation
-	searchPattern,
-	activationRange
+	none = 0,			/// no weapon params available
+	course = 1,			/// march course.
+	sensorMode = 2,
+	marchSpeed = 4, 	/// speed before activation
+	activeSpeed = 8,	/// speed after activation
+	searchPattern = 16,
+	activationRange = 32,
+	activeCourse = 64	/// main search direction after activation
 }
 
-enum WeaponSensorMode: byte
+/// Available weapon sensor modes. Bit flag.
+enum WeaponSensorMode: ubyte
 {
-	none,
-	active,
-	passive,
-	activePassive	/// alternating active/passive search
+	none = 0,
+	active = 1,
+	passive = 2,
+	activePassive = 4	/// alternating active/passive search
 }
 
 /// Generic clamped float
-struct WeaponParamDescMinMax
+struct MinMax
 {
-	float min;
-	float max;
+	float min = 0.0f;
+	float max = 0.0f;
 }
 
 /// Bit flags
-enum WeaponSearchPattern: byte
+enum WeaponSearchPattern: ubyte
 {
-	straight = 0,	/// straight running
-	snake = 1,		/// snake
-	spiral = 2		/// spiral
+	straight = 0,
+	snake = 1,
+	spiral = 2
 }
 
-struct WeaponParamDescSearchPattern
+/// Description of search patterns, hard-coded for a weapon
+struct WeaponParamDescSearchPatterns
 {
 	WeaponSearchPattern availablePatterns;
-	float snakeWidth;
-	float spiralStep;	/// each spiral loop radius is increased by this many meters
+	float snakeWidth = 0.0f;
+	float spiralStep = 0.0f;	/// each spiral loop radius is increased by this many meters
 }
 
-/// Tagged union of weapon parameter description
+/// Tagged union of weapon parameter descriptions
 struct WeaponParamDesc
 {
 	WeaponParamType type;
 	union
 	{
-		WeaponSensorMode sensorMode;
-		WeaponParamDescMinMax marchSpeed;
-		WeaponParamDescMinMax activeSpeed;
-		WeaponParamDescSearchPattern searchPattern;
-		WeaponParamDescMinMax activationRange;
+		MinMax marchSpeedRange;
+		MinMax activeSpeedRange;
+		MinMax activationRange;
+		WeaponSensorMode sensorModes;
+		WeaponParamDescSearchPatterns searchPatterns;
 	}
 }
 
@@ -147,20 +152,32 @@ struct WeaponTemplate
 	/// Approximate turning radius, useful for firing solution calculations
 	float turningRadius;
 
-	/// Available weapon parameters
+	/// Set of available launch parameters
+	WeaponParamType availableParams;
+
+	/// Detailed descriptions of available launch parameters, if applicable
 	WeaponParamDesc[] paramDescs;
+}
+
+struct WeaponSet
+{
+	int id;		/// submarine-unique id
+	/// set of weapon names that can be loaded into the tubes wich are bound
+	/// to this set.
+	string[] weaponNames;
 }
 
 /// Torpedo tube
 struct TorpedoTubeTemplate
 {
-	int id;			/// submarine-unique id of the tube
+	int id; 	/// submarine-unique id of the tube
 	MountPoint mount;
 	/// submarine-unique id of torpedo room. Only weapons from this room can be loaded
 	/// into this tube.
 	int roomId;
-	/// set of weapon names that can be loaded into this tube
-	string[] allowedWeapons;
+	/// submarine-unique id of allowed weapon set. There may be more restrictions
+	/// that are bound to the torpedo room.
+	int allowedWeaponSetId;
 }
 
 /// Torpedo storage
@@ -169,9 +186,9 @@ struct TorpedoRoomTemplate
 	int id;			/// submarine-unique id of the room
 	/// human-readable name of the room
 	string name;
-	/// set of weapon names that can be stored in this room
-	string[] allowedWeapons;
-	/// max number of torpedoes that can be stored in this room
+	/// id of a set of weapons that can be stored in this room
+	int allowedWeaponSetId;
+	/// max number of weapons that can be stored in this room
 	int capacity;
 }
 
