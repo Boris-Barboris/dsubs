@@ -107,7 +107,7 @@ final class Player
 	}
 
 	/// force close the connection
-	bool closeConnection()
+	private bool closeConnection()
 	{
 		PlayerConnection con = m_connection;
 		if (con)
