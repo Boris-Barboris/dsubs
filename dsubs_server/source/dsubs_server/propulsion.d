@@ -39,6 +39,8 @@ abstract class Propulsor: IForce
 
 	/// call to register stuff in component managers (sound etc...)
 	void bootstrap(RigidBody vesselRb);
+	/// call to unregister from component managers
+	void shutdown();
 }
 
 /// simple propulsor with linear thrust law
@@ -88,6 +90,11 @@ final class BasicPropulsor: Propulsor
 		};
 		Globals.acous.registerSource(m_sound);
 	}
+
+	override void shutdown()
+	{
+		Globals.acous.unregisterSource(m_sound);
+	}
 }
 
 
@@ -115,11 +122,6 @@ final class PropulsorFactory
 		res.shaftRotFreq = shaftRotFreq;
 		res.m_sound = new PropellerSound(res.transform, soundPrototype);
 		return res;
-	}
-
-	immutable(PropulsorTemplate)* getTemplate() const
-	{
-		return &tmpl;
 	}
 }
 
@@ -172,4 +174,17 @@ final class BasicRudder: Rudder
 			targetRudderPos = clamp(Kp * error + Kd * errorDeriv, -1.0f, 1.0f);
 		rudderPos = cmove(rudderPos, targetRudderPos, posChangeSpeed, dt);
 	}
+}
+
+
+/// Given a hydrodynamics force model and basic propulsor, calculate flank speed
+double maxSpeed(const HydroForceModel hfm, const BasicPropulsor bp)
+{
+	double maxT = bp.posThrustK;
+	// maxT = Cd0 * v + Cd1 * v * v
+	// Cd1 * v * v + Cd0 * v - maxT = 0
+	double D = pow(hfm.Cd0, 2) + 4 * hfm.Cd1 * maxT;
+	double vmax = (-hfm.Cd0 + sqrt(D)) / (2 * hfm.Cd1);
+	assert(!isNaN(vmax));
+	return vmax;
 }

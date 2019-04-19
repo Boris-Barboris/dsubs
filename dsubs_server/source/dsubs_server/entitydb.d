@@ -44,8 +44,8 @@ final class EntityDb
 		buildPropulsorTemplates();
 		buildSubmarineTemplates();
 		immutable EntityDbRes enititydb = immutable EntityDbRes(
-			g_propulsors.values.map!(a => *a.getTemplate()).array,
-			g_submarines.values.map!(a => *a.getTemplate()).array,
+			g_propulsors.values.map!(a => a.tmpl).array,
+			g_submarines.values.map!(a => a.tmpl).array,
 		);
 		marshalledCommonEntityDb = BackendProtocol.marshal(enititydb);
 		auto sha256 = new SHA256Digest();

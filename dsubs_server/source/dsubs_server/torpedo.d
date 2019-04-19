@@ -31,5 +31,25 @@ final class Torpedo
 		// optional modules
 		Hydrophone m_hydrophone;
 		ActiveSonar m_sonar;
+		const string m_shooter;
+	}
+
+	final @property Transform2D transform() { return m_transform; }
+	@property RigidBody rigidBody() { return m_rigidBody; }
+	@property inout(Propulsor) propulsor() inout { return m_propulsor; }
+	@property inout(Rudder) rudder() inout { return m_rudder; }
+	@property string prototypeName() const { return m_prototypeName; }
+	@property Hydrophone hydrophone() { return m_hydrophone; }
+	@property ActiveSonar sonar() { return m_sonar; }
+
+	this(const string shooter, string prototypeName)
+	{
+		m_shooter = shooter;
+		m_prototypeName = prototypeName;
+	}
+
+	private double calcMoi() const
+	{
+		return m_moiK * m_rigidBody.mass * m_hullLength * m_hullLength / 12.0;
 	}
 }

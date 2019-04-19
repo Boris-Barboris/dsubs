@@ -61,7 +61,7 @@ final class Player
 	@property string username() const { return m_username; }
 	@property Submarine submarine() { return m_submarine; }
 
-	/// Set submarine to null. simMut should be held.
+	/// Set submarine to null. simMut must be held.
 	bool unsetSubmarine(Submarine assumedOldSub)
 	{
 		if (m_submarine is assumedOldSub)
