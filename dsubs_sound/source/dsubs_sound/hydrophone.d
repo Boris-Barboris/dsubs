@@ -137,6 +137,16 @@ final class Hydrophone
 		AsyncEvent m_pcbEvt;
 	}
 
+	/// release underlying opencl buffers
+	void release() @nothrow @nogc
+	{
+		m_baseSeaNoiseBuf.release();
+		m_baseFlowNoiseStartBuf.release();
+		m_baseFlowNoiseEndBuf.release();
+		m_prevTds.release();
+		m_curTds.release();
+	}
+
 	/// save current position of transform to m_prevPos
 	private void savePrevPos()
 	{

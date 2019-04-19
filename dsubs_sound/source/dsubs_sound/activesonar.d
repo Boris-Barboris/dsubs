@@ -442,6 +442,13 @@ final class ActiveSonar
 		PreparedPingTds* m_refPingTds;
 	}
 
+	/// release underlying opencl buffers
+	void release() @nothrow @nogc
+	{
+		m_omniImage.release();
+		m_nextSliceImage.release();
+	}
+
 	/// invoked by simulator before kinematic update happens
 	Event!(void delegate()) onPreSimulation;
 	/// invoked by simulator right after kinematic update happens

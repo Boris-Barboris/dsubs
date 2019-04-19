@@ -585,7 +585,10 @@ final class CommandQueue
 	private void release() @nogc nothrow
 	{
 		if (m_q !is cl_command_queue.init)
+		{
 			clReleaseCommandQueue(m_q);
+			m_q = cl_command_queue.init;
+		}
 	}
 
 	AsyncEvent insertMarker()
@@ -657,16 +660,19 @@ final class DsubsSoundOpenclCtx
 
 	~this()
 	{
-		release();
+		release(false);
 	}
 
-	private void release() nothrow @nogc
+	private void release(bool releaseQueues = true) nothrow @nogc
 	{
 		if (!m_released)
 		{
 			clReleaseContext(m_ctx);
-			foreach (cq; m_queues)
-				cq.release();
+			if (releaseQueues)
+			{
+				foreach (cq; m_queues)
+					cq.release();
+			}
 			m_released = true;
 		}
 	}

@@ -9,7 +9,6 @@ import dsubs_sound.hydrophone;
 import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.player: Player;
-import dsubs_server.propulsion;
 
 
 /// Server-side model of a submarine
@@ -63,8 +62,12 @@ final class Submarine: Vessel
 	{
 		super.shutdown();
 		foreach (h; m_hydrophones)
+		{
 			Globals.acous.unregisterHydrophone(h);
+			h.release();
+		}
 		Globals.acous.unregisterSonar(m_sonar);
+		m_sonar.release();
 		if (m_owner)
 		{
 			m_owner.unsetSubmarine(this);

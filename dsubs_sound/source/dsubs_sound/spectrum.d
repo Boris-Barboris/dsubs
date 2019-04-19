@@ -40,6 +40,8 @@ struct Tds
 
 	private Buffer buf;
 
+	void release() @nogc @nothrow { buf.release(); }
+
 	pragma(inline)
 	package @property auto mem() const { return buf.mem(); }
 
@@ -104,6 +106,8 @@ struct VarTds
 	@disable this(this);
 
 	private Buffer buf;
+
+	void release() @nogc @nothrow { buf.release(); }
 
 	@property size_t length() const { return buf.size / float.sizeof; }
 
@@ -203,6 +207,8 @@ struct EnergySpectrum(SpectrumType stype)
 	}
 
 	private Buffer buf;
+
+	void release() @nogc @nothrow { buf.release(); }
 
 	pragma(inline)
 	package @property auto mem() const { return buf.mem(); }
