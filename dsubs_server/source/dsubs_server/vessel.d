@@ -29,6 +29,7 @@ class Vessel
 	{
 		@property Transform2D transform() { return m_transform; }
 		@property RigidBody rigidBody() { return m_rigidBody; }
+		/// Propulsor is assigned before bootstrap, during spawn
 		@property void propulsor(Propulsor rhs) { m_propulsor = rhs; }
 		@property inout(Propulsor) propulsor() inout { return m_propulsor; }
 		@property inout(Rudder) rudder() inout { return m_rudder; }

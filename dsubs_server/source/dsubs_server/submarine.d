@@ -109,7 +109,7 @@ final class SubmarineFactory: VesselFactory
 		tmpl = t;
 	}
 
-	protected void bootstrap(Submarine res) const
+	private void bootstrap(Submarine res) const
 	{
 		super.bootstrap(res);
 		// hydrophones

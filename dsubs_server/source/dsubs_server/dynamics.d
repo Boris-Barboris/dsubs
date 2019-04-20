@@ -4,6 +4,7 @@ import std.algorithm;
 
 import dsubs_common.containers.array;
 import dsubs_common.math;
+import dsubs_common.event;
 
 import dsubs_server.common;
 
@@ -193,6 +194,9 @@ abstract class PhysicalEntity
 
 	/// integrate this entity. Implies that the problem is embarassingly-parallel.
 	void integrate(float dt);
+
+	Event!(void delegate(float dt)) onPreIntegrate;
+	Event!(void delegate(float dt)) onPostIntegrate;
 }
 
 
@@ -226,10 +230,14 @@ final class PhysicalEnv
 		long stepCount = lrint(fwd / maxDt);
 		assert(stepCount > 0);
 		float dt = fwd / stepCount;
+		foreach (i, ref entity; Globals.taskPool.parallel(m_entities, 8))
+			entity.onPreIntegrate(dt);
 		for (int i = 0; i < stepCount; i++)
 		{
 			foreach (i, ref entity; Globals.taskPool.parallel(m_entities, 8))
 				entity.integrate(dt);
 		}
+		foreach (i, ref entity; Globals.taskPool.parallel(m_entities, 8))
+			entity.onPostIntegrate(dt);
 	}
 }
