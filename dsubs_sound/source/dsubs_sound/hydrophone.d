@@ -138,7 +138,7 @@ final class Hydrophone
 	}
 
 	/// release underlying opencl buffers
-	void release() @nothrow @nogc
+	void release() nothrow @nogc
 	{
 		m_baseSeaNoiseBuf.release();
 		m_baseFlowNoiseStartBuf.release();

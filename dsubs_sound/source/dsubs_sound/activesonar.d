@@ -443,7 +443,7 @@ final class ActiveSonar
 	}
 
 	/// release underlying opencl buffers
-	void release() @nothrow @nogc
+	void release() nothrow @nogc
 	{
 		m_omniImage.release();
 		m_nextSliceImage.release();
