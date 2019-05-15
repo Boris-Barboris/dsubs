@@ -407,9 +407,9 @@ final class Hydrophone
 	{
 		SourcePrecalc prec = precalcForSource(s);
 		bool isVisible = prec.omniFactorStart > 0.0f || prec.omniFactorEnd > 0.0f;
-		foreach (int i, a; m_ant)
+		foreach (i, a; m_ant)
 		{
-			isVisible |= a.precalcForAntennae(i, prec);
+			isVisible |= a.precalcForAntennae(i.to!int, prec);
 		}
 		if (!isVisible)
 			return;
@@ -441,8 +441,8 @@ final class Hydrophone
 			if (e != AsyncEvent.init)
 				e.waitFor();
 		}
-		foreach (int i, a; m_ant)
-			a.applyBuiltIntensity(i, m_sourceQueue.front);
+		foreach (i, a; m_ant)
+			a.applyBuiltIntensity(i.to!int, m_sourceQueue.front);
 		m_sourceQueue.popFront();
 	}
 

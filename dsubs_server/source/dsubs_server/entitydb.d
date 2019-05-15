@@ -61,8 +61,8 @@ final class EntityDb
 		enforce(sp !is null, "Unknown submarine");
 		PropulsorFactory* pp = req.propulsorName in g_propulsors;
 		enforce(pp !is null, "Unknown propulsor");
-		Submarine sub = sp.build(p);
-		sub.propulsor = pp.build();
+		Propulsor prop = pp.build();
+		Submarine sub = sp.build(p, prop);
 		trace("built new submarine from request ", req);
 		return sub;
 	}

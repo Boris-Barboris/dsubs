@@ -11,6 +11,7 @@ import dsubs_client.gui.div;
 import dsubs_client.gui.button;
 import dsubs_client.gui.label;
 import dsubs_client.gui.manager;
+import dsubs_client.input.router: IInputReceiver;
 
 
 /// Context menu, tipically invoked by right click. Can be nested.

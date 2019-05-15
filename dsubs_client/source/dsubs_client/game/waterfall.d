@@ -1,5 +1,7 @@
 module dsubs_client.game.waterfall;
 
+import std.algorithm.comparison: min, max;
+
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
 

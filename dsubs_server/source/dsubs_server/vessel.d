@@ -30,7 +30,11 @@ class Vessel
 		@property Transform2D transform() { return m_transform; }
 		@property RigidBody rigidBody() { return m_rigidBody; }
 		/// Propulsor is assigned before bootstrap, during spawn
-		@property void propulsor(Propulsor rhs) { m_propulsor = rhs; }
+		@property void propulsor(Propulsor rhs)
+		{
+			m_propulsor = rhs;
+			m_transform.addChild(rhs.transform);
+		}
 		@property inout(Propulsor) propulsor() inout { return m_propulsor; }
 		@property inout(Rudder) rudder() inout { return m_rudder; }
 		@property string prototypeName() const { return m_prototypeName; }
@@ -48,27 +52,16 @@ class Vessel
 		return m_moiK * m_rigidBody.mass * m_hullLength * m_hullLength / 12.0;
 	}
 
-	/// call this once after assigning all modules and initial values,
-	/// to entangle all internal connections and register the vessel in global systems
-	void bootstrap()
+	/// register the vessel in global component systems
+	void register()
 	{
-		assert(m_rudder !is null);
-		assert(m_propulsor !is null);
-		m_rigidBody.forces = [cast(IForce) m_rudder, cast(IForce) m_propulsor];
-		m_transform.addChild(m_propulsor.transform);
-		// add module masses to the hull
-		m_rigidBody.mass += m_propulsor.mass;
-		m_propulsor.bootstrap(m_rigidBody);
-		// calculate final MOI
-		m_rigidBody.moi = calcMoi();
-		assert(!isNaN(m_rigidBody.mass));
-		assert(!isNaN(m_rigidBody.moi));
-		// register entities
 		Globals.phys.registerEntity(m_rigidBody);
 		Globals.acous.registerReflector(m_reflector);
+		m_propulsor.register();
 	}
 
-	/// call this when removing this submarine from the physical world
+	/// call this when removing this submarine from the physical world to
+	/// unregister components and dispose of resources
 	void shutdown()
 	{
 		Globals.acous.unregisterReflector(m_reflector);
@@ -96,6 +89,7 @@ class VesselFactory
 		this.templateName = templateName;
 	}
 
+	/// All internal binding and preparation of vessel components
 	protected final void bootstrap(Vessel res) const
 	{
 		res.m_moiK = moiK;
@@ -116,6 +110,17 @@ class VesselFactory
 		res.m_rudder = brudder;
 		// reflector
 		res.m_reflector = new Reflector(res.transform, reflprot);
+		// rudder and propulsor
+		assert(res.m_rudder !is null);
+		assert(res.m_propulsor !is null);
+		res.m_rigidBody.forces = [cast(IForce) res.m_rudder, cast(IForce) res.m_propulsor];
+		// add module masses to the hull
+		res.m_rigidBody.mass += res.m_propulsor.mass;
+		// calculate final MOI
+		res.m_rigidBody.moi = res.calcMoi();
+		res.m_propulsor.bootstrap(res.m_rigidBody);
+		assert(!isNaN(res.m_rigidBody.mass));
+		assert(!isNaN(res.m_rigidBody.moi));
 	}
 
 	final Vessel build() const

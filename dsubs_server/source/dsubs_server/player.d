@@ -166,13 +166,13 @@ final class Player
 				s = Globals.entityDb.buildSubFromLoadout(req, this);
 				generateShift();
 				randomizePosition(s);
-				s.bootstrap();
 				m_submarine = s;
 				foreach (h; s.hydrophones)
 				{
 					h.active = true;
 					h.listenDir = -coordRot;
 				}
+				s.register();
 				return getReconnectState();
 			}
 		}
@@ -252,23 +252,23 @@ final class Player
 		{
 			con.sendMessage(immutable SubKinematicRes(genSubSnapshot()));
 			immutable(HydrophoneData)[] hdata;
-			foreach (int i, const h; s.hydrophones)
+			foreach (i, const h; s.hydrophones)
 			{
 				HydrophoneData hd;
-				hd.hydrophoneIdx = i;
+				hd.hydrophoneIdx = i.to!int;
 				for (int j = 0; j < h.antennaCount; j++)
 					hd.antennaes ~= AntennaeData(j, h.getBroadbandData(j));
 				hdata ~= cast(immutable) hd;
 			}
 			immutable(HydrophoneAudio)[] haudio;
-			foreach (int i, h; s.hydrophones)
+			foreach (i, h; s.hydrophones)
 			{
 				if (h.listenDirValid)
 				{
 					int srate;
 					auto samples = h.pcb;
 					trace("samples start: ", samples[0..5], " end: ", samples[$-5..$]);
-					haudio ~= immutable HydrophoneAudio(i, h.listenDir + coordRot,
+					haudio ~= immutable HydrophoneAudio(i.to!int, h.listenDir + coordRot,
 						samples, samples.length.to!int);
 				}
 			}

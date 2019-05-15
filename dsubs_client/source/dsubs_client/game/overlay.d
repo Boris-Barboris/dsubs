@@ -16,6 +16,7 @@ import dsubs_client.core.window;
 import dsubs_client.render.shapes;
 import dsubs_client.render.worldmanager;
 import dsubs_client.math.transform;
+import dsubs_client.input.router: IInputReceiver;
 import dsubs_client.gui;
 import dsubs_client.game;
 import dsubs_client.game.waterfall;

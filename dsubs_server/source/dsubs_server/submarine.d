@@ -8,6 +8,7 @@ import dsubs_sound.hydrophone;
 
 import dsubs_server.common;
 import dsubs_server.vessel;
+import dsubs_server.propulsion: Propulsor;
 import dsubs_server.player: Player;
 
 
@@ -35,26 +36,11 @@ final class Submarine: Vessel
 		m_spawnId = uniform(0, int.max);
 	}
 
-	override void bootstrap()
+	override void register()
 	{
-		super.bootstrap();
+		super.register();
 		foreach (h; m_hydrophones)
-		{
-			h.onPreSimulation += () { h.ktsStart = m_rigidBody.kinet.progradeSpeed.mps2kts; };
-			h.onPostSimulation += () { h.ktsEnd = m_rigidBody.kinet.progradeSpeed.mps2kts; };
 			Globals.acous.registerHydrophone(h);
-		}
-		// active sonar stuff
-		m_sonar.onPreSimulation += ()
-			{
-				m_sonar.angVelStart = m_rigidBody.kinet.angVel;
-				m_sonar.ktsStart = m_rigidBody.kinet.progradeSpeed.mps2kts;
-			};
-		m_sonar.onPostSimulation += ()
-			{
-				m_sonar.angVelEnd = m_rigidBody.kinet.angVel;
-				m_sonar.ktsEnd = m_rigidBody.kinet.progradeSpeed.mps2kts;
-			};
 		Globals.acous.registerSonar(m_sonar);
 	}
 
@@ -112,6 +98,10 @@ final class SubmarineFactory: VesselFactory
 	private void bootstrap(Submarine res) const
 	{
 		super.bootstrap(res);
+		// propulsor shift according to first mount
+		assert(tmpl.propulsionMounts.length == 1);
+		res.propulsor.transform.position = tmpl.propulsionMounts[0].mountCenter.tod;
+		res.propulsor.transform.rotation = tmpl.propulsionMounts[0].rotation;
 		// hydrophones
 		foreach (i, ref hp; hprots)
 		{
@@ -119,7 +109,10 @@ final class SubmarineFactory: VesselFactory
 			t.position = tmpl.hydrophones[i].mount.mountCenter.tod;
 			t.rotation = tmpl.hydrophones[i].mount.rotation;
 			res.transform.addChild(t);
-			res.m_hydrophones ~= new Hydrophone(Globals.sctx.queue(0), t, hp);
+			Hydrophone h = new Hydrophone(Globals.sctx.queue(0), t, hp);
+			res.m_hydrophones ~= h;
+			h.onPreSimulation += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+			h.onPostSimulation += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
 		}
 		// active sonar
 		{
@@ -128,12 +121,23 @@ final class SubmarineFactory: VesselFactory
 			t.rotation = tmpl.sonar.mount.rotation;
 			res.transform.addChild(t);
 			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, asprot);
+			res.m_sonar.onPreSimulation += ()
+			{
+				res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;
+				res.m_sonar.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts;
+			};
+			res.m_sonar.onPostSimulation += ()
+			{
+				res.m_sonar.angVelEnd = res.rigidBody.kinet.angVel;
+				res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;
+			};
 		}
 	}
 
-	Submarine build(Player p) const
+	Submarine build(Player p, Propulsor prop) const
 	{
 		Submarine res = new Submarine(p, tmpl.name);
+		res.propulsor = prop;
 		bootstrap(res);
 		return res;
 	}

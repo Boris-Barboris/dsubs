@@ -37,9 +37,10 @@ abstract class Propulsor: IForce
 
 	float targetThrottle = 0.0f;
 
-	/// call to register stuff in component managers (sound etc...)
 	void bootstrap(RigidBody vesselRb);
-	/// call to unregister from component managers
+	/// call to register stuff in component managers (sound)
+	void register();
+	/// call to unregister from component managers and dispose of resources
 	void shutdown();
 }
 
@@ -88,6 +89,10 @@ final class BasicPropulsor: Propulsor
 		{
 			m_sound.postUpdate(m_throttle * shaftRotFreq, m_vesselRb.kinet.progradeSpeed, dt);
 		};
+	}
+
+	override void register()
+	{
 		Globals.acous.registerSource(m_sound);
 	}
 

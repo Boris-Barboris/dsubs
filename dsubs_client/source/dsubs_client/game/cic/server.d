@@ -61,8 +61,8 @@ final class CICServer
 		m_state.handleReconnectStateRes(res);
 		const SubmarineTemplate sbmTpl = *Game.entityManager.
 			submarineTemplates[res.submarineName];
-		foreach (int i, const HydrophoneTemplate ht; sbmTpl.hydrophones)
-			m_wfAnalizers ~= new WaterfallAnalyzer(ht, i);
+		foreach (size_t i, const HydrophoneTemplate ht; sbmTpl.hydrophones)
+			m_wfAnalizers ~= new WaterfallAnalyzer(ht, i.to!int);
 	}
 
 	void handleSubKinematicRes(SubKinematicRes res)

@@ -1,6 +1,7 @@
 module dsubs_client.game.sonardisp;
 
 import std.algorithm: map;
+import std.algorithm.comparison: min, max;
 
 import core.time: MonoTime;
 

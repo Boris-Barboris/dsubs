@@ -9,6 +9,7 @@ import dsubs_sound.hydrophone;
 
 import dsubs_server.common;
 import dsubs_server.vessel;
+import dsubs_server.propulsion;
 import dsubs_server.player: Player;
 
 
@@ -23,7 +24,7 @@ final class Torpedo: Vessel
 		TorpedoGuidance m_guidance;
 	}
 
-	@property Player shooter() const { return m_shooter; }
+	@property Player shooter() { return m_shooter; }
 	@property inout(Hydrophone) hydrophone() inout { return m_hydrophone; }
 	@property ActiveSonar sonar() { return m_sonar; }
 	@property TorpedoGuidance guidance() { return m_guidance; }
@@ -33,14 +34,41 @@ final class Torpedo: Vessel
 		super(prototypeName);
 		m_shooter = shooter;
 	}
+
+	override void register()
+	{
+		super.register();
+		if (m_hydrophone)
+			Globals.acous.registerHydrophone(m_hydrophone);
+		if (m_sonar)
+			Globals.acous.registerSonar(m_sonar);
+	}
+
+	override void shutdown()
+	{
+		super.shutdown();
+		if (m_hydrophone)
+		{
+			Globals.acous.unregisterHydrophone(m_hydrophone);
+			m_hydrophone.release();
+		}
+		if (m_sonar)
+		{
+			Globals.acous.unregisterSonar(m_sonar);
+			m_sonar.release();
+		}
+	}
 }
 
 final class TorpedoFactory: VesselFactory
 {
 	immutable WeaponTemplate tmpl;
 	PropulsorFactory propFactory;	/// torpedoes have fixed propulsors
-	HydrophonePrototype hprot;
-	ActiveSonarPrototype asprot;
+	MountPoint propMount;
+	HydrophonePrototype* hprot;
+	MountPoint hmount;
+	ActiveSonarPrototype* asprot;
+	MountPoint asmount;
 	RolledF fuel;
 
 	this(immutable WeaponTemplate t, PropulsorFactory pf)
@@ -52,26 +80,40 @@ final class TorpedoFactory: VesselFactory
 
 	private void bootstrap(Torpedo res) const
 	{
-		super.bootstrap(res);
-		// propulsor is fixed
+		// propulsor is fixed per torpedo design
 		res.propulsor = propFactory.build();
+		res.propulsor.transform.position = propMount.mountCenter.tod;
+		res.propulsor.transform.rotation = propMount.rotation;
+		super.bootstrap(res);
 		res.m_guidance = new TorpedoGuidance(res);
-		// hydrophones
-		foreach (i, ref hp; hprots)
+		if (hprot)
 		{
 			Transform2D t = new Transform2D();
-			t.position = tmpl.hydrophones[i].mount.mountCenter.tod;
-			t.rotation = tmpl.hydrophones[i].mount.rotation;
+			t.position = hmount.mountCenter.tod;
+			t.rotation = hmount.rotation;
 			res.transform.addChild(t);
-			res.m_hydrophones ~= new Hydrophone(Globals.sctx.queue(0), t, hp);
+			Hydrophone h = new Hydrophone(Globals.sctx.queue(0), t, *hprot);
+			res.m_hydrophone = h;
+			h.onPreSimulation += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+			h.onPostSimulation += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
 		}
-		// active sonar
+		if (asprot)
 		{
 			Transform2D t = new Transform2D();
-			t.position = tmpl.sonar.mount.mountCenter.tod;
-			t.rotation = tmpl.sonar.mount.rotation;
+			t.position = asmount.mountCenter.tod;
+			t.rotation = asmount.rotation;
 			res.transform.addChild(t);
-			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, asprot);
+			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot);
+			res.m_sonar.onPreSimulation += ()
+			{
+				res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;
+				res.m_sonar.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts;
+			};
+			res.m_sonar.onPostSimulation += ()
+			{
+				res.m_sonar.angVelEnd = res.rigidBody.kinet.angVel;
+				res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;
+			};
 		}
 	}
 
@@ -84,7 +126,7 @@ final class TorpedoFactory: VesselFactory
 	}
 }
 
-/// Torpedo guidance, detonator and sinking controller
+/// Torpedo guidance, detonation and fuel controller
 final class TorpedoGuidance
 {
 	private
