@@ -147,6 +147,9 @@ final class Render
 					frameCounter = 0;
 					lastFpsMark = m_frameEndTime;
 				}
+				// in case the player has disabled vsync in driver, we don't want to
+				// starve other threads
+				Thread.yield();
 			}
 		}
 		catch (Throwable err)
