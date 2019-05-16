@@ -33,7 +33,7 @@ struct HydrophonePrototype
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 4e-3f;
 	float flowNoiseMult = 2e-5f;
-	float omniNoiseMult = 1e-3f;
+	float omniNoiseMult = 6e-3f;
 	/// client listens to beam of this size
 	float listenSpan = dgr2rad(2);
 }
@@ -108,7 +108,8 @@ final class Hydrophone
 		enum float HALO_GAIN = 3.0f;
 		enum float ISOTROPIC_VAR = 2.0;
 		enum int MIN_FREQ = 20;
-		enum float LOCAL_NOISE_RANGE = 50.0f;
+		enum float LOCAL_NOISE_RANGE_FULL = 50.0f;
+		enum float LOCAL_NOISE_RANGE_CUTOFF = 200.0f;
 
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
@@ -398,9 +399,9 @@ final class Hydrophone
 
 	private static float caclOmniFactor(float range)
 	{
-		if (range <= LOCAL_NOISE_RANGE)
+		if (range <= LOCAL_NOISE_RANGE_FULL)
 			return 1.0f;
-		return max(0.0f, 1.0f - (range - LOCAL_NOISE_RANGE) / 200.0f);
+		return max(0.0f, 1.0f - (range - LOCAL_NOISE_RANGE_FULL) / LOCAL_NOISE_RANGE_CUTOFF);
 	}
 
 	void applySoundSource(CommandQueue q, SoundSource s)
