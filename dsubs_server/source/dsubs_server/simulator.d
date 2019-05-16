@@ -7,6 +7,8 @@ import core.memory;
 import core.stdc.stdlib;
 
 import dsubs_common.proftimer;
+import dsubs_common.event;
+
 import dsubs_server.common;
 import dsubs_server.dynamics;
 
@@ -52,6 +54,9 @@ final class Simulator
 	bool printTimings = true;
 	bool doSleep = true;
 
+	Event!(void delegate(usecs_t)) onSimulationPassStart;
+	Event!(void delegate(usecs_t)) onSimulationPassEnd;
+
 	private void simulationLoop()
 	{
 		try
@@ -68,6 +73,7 @@ final class Simulator
 				// GC.disable();
 				synchronized (Globals.simMut.writer)
 				{
+					onSimulationPassStart(m_worldTime);
 					profiler.start();
 					profiler.start("acous.preSimulation");
 					Globals.acous.preSimulation();
@@ -96,6 +102,7 @@ final class Simulator
 						Globals.players.forEachPlayer((p) { p.sendUpdate(); });
 						profiler.stopLast();
 					}
+					onSimulationPassEnd(m_worldTime);
 				}
 				profiler.stop();
 				if (printTimings)
