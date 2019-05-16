@@ -10,7 +10,7 @@ import dsubs_sound.hydrophone;
 import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.propulsion;
-import dsubs_server.player: Player;
+import dsubs_server.submarine: Submarine;
 
 
 /// Server-side torpedo model
@@ -20,16 +20,16 @@ final class Torpedo: Vessel
 	{
 		Hydrophone m_hydrophone;
 		ActiveSonar m_sonar;
-		Player m_shooter;
+		Submarine m_shooter;
 		TorpedoGuidance m_guidance;
 	}
 
-	@property Player shooter() { return m_shooter; }
+	@property Submarine shooter() { return m_shooter; }
 	@property inout(Hydrophone) hydrophone() inout { return m_hydrophone; }
 	@property ActiveSonar sonar() { return m_sonar; }
 	@property TorpedoGuidance guidance() { return m_guidance; }
 
-	this(Player shooter, string prototypeName)
+	this(Submarine shooter, string prototypeName)
 	{
 		super(prototypeName);
 		m_shooter = shooter;
@@ -59,6 +59,32 @@ final class Torpedo: Vessel
 		}
 	}
 }
+
+
+/// Torpedo guidance, detonation and fuel controller
+final class TorpedoGuidance
+{
+	private
+	{
+		Torpedo m_torpedo;
+		WeaponSensorMode m_sensorMode;
+		WeaponSearchPattern m_searchPattern;
+		float m_marchCourse;
+		float m_marchSpeed;
+		float m_fuelLeft;
+	}
+
+	this(Torpedo owner)
+	{
+		m_torpedo = owner;
+	}
+
+	private void update(float dt)
+	{
+
+	}
+}
+
 
 final class TorpedoFactory: VesselFactory
 {
@@ -118,34 +144,10 @@ final class TorpedoFactory: VesselFactory
 	}
 
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
-	Torpedo build(Player p, WeaponParamValue[] launchParams) const
+	Torpedo build(Submarine shooter, WeaponParamValue[] launchParams) const
 	{
-		Torpedo res = new Torpedo(p, tmpl.name);
+		Torpedo res = new Torpedo(shooter, tmpl.name);
 		bootstrap(res);
 		return res;
-	}
-}
-
-/// Torpedo guidance, detonation and fuel controller
-final class TorpedoGuidance
-{
-	private
-	{
-		Torpedo m_torpedo;
-		WeaponSensorMode m_sensorMode;
-		WeaponSearchPattern m_searchPattern;
-		float m_marchCourse;
-		float m_marchSpeed;
-		float m_fuelLeft;
-	}
-
-	this(Torpedo owner)
-	{
-		m_torpedo = owner;
-	}
-
-	private void update(float dt)
-	{
-
 	}
 }

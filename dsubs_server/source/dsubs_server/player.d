@@ -294,7 +294,6 @@ final class Player
 		double rot = uniform(-PI, PI);
 		sub.transform.position = vec2d(px, py);
 		sub.transform.rotation = rot;
-		sub.rigidBody.updateFromTransform();
 		sub.rudder.targetCourse = rot;
 	}
 }

@@ -224,6 +224,12 @@ final class PhysicalEnv
 		}
 	}
 
+	/// clean the container
+	void clean()
+	{
+		m_entities.length = 0;
+	}
+
 	/// perform physics update for all entities
 	void integratePBodies(float fwd = 1.0f, float maxDt = 0.25f)
 	{

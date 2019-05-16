@@ -97,6 +97,20 @@ final class AcousticEnv
 		}
 	}
 
+	/// release all releasable elements and clear the container
+	void clean()
+	{
+		foreach (h; m_hydrophones)
+			h.release();
+		m_hydrophones.length = 0;
+		foreach (s; m_sonars)
+			s.release();
+		m_sonars.length = 0;
+		m_reflectors.length = 0;
+		m_pings.length = 0;
+		m_sources.length = 0;
+	}
+
 	void preSimulation()
 	{
 		foreach (source; Globals.taskPool.parallel(m_sources, 8))
@@ -176,6 +190,7 @@ final class AcousticEnv
 			p.onAfterAcoustics();
 			if (p.samplesLeft == 0)
 			{
+				// ping is no longer active and must be unregistered
 				m_pings[i] = m_pings[$-1];
 				m_pings.length--;
 				m_sources.removeFirstUnstable(p);

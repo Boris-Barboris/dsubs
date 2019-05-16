@@ -692,7 +692,7 @@ final class SonarPing: SoundSource
 		size_t m_destOffset;
 	}
 
-	/// when zero, ping is over and can be deleted
+	/// when zero, ping is over and should be disposed of
 	@property size_t samplesLeft() const { return m_samplesLeft; }
 
 	override float minOmniFactor(float range) const { return 0.25f; }

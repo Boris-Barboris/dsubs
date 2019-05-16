@@ -30,7 +30,6 @@ final class Submarine: Vessel
 	/// creates transform and rigid body
 	this(Player owner, string prototypeName)
 	{
-		assert(owner);
 		super(prototypeName);
 		m_owner = owner;
 		m_spawnId = uniform(0, int.max);

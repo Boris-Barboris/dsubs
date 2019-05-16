@@ -408,7 +408,7 @@ private final class Program
 		}
 		else
 		{
-			error("clBuildProgram failed");
+			error("clBuildProgram succeeded");
 			err.clError();
 		}
 	}

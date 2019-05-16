@@ -3,6 +3,7 @@ module dsubs_common.math.transform;
 import std.algorithm;
 import std.math;
 import std.range;
+import std.conv: to;
 
 public import gfm.math.matrix;
 public import gfm.math.vector;
@@ -33,7 +34,15 @@ class Transform2D
 
 	protected
 	{
-		bool m_dirty, m_inverseDirty = true;
+		bool m_dirty = true;
+		bool m_inverseDirty = true;
+	}
+
+	override string toString()
+	{
+		return "Transform2D: m_pos " ~ m_position.to!string ~
+			" m_rot " ~ m_rotation.to!string ~ " m_scale " ~ m_scale.to!string ~
+			" m_dirty " ~ m_dirty.to!string ~ " m_inverseDirty " ~ m_inverseDirty.to!string;
 	}
 
 	/// Propagate the `dirty` signal from parent
@@ -41,7 +50,8 @@ class Transform2D
 	{
 		m_dirty = true;
 		m_inverseDirty = true;
-		updateChildren();
+		foreach (t; m_children)
+			t.propagate();
 	}
 
 	protected void rebuild()
@@ -62,15 +72,9 @@ class Transform2D
 		m_inverseDirty = false;
 	}
 
-	// Signal child transforms to recalculate their matrixes
-	protected void updateChildren()
-	{
-		foreach (t; m_children)
-			t.m_inverseDirty = t.m_dirty = true;
-	}
-
 	final void addChild(Transform2D child)
 	{
+		assert(child !is this);
 		m_children ~= child;
 		child.m_parent = this;
 		child.propagate();
@@ -109,6 +113,8 @@ class Transform2D
 	{
 		if (m_dirty)
 			rebuild();
+		if (m_inverseDirty)
+			calculateInverse();
 	}
 
 	/// transformation from local to parent (or world if no parent) reference frame
@@ -201,6 +207,7 @@ class Transform2D
 	{
 		if (m_parent is null)
 			return m_position;
+
 		return world.transformPoint(m_position);
 	}
 
@@ -284,6 +291,15 @@ unittest
 	parent.removeChild(child);
 	assert(walkLength(parent.children[]) == 0);
 	assert(child.parent is null);
+}
+
+unittest
+{
+	Transform2D parent = new Transform2D;
+	Transform2D child = new Transform2D;
+	parent.addChild(child);
+	assert(!isNaN(parent.wposition.x));
+	assert(!isNaN(child.wposition.x));
 }
 
 unittest

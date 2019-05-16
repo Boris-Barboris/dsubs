@@ -2,6 +2,7 @@ module dsubs_server.vessel;
 
 import dsubs_common.api.entities;
 import dsubs_common.math;
+import dsubs_common.containers.array: removeFirstUnstable;
 
 import dsubs_sound.activesonar: Reflector, ReflectorPrototype;
 
@@ -32,6 +33,7 @@ class Vessel
 		/// Propulsor is assigned before bootstrap, during spawn
 		@property void propulsor(Propulsor rhs)
 		{
+			assert(m_propulsor is null, "only can assign propulsor once");
 			m_propulsor = rhs;
 			m_transform.addChild(rhs.transform);
 		}
@@ -55,6 +57,8 @@ class Vessel
 	/// register the vessel in global component systems
 	void register()
 	{
+		m_rigidBody.updateFromTransform();
+		Globals.vessels.registerEntity(this);
 		Globals.phys.registerEntity(m_rigidBody);
 		Globals.acous.registerReflector(m_reflector);
 		m_propulsor.register();
@@ -64,9 +68,45 @@ class Vessel
 	/// unregister components and dispose of resources
 	void shutdown()
 	{
+		Globals.vessels.unregisterEntity(this);
 		Globals.acous.unregisterReflector(m_reflector);
 		Globals.phys.unregisterEntity(m_rigidBody);
 		m_propulsor.shutdown();
+	}
+}
+
+
+/// Set of vessels that are active
+final class VesselCollection
+{
+	private
+	{
+		Vessel[] m_entities;
+	}
+
+	void registerEntity(Vessel e)
+	{
+		synchronized(this)
+		{
+			m_entities ~= e;
+		}
+	}
+
+	void unregisterEntity(Vessel e)
+	{
+		synchronized(this)
+		{
+			m_entities.removeFirstUnstable(e);
+		}
+	}
+
+	/// shutdown all elements of the collection and clear the container
+	void clean()
+	{
+		Vessel[] entities = m_entities;
+		foreach(e; entities)
+			e.shutdown();
+		assert(m_entities.length == 0, "vessel leak");
 	}
 }
 
@@ -121,12 +161,5 @@ class VesselFactory
 		res.m_propulsor.bootstrap(res.m_rigidBody);
 		assert(!isNaN(res.m_rigidBody.mass));
 		assert(!isNaN(res.m_rigidBody.moi));
-	}
-
-	final Vessel build() const
-	{
-		Vessel res = new Vessel(templateName);
-		bootstrap(res);
-		return res;
 	}
 }

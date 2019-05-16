@@ -26,13 +26,31 @@ final class Simulator
 		m_thread.start();
 	}
 
+	private bool m_stopFlag;
+	private bool m_joined;
+
+	@property bool joined() const { return m_joined; }
+
+	/// asynchronous
+	void stop()
+	{
+		m_stopFlag = true;
+	}
+
 	void join()
 	{
+		assert(!m_joined, "already joined");
 		m_thread.join();
+		m_joined = true;
 	}
 
 	private usecs_t m_worldTime = 0;
 	@property usecs_t worldTime() const { return m_worldTime; }
+
+	usecs_t worldTimeLimit = usecs_t.max;
+
+	bool printTimings = true;
+	bool doSleep = true;
 
 	private void simulationLoop()
 	{
@@ -40,8 +58,13 @@ final class Simulator
 		{
 			MonoTime loopStart = MonoTime.currTime();
 			ProfTimer profiler = new ProfTimer();
-			while (true)
+			while (!m_stopFlag)
 			{
+				if (worldTimeLimit <= m_worldTime)
+				{
+					trace("Simulator reached worldTimeLimit");
+					break;
+				}
 				// GC.disable();
 				synchronized (Globals.simMut.writer)
 				{
@@ -66,13 +89,17 @@ final class Simulator
 					Globals.acous.postAcousticsUpdate();
 					profiler.stopLast();
 					m_worldTime += 1000_000;
-					// stream updates to players
-					profiler.start("players.forEachPlayer.sendUpdate");
-					Globals.players.forEachPlayer((p) { p.sendUpdate(); });
-					profiler.stopLast();
+					if (Globals.players)
+					{
+						// stream updates to players
+						profiler.start("players.forEachPlayer.sendUpdate");
+						Globals.players.forEachPlayer((p) { p.sendUpdate(); });
+						profiler.stopLast();
+					}
 				}
 				profiler.stop();
-				profiler.printResult();
+				if (printTimings)
+					profiler.printResult();
 				auto now = MonoTime.currTime();
 				// GC.enable();
 				loopStart = loopStart + seconds(1);
@@ -84,7 +111,10 @@ final class Simulator
 					loopStart = now + msecs(100);
 					toSleep = msecs(100);
 				}
-				Thread.sleep(toSleep);
+				if (doSleep)
+					Thread.sleep(toSleep);
+				else
+					loopStart = now;
 			}
 		}
 		catch (Throwable t)
