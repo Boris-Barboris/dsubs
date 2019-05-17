@@ -14,6 +14,7 @@ dsubs_sound/dsubs_sound
 dsubs_sound/dsubs_sound-test-library
 dsubs_sound/dsubs_sound-test-application
 dsubs_sound/libdsubs_sound.a
+dsubs_server/test_data/*
 pull_libs.sh
 dsubs_common-test-debuglib
 dsubs_common-test-library
