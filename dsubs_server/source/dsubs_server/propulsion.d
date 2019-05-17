@@ -150,7 +150,7 @@ final class BasicRudder: Rudder
 	{
 		float posChangeSpeed = 1.0f;
 		// PD controller gains
-		float Kp = 7.0f;
+		float Kp = 10.0f;
 		float Kd = -40.0;
 
 		float error = 0.0;
@@ -175,7 +175,7 @@ final class BasicRudder: Rudder
 	void propagateInTime(float dt)
 	{
 		float targetRudderPos = sgn(error);
-		if (fabs(error) < 0.4f)
+		if (fabs(error) < dgr2rad(30))
 			targetRudderPos = clamp(Kp * error + Kd * errorDeriv, -1.0f, 1.0f);
 		rudderPos = cmove(rudderPos, targetRudderPos, posChangeSpeed, dt);
 	}

@@ -9,18 +9,19 @@ import dsubs_common.math;
 import dsubs_server.common;
 import dsubs_server.entitydb;
 import dsubs_server.submarine;
+import dsubs_server.propulsion;
 import dsubs_server.dynamics: RigidBody;
 
 
-File writeRbodyCsvHeader(string testName, string entityName)
+File* writeRbodyCsvHeader(string testName, string entityName)
 {
 	mkdirRecurse("test_data/steering/");
-	File f = File("test_data/steering/" ~ testName ~ "_" ~ entityName ~ ".csv", "w");
+	File* f = new File("test_data/steering/" ~ testName ~ "_" ~ entityName ~ ".csv", "w");
 	f.writeln("world_time,pos_x,pos_y,dir_x,dir_y,vel_x,vel_y");
 	return f;
 }
 
-void writeRbodyCsvRow(File file, usecs_t worldTime, RigidBody rb)
+void writeRbodyCsvRow(File* file, usecs_t worldTime, RigidBody rb)
 {
 	vec2d rotVec = rb.kinet.forward * rb.kinet.velLength;
 	file.writefln!"%d,%f,%f,%f,%f,%f,%f"(
@@ -28,25 +29,31 @@ void writeRbodyCsvRow(File file, usecs_t worldTime, RigidBody rb)
 		rb.kinet.vel.x, rb.kinet.vel.y);
 }
 
+private auto captureCsv(File* f, Submarine s)
+{
+	return (usecs_t worldTime) { writeRbodyCsvRow(f, worldTime, s.rigidBody); };
+}
+
 unittest
 {
-	File csvFile = writeRbodyCsvHeader("stork_turn", "stork");
 	SpawnReq req = SpawnReq("Stork", "Five-blade screw");
 	Globals.buildForTests();
-	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	s.rigidBody.kinet.vel = vec2d(0, 16);
-	s.targetThrottle = 1.0f;
-	s.targetCourse = dgr2rad(-90);
-	s.register();
-	info("sub started at position ", s.transform.position);
-	Globals.sim.worldTimeLimit = 40 * cast(ulong)1e6;
-	Globals.sim.onSimulationPassStart += (usecs_t worldTime)
+	float[] throttles = [0.15f, 0.4f, 1.0f];
+	foreach (float throttle; throttles)
 	{
-		writeRbodyCsvRow(csvFile, worldTime, s.rigidBody);
-	};
+		Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+		s.rigidBody.kinet.vel = vec2d(0,
+			maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor) *
+			throttle);
+		s.targetThrottle = throttle;
+		s.targetCourse = dgr2rad(-90);
+		s.register();
+		File* file = writeRbodyCsvHeader("stork_turn",
+			"stork" ~ throttle.to!string);
+		Globals.sim.onSimulationPassStart += captureCsv(file, s);
+	}
+	Globals.sim.worldTimeLimit = 60 * cast(ulong)1e6;
 	Globals.sim.start();
 	Globals.sim.join();
-	info("sub finished at position ", s.transform.position);
-	csvFile.close();
 	Globals.resetForTests();
 }
