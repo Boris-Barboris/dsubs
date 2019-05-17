@@ -33,11 +33,15 @@ final class Torpedo: Vessel
 	{
 		super(prototypeName);
 		m_shooter = shooter;
+		m_guidance = new TorpedoGuidance(this);
+		targetThrottle = 1.0f;	// by-default torps spawn with max throttle
 	}
 
 	override void register()
 	{
 		super.register();
+		Globals.torps.registerEntity(this);
+		m_guidance.m_lastPos = transform.position;
 		if (m_hydrophone)
 			Globals.acous.registerHydrophone(m_hydrophone);
 		if (m_sonar)
@@ -47,6 +51,7 @@ final class Torpedo: Vessel
 	override void shutdown()
 	{
 		super.shutdown();
+		Globals.torps.unregisterEntity(this);
 		if (m_hydrophone)
 		{
 			Globals.acous.unregisterHydrophone(m_hydrophone);
@@ -64,24 +69,96 @@ final class Torpedo: Vessel
 /// Torpedo guidance, detonation and fuel controller
 final class TorpedoGuidance
 {
-	private
+	public
 	{
 		Torpedo m_torpedo;
 		WeaponSensorMode m_sensorMode;
 		WeaponSearchPattern m_searchPattern;
 		float m_marchCourse;
+		float m_activeCourse;
 		float m_marchSpeed;
+		float m_activeSpeed;
+		float m_marchThrottle;
+		float m_activeThrottle;
 		float m_fuelLeft;
+		float m_distanceTraveled = 0.0f;
+		float m_activeRange;
+		vec2d m_lastPos;
+		bool m_activated;
+		bool m_exhausted;
 	}
 
-	this(Torpedo owner)
+	@property Torpedo torpedo() { return m_torpedo; }
+
+	private this(Torpedo owner)
 	{
 		m_torpedo = owner;
 	}
 
-	private void update(float dt)
+	void update(float dt)
 	{
+		// perform fuel-related calculations
+		if (m_exhausted)
+			return;
+		m_fuelLeft -= m_torpedo.propulsor.throttle;
+		if (m_fuelLeft < 0.0f)
+		{
+			m_torpedo.propulsor.targetThrottle = 0.0f;
+			m_exhausted = true;
+			return;
+		}
+		// activation logic
+		m_distanceTraveled += (m_lastPos - m_torpedo.transform.position).length;
+		if (!m_activated && m_distanceTraveled >= m_activeRange)
+			m_activated = true;
+		// assign course and throttle based on activation state
+		if (m_activated)
+		{
+			m_torpedo.targetThrottle = m_activeThrottle;
+			m_torpedo.targetCourse = m_activeCourse;
+		}
+		else
+		{
+			m_torpedo.targetThrottle = m_marchThrottle;
+			m_torpedo.targetCourse = m_marchCourse;
+		}
+	}
+}
 
+
+final class TorpedoCollection
+{
+	private
+	{
+		Torpedo[] m_torpedoes;
+	}
+
+	void registerEntity(Torpedo e)
+	{
+		synchronized(this)
+		{
+			m_torpedoes ~= e;
+		}
+	}
+
+	void unregisterEntity(Torpedo e)
+	{
+		synchronized(this)
+		{
+			m_torpedoes.removeFirstUnstable(e);
+		}
+	}
+
+	void clean()
+	{
+		m_torpedoes.length = 0;
+	}
+
+	/// perform physics update for all entities
+	void updateGuidances(float dt)
+	{
+		foreach (i, ref torp; Globals.taskPool.parallel(m_torpedoes, 8))
+			torp.guidance.update(dt);
 	}
 }
 
@@ -111,7 +188,6 @@ final class TorpedoFactory: VesselFactory
 		res.propulsor.transform.position = propMount.mountCenter.tod;
 		res.propulsor.transform.rotation = propMount.rotation;
 		super.bootstrap(res);
-		res.m_guidance = new TorpedoGuidance(res);
 		if (hprot)
 		{
 			Transform2D t = new Transform2D();

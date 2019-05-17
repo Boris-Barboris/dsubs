@@ -34,6 +34,7 @@ abstract class Propulsor: IForce
 	final @property Transform2D transform() { return m_transform; }
 	final @property string prototypeName() const { return m_prototypeName; }
 	final @property float mass() const { return m_mass; }
+	final @property float throttle() const { return m_throttle; }
 
 	float targetThrottle = 0.0f;
 

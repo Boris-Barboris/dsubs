@@ -73,6 +73,26 @@ class Vessel
 		Globals.phys.unregisterEntity(m_rigidBody);
 		m_propulsor.shutdown();
 	}
+
+	final @property float targetThrottle() const { return m_propulsor.targetThrottle; }
+
+	/// set propulsor's target throttle
+	final @property void targetThrottle(float target)
+	{
+		enforce(!isNaN(target), "NaN target throttle");
+		enforce(target <= 1.0f && target >= -1.0f, "Throttle not in [-1, 1] interval");
+		m_propulsor.targetThrottle = target;
+	}
+
+	final @property float targetCourse() const { return m_rudder.targetCourse; }
+
+	/// set rudder's target course
+	final @property void targetCourse(float target)
+	{
+		enforce(!isNaN(target), "NaN target course");
+		enforce(!isInfinity(target), "Infinite target course");
+		m_rudder.targetCourse = clampAngle(target);
+	}
 }
 
 

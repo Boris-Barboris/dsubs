@@ -95,6 +95,9 @@ final class Simulator
 					Globals.acous.postAcousticsUpdate();
 					profiler.stopLast();
 					m_worldTime += 1000_000;
+					profiler.start("torps.updateGuidances");
+					Globals.torps.updateGuidances(1.0f);
+					profiler.stopLast();
 					if (Globals.players)
 					{
 						// stream updates to players

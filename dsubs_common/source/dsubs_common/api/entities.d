@@ -82,7 +82,7 @@ struct SubmarineTemplate
 enum WeaponParamType: ubyte
 {
 	none = 0,			/// no weapon params available
-	course = 1,			/// march course.
+	marchCourse = 1,	/// march course.
 	sensorMode = 2,
 	marchSpeed = 4, 	/// speed before activation
 	activeSpeed = 8,	/// speed after activation
@@ -129,8 +129,7 @@ struct WeaponParamDesc
 	WeaponParamType type;
 	union
 	{
-		MinMax marchSpeedRange;
-		MinMax activeSpeedRange;
+		MinMax speedRange;	/// specified when type is marchSpeed
 		MinMax activationRange;
 		WeaponSensorMode sensorModes;
 		WeaponParamDescSearchPatterns searchPatterns;
@@ -144,12 +143,10 @@ struct WeaponParamValue
 	union
 	{
 		float course;
+		float speed;
+		float range;
 		WeaponSensorMode sensorMode;
-		float marchSpeed;
-		float activeSpeed;
 		WeaponSearchPattern searchPattern;
-		float activationRange;
-		float activeCourse;
 	}
 }
 
