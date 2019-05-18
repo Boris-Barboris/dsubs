@@ -53,6 +53,8 @@ struct Rolled(F)
 
 	@property F roll() const
 	{
+		if (stddev == 0.0f)
+			return mean;
 		return rngNormal!F(mean, stddev);
 	}
 
