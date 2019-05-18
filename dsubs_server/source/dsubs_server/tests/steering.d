@@ -52,7 +52,7 @@ unittest
 		s.targetThrottle = throttle;
 		s.targetCourse = dgr2rad(-90);
 		s.register();
-		File* file = writeRbodyCsvHeader("stork_turn",
+		File* file = writeRbodyCsvHeader("stork_speeds",
 			"stork" ~ throttle.to!string);
 		Globals.sim.onSimulationPassStart += captureCsv(
 			file, s, (30 / throttle).to!usecs_t * 1000000);
@@ -73,7 +73,7 @@ unittest
 	s.targetThrottle = 1.0f;
 	s.targetCourse = dgr2rad(-179);
 	s.register();
-	File* file = writeRbodyCsvHeader("stork_flank_turn", "stork");
+	File* file = writeRbodyCsvHeader("stork", "stork");
 	Globals.sim.onSimulationPassStart += captureCsv(file, s);
 	Globals.sim.worldTimeLimit = 30 * cast(ulong)1e6;
 	Globals.sim.start();
