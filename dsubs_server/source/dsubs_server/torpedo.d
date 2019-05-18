@@ -39,13 +39,13 @@ final class Torpedo: Vessel
 		m_factory = fact;
 		m_shooter = shooter;
 		m_guidance = new TorpedoGuidance(this);
-		targetThrottle = 1.0f;	// by-default torps spawn with max throttle
 	}
 
 	override void register()
 	{
 		super.register();
 		Globals.torps.registerEntity(this);
+		targetThrottle = 1.0f;	// by-default torps spawn with max throttle
 		m_guidance.m_lastPos = transform.position;
 		m_guidance.setUnassignedParams();
 		if (m_hydrophone)
@@ -87,6 +87,7 @@ final class TorpedoGuidance
 		float m_marchThrottle = 1.0f;
 		float m_activeThrottle = 1.0f;
 		float m_fuelLeft;
+		float m_fuelEffExponent = 1.0f;
 		float m_distanceTraveled = 0.0f;
 		float m_activeRange;
 		vec2d m_lastPos;
@@ -116,7 +117,7 @@ final class TorpedoGuidance
 		// perform fuel-related calculations
 		if (m_exhausted)
 			return;
-		m_fuelLeft -= m_torpedo.propulsor.throttle;
+		m_fuelLeft -= pow(m_torpedo.propulsor.throttle, 2 + m_fuelEffExponent);
 		if (m_fuelLeft < 0.0f)
 		{
 			m_torpedo.propulsor.targetThrottle = 0.0f;
@@ -124,7 +125,8 @@ final class TorpedoGuidance
 			return;
 		}
 		// activation logic
-		m_distanceTraveled += (m_lastPos - m_torpedo.transform.position).length;
+		m_distanceTraveled += (m_lastPos - m_torpedo.transform.wposition).length;
+		m_lastPos = m_torpedo.transform.wposition;
 		if (!m_activated && m_distanceTraveled >= m_activeRange)
 			m_activated = true;
 		// assign course and throttle based on activation state
@@ -188,6 +190,7 @@ final class TorpedoFactory: VesselFactory
 	ActiveSonarPrototype* asprot;
 	MountPoint asmount;
 	RolledF fuel;
+	float fuelEffExponent = 1.0f;
 	// inlined weapon parameter descriptions
 	MinMax marchSpeedRange;
 	MinMax activeSpeedRange;
@@ -220,7 +223,7 @@ final class TorpedoFactory: VesselFactory
 					marchSpeedRange = desc.speedRange;
 					break;
 				case WeaponParamType.activeSpeed:
-					marchSpeedRange = desc.speedRange;
+					activeSpeedRange = desc.speedRange;
 					break;
 				case WeaponParamType.searchPattern:
 					searchPatterns = desc.searchPatterns;
@@ -237,9 +240,11 @@ final class TorpedoFactory: VesselFactory
 	private void bootstrap(Torpedo res) const
 	{
 		super.bootstrap(res);
+		assert(res.rigidBody.mass > 0.0f);
 		res.propulsor.transform.position = propMount.mountCenter.tod;
 		res.propulsor.transform.rotation = propMount.rotation;
 		res.guidance.m_fuelLeft = fuel;
+		res.guidance.m_fuelEffExponent = fuelEffExponent;
 		if (hprot)
 		{
 			Transform2D t = new Transform2D();
@@ -270,8 +275,12 @@ final class TorpedoFactory: VesselFactory
 			};
 		}
 		// guidance final configuration
+		assert(!isNaN(res.guidance.m_marchSpeed));
 		res.guidance.m_marchThrottle = throttleForSpeed(res, res.guidance.m_marchSpeed);
+		assert(isNormal(res.guidance.m_marchThrottle));
+		assert(!isNaN(res.guidance.m_activeSpeed));
 		res.guidance.m_activeThrottle = throttleForSpeed(res, res.guidance.m_activeSpeed);
+		assert(isNormal(res.guidance.m_activeThrottle));
 	}
 
 	/// Assign guidance parameters, specified by the client. Validate untrusted data.
@@ -280,13 +289,18 @@ final class TorpedoFactory: VesselFactory
 		TorpedoGuidance g = torp.guidance;
 		// first we assign default values
 		g.m_sensorMode = defaultSensorMode;
+		g.m_marchSpeed = marchSpeedRange.max;
+		g.m_activeSpeed = activeSpeedRange.max;
+		g.m_activeRange = activationRange.min;
 		// then we process client input
 		WeaponParamType assignedParams;
 		foreach (const WeaponParamValue param; params)
 		{
-			enforce(param.type & tmpl.availableParams, "this parameter is unavailable");
 			enforce(popcnt(param.type) == 1, "must choose one parameter to set");
-			enforce(param.type & assignedParams, "this parameter is already assigned");
+			enforce(param.type & tmpl.availableParams, "parameter " ~
+				param.type.to!string ~ " is unavailable");
+			enforce((param.type & assignedParams) == 0, "parameter " ~
+				param.type.to!string ~ " is already assigned");
 			enforce(param.type != WeaponParamType.none, "invalid parameter type");
 			switch (param.type)
 			{

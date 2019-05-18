@@ -45,6 +45,12 @@ struct HydroForceModel
 	}
 }
 
+/// Calculate Cl, required to achieve turning radius on AoA with a mass
+double calcClForTurningRadius(double aoa, double rad, double mass)
+{
+	return mass / sin(2.0 * aoa) / rad;
+}
+
 
 /// snapshot of kinematic parameters of a rigid body
 struct Kinematics
@@ -167,7 +173,8 @@ final class RigidBody: PhysicalEntity
 		foreach (force; forces)
 		{
 			resultForce += force.getForce(this, c);
-			assert(!isNaN(resultForce.x) && !isNaN(resultForce.y), force.to!string);
+			assert(!isNaN(resultForce.x) && !isNaN(resultForce.y),
+				"NaN force from " ~ force.to!string);
 		}
 		resultForce -= hydroModel.drag(c.velLength, c.velSquaredLength, c.AoA) * c.velNormalized;
 		resultForce += hydroModel.lift(c.velSquaredLength, c.AoA) * c.velLeft;

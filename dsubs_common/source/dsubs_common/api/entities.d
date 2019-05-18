@@ -47,7 +47,7 @@ struct PropulsorTemplate
 
 struct MountPoint
 {
-	vec2f mountCenter;
+	vec2f mountCenter = vec2d(0.0f, 0.0f);
 	float rotation = 0.0f;
 	float scale = 1.0f;
 }

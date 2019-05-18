@@ -52,7 +52,7 @@ final class BasicPropulsor: Propulsor
 	private
 	{
 		/// how fast rotSpd can change
-		float rotAcceleration = 0.34f;
+		float rotAcceleration = 0.25f;
 		float posThrustK;
 		float negThrustK;
 		float shaftRotFreq = 1.0f;
@@ -112,6 +112,7 @@ final class PropulsorFactory
 	RolledF negThrustK;
 	float mass;
 	float shaftRotFreq = 1.0f;
+	float rotAcceleration = 0.25f;
 	PropellerSoundPrototype soundPrototype;
 
 	this(immutable PropulsorTemplate t)
@@ -124,6 +125,7 @@ final class PropulsorFactory
 		BasicPropulsor res = new BasicPropulsor();
 		res.posThrustK = posThrustK;
 		res.negThrustK = negThrustK;
+		res.rotAcceleration = rotAcceleration;
 		res.m_prototypeName = tmpl.name;
 		res.m_mass = mass;
 		res.shaftRotFreq = shaftRotFreq;
@@ -147,14 +149,13 @@ final class BasicRudder: Rudder
 {
 	/// actual torque power
 	float steeringK = 0.0f;
+	// PD controller gains
+	float Kp = 10.0f;
+	float Kd = -20.0;
+	float posChangeSpeed = 1.0f;
 
 	private
 	{
-		float posChangeSpeed = 1.0f;
-		// PD controller gains
-		float Kp = 10.0f;
-		float Kd = -20.0;
-
 		float error = 0.0;
 		float errorDeriv = 0.0;
 	}

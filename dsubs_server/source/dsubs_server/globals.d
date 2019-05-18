@@ -64,9 +64,9 @@ __gshared:
 	{
 		if (simMut is null)
 			simMut = new ReadWriteMutex();
-		taskPool = new TaskPool(totalCPUs - 1);
+		taskPool = new TaskPool(0);//totalCPUs - 1);
 		if (sctx is null)
-			sctx = new DsubsSoundOpenclCtx(totalCPUs);
+			sctx = new DsubsSoundOpenclCtx(1);
 		if (entityDb is null)
 			entityDb = new EntityDb();
 		vessels = new VesselCollection();

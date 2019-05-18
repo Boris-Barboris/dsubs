@@ -1,7 +1,6 @@
-module dsubs_server.tests.steering;
+module dsubs_server.tests.test_steering;
 
 import std.stdio;
-import std.file: mkdirRecurse;
 
 import dsubs_common.api.protocols.backend;
 import dsubs_common.math;
@@ -10,33 +9,9 @@ import dsubs_server.common;
 import dsubs_server.entitydb;
 import dsubs_server.submarine;
 import dsubs_server.propulsion;
-import dsubs_server.dynamics: RigidBody;
 
+import dsubs_server.tests.common;
 
-File* writeRbodyCsvHeader(string testName, string entityName)
-{
-	mkdirRecurse("test_data/steering/");
-	File* f = new File("test_data/steering/" ~ testName ~ "_" ~ entityName ~ ".csv", "w");
-	f.writeln("world_time,pos_x,pos_y,dir_x,dir_y,vel_x,vel_y");
-	return f;
-}
-
-void writeRbodyCsvRow(File* file, usecs_t worldTime, RigidBody rb)
-{
-	vec2d rotVec = rb.kinet.forward * rb.kinet.velLength;
-	file.writefln!"%d,%f,%f,%f,%f,%f,%f"(
-		worldTime, rb.kinet.pos.x, rb.kinet.pos.y, rotVec.x, rotVec.y,
-		rb.kinet.vel.x, rb.kinet.vel.y);
-}
-
-private auto captureCsv(File* f, Submarine s, usecs_t shutdownOn = -1)
-{
-	return (usecs_t worldTime) {
-		writeRbodyCsvRow(f, worldTime, s.rigidBody);
-		if (worldTime == shutdownOn)
-			s.shutdown();
-	};
-}
 
 unittest
 {
@@ -52,7 +27,7 @@ unittest
 		s.targetThrottle = throttle;
 		s.targetCourse = dgr2rad(-90);
 		s.register();
-		File* file = writeRbodyCsvHeader("stork_speeds",
+		File* file = writeRbodyCsvHeader("steering", "stork_speeds",
 			"stork" ~ throttle.to!string);
 		Globals.sim.onSimulationPassStart += captureCsv(
 			file, s, (30 / throttle).to!usecs_t * 1000000);
@@ -73,7 +48,7 @@ unittest
 	s.targetThrottle = 1.0f;
 	s.targetCourse = dgr2rad(-179);
 	s.register();
-	File* file = writeRbodyCsvHeader("stork", "stork");
+	File* file = writeRbodyCsvHeader("steering", "stork", "stork");
 	Globals.sim.onSimulationPassStart += captureCsv(file, s);
 	Globals.sim.worldTimeLimit = 30 * cast(ulong)1e6;
 	Globals.sim.start();

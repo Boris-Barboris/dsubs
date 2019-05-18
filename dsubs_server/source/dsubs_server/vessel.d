@@ -143,6 +143,9 @@ class VesselFactory
 	/// Equilibrium drift angle on maximum rudder deflection, radians
 	float equilDrift;
 	ReflectorPrototype reflprot;
+	float rudderKp = 10.0f;
+	float rudderKd = -20.0f;
+	float rudderPosChangeSpeed = 1.0f;
 
 	this(string templateName)
 	{
@@ -165,6 +168,9 @@ class VesselFactory
 		// res.m_rigidBody.kinet.angVel = 1.0;
 		auto brudder = new BasicRudder();
 		brudder.transform = res.transform;
+		brudder.Kp = rudderKp;
+		brudder.Kd = rudderKd;
+		brudder.posChangeSpeed = rudderPosChangeSpeed;
 		// Cm * equilDrift = steeringK
 		brudder.steeringK = fabs(equilDrift * res.m_rigidBody.hydroModel.Cm);
 		res.m_rudder = brudder;

@@ -17,8 +17,10 @@ import dsubs_sound.image;
 
 import dsubs_server.common;
 import dsubs_server.propulsion;
+import dsubs_server.dynamics;
 import dsubs_server.player: Player;
 public import dsubs_server.submarine;
+public import dsubs_server.torpedo;
 
 
 
@@ -33,9 +35,11 @@ final class EntityDb
 	private
 	{
 		/// map of all existing propulsor factories
-		PropulsorFactory[string] g_propulsors;
+		PropulsorFactory[string] m_propulsors;
 		/// global map of all existing submarine factories
-		SubmarineFactory[string] g_submarines;
+		SubmarineFactory[string] m_submarines;
+		/// global map of all existing torpedo factories
+		TorpedoFactory[string] m_torpedos;
 	}
 
 	this()
@@ -43,9 +47,10 @@ final class EntityDb
 		info("Building entity database");
 		buildPropulsorTemplates();
 		buildSubmarineTemplates();
+		buildTorpedoTemplates();
 		immutable EntityDbRes enititydb = immutable EntityDbRes(
-			g_propulsors.values.map!(a => a.tmpl).array,
-			g_submarines.values.map!(a => a.tmpl).array,
+			m_propulsors.values.map!(a => a.tmpl).array,
+			m_submarines.values.map!(a => a.tmpl).array,
 		);
 		marshalledCommonEntityDb = BackendProtocol.marshal(enititydb);
 		auto sha256 = new SHA256Digest();
@@ -57,14 +62,19 @@ final class EntityDb
 	/// Build submarine object from the Spawn request message
 	Submarine buildSubFromLoadout(const SpawnReq req, Player p)
 	{
-		SubmarineFactory* sp = req.submarineName in g_submarines;
+		SubmarineFactory* sp = req.submarineName in m_submarines;
 		enforce(sp !is null, "Unknown submarine");
-		PropulsorFactory* pp = req.propulsorName in g_propulsors;
+		PropulsorFactory* pp = req.propulsorName in m_propulsors;
 		enforce(pp !is null, "Unknown propulsor");
 		Propulsor prop = pp.build();
 		Submarine sub = sp.build(p, prop);
 		trace("built new submarine from request ", req);
 		return sub;
+	}
+
+	const(TorpedoFactory) getTorpedoFactory(string torpName) const
+	{
+		return m_torpedos[torpName];
 	}
 
 private:
@@ -80,7 +90,7 @@ private:
 				"Seven-blade screw with no outstanding traits, " ~
 				"but relatively good high-speed performance.\n\nMass: 50t",
 				PropulsorType.SCREW,
-				5,
+				7,
 				ConvexPolygon([
 					vec2f(1.1f, 0.6f),
 					vec2f(0.6f, -0.6f),
@@ -105,7 +115,92 @@ private:
 				0.5, 0.7, -0.4),
 			4.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
 		);
-		g_propulsors["Seven-blade screw"] = bp;
+		m_propulsors["Seven-blade screw"] = bp;
+	}
+
+	void buildTorpedoTemplates()
+	{
+		TorpedoFactory tf;
+		PropulsorFactory pf;
+		WeaponParamDesc[] pdescs;
+		WeaponParamDesc pd;
+
+		// Minoga torpedo
+		pd.type = WeaponParamType.marchSpeed;
+		pd.speedRange = MinMax(20, 29);
+		pdescs ~= pd;
+		pd.type = WeaponParamType.activeSpeed;
+		pdescs ~= pd;
+		pd.type = WeaponParamType.activationRange;
+		pd.activationRange = MinMax(200, 10_000);
+		pdescs ~= pd;
+		pd.type = WeaponParamType.searchPattern;
+		pd.searchPatterns = WeaponParamDescSearchPatterns(
+			WeaponSearchPattern.straight, 0.0f, 0.0f
+		);
+		pdescs ~= pd;
+
+		pf = new PropulsorFactory(
+			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
+				"Minoga screw",
+				null,
+				PropulsorType.SCREW,
+				3,
+				ConvexPolygon.init
+			));
+		pf.posThrustK = RolledF(10.0f, 0.02f);
+		pf.rotAcceleration = 0.5f;
+		pf.negThrustK = RolledF(0.0f, 0.0f);
+		pf.mass = 0.0f;
+		pf.shaftRotFreq = 21.45f;
+		pf.soundPrototype = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/std_propeller.png", 1.0f, 80, 140),
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/std_propeller_cav.png", 1.0f, 60, 140),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.25f),
+				Harmonic(3.0f, 0.75f)],
+				0.5, 0.7, -0.4),
+			0.25f, dgr2rad(30), 5.0f, 0.03f, 0.7f
+		);
+
+		tf = new TorpedoFactory(
+			cast(immutable(WeaponTemplate)) WeaponTemplate(
+				"Minoga",
+				"Minoga torpedo",
+				[],
+				70.0f,
+				cast(WeaponParamType)(
+					WeaponParamType.activeCourse |
+					WeaponParamType.marchCourse |
+					WeaponParamType.activeSpeed |
+					WeaponParamType.marchSpeed |
+					WeaponParamType.searchPattern |
+					WeaponParamType.activationRange),
+				pdescs.dup),
+			pf);
+		tf.defaultSensorMode = WeaponSensorMode.active;
+		tf.fuel = RolledF(6000 / 29.0f, 2);
+		tf.mass = RolledF(1.5f, 2e-3);
+		tf.Cd0 = RolledF(1e-2f, 1e-4f);
+		tf.Cd1 = RolledF((pf.posThrustK.mean - tf.Cd0.mean * 29.0f) / pow(29.0f, 2), 3e-4f);
+		tf.Cda = 1.5f;
+		tf.equilDrift = dgr2rad(10);
+		double cl = calcClForTurningRadius(tf.equilDrift,
+			tf.tmpl.turningRadius, tf.mass.mean);
+		tf.Cl = RolledF(cl, 0.01f * cl);
+		tf.Cr0 = RolledF(0.01f, 0);
+		tf.Cr1 = RolledF(0, 0);
+		tf.Cm = RolledF(0.003f, 0);
+		tf.rudderKp = 5.0f;
+		tf.rudderKd = -30.0f;
+		tf.rudderPosChangeSpeed = 2.0f;
+		// vec2f dims = getHullDims(tf.tmpl.hullModel);
+		tf.hullLength = 5.0f;
+		m_torpedos["Minoga"] = tf;
+
+		pdescs.length = 0;
 	}
 
 	void buildSubmarineTemplates()
@@ -165,7 +260,7 @@ Active sonar:
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
 					asp.getSliceResol(), asp.radialRes, asp.maxSec)
 			));
-		sp.mass = RolledF(1600.0f, 10.0f);
+		sp.mass = RolledF(1700.0f, 10.0f);
 		sp.Cd0 = RolledF(10.0, 0.25f);
 		sp.Cd1 = RolledF(8.6, 0.1f);
 		sp.Cda = 0.8;
@@ -182,7 +277,7 @@ Active sonar:
 		];
 		sp.asprot = asp;
 		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-25.0f, -19.0f, -10.0f]);
-		g_submarines[sp.tmpl.name] = sp;
+		m_submarines[sp.tmpl.name] = sp;
 	}
 
 }
