@@ -29,9 +29,13 @@ void writeRbodyCsvRow(File* file, usecs_t worldTime, RigidBody rb)
 		rb.kinet.vel.x, rb.kinet.vel.y);
 }
 
-private auto captureCsv(File* f, Submarine s)
+private auto captureCsv(File* f, Submarine s, usecs_t shutdownOn = -1)
 {
-	return (usecs_t worldTime) { writeRbodyCsvRow(f, worldTime, s.rigidBody); };
+	return (usecs_t worldTime) {
+		writeRbodyCsvRow(f, worldTime, s.rigidBody);
+		if (worldTime == shutdownOn)
+			s.shutdown();
+	};
 }
 
 unittest
@@ -42,17 +46,36 @@ unittest
 	foreach (float throttle; throttles)
 	{
 		Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-		s.rigidBody.kinet.vel = vec2d(0,
-			maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor) *
-			throttle);
+		s.transform.rotation = dgr2rad(-45);
+		s.rigidBody.kinet.vel = throttle * courseVector(s.transform.rotation) *
+			maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 		s.targetThrottle = throttle;
 		s.targetCourse = dgr2rad(-90);
 		s.register();
 		File* file = writeRbodyCsvHeader("stork_turn",
 			"stork" ~ throttle.to!string);
-		Globals.sim.onSimulationPassStart += captureCsv(file, s);
+		Globals.sim.onSimulationPassStart += captureCsv(
+			file, s, (30 / throttle).to!usecs_t * 1000000);
 	}
-	Globals.sim.worldTimeLimit = 60 * cast(ulong)1e6;
+	Globals.sim.worldTimeLimit = 120 * cast(ulong)1e6;
+	Globals.sim.start();
+	Globals.sim.join();
+	Globals.resetForTests();
+}
+
+unittest
+{
+	SpawnReq req = SpawnReq("Stork", "Five-blade screw");
+	Globals.buildForTests();
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	s.rigidBody.kinet.vel = courseVector(0) *
+		maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	s.targetThrottle = 1.0f;
+	s.targetCourse = dgr2rad(-179);
+	s.register();
+	File* file = writeRbodyCsvHeader("stork_flank_turn", "stork");
+	Globals.sim.onSimulationPassStart += captureCsv(file, s);
+	Globals.sim.worldTimeLimit = 30 * cast(ulong)1e6;
 	Globals.sim.start();
 	Globals.sim.join();
 	Globals.resetForTests();

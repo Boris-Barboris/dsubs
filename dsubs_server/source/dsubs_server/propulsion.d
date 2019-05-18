@@ -152,7 +152,7 @@ final class BasicRudder: Rudder
 		float posChangeSpeed = 1.0f;
 		// PD controller gains
 		float Kp = 10.0f;
-		float Kd = -40.0;
+		float Kd = -20.0;
 
 		float error = 0.0;
 		float errorDeriv = 0.0;
