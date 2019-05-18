@@ -2,6 +2,9 @@ module dsubs_common.utils;
 
 public import std.experimental.logger: info, trace, error, warning;
 
+import std.math: isNaN, isInfinity;
+import std.exception: enforce;
+
 
 /// Standard std-like exception constructors
 mixin template ExceptionConstructors()
@@ -21,4 +24,13 @@ mixin template ExceptionConstructors()
 	{
 		super(message, file, line, next);
 	}
+}
+
+
+auto validateFloat(T)(const T val)
+	if (is(T == float) || is(T == double))
+{
+	enforce(!isNaN(val), "NaN poisoning");
+	enforce(!isInfinity(val), "infinity poisoning");
+	return val;
 }

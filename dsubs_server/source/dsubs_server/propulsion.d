@@ -7,6 +7,7 @@ import dsubs_sound.soundsource;
 
 import dsubs_server.common;
 import dsubs_server.dynamics;
+import dsubs_server.vessel: Vessel;
 
 
 /// module that is responsible for forward\backwards thrust
@@ -193,4 +194,13 @@ double maxSpeed(const HydroForceModel hfm, const BasicPropulsor bp)
 	double vmax = (-hfm.Cd0 + sqrt(D)) / (2 * hfm.Cd1);
 	assert(!isNaN(vmax));
 	return vmax;
+}
+
+/// Given constructed vessel, return the
+float throttleForSpeed(Vessel v, float speed)
+{
+	double maxSpd = maxSpeed(v.rigidBody.hydroModel, cast(BasicPropulsor) v.propulsor);
+	if (maxSpd == 0.0f)
+		return 0.0f;
+	return clamp(speed / maxSpd, -1.0f, 1.0f);
 }

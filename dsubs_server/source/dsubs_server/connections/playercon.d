@@ -3,6 +3,7 @@ module dsubs_server.connections.playercon;
 import std.socket;
 
 import core.atomic;
+import core.thread;
 
 import dsubs_common.api;
 import dsubs_common.api.protocols.backend;
@@ -69,6 +70,8 @@ private:
 		{
 			sendMessage(immutable LoginRes(false, aex.msg,
 				Globals.entityDb.commonEntityDbHash, false));
+			Thread.sleep(dur!"seconds"(5));
+			throw aex;
 		}
 	}
 

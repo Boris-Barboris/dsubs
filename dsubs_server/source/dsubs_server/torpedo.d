@@ -1,5 +1,7 @@
 module dsubs_server.torpedo;
 
+import core.bitop: popcnt;
+
 import dsubs_common.api.constants;
 import dsubs_common.api.entities;
 import dsubs_common.math;
@@ -22,16 +24,19 @@ final class Torpedo: Vessel
 		ActiveSonar m_sonar;
 		Submarine m_shooter;
 		TorpedoGuidance m_guidance;
+		const TorpedoFactory m_factory;
 	}
 
 	@property Submarine shooter() { return m_shooter; }
 	@property inout(Hydrophone) hydrophone() inout { return m_hydrophone; }
 	@property ActiveSonar sonar() { return m_sonar; }
 	@property TorpedoGuidance guidance() { return m_guidance; }
+	@property const(TorpedoFactory) factory() const { return m_factory; }
 
-	this(Submarine shooter, string prototypeName)
+	this(Submarine shooter, const TorpedoFactory fact)
 	{
-		super(prototypeName);
+		super(fact.templateName);
+		m_factory = fact;
 		m_shooter = shooter;
 		m_guidance = new TorpedoGuidance(this);
 		targetThrottle = 1.0f;	// by-default torps spawn with max throttle
@@ -69,7 +74,7 @@ final class Torpedo: Vessel
 /// Torpedo guidance, detonation and fuel controller
 final class TorpedoGuidance
 {
-	public
+	private
 	{
 		Torpedo m_torpedo;
 		WeaponSensorMode m_sensorMode;
@@ -154,7 +159,6 @@ final class TorpedoCollection
 		m_torpedoes.length = 0;
 	}
 
-	/// perform physics update for all entities
 	void updateGuidances(float dt)
 	{
 		foreach (i, ref torp; Globals.taskPool.parallel(m_torpedoes, 8))
@@ -166,28 +170,64 @@ final class TorpedoCollection
 final class TorpedoFactory: VesselFactory
 {
 	immutable WeaponTemplate tmpl;
-	PropulsorFactory propFactory;	/// torpedoes have fixed propulsors
+	PropulsorFactory propFactory;	/// torpedoes have predefined propulsors
 	MountPoint propMount;
 	HydrophonePrototype* hprot;
 	MountPoint hmount;
 	ActiveSonarPrototype* asprot;
 	MountPoint asmount;
 	RolledF fuel;
+	// inlined weapon parameter descriptions
+	MinMax marchSpeedRange;
+	MinMax activeSpeedRange;
+	MinMax activationRange;
+	WeaponSensorMode sensorModes;
+	WeaponParamDescSearchPatterns searchPatterns;
 
 	this(immutable WeaponTemplate t, PropulsorFactory pf)
 	{
 		super(t.name);
 		tmpl = t;
 		propFactory = pf;
+		assignParamDescsFromTemplate();
+	}
+
+	/// Take some torpedo parameters from the WeaponTemplate and assign them
+	/// to relevant factory fields. TODO: reverse the logic. Server-side source of
+	/// truth should be a factory object, and the template should be generated from it.
+	private void assignParamDescsFromTemplate()
+	{
+		foreach (const(WeaponParamDesc) desc; tmpl.paramDescs)
+		{
+			switch (desc.type)
+			{
+				case(WeaponParamType.sensorMode):
+					sensorModes = desc.sensorModes;
+					break;
+				case(WeaponParamType.marchSpeed):
+					marchSpeedRange = desc.speedRange;
+					break;
+				case(WeaponParamType.activeSpeed):
+					marchSpeedRange = desc.speedRange;
+					break;
+				case(WeaponParamType.searchPattern):
+					searchPatterns = desc.searchPatterns;
+					break;
+				case(WeaponParamType.activationRange):
+					activationRange = desc.activationRange;
+					break;
+				default:
+					assert(0, "unexpected parameter type");
+			}
+		}
 	}
 
 	private void bootstrap(Torpedo res) const
 	{
-		// propulsor is fixed per torpedo design
-		res.propulsor = propFactory.build();
+		super.bootstrap(res);
 		res.propulsor.transform.position = propMount.mountCenter.tod;
 		res.propulsor.transform.rotation = propMount.rotation;
-		super.bootstrap(res);
+		res.guidance.m_fuelLeft = fuel;
 		if (hprot)
 		{
 			Transform2D t = new Transform2D();
@@ -217,12 +257,65 @@ final class TorpedoFactory: VesselFactory
 				res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;
 			};
 		}
+		// guidance final configuration
+		res.guidance.m_marchThrottle = throttleForSpeed(res, res.guidance.m_marchSpeed);
+		res.guidance.m_activeThrottle = throttleForSpeed(res, res.guidance.m_activeSpeed);
+	}
+
+	/// Assign guidance parameters, specified by the client. Validate untrusted data.
+	void configureGuidance(Torpedo torp, const(WeaponParamValue)[] params) const
+	{
+		WeaponParamType assignedParams;
+		TorpedoGuidance g = torp.guidance;
+		foreach (const WeaponParamValue param; params)
+		{
+			enforce(param.type & tmpl.availableParams, "this parameter is unavailable");
+			enforce(param.type & assignedParams, "this parameter is already assigned");
+			enforce(param.type != WeaponParamType.none, "invalid parameter type");
+			switch (param.type)
+			{
+				case(WeaponParamType.marchCourse):
+					g.m_marchCourse = param.course.validateFloat.clampAngle;
+					break;
+				case(WeaponParamType.activeCourse):
+					g.m_activeCourse = param.course.validateFloat.clampAngle;
+					break;
+				case(WeaponParamType.sensorMode):
+					enforce(sensorModes & param.sensorMode, "invalid sensor mode");
+					enforce(popcnt(param.sensorMode) == 1, "must choose one");
+					g.m_sensorMode = param.sensorMode;
+					break;
+				case(WeaponParamType.searchPattern):
+					enforce(searchPatterns.availablePatterns & param.searchPattern,
+						"invalid search pattern");
+					enforce(popcnt(param.searchPattern) == 1, "must choose one");
+					g.m_searchPattern = param.searchPattern;
+					break;
+				case(WeaponParamType.marchSpeed):
+					enforce(marchSpeedRange.contains(param.speed), "invalid marchSpeed");
+					g.m_marchSpeed = param.speed;
+					break;
+				case(WeaponParamType.activeSpeed):
+					enforce(activeSpeedRange.contains(param.speed), "invalid activeSpeed");
+					g.m_activeSpeed = param.speed;
+					break;
+				case(WeaponParamType.activationRange):
+					enforce(activationRange.contains(param.range), "invalid activeRange");
+					g.m_activeRange = param.range;
+					break;
+				default:
+					throw new Exception("unknown weapon parameter");
+			}
+			assignedParams |= param.type;
+		}
 	}
 
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
-	Torpedo build(Submarine shooter, WeaponParamValue[] launchParams) const
+	Torpedo build(Submarine shooter, const(WeaponParamValue)[] launchParams) const
 	{
-		Torpedo res = new Torpedo(shooter, tmpl.name);
+		Torpedo res = new Torpedo(shooter, this);
+		res.propulsor = propFactory.build();
+		configureGuidance(res, launchParams);
 		bootstrap(res);
 		return res;
 	}

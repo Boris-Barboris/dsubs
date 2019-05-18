@@ -81,23 +81,23 @@ struct SubmarineTemplate
 /// Bit flags.
 enum WeaponParamType: ubyte
 {
-	none = 0,			/// no weapon params available
-	marchCourse = 1,	/// march course.
-	sensorMode = 2,
-	marchSpeed = 4, 	/// speed before activation
-	activeSpeed = 8,	/// speed after activation
-	searchPattern = 16,
-	activationRange = 32,
-	activeCourse = 64	/// main search direction after activation
+	none = 0,				/// no weapon params available
+	marchCourse = 1,		/// march course.
+	sensorMode = 1 << 1,
+	marchSpeed = 1 << 2, 	/// speed before activation
+	activeSpeed = 1 << 3,	/// speed after activation
+	searchPattern = 1 << 4,
+	activationRange = 1 << 5,
+	activeCourse = 1 << 6	/// main search direction after activation
 }
 
-/// Available weapon sensor modes. Bit flag.
+/// Available weapon sensor modes. Bit flags.
 enum WeaponSensorMode: ubyte
 {
-	none = 0,
-	active = 1,
-	passive = 2,
-	activePassive = 4	/// alternating active/passive search
+	none = 1,				/// no homing sensors available
+	active = 1 << 1,
+	passive = 1 << 2,
+	activePassive = 1 << 3	/// alternating active/passive search
 }
 
 /// Generic clamped float
@@ -105,14 +105,19 @@ struct MinMax
 {
 	float min = 0.0f;
 	float max = 0.0f;
+
+	bool contains(float val) const
+	{
+		return (val <= max) && (val >= min);
+	}
 }
 
-/// Bit flags
+/// Bit flags of available search patterns.
 enum WeaponSearchPattern: ubyte
 {
-	straight = 0,
-	snake = 1,
-	spiral = 2
+	straight = 1,
+	snake = 2,
+	spiral = 4
 }
 
 /// Description of search patterns, hard-coded for a weapon
@@ -129,7 +134,7 @@ struct WeaponParamDesc
 	WeaponParamType type;
 	union
 	{
-		MinMax speedRange;	/// specified when type is marchSpeed
+		MinMax speedRange;	/// specified when type is marchSpeed or activeSpeed
 		MinMax activationRange;
 		WeaponSensorMode sensorModes;
 		WeaponParamDescSearchPatterns searchPatterns;
