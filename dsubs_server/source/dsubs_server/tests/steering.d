@@ -40,7 +40,7 @@ private auto captureCsv(File* f, Submarine s, usecs_t shutdownOn = -1)
 
 unittest
 {
-	SpawnReq req = SpawnReq("Stork", "Five-blade screw");
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Globals.buildForTests();
 	float[] throttles = [0.15f, 0.4f, 1.0f];
 	foreach (float throttle; throttles)
@@ -65,7 +65,7 @@ unittest
 
 unittest
 {
-	SpawnReq req = SpawnReq("Stork", "Five-blade screw");
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Globals.buildForTests();
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
 	s.rigidBody.kinet.vel = courseVector(0) *

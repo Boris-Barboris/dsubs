@@ -76,8 +76,8 @@ private:
 		// Standard screw
 		bp = new PropulsorFactory(
 			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
-				"Five-blade screw",
-				"Five-blade screw with no outstanding traits, " ~
+				"Seven-blade screw",
+				"Seven-blade screw with no outstanding traits, " ~
 				"but relatively good high-speed performance.\n\nMass: 50t",
 				PropulsorType.SCREW,
 				5,
@@ -90,7 +90,7 @@ private:
 		bp.posThrustK = RolledF(2600.0f, 40.0f);
 		bp.negThrustK = RolledF(900.0f, 20.0f);
 		bp.mass = 50.0f;
-		bp.shaftRotFreq = 2.0f;
+		bp.shaftRotFreq = 2.09f;
 		bp.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/std_propeller.png", 1.0f, 80, 140),
@@ -101,11 +101,11 @@ private:
 				Harmonic(2.0f, 0.05f),
 				Harmonic(3.0f, 0.01f),
 				Harmonic(4.0f, 0.001f),
-				Harmonic(5.0f, 0.8f)],
+				Harmonic(7.0f, 0.8f)],
 				0.5, 0.7, -0.4),
 			4.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
 		);
-		g_propulsors["Five-blade screw"] = bp;
+		g_propulsors["Seven-blade screw"] = bp;
 	}
 
 	void buildSubmarineTemplates()
@@ -175,7 +175,7 @@ Active sonar:
 		sp.Cm = RolledF(500.0f, 6.0f);
 		sp.equilDrift = dgr2rad(25);
 		vec2f dims = getHullDims(sp.tmpl.hullModel);
-		trace("dims: ", dims);
+		// trace("dims: ", dims);
 		sp.hullLength = dims.y;
 		sp.hprots = [
 			HydrophonePrototype([0.0f], 500, 2048, dgr2rad(210), 210, 2 / 90.0f, 3.0f)

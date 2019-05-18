@@ -79,7 +79,7 @@ struct SubmarineTemplate
 
 /// Weapons need to be configured before launch. This is a set of available parameters.
 /// Bit flags.
-enum WeaponParamType: ubyte
+enum WeaponParamType: ushort
 {
 	none = 0,				/// no weapon params available
 	marchCourse = 1,		/// march course.
@@ -94,10 +94,9 @@ enum WeaponParamType: ubyte
 /// Available weapon sensor modes. Bit flags.
 enum WeaponSensorMode: ubyte
 {
-	none = 1,				/// no homing sensors available
-	active = 1 << 1,
-	passive = 1 << 2,
-	activePassive = 1 << 3	/// alternating active/passive search
+	active = 1,
+	passive = 2,
+	activePassive = 4		/// alternating active/passive search
 }
 
 /// Generic clamped float

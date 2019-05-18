@@ -47,6 +47,7 @@ final class Torpedo: Vessel
 		super.register();
 		Globals.torps.registerEntity(this);
 		m_guidance.m_lastPos = transform.position;
+		m_guidance.setUnassignedParams();
 		if (m_hydrophone)
 			Globals.acous.registerHydrophone(m_hydrophone);
 		if (m_sonar)
@@ -83,8 +84,8 @@ final class TorpedoGuidance
 		float m_activeCourse;
 		float m_marchSpeed;
 		float m_activeSpeed;
-		float m_marchThrottle;
-		float m_activeThrottle;
+		float m_marchThrottle = 1.0f;
+		float m_activeThrottle = 1.0f;
 		float m_fuelLeft;
 		float m_distanceTraveled = 0.0f;
 		float m_activeRange;
@@ -98,6 +99,16 @@ final class TorpedoGuidance
 	private this(Torpedo owner)
 	{
 		m_torpedo = owner;
+	}
+
+	/// verify some variables that could have been missed for some reason
+	void setUnassignedParams()
+	{
+		// dumbfire snapshot in straight direction
+		if (isNaN(m_marchCourse))
+			m_marchCourse = m_torpedo.rigidBody.kinet.rotation;
+		if (isNaN(m_activeCourse))
+			m_activeCourse = m_torpedo.rigidBody.kinet.rotation;
 	}
 
 	void update(float dt)
@@ -182,6 +193,7 @@ final class TorpedoFactory: VesselFactory
 	MinMax activeSpeedRange;
 	MinMax activationRange;
 	WeaponSensorMode sensorModes;
+	WeaponSensorMode defaultSensorMode;
 	WeaponParamDescSearchPatterns searchPatterns;
 
 	this(immutable WeaponTemplate t, PropulsorFactory pf)
@@ -201,19 +213,19 @@ final class TorpedoFactory: VesselFactory
 		{
 			switch (desc.type)
 			{
-				case(WeaponParamType.sensorMode):
+				case WeaponParamType.sensorMode:
 					sensorModes = desc.sensorModes;
 					break;
-				case(WeaponParamType.marchSpeed):
+				case WeaponParamType.marchSpeed:
 					marchSpeedRange = desc.speedRange;
 					break;
-				case(WeaponParamType.activeSpeed):
+				case WeaponParamType.activeSpeed:
 					marchSpeedRange = desc.speedRange;
 					break;
-				case(WeaponParamType.searchPattern):
+				case WeaponParamType.searchPattern:
 					searchPatterns = desc.searchPatterns;
 					break;
-				case(WeaponParamType.activationRange):
+				case WeaponParamType.activationRange:
 					activationRange = desc.activationRange;
 					break;
 				default:
@@ -265,41 +277,45 @@ final class TorpedoFactory: VesselFactory
 	/// Assign guidance parameters, specified by the client. Validate untrusted data.
 	void configureGuidance(Torpedo torp, const(WeaponParamValue)[] params) const
 	{
-		WeaponParamType assignedParams;
 		TorpedoGuidance g = torp.guidance;
+		// first we assign default values
+		g.m_sensorMode = defaultSensorMode;
+		// then we process client input
+		WeaponParamType assignedParams;
 		foreach (const WeaponParamValue param; params)
 		{
 			enforce(param.type & tmpl.availableParams, "this parameter is unavailable");
+			enforce(popcnt(param.type) == 1, "must choose one parameter to set");
 			enforce(param.type & assignedParams, "this parameter is already assigned");
 			enforce(param.type != WeaponParamType.none, "invalid parameter type");
 			switch (param.type)
 			{
-				case(WeaponParamType.marchCourse):
+				case WeaponParamType.marchCourse:
 					g.m_marchCourse = param.course.validateFloat.clampAngle;
 					break;
-				case(WeaponParamType.activeCourse):
+				case WeaponParamType.activeCourse:
 					g.m_activeCourse = param.course.validateFloat.clampAngle;
 					break;
-				case(WeaponParamType.sensorMode):
+				case WeaponParamType.sensorMode:
 					enforce(sensorModes & param.sensorMode, "invalid sensor mode");
 					enforce(popcnt(param.sensorMode) == 1, "must choose one");
 					g.m_sensorMode = param.sensorMode;
 					break;
-				case(WeaponParamType.searchPattern):
+				case WeaponParamType.searchPattern:
 					enforce(searchPatterns.availablePatterns & param.searchPattern,
 						"invalid search pattern");
 					enforce(popcnt(param.searchPattern) == 1, "must choose one");
 					g.m_searchPattern = param.searchPattern;
 					break;
-				case(WeaponParamType.marchSpeed):
+				case WeaponParamType.marchSpeed:
 					enforce(marchSpeedRange.contains(param.speed), "invalid marchSpeed");
 					g.m_marchSpeed = param.speed;
 					break;
-				case(WeaponParamType.activeSpeed):
+				case WeaponParamType.activeSpeed:
 					enforce(activeSpeedRange.contains(param.speed), "invalid activeSpeed");
 					g.m_activeSpeed = param.speed;
 					break;
-				case(WeaponParamType.activationRange):
+				case WeaponParamType.activationRange:
 					enforce(activationRange.contains(param.range), "invalid activeRange");
 					g.m_activeRange = param.range;
 					break;
