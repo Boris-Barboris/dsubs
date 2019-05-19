@@ -194,7 +194,7 @@ private:
 		tf.Cr0 = RolledF(0.01f, 0);
 		tf.Cr1 = RolledF(0, 0);
 		tf.Cm = RolledF(0.003f, 0);
-		tf.rudderKp = 5.0f;
+		tf.rudderKp = 10.0f;
 		tf.rudderKd = -30.0f;
 		tf.rudderPosChangeSpeed = 2.0f;
 		// vec2f dims = getHullDims(tf.tmpl.hullModel);
