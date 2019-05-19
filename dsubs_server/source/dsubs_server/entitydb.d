@@ -14,6 +14,7 @@ import dsubs_sound.hydrophone;
 import dsubs_sound.modulation;
 import dsubs_sound.soundsource;
 import dsubs_sound.image;
+import dsubs_sound.common: GLOBAL_SRATE;
 
 import dsubs_server.common;
 import dsubs_server.propulsion;
@@ -100,7 +101,7 @@ private:
 		bp.posThrustK = RolledF(2600.0f, 40.0f);
 		bp.negThrustK = RolledF(900.0f, 20.0f);
 		bp.mass = 50.0f;
-		bp.shaftRotFreq = 2.09f;
+		bp.shaftRotFreq = 2.19f;
 		bp.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/std_propeller.png", 1.0f, 80, 140),
@@ -218,9 +219,9 @@ Length: 70m
 Displacement: 1600t
 Top speed: 17m/s
 Hydrophones:
-  Bow: passive 500-2kHz spherical array, 210 deg FoV
+  Bow: passive spherical array, 210 deg FoV
 Active sonar:
-  Bow: 1200Hz mid-freq pulse, 210 deg FoV`,
+  Bow: 2200Hz mid-freq pulse, 210 deg FoV`,
 				[
 					ConvexPolygon(xSymmetry([
 							0.0, 35.0,
@@ -273,7 +274,8 @@ Active sonar:
 		// trace("dims: ", dims);
 		sp.hullLength = dims.y;
 		sp.hprots = [
-			HydrophonePrototype([0.0f], 500, 2048, dgr2rad(210), 210, 2 / 90.0f, 3.0f)
+			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(210),
+			210, 2 / 90.0f, 3.0f)
 		];
 		sp.asprot = asp;
 		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-25.0f, -19.0f, -10.0f]);

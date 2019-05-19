@@ -45,4 +45,4 @@ uint uintSeed()
 }
 
 /// dsubs_sound operates only on time-domain signals with this sampling-rate
-enum GLOBAL_SRATE = 4096;
+enum GLOBAL_SRATE = 8192;

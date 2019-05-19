@@ -33,8 +33,8 @@ package __gshared immutable(float)[] wrdk;
 void initializeWrdk()
 {
 	float[] prep_wrdk;
-	prep_wrdk.length = 4096;
-	for (int i = 1; i <= 4096; i++)
+	prep_wrdk.length = GLOBAL_SRATE / 2;
+	for (int i = 1; i <= GLOBAL_SRATE / 2; i++)
 		prep_wrdk[i - 1] = waterRangeDissipationK(i);
 	wrdk = cast(immutable(float)[]) prep_wrdk;
 }
@@ -42,14 +42,14 @@ void initializeWrdk()
 /// Scale intensity level of a band as if it is received underwater at range
 IntensityLevel getILatRange(int freq, IntensityLevel il, float range, float dissMod = 1.0f)
 {
-	assert(freq > 0 && freq <= 4096);
+	assert(freq > 0 && freq <= GLOBAL_SRATE / 2);
 	return IntensityLevel(il - toDb(range * range) - wrdk[freq - 1] * range * dissMod);
 }
 
 /// Same but with toDb(range * range) precalculated
 IntensityLevel getILatRange2(int freq, IntensityLevel il, float range, float rangeDb, float dissMod = 1.0f)
 {
-	assert(freq > 0 && freq <= 4096);
+	assert(freq > 0 && freq <= GLOBAL_SRATE / 2);
 	return IntensityLevel(il - rangeDb - wrdk[freq - 1] * range * dissMod);
 }
 

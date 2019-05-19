@@ -144,7 +144,7 @@ version (unittest)
 	{
 		return cast(immutable) TrochoidModulatorParams([
 			Harmonic(1.0f, 0.2f),
-			Harmonic(5.0f, 0.8f)],
+			Harmonic(7.0f, 0.8f)],
 			0.5, 0.7, -0.4);
 	}
 

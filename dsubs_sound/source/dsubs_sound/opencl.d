@@ -619,11 +619,11 @@ final class DsubsSoundOpenclCtx
 		CommandQueue[] m_queues;
 
 		// global stuff
-		LinearFilter f_hp500;
+		LinearFilter*[string] m_filters;
 	}
 
 	/// pre-built high-pass filter 500Hz+
-	package ref LinearFilter hp500filter() { return f_hp500; }
+	package LinearFilter* getFilter(string name) { return m_filters[name]; }
 
 	package
 	{
@@ -652,7 +652,7 @@ final class DsubsSoundOpenclCtx
 		for (int i = 0; i < queueCount; i++)
 			m_queues[i] = new CommandQueue(this, m_prog);
 		trace("OpenCL kernels loaded, preparing filters");
-		f_hp500 = hp500(m_queues[0]);
+		m_filters["octaveHp250"] = new LinearFilter(queue(0), octaveHp250);
 		m_queues[0].finish();
 		trace("Filters loaded");
 		b_wrdks = Buffer(queue(0), wrdk);

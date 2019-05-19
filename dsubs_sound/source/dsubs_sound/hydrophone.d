@@ -33,7 +33,7 @@ struct HydrophonePrototype
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 4e-3f;
 	float flowNoiseMult = 2e-5f;
-	float omniNoiseMult = 6e-3f;
+	float omniNoiseMult = 8e-3f;
 	/// client listens to beam of this size
 	float listenSpan = dgr2rad(2);
 }
@@ -44,10 +44,10 @@ final class Hydrophone
 {
 	this(CommandQueue q, Transform2D t, ref const HydrophonePrototype p)
 	{
-		assert(p.minFreq >= 20 && p.maxFreq >= p.minFreq);
+		assert(p.minFreq >= 20 && p.maxFreq >= p.minFreq && p.maxFreq <= GLOBAL_SRATE);
 		m_transform = t;
 		m_minFreq = p.minFreq;
-		m_tdsFilter = &q.ctx.hp500filter();
+		m_tdsFilter = q.ctx.getFilter("octaveHp" ~ m_minFreq.to!string);
 		m_maxFreq = p.maxFreq;
 		assert(m_maxFreq <= GLOBAL_SRATE / 2);
 		m_directivity = p.directivity;
@@ -747,7 +747,7 @@ unittest
 	CommandQueue q = ctx.queue(0);
 	Transform2D propTrans = new Transform2D();
 	PropellerSound prop = new PropellerSound(propTrans, stdPropellerProto());
-	float freqPerMs = 2.0f / 17.0f;
+	float freqPerMs = 2.19f / 17.0f;
 	float[] speeds = [1.0f, 3.0f, 5.0f, 7.5f, 10.0f, 12.5f, 15.0f, 17.0f];
 	float[] relBearings = iota(0, speeds.length).map!(
 		i => (dgr2rad(75) - i * dgr2rad(150) / (speeds.length - 1)).to!float).array;
@@ -755,7 +755,7 @@ unittest
 
 	HydrophonePrototype hp = HydrophonePrototype(
 		[0.0f],
-		500, 2048, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f);
+		250, GLOBAL_SRATE / 2, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f);
 	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
 	h.transform.rotation = PI; // good corner case
 	h.onPreSimulation();
@@ -802,7 +802,7 @@ unittest
 	}
 	printToPng("std_hydrophone_0-17ms_2km_target.png", ilevels, 0.0f, 90.0f);
 
-	// generate sound sample of std_propeller on 1km range
+	// generate sound sample of cavitating std_propeller on 1km range
 	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
 	h.listenDir = PI;
 	float spd = 15.0f;
@@ -831,6 +831,39 @@ unittest
 	q.finish();
 	// trace("samples: ", samples[0..16]);
 	float maxp = samples.map!(a => a.abs).maxElement;
+	assert(!isNaN(maxp));
+	trace("std_hydrophone_vs_std_propeller_cav_1km maxp: ", maxp);
+	writeWavFile("std_hydrophone_vs_std_propeller_cav_1km.wav",
+		samples, 0.8f / maxp, GLOBAL_SRATE);
+
+	// generate sound sample of silent-running std_propeller on 1km range
+	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
+	h.listenDir = PI;
+	spd = 4.0f;
+	freq = spd * freqPerMs;
+	trace("fundamental shaft frequency = ", freq);
+	h.ktsStart = h.ktsEnd = mps2kts(0);
+
+	samples.length = GLOBAL_SRATE * 8;
+	for (int i = 0; i < 8; i++)
+	{
+		prop.preUpdate(freq, spd);
+		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
+			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
+		prop.postUpdate(freq, spd, 1.0f);
+		h.resetAndStartIsotropic(q);
+		assert(h.m_listenDirValid);
+		assert(h.m_ant[0].listenCell >= 0);
+		h.applySoundSource(q, prop);
+		h.flushSourceQueue();
+		h.endIsotropic();
+		h.finalizeListenTds(q);
+		q.s_tds.enqueueRead(q,
+			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
+	}
+	q.finish();
+	// trace("samples: ", samples[0..16]);
+	maxp = samples.map!(a => a.abs).maxElement;
 	assert(!isNaN(maxp));
 	trace("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);
 	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav",

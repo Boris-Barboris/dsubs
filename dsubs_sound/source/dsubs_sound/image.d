@@ -74,7 +74,7 @@ unittest
 	auto ctx = s_clCtx;
 	CommandQueue q = ctx.queue(0);
 
-	writeSpectrumTemplateImage("2047bins.png", 2047, 1000);
+	writeSpectrumTemplateImage("4095bins.png", 4095, 1000);
 	ISpectrum ils;
 	loadSpectrumFromImage(q, ils, "std_propeller.png");
 	ils.patch(q, 0.0f, 0, 20);

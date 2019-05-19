@@ -319,7 +319,7 @@ unittest
 }
 
 immutable PingParameters g_stdPingParams = immutable PingParameters(
-		[Chirp(1100, 1300, 0.3f)], 2, 1200);
+		[Chirp(2100, 2300, 0.3f)], 3, 2200);
 
 
 struct ActiveSonarPrototype
@@ -332,7 +332,7 @@ struct ActiveSonarPrototype
 	float span = 210.0f;
 	/// rows in slice image per second
 	int radialRes = 20;
-	/// max ping duration (seconds)
+	/// ping receive window (seconds)
 	int maxSec = 15;
 	/// max ping band intensity level
 	dB maxPeakIlevel = 220.0f;
@@ -348,7 +348,7 @@ struct ActiveSonarPrototype
 	/// water mass reflectivity
 	float waterReflectivity = 1e-3f;
 	/// main sound dissipation modifier
-	float dissMod = 20.0f;
+	float dissMod = 15.0f;
 	/// gain for flow noise
 	dB flowNoiseGain = 10.0f;
 	/// contact bearing error magnitude
@@ -695,7 +695,7 @@ final class SonarPing: SoundSource
 	/// when zero, ping is over and should be disposed of
 	@property size_t samplesLeft() const { return m_samplesLeft; }
 
-	override float minOmniFactor(float range) const { return 0.25f; }
+	override float minOmniFactor(float range) const { return 0.2f; }
 
 	override @property vec2d position() { return m_position; }
 
@@ -740,8 +740,8 @@ final class SonarPing: SoundSource
 
 private TyGverb buildReverberator()
 {
-	GverbParams params = GverbParams(4096, 50.0f, 50.0f, 2.0f,
-		0.1f, 0.0f, 0.01f, 0.6f, 20.0f);
+	GverbParams params = GverbParams(GLOBAL_SRATE, 50.0f, 30.0f, 3.0f,
+		0.05f, 0.0f, 0.01f, 0.1f, 5.0f);
 	return TyGverb(params);
 }
 
@@ -783,7 +783,7 @@ private float[] getPingSamples(int lifeTime, immutable Chirp[] chirps,
 	}
 	float[] reverbed;
 	auto rev = buildReverberator();
-	rev.set_revtime(lifeTime);
+	rev.set_revtime(lifeTime - 0.2f);
 	rev.applyToBuf(samples, reverbed);
 	samples = reverbed;
 	return samples;
@@ -791,6 +791,6 @@ private float[] getPingSamples(int lifeTime, immutable Chirp[] chirps,
 
 unittest
 {
-	float[] samples = getPingSamples(2, [Chirp(1100, 1300, 0.3f)]);
-	writeWavFile("midfreq-chirp.wav", samples, 0.6f, GLOBAL_SRATE);
+	float[] samples = getPingSamples(3, [Chirp(2100, 2300, 0.3f)]);
+	writeWavFile("midfreq-chirp.wav", samples, 0.8f, GLOBAL_SRATE);
 }

@@ -238,7 +238,7 @@ version (unittest)
 		CommandQueue q = ctx.queue(0);
 		PropellerSoundPrototype tmpl;
 		ISpectrum* bbSpec = new ISpectrum(ctx);
-		loadSpectrumFromImage(q, *bbSpec, "std_propeller.png", 80.0f, 140.0f);
+		loadSpectrumFromImage(q, *bbSpec, "std_propeller.png", 60.0f, 135.0f);
 		bbSpec.addUniformNoise(q, 0.5f);
 		tmpl.baseBBSpectrum = bbSpec;
 		ISpectrum* cavSpec = new ISpectrum(ctx);
