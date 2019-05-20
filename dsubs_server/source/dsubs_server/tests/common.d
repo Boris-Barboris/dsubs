@@ -28,7 +28,7 @@ void writeRbodyCsvRow(File* file, usecs_t worldTime, RigidBody rb)
 		rb.kinet.vel.x, rb.kinet.vel.y);
 }
 
-auto captureCsv(File* f, Vessel s, usecs_t shutdownOn = -1)
+auto captureVesselRbCsv(File* f, Vessel s, usecs_t shutdownOn = -1)
 {
 	return (usecs_t worldTime) {
 		writeRbodyCsvRow(f, worldTime, s.rigidBody);

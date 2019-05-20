@@ -138,13 +138,13 @@ final class PropulsorFactory
 abstract class Rudder: IForce
 {
 	Transform2D transform;
-	protected float rudderPos = 0.0f;
+	protected float m_rudderPos = 0.0f;
 
 	/// target course, world-space
 	float targetCourse = 0.0f;
 }
 
-/// PD-controlled rudder
+/// PD-controlled rudder with direct mode
 final class BasicRudder: Rudder
 {
 	/// actual torque power
@@ -153,11 +153,20 @@ final class BasicRudder: Rudder
 	float Kp = 10.0f;
 	float Kd = -20.0;
 	float posChangeSpeed = 1.0f;
+	bool directMode;
+
+	/// assign the target rudder position, used in directMode
+	@property void directRudderPos(float rhs)
+	{
+		assert(rhs >= -1.0f && rhs <= 1.0f);
+		m_directTarget = rhs;
+	}
 
 	private
 	{
 		float error = 0.0;
 		float errorDeriv = 0.0;
+		float m_directTarget = 0.0f;
 	}
 
 	vec2d getForce(const RigidBody b, ref const Kinematics c)
@@ -172,15 +181,18 @@ final class BasicRudder: Rudder
 		errorDeriv = c.angVel;
 		double absSin = fabs(sin(c.AoA));
 		double aoaScale = 1.0 - fmin(0.95, 2.0 * absSin);
-		return steeringK * rudderPos * c.velSquaredLength * aoaScale;
+		return steeringK * m_rudderPos * c.velSquaredLength * aoaScale;
 	}
 
 	void propagateInTime(float dt)
 	{
-		float targetRudderPos = sgn(error);
-		if (fabs(error) < dgr2rad(30))
-			targetRudderPos = clamp(Kp * error + Kd * errorDeriv, -1.0f, 1.0f);
-		rudderPos = cmove(rudderPos, targetRudderPos, posChangeSpeed, dt);
+		float targetm_rudderPos = directMode ? m_directTarget : sgn(error);
+		if (!directMode)
+		{
+			if (fabs(error) < dgr2rad(30))
+				targetm_rudderPos = clamp(Kp * error + Kd * errorDeriv, -1.0f, 1.0f);
+		}
+		m_rudderPos = cmove(m_rudderPos, targetm_rudderPos, posChangeSpeed, dt);
 	}
 }
 

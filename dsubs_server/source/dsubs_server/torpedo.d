@@ -87,13 +87,26 @@ final class TorpedoGuidance
 		float m_marchThrottle = 1.0f;
 		float m_activeThrottle = 1.0f;
 		float m_fuelLeft;
-		float m_fuelEffExponent = 1.0f;
+		float m_fuelEffExponent = 2.0f;
 		float m_distanceTraveled = 0.0f;
 		float m_activeRange;
 		vec2d m_lastPos;
 		bool m_activated;
 		bool m_exhausted;
+
+		// snake-related parameters
+		float m_snakeArm;
+		float m_snakeAngle = dgr2rad(45);
+		float m_snakeArmBeforeTurn;
+		float m_snakeSign = 1.0f;
+
+		// spiral-related parameters
+		float m_spiralStartTarget = 1.0f;
+		float m_spiralTargetRedPerRange;
+		float m_spiralSinceStart = 0.0f;
 	}
+
+	@property void fuelLeft(float rhs) { m_fuelLeft = rhs; }
 
 	@property Torpedo torpedo() { return m_torpedo; }
 
@@ -117,23 +130,51 @@ final class TorpedoGuidance
 		// perform fuel-related calculations
 		if (m_exhausted)
 			return;
-		m_fuelLeft -= pow(m_torpedo.propulsor.throttle, 2 + m_fuelEffExponent);
+		float fuelSpent = pow(m_torpedo.propulsor.throttle.fabs, m_fuelEffExponent);
+		m_fuelLeft -= fuelSpent;
 		if (m_fuelLeft < 0.0f)
 		{
-			m_torpedo.propulsor.targetThrottle = 0.0f;
+			m_torpedo.targetThrottle = 0.0f;
 			m_exhausted = true;
 			return;
 		}
 		// activation logic
-		m_distanceTraveled += (m_lastPos - m_torpedo.transform.wposition).length;
+		float distanceAdded = (m_lastPos - m_torpedo.transform.wposition).length;
+		m_distanceTraveled += distanceAdded;
 		m_lastPos = m_torpedo.transform.wposition;
 		if (!m_activated && m_distanceTraveled >= m_activeRange)
+		{
 			m_activated = true;
+			m_snakeArmBeforeTurn += m_snakeArm;
+			if (m_searchPattern == WeaponSearchPattern.spiral)
+				m_torpedo.rudder.directMode = true;
+		}
 		// assign course and throttle based on activation state
 		if (m_activated)
 		{
 			m_torpedo.targetThrottle = m_activeThrottle;
-			m_torpedo.targetCourse = m_activeCourse;
+			final switch (m_searchPattern)
+			{
+				case WeaponSearchPattern.straight:
+					m_torpedo.targetCourse = m_activeCourse;
+					break;
+				case WeaponSearchPattern.spiral:
+					m_spiralSinceStart += distanceAdded;
+					m_torpedo.rudder.directRudderPos = m_spiralStartTarget /
+						(1.0f + m_spiralTargetRedPerRange * sqrt(m_spiralSinceStart));
+					break;
+				case WeaponSearchPattern.snake:
+					m_snakeArmBeforeTurn -= distanceAdded;
+					if (m_snakeArmBeforeTurn < 0.0f)
+					{
+						// snake turn
+						m_snakeArmBeforeTurn = 2.0f * m_snakeArm;
+						m_snakeSign = -m_snakeSign;
+					}
+					m_torpedo.targetCourse = m_activeCourse +
+						m_snakeSign * m_snakeAngle;
+					break;
+			}
 		}
 		else
 		{
@@ -190,13 +231,21 @@ final class TorpedoFactory: VesselFactory
 	ActiveSonarPrototype* asprot;
 	MountPoint asmount;
 	RolledF fuel;
-	float fuelEffExponent = 1.0f;
+	float fuelEffExponent = 2.0f;
+	// snake
+	float snakeArm = 300.0f;
+	float snakeArmInitial;
+	float snakeAngle = dgr2rad(45.0f);
+	// spiral
+	float spiralStartTarget = 1.0f;
+	float spiralTargetRedPerRange = 1e-2f;
 	// inlined weapon parameter descriptions
 	MinMax marchSpeedRange;
 	MinMax activeSpeedRange;
 	MinMax activationRange;
 	WeaponSensorMode sensorModes;
 	WeaponSensorMode defaultSensorMode;
+	WeaponSearchPattern defaultSearchPattern = WeaponSearchPattern.straight;
 	WeaponParamDescSearchPatterns searchPatterns;
 
 	this(immutable WeaponTemplate t, PropulsorFactory pf)
@@ -245,6 +294,11 @@ final class TorpedoFactory: VesselFactory
 		res.propulsor.transform.rotation = propMount.rotation;
 		res.guidance.m_fuelLeft = fuel;
 		res.guidance.m_fuelEffExponent = fuelEffExponent;
+		res.guidance.m_snakeArm = snakeArm;
+		res.guidance.m_snakeArmBeforeTurn = snakeArmInitial;
+		res.guidance.m_snakeAngle = snakeAngle;
+		res.guidance.m_spiralStartTarget = spiralStartTarget;
+		res.guidance.m_spiralTargetRedPerRange = spiralTargetRedPerRange;
 		if (hprot)
 		{
 			Transform2D t = new Transform2D();
@@ -289,6 +343,7 @@ final class TorpedoFactory: VesselFactory
 		TorpedoGuidance g = torp.guidance;
 		// first we assign default values
 		g.m_sensorMode = defaultSensorMode;
+		g.m_searchPattern = defaultSearchPattern;
 		g.m_marchSpeed = marchSpeedRange.max;
 		g.m_activeSpeed = activeSpeedRange.max;
 		g.m_activeRange = activationRange.min;

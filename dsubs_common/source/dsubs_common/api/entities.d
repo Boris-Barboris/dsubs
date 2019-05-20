@@ -124,6 +124,7 @@ struct WeaponParamDescSearchPatterns
 {
 	WeaponSearchPattern availablePatterns;
 	float snakeWidth = 0.0f;
+	float spiralFirstRadius = 0.0f;
 	float spiralStep = 0.0f;	/// each spiral loop radius is increased by this many meters
 }
 

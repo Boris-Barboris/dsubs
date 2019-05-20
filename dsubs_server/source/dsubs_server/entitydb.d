@@ -137,7 +137,11 @@ private:
 		pdescs ~= pd;
 		pd.type = WeaponParamType.searchPattern;
 		pd.searchPatterns = WeaponParamDescSearchPatterns(
-			WeaponSearchPattern.straight, 0.0f, 0.0f
+			cast(WeaponSearchPattern)(
+				WeaponSearchPattern.straight |
+				WeaponSearchPattern.snake |
+				WeaponSearchPattern.spiral),
+			400.0f, 150.0f, 100.0f
 		);
 		pdescs ~= pd;
 
@@ -171,7 +175,7 @@ private:
 				"Minoga",
 				"Minoga torpedo",
 				[],
-				70.0f,
+				90.0f,
 				cast(WeaponParamType)(
 					WeaponParamType.activeCourse |
 					WeaponParamType.marchCourse |
@@ -182,10 +186,17 @@ private:
 				pdescs.dup),
 			pf);
 		tf.defaultSensorMode = WeaponSensorMode.active;
+		tf.fuelEffExponent = 2.5f;
+		tf.snakeArm = 300.0f;
+		tf.snakeArmInitial = -40.0f;
+		tf.snakeAngle = dgr2rad(60.0f);
+		tf.spiralStartTarget = 1.0f;
+		tf.spiralTargetRedPerRange = 0.05f;
 		tf.fuel = RolledF(6000 / 29.0f, 2);
 		tf.mass = RolledF(1.5f, 2e-3);
-		tf.Cd0 = RolledF(1e-2f, 1e-4f);
-		tf.Cd1 = RolledF((pf.posThrustK.mean - tf.Cd0.mean * 29.0f) / pow(29.0f, 2), 3e-4f);
+		tf.Cd0 = RolledF(0.2f, 1e-3f);
+		tf.Cd1 = RolledF(
+			(pf.posThrustK.mean - tf.Cd0.mean * 29.0f) / pow(29.0f, 2), 3e-4f);
 		tf.Cda = 1.5f;
 		tf.equilDrift = dgr2rad(10);
 		double cl = calcClForTurningRadius(tf.equilDrift,

@@ -20,7 +20,7 @@ class Vessel
 		RigidBody m_rigidBody;
 		float m_moiK = 1.0f;
 		float m_hullLength;
-		Rudder m_rudder;
+		BasicRudder m_rudder;
 		Propulsor m_propulsor;
 		Reflector m_reflector;
 		string m_prototypeName;
@@ -38,7 +38,7 @@ class Vessel
 			m_transform.addChild(rhs.transform);
 		}
 		@property inout(Propulsor) propulsor() inout { return m_propulsor; }
-		@property inout(Rudder) rudder() inout { return m_rudder; }
+		@property inout(BasicRudder) rudder() inout { return m_rudder; }
 		@property string prototypeName() const { return m_prototypeName; }
 	}
 

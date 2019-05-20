@@ -34,9 +34,120 @@ unittest
 
 	Torpedo t = tf.build(null, pvs);
 	t.register();
-	File* file = writeRbodyCsvHeader("guidance", "minoga", "minoga");
-	Globals.sim.onSimulationPassStart += captureCsv(file, t);
+	File* file = writeRbodyCsvHeader("guidance", "minoga_turning", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
 	Globals.sim.worldTimeLimit = 40 * cast(ulong)1e6;
+	Globals.sim.start();
+	Globals.sim.join();
+	Globals.resetForTests();
+}
+
+unittest
+{
+	Globals.buildForTests();
+	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	// slow torp
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(-45.0f);
+	pvs ~= pv;
+	pv.type = WeaponParamType.marchSpeed;
+	pv.speed = 20.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 5000.0f;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.guidance.fuelLeft = 20.0f;
+	t.transform.rotation = dgr2rad(-45.0f);
+	t.register();
+	File* file = writeRbodyCsvHeader("guidance", "minoga_endurance", "minoga20mps");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
+
+	// fast torp
+	pvs.length = 0;
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(-45.0f);
+	pvs ~= pv;
+	pv.type = WeaponParamType.marchSpeed;
+	pv.speed = 29.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 5000.0f;
+	pvs ~= pv;
+
+	t = tf.build(null, pvs);
+	t.guidance.fuelLeft = 20.0f;
+	t.transform.position = vec2d(50.0, 0);
+	t.transform.rotation = dgr2rad(-45.0f);
+	t.register();
+	file = writeRbodyCsvHeader("guidance", "minoga_endurance", "minoga29mps");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
+
+	Globals.sim.worldTimeLimit = 60 * cast(ulong)1e6;
+	Globals.sim.start();
+	Globals.sim.join();
+	Globals.resetForTests();
+}
+
+unittest
+{
+	Globals.buildForTests();
+	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 400.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.snake;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.register();
+	File* file = writeRbodyCsvHeader("guidance", "minoga_snake", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
+	Globals.sim.worldTimeLimit = 90 * cast(ulong)1e6;
+	Globals.sim.start();
+	Globals.sim.join();
+	Globals.resetForTests();
+}
+
+unittest
+{
+	Globals.buildForTests();
+	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 400.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.spiral;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.register();
+	File* file = writeRbodyCsvHeader("guidance", "minoga_spiral", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
+	Globals.sim.worldTimeLimit = 180 * cast(ulong)1e6;
 	Globals.sim.start();
 	Globals.sim.join();
 	Globals.resetForTests();
