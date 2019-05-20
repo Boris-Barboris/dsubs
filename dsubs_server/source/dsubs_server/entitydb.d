@@ -98,8 +98,8 @@ private:
 					vec2f(4.2f, -0.9f)
 				], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 			));
-		bp.posThrustK = RolledF(2600.0f, 40.0f);
-		bp.negThrustK = RolledF(900.0f, 20.0f);
+		bp.posThrustK = RolledF(1600.0f, 20.0f);
+		bp.negThrustK = RolledF(600.0f, 10.0f);
 		bp.mass = 50.0f;
 		bp.shaftRotFreq = 2.19f;
 		bp.soundPrototype = PropellerSoundPrototype(
@@ -273,8 +273,8 @@ Active sonar:
 					asp.getSliceResol(), asp.radialRes, asp.maxSec)
 			));
 		sp.mass = RolledF(1700.0f, 10.0f);
-		sp.Cd0 = RolledF(10.0, 0.25f);
-		sp.Cd1 = RolledF(8.6, 0.1f);
+		sp.Cd0 = RolledF(5.0, 0.1f);
+		sp.Cd1 = RolledF(5.6, 0.07f);
 		sp.Cda = 0.8;
 		sp.Cl = RolledF(50.0, 0.4f);
 		sp.Cr0 = RolledF(5e4, 100);

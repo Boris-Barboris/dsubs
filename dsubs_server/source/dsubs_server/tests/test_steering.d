@@ -43,14 +43,31 @@ unittest
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Globals.buildForTests();
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	s.rigidBody.kinet.vel = courseVector(0) *
-		maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	trace("max stork speed: ", mspd);
+	s.rigidBody.kinet.vel = courseVector(0) * mspd;
 	s.targetThrottle = 1.0f;
 	s.targetCourse = dgr2rad(-179);
 	s.register();
 	File* file = writeRbodyCsvHeader("steering", "stork", "stork");
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, s);
 	Globals.sim.worldTimeLimit = 30 * cast(ulong)1e6;
+	Globals.sim.start();
+	Globals.sim.join();
+	Globals.resetForTests();
+}
+
+unittest
+{
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Globals.buildForTests();
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	s.targetThrottle = 1.0f;
+	s.targetCourse = dgr2rad(0);
+	s.register();
+	File* file = writeRbodyCsvHeader("steering", "stork_accel", "stork");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, s);
+	Globals.sim.worldTimeLimit = 60 * cast(ulong)1e6;
 	Globals.sim.start();
 	Globals.sim.join();
 	Globals.resetForTests();
