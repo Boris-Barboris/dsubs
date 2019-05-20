@@ -80,6 +80,7 @@ final class EntityDb
 
 private:
 
+
 	void buildPropulsorTemplates()
 	{
 		PropulsorFactory bp;
@@ -108,16 +109,16 @@ private:
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/std_propeller_cav.png", 1.0f, 60, 140),
 			cast(immutable) new TrochoidModulatorParams([
-				Harmonic(1.0f, 0.2f),
-				Harmonic(2.0f, 0.05f),
+				Harmonic(1.0f, 0.35f),
+				Harmonic(2.0f, 0.1f),
 				Harmonic(3.0f, 0.01f),
-				Harmonic(4.0f, 0.001f),
 				Harmonic(7.0f, 0.8f)],
 				0.5, 0.7, -0.4),
 			4.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
 		);
 		m_propulsors["Seven-blade screw"] = bp;
 	}
+
 
 	void buildTorpedoTemplates()
 	{
@@ -214,6 +215,7 @@ private:
 
 		pdescs.length = 0;
 	}
+
 
 	void buildSubmarineTemplates()
 	{

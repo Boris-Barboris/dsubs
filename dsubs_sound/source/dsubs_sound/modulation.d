@@ -143,7 +143,9 @@ version (unittest)
 	immutable(TrochoidModulatorParams) stdTrochParams()
 	{
 		return cast(immutable) TrochoidModulatorParams([
-			Harmonic(1.0f, 0.2f),
+			Harmonic(1.0f, 0.35f),
+			Harmonic(2.0f, 0.1f),
+			Harmonic(3.0f, 0.01f),
 			Harmonic(7.0f, 0.8f)],
 			0.5, 0.7, -0.4);
 	}
