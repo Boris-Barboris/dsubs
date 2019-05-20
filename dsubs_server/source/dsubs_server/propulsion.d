@@ -112,7 +112,7 @@ final class PropulsorFactory
 	RolledF negThrustK;
 	float mass;
 	float shaftRotFreq = 1.0f;
-	float rotAcceleration = 0.25f;
+	float rotAcceleration = 0.2f;
 	PropellerSoundPrototype soundPrototype;
 
 	this(immutable PropulsorTemplate t)

@@ -32,8 +32,8 @@ struct HydrophonePrototype
 	float directivity;
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 4e-3f;
-	float flowNoiseMult = 2e-5f;
-	float omniNoiseMult = 8e-3f;
+	float flowNoiseMult = 1.8e-5f;
+	float omniNoiseMult = 1e-2f;
 	/// client listens to beam of this size
 	float listenSpan = dgr2rad(2);
 }
@@ -510,9 +510,9 @@ final class Hydrophone
 		assert(integrPoints >= 1);
 		assert(right <= left);
 		halo *= HALO_GAIN;
-		float relBearing = brngStart;
 		PowerIntegr res;
-		float drx = angleDist(brngEnd, brngStart) / (integrPoints - 1);
+		float drx = angleDist(brngEnd, brngStart) / integrPoints;
+		float relBearing = brngStart + drx / 2;
 		Sector beamSector = Sector(left, right);
 		for (int i = 0; i < integrPoints; i++)
 		{
@@ -786,7 +786,9 @@ unittest
 	float dspd = mps2kts(17) / ilevels.length;
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
+		h.onPreSimulation();
 		h.ktsStart = h.ktsEnd = spdKts + dspd * i;
+		h.transform.rotation = PI + 0.75f * sin(i / 10.0f);
 		h.resetAndStartIsotropic(q);
 		foreach (j, float spd; speeds)
 		{
@@ -809,6 +811,8 @@ unittest
 	float freq = spd * freqPerMs;
 	trace("fundamental shaft frequency = ", freq);
 	h.ktsStart = h.ktsEnd = mps2kts(0);
+	h.transform.rotation = PI;
+	h.onPreSimulation();
 
 	float[] samples;
 	samples.length = GLOBAL_SRATE * 8;
