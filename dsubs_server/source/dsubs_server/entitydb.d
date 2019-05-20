@@ -141,7 +141,7 @@ private:
 				WeaponSearchPattern.straight |
 				WeaponSearchPattern.snake |
 				WeaponSearchPattern.spiral),
-			400.0f, 150.0f, 100.0f
+			400.0f, 200.0f, 200.0f
 		);
 		pdescs ~= pd;
 
@@ -191,7 +191,7 @@ private:
 		tf.snakeArmInitial = -40.0f;
 		tf.snakeAngle = dgr2rad(60.0f);
 		tf.spiralStartTarget = 1.0f;
-		tf.spiralTargetRedPerRange = 0.05f;
+		tf.spiralTargetRedPerRange = 0.08f;
 		tf.fuel = RolledF(6000 / 29.0f, 2);
 		tf.mass = RolledF(1.5f, 2e-3);
 		tf.Cd0 = RolledF(0.2f, 1e-3f);
