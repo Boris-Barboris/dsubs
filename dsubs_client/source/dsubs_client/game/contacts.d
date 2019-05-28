@@ -288,12 +288,7 @@ final class ClientContactManager
 Button[] commonContactContextMenu(ClientContact ctc)
 {
 	Button[] res;
-	// drop
-	Button btn = builder(new Button()).fontSize(15).content("drop contact").build();
-	btn.onClick += {
-		Game.ciccon.sendMessage(immutable CICDropContactReq(ctc.id));
-	};
-	res ~= btn;
+	Button btn;
 	// classification
 	Button[] classifications;
 	foreach (ctype; EnumMembers!ContactType)
@@ -323,6 +318,12 @@ Button[] commonContactContextMenu(ClientContact ctc)
 	NestedContextBtn trimSubmenu = builder(new NestedContextBtn(trimmingBtns, 20)).
 		fontSize(15).content("trim to last").build();
 	res ~= trimSubmenu;
+	// drop
+	btn = builder(new Button()).fontSize(15).content("drop contact").build();
+	btn.onClick += {
+		Game.ciccon.sendMessage(immutable CICDropContactReq(ctc.id));
+	};
+	res ~= btn;
 	return res;
 }
 
