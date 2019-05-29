@@ -39,6 +39,17 @@ struct LinearFilter
 		k.setArg(4, dest.mem);
 		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null);
 	}
+
+	void filter(CommandQueue q, ref VarTds prev, ref VarTds cur, ref VarTds dest)
+	{
+		Kernel k = q.mk_firTds;
+		k.setArg(0, cur.mem);
+		k.setArg(1, prev.mem);
+		k.setArg(2, m_taps.mem);
+		k.setArg(3, m_tapCount);
+		k.setArg(4, dest.mem);
+		k.enqueue(q, 1, null, [cur.length], null, null);
+	}
 }
 
 // 8192 sampling rate filters:

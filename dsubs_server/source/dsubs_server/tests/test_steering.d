@@ -49,9 +49,9 @@ unittest
 	s.targetThrottle = 1.0f;
 	s.targetCourse = dgr2rad(-179);
 	s.register();
-	File* file = writeRbodyCsvHeader("steering", "stork", "stork");
+	File* file = writeRbodyCsvHeader("steering", "stork_turn", "stork");
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, s);
-	Globals.sim.worldTimeLimit = 30 * cast(ulong)1e6;
+	Globals.sim.worldTimeLimit = 45 * cast(ulong)1e6;
 	Globals.sim.start();
 	Globals.sim.join();
 	Globals.resetForTests();

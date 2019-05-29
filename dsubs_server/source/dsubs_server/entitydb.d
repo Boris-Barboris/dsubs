@@ -278,11 +278,11 @@ Active sonar:
 		sp.Cd0 = RolledF(5.0, 0.1f);
 		sp.Cd1 = RolledF(5.6, 0.07f);
 		sp.Cda = 0.8;
-		sp.Cl = RolledF(50.0, 0.4f);
+		sp.Cl = RolledF(35.0, 0.4f);
 		sp.Cr0 = RolledF(5e4, 100);
 		sp.Cr1 = RolledF(0.5e6, 1e2);
 		sp.Cm = RolledF(500.0f, 6.0f);
-		sp.equilDrift = dgr2rad(25);
+		sp.equilDrift = dgr2rad(20);
 		vec2f dims = getHullDims(sp.tmpl.hullModel);
 		// trace("dims: ", dims);
 		sp.hullLength = dims.y;

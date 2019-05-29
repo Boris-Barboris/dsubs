@@ -105,10 +105,15 @@ package struct PingTdsCache
 	void put(CommandQueue q, immutable PingParameters* params)
 	{
 		float[] samples = getPingSamples(params.tdsLength, params.chirps);
-		float meanSqr = samples[0 .. GLOBAL_SRATE].map!(p => p * p).sum() / GLOBAL_SRATE;
 		synchronized(q)
 		{
-			m_cache[params] = PreparedPingTds(VarTds(q, samples), meanSqr);
+			m_cache[params] = PreparedPingTds(VarTds(q, samples.length, 0.0f));
+			VarTds zeroes = VarTds(q, samples.length, 0.0f);
+			VarTds source = VarTds(q, samples);
+			q.ctx.getFilter("octaveHp250").filter(q, zeroes, source, m_cache[params].tds);
+			m_cache[params].tds.read(q, samples);
+			m_cache[params].meanSqr = samples[0 .. GLOBAL_SRATE / 2].
+				map!(p => p * p).sum() / (GLOBAL_SRATE / 2);
 		}
 	}
 
@@ -740,7 +745,7 @@ final class SonarPing: SoundSource
 
 private TyGverb buildReverberator()
 {
-	GverbParams params = GverbParams(GLOBAL_SRATE, 50.0f, 30.0f, 3.0f,
+	GverbParams params = GverbParams(GLOBAL_SRATE, 30.0f, 30.0f, 3.0f,
 		0.05f, 0.0f, 0.01f, 0.1f, 5.0f);
 	return TyGverb(params);
 }
@@ -791,6 +796,16 @@ private float[] getPingSamples(int lifeTime, immutable Chirp[] chirps,
 
 unittest
 {
-	float[] samples = getPingSamples(3, [Chirp(2100, 2300, 0.3f)]);
-	writeWavFile("midfreq-chirp.wav", samples, 0.8f, GLOBAL_SRATE);
+	auto mfParams = immutable PingParameters([Chirp(2100, 2300, 0.3f)], 3, 2200);
+	auto hfParams = immutable PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600);
+	s_clCtx.pingTds.put(s_clCtx.queue(0), &mfParams);
+	s_clCtx.pingTds.put(s_clCtx.queue(0), &hfParams);
+	float[] samples;
+	samples.length = 3 * GLOBAL_SRATE;
+	PreparedPingTds* ptds = s_clCtx.pingTds.get(&mfParams);
+	ptds.tds.read(s_clCtx.queue(0), samples);
+	writeWavFile("midfreq-chirp.wav", samples, 0.01f / ptds.meanSqr, GLOBAL_SRATE);
+	ptds = s_clCtx.pingTds.get(&hfParams);
+	ptds.tds.read(s_clCtx.queue(0), samples);
+	writeWavFile("highfreq-chirp.wav", samples, 0.01f / ptds.meanSqr, GLOBAL_SRATE);
 }

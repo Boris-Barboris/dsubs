@@ -51,6 +51,12 @@ struct Tds
 		return buf.enqueueFullRead(q, dest.ptr, null);
 	}
 
+	void read(CommandQueue q, float[] dest)
+	{
+		assert(dest.length >= BUF_LEN);
+		buf.fullRead(q, dest.ptr, null);
+	}
+
 	void addTo(CommandQueue q, ref Tds dest)
 	{
 		Kernel k = q.mk_addTo;
@@ -118,6 +124,12 @@ struct VarTds
 	{
 		assert(dest.length >= length);
 		return buf.enqueueFullRead(q, dest.ptr, null);
+	}
+
+	void read(CommandQueue q, float[] dest)
+	{
+		assert(dest.length >= length);
+		buf.fullRead(q, dest.ptr, null);
 	}
 
 	void addTo(CommandQueue q, ref Tds dest, size_t startIdx)

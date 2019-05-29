@@ -622,7 +622,6 @@ final class DsubsSoundOpenclCtx
 		LinearFilter*[string] m_filters;
 	}
 
-	/// pre-built high-pass filter 500Hz+
 	package LinearFilter* getFilter(string name) { return m_filters[name]; }
 
 	package
