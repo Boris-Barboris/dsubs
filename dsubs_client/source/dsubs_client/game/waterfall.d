@@ -123,9 +123,9 @@ class PanoramicDisplay(DataIntType): GuiElement
 	{
 		int compassHeight = 18;
 		int headerHeight = 18;
-		int width = 360 * 4;
+		int width = 360 * 8;
 		int height = -1;
-		int camViewPortWidth = 360 * 4;
+		int camViewPortWidth = 360 * 8;
 		int camViewPortHeight = -1;
 		bool additionalRow = true;
 	}
