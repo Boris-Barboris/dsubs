@@ -49,7 +49,7 @@ final class MainMenuState: GameState
 		connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").
 			fontSize(MENU_BUTTON_FONTSIZE).fixedSize(vec2i(400, btnSize)).build();
 
-		infoLabel = builder(new Label()).content("Connecting to server").
+		infoLabel = builder(new Label()).content("Connecting to server...").
 			fontSize(INFO_FONT_SIZE).fixedSize(vec2i(400, INFO_FONT_SIZE + 10)).
 			fontColor(sfColor(255, 255, 0, 255)).htextAlign(HTextAlign.CENTER).build();
 
@@ -130,7 +130,7 @@ final class MainMenuState: GameState
 						cicConnectCancellator = null;
 						info("stopping backend connection maintainer to focus on CIC");
 						Game.bconm.stop();
-						infoLabel.content = "Connected to CIC server";
+						infoLabel.content = "Connected to coop server";
 						Game.window.title = "dsubs (coop client)";
 					}
 				},
@@ -249,7 +249,7 @@ final class MainMenuState: GameState
 	override void handleBackendDisconnect()
 	{
 		canLogin = alreadySpawned = false;
-		infoLabel.content = "Backend server connection closed";
+		infoLabel.content = "Connecting to server...";
 		connectButton.signalClickEnd();
 	}
 
