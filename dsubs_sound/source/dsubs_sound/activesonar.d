@@ -99,10 +99,10 @@ package struct PingTdsCache
 {
 	private
 	{
-		PreparedPingTds[immutable PingParameters*] m_cache;
+		PreparedPingTds[const PingParameters] m_cache;
 	}
 
-	void put(CommandQueue q, immutable PingParameters* params)
+	void put(CommandQueue q, const PingParameters params)
 	{
 		float[] samples = getPingSamples(params.tdsLength, params.chirps);
 		synchronized(q)
@@ -117,7 +117,7 @@ package struct PingTdsCache
 		}
 	}
 
-	PreparedPingTds* get(immutable PingParameters* params)
+	PreparedPingTds* get(const PingParameters params)
 	{
 		return params in m_cache;
 	}
@@ -330,7 +330,7 @@ immutable PingParameters g_stdPingParams = immutable PingParameters(
 struct ActiveSonarPrototype
 {
 	/// form of the ping chirp, wich will be used to synthesize time domain signal
-	immutable(PingParameters)* pingParams = &g_stdPingParams;
+	PingParameters pingParams = g_stdPingParams;
 	/// number of beams in omnidirectional image
 	int omniBeamCount = 320;
 	/// Sonar is capable of scanning sector of this size (degrees)
@@ -370,7 +370,7 @@ struct ActiveSonarPrototype
 	/// perlin noise amplitudes (two noise passes are added)
 	dB[2] perlinGain = [7.9f, 4.3f];
 	/// sonar image will be black on this pixel intensity level
-	dB zeroLevel = dB(seaNoiseIL(1200).val + 20.0f);
+	dB zeroLevel = dB(seaNoiseIL(2200).val + 20.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
 	float endScale = 1 / 110.0f;
 
@@ -389,10 +389,9 @@ final class ActiveSonar
 	{
 		m_transform = trans;
 		m_proto = proto;
-		m_omniImage = FloatImage(q.ctx, proto.omniBeamCount, proto.maxSec * proto.radialRes);
+		m_secDur = proto.maxSec;
 		m_nextSliceImage = ByteImage(q.ctx, proto.getSliceResol(), proto.radialRes);
 		m_nextSlice = new ubyte[m_nextSliceImage.size];
-		m_maxRange = SOUND_SPD * proto.maxSec / 2;
 		onPreSimulation += () { m_worldRotStart = m_transform.wrotation; };
 		onPostSimulation += () { m_worldRotEnd = m_transform.wrotation; };
 		synchronized
@@ -414,6 +413,7 @@ final class ActiveSonar
 		const ActiveSonarPrototype m_proto;
 		bool m_active = true;
 		bool m_hasSliceToSend = false;
+		int m_secDur;	/// duration limiter
 
 		/// speed in knots at the start of integration
 		float m_ktsStart = 0.0f;
@@ -422,9 +422,6 @@ final class ActiveSonar
 		float m_worldRotEnd = 0.0f;
 		float m_angVelStart = 0.0f;
 		float m_angVelEnd = 0.0f;
-
-		// precalculated parameters
-		float m_maxRange;
 
 		// tracked ping data:
 
@@ -445,6 +442,17 @@ final class ActiveSonar
 
 		/// Tds-related stuff
 		PreparedPingTds* m_refPingTds;
+	}
+
+	@property float maxRange() const { return m_secDur * SOUND_SPD / 2; }
+	@property int maxSec() const { return m_proto.maxSec; }
+	@property int secDur() const { return m_secDur; }
+
+	/// assign a duration limiter (in seconds) on the following pings
+	@property void secDur(int rhs)
+	{
+		assert(rhs > 0 && rhs <= maxSec);
+		m_secDur = rhs;
 	}
 
 	/// release underlying opencl buffers
@@ -506,13 +514,13 @@ final class ActiveSonar
 
 	SonarPing startPing(dB ilevel)
 	{
+		if (m_pingJustStarted)
+			return null;
 		enforce(ilevel <= m_proto.maxPeakIlevel && ilevel >= m_proto.minPeakIlevel,
 			"desired ping intensity out of allowed interval");
 		m_curPingIlevel = ilevel;
-		if (m_pingJustStarted)
-			return null;
 		m_sliceOffset = 0;
-		m_slicesLeft = m_proto.maxSec;
+		m_slicesLeft = m_secDur;
 		m_hasSliceToSend = false;
 		m_omiWrot = m_transform.wrotation;
 		m_pingJustStarted = true;
@@ -538,7 +546,7 @@ final class ActiveSonar
 			PreparedReflector pr;
 			vec2d dir = r.transform.wposition - m_transform.wposition;
 			pr.range = dir.length;
-			if (pr.range > m_maxRange + max(r.m_proto.size[0], r.m_proto.size[1]))
+			if (pr.range > maxRange + max(r.m_proto.size[0], r.m_proto.size[1]))
 				continue;
 			pr.relBearing = clampAnglePi(courseAngle(dir) - m_transform.wrotation);
 			r.calcForEmitter(m_transform.wposition, pr);
@@ -547,10 +555,12 @@ final class ActiveSonar
 		// push reflectors to opencl
 		Buffer reflectBuf = Buffer(q.ctx, PreparedReflector.sizeof * prepr.length);
 		reflectBuf.enqueueFullWrite(q, prepr, null).release();
+		// Free old and create new omnidirectional image
+		m_omniImage = FloatImage(q.ctx, m_proto.omniBeamCount, m_secDur * m_proto.radialRes);
 		// Create sibling texture that will be released at the end of this function
 		FloatImage m_tmpImg = FloatImage(q.ctx, m_omniImage.w, m_omniImage.h);
 
-		float omniRangePerRow = m_maxRange / m_proto.maxSec / m_proto.radialRes;
+		float omniRangePerRow = SOUND_SPD / 2.0f / m_proto.radialRes;
 
 		// reflector pass
 		Kernel k = q.mk_sonarReflectorPass;
@@ -720,7 +730,7 @@ final class SonarPing: SoundSource
 			Buffer* bandIntensityBuf, Tds* tds) onSignalReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f)
 	{
-		float range = (listenerPos - m_position).length;
+		float range = max(10.0f, (listenerPos - m_position).length);
 		float relBearing = courseAngle(listenerPos - m_position) - m_wrot;
 		IntensityLevel ilevel = pingAtRelBearing(m_kernParam, relBearing);
 		ilevel = getILatRange(m_freq, ilevel, range, dissMod);
@@ -746,12 +756,12 @@ final class SonarPing: SoundSource
 private TyGverb buildReverberator()
 {
 	GverbParams params = GverbParams(GLOBAL_SRATE, 30.0f, 30.0f, 3.0f,
-		0.05f, 0.0f, 0.01f, 0.1f, 5.0f);
+		0.1f, 0.0f, 0.01f, 0.1f, 5.0f);
 	return TyGverb(params);
 }
 
 
-private float[] getPingSamples(int lifeTime, immutable Chirp[] chirps,
+private float[] getPingSamples(int lifeTime, const Chirp[] chirps,
 	int srate = GLOBAL_SRATE)
 {
 	assert(srate > 0);
@@ -796,16 +806,16 @@ private float[] getPingSamples(int lifeTime, immutable Chirp[] chirps,
 
 unittest
 {
-	auto mfParams = immutable PingParameters([Chirp(2100, 2300, 0.3f)], 3, 2200);
-	auto hfParams = immutable PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600);
-	s_clCtx.pingTds.put(s_clCtx.queue(0), &mfParams);
-	s_clCtx.pingTds.put(s_clCtx.queue(0), &hfParams);
+	auto mfParams = PingParameters([Chirp(2100, 2300, 0.3f)], 3, 2200);
+	auto hfParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600);
+	s_clCtx.pingTds.put(s_clCtx.queue(0), mfParams);
+	s_clCtx.pingTds.put(s_clCtx.queue(0), hfParams);
 	float[] samples;
 	samples.length = 3 * GLOBAL_SRATE;
-	PreparedPingTds* ptds = s_clCtx.pingTds.get(&mfParams);
+	PreparedPingTds* ptds = s_clCtx.pingTds.get(mfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
 	writeWavFile("midfreq-chirp.wav", samples, 0.01f / ptds.meanSqr, GLOBAL_SRATE);
-	ptds = s_clCtx.pingTds.get(&hfParams);
+	ptds = s_clCtx.pingTds.get(hfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
 	writeWavFile("highfreq-chirp.wav", samples, 0.01f / ptds.meanSqr, GLOBAL_SRATE);
 }

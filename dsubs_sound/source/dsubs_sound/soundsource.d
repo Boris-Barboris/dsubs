@@ -185,7 +185,7 @@ final class PropellerSound: SoundSource
 	{
 		assert(minFreq >= 1);
 		assert(maxFreq <= ISpectrum.MAX_FREQ);
-		float range = (listenerPos - m_transform.wposition).length;
+		float range = max(10.0f, (listenerPos - m_transform.wposition).length);
 		float relBearing =
 			courseAngle(listenerPos - m_transform.wposition) - m_transform.wrotation;
 		// now actual power calculation

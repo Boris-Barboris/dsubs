@@ -381,8 +381,8 @@ final class Hydrophone
 		SourcePrecalc res;
 		res.dirStart = s.prevPos - m_prevPos;
 		res.dirEnd = s.position - m_transform.wposition;
-		res.rangeStart = max(5.0, res.dirStart.length);
-		res.rangeEnd = max(5.0, res.dirEnd.length);
+		res.rangeStart = max(10.0, res.dirStart.length);
+		res.rangeEnd = max(10.0, res.dirEnd.length);
 		res.omniFactorStart = max(s.minOmniFactor(res.rangeStart),
 			caclOmniFactor(res.rangeStart));
 		res.omniFactorEnd = max(s.minOmniFactor(res.rangeEnd),

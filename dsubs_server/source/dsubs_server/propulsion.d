@@ -186,13 +186,13 @@ final class BasicRudder: Rudder
 
 	void propagateInTime(float dt)
 	{
-		float targetm_rudderPos = directMode ? m_directTarget : sgn(error);
+		float targetRudderPos = directMode ? m_directTarget : sgn(error);
 		if (!directMode)
 		{
 			if (fabs(error) < dgr2rad(30))
-				targetm_rudderPos = clamp(Kp * error + Kd * errorDeriv, -1.0f, 1.0f);
+				targetRudderPos = clamp(Kp * error + Kd * errorDeriv, -1.0f, 1.0f);
 		}
-		m_rudderPos = cmove(m_rudderPos, targetm_rudderPos, posChangeSpeed, dt);
+		m_rudderPos = cmove(m_rudderPos, targetRudderPos, posChangeSpeed, dt);
 	}
 }
 

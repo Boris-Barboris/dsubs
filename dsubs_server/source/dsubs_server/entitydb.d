@@ -10,6 +10,7 @@ import dsubs_common.api.protocols.backend;
 import dsubs_common.math;
 
 import dsubs_sound.activesonar;
+import dsubs_sound.water: seaNoiseIL;
 import dsubs_sound.hydrophone;
 import dsubs_sound.modulation;
 import dsubs_sound.soundsource;
@@ -186,6 +187,17 @@ private:
 					WeaponParamType.activationRange),
 				pdescs.dup),
 			pf);
+		tf.propMount.mountCenter = vec2d(0, -2.55);
+		tf.sensorsMount.mountCenter = vec2d(0, 2.5);
+		// minoga's active sonar
+		tf.asprot = new ActiveSonarPrototype();
+		tf.asprot.pingParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600);
+		tf.asprot.omniBeamCount = 64;
+		tf.asprot.span = 120.0f;
+		tf.asprot.radialRes = 20;
+		tf.asprot.maxSec = 3;
+		tf.asprot.zeroLevel = dB(seaNoiseIL(3600).val + 20.0f);
+
 		tf.defaultSensorMode = WeaponSensorMode.active;
 		tf.fuelEffExponent = 2.5f;
 		tf.snakeArm = 300.0f;
@@ -210,7 +222,7 @@ private:
 		tf.rudderKd = -30.0f;
 		tf.rudderPosChangeSpeed = 2.0f;
 		// vec2f dims = getHullDims(tf.tmpl.hullModel);
-		tf.hullLength = 5.0f;
+		tf.hullLength = 5.2f;
 		m_torpedos["Minoga"] = tf;
 
 		pdescs.length = 0;

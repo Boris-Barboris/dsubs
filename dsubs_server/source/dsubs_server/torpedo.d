@@ -146,41 +146,52 @@ final class TorpedoGuidance
 		{
 			m_activated = true;
 			m_snakeArmBeforeTurn += m_snakeArm;
-			if (m_searchPattern == WeaponSearchPattern.spiral)
-				m_torpedo.rudder.directMode = true;
 		}
 		// assign course and throttle based on activation state
 		if (m_activated)
 		{
-			m_torpedo.targetThrottle = m_activeThrottle;
-			final switch (m_searchPattern)
+			if (!handleSensors())
 			{
-				case WeaponSearchPattern.straight:
-					m_torpedo.targetCourse = m_activeCourse;
-					break;
-				case WeaponSearchPattern.spiral:
-					m_spiralSinceStart += distanceAdded;
-					m_torpedo.rudder.directRudderPos = m_spiralStartTarget /
-						(1.0f + m_spiralTargetRedPerRange * sqrt(m_spiralSinceStart));
-					break;
-				case WeaponSearchPattern.snake:
-					m_snakeArmBeforeTurn -= distanceAdded;
-					if (m_snakeArmBeforeTurn < 0.0f)
-					{
-						// snake turn
-						m_snakeArmBeforeTurn = 2.0f * m_snakeArm;
-						m_snakeSign = -m_snakeSign;
-					}
-					m_torpedo.targetCourse = m_activeCourse +
-						m_snakeSign * m_snakeAngle;
-					break;
+				m_torpedo.targetThrottle = m_activeThrottle;
+				final switch (m_searchPattern)
+				{
+					case WeaponSearchPattern.straight:
+						m_torpedo.rudder.directMode = false;
+						m_torpedo.targetCourse = m_activeCourse;
+						break;
+					case WeaponSearchPattern.spiral:
+						m_spiralSinceStart += distanceAdded;
+						m_torpedo.rudder.directMode = true;
+						m_torpedo.rudder.directRudderPos = m_spiralStartTarget /
+							(1.0f + m_spiralTargetRedPerRange * sqrt(m_spiralSinceStart));
+						break;
+					case WeaponSearchPattern.snake:
+						m_snakeArmBeforeTurn -= distanceAdded;
+						if (m_snakeArmBeforeTurn < 0.0f)
+						{
+							// snake turn
+							m_snakeArmBeforeTurn = 2.0f * m_snakeArm;
+							m_snakeSign = -m_snakeSign;
+						}
+						m_torpedo.rudder.directMode = false;
+						m_torpedo.targetCourse = m_activeCourse +
+							m_snakeSign * m_snakeAngle;
+						break;
+				}
 			}
 		}
 		else
 		{
+			m_torpedo.rudder.directMode = false;
 			m_torpedo.targetThrottle = m_marchThrottle;
 			m_torpedo.targetCourse = m_marchCourse;
 		}
+	}
+
+	/// process sensor signals and, if homing, return true.
+	private bool handleSensors()
+	{
+		return false;
 	}
 }
 
@@ -227,9 +238,8 @@ final class TorpedoFactory: VesselFactory
 	PropulsorFactory propFactory;	/// torpedoes have predefined propulsors
 	MountPoint propMount;
 	HydrophonePrototype* hprot;
-	MountPoint hmount;
 	ActiveSonarPrototype* asprot;
-	MountPoint asmount;
+	MountPoint sensorsMount;
 	RolledF fuel;
 	float fuelEffExponent = 2.0f;
 	// snake
@@ -302,8 +312,8 @@ final class TorpedoFactory: VesselFactory
 		if (hprot)
 		{
 			Transform2D t = new Transform2D();
-			t.position = hmount.mountCenter.tod;
-			t.rotation = hmount.rotation;
+			t.position = sensorsMount.mountCenter.tod;
+			t.rotation = sensorsMount.rotation;
 			res.transform.addChild(t);
 			Hydrophone h = new Hydrophone(Globals.sctx.queue(0), t, *hprot);
 			res.m_hydrophone = h;
@@ -313,8 +323,8 @@ final class TorpedoFactory: VesselFactory
 		if (asprot)
 		{
 			Transform2D t = new Transform2D();
-			t.position = asmount.mountCenter.tod;
-			t.rotation = asmount.rotation;
+			t.position = sensorsMount.mountCenter.tod;
+			t.rotation = sensorsMount.rotation;
 			res.transform.addChild(t);
 			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot);
 			res.m_sonar.onPreSimulation += ()
