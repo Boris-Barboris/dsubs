@@ -125,7 +125,7 @@ final class TorpedoGuidance
 			m_activeCourse = m_torpedo.rigidBody.kinet.rotation;
 	}
 
-	void update(float dt)
+	void update(usecs_t dt)
 	{
 		// perform fuel-related calculations
 		if (m_exhausted)
@@ -150,7 +150,7 @@ final class TorpedoGuidance
 		// assign course and throttle based on activation state
 		if (m_activated)
 		{
-			if (!handleSensors())
+			if (!handleSensors(dt))
 			{
 				m_torpedo.targetThrottle = m_activeThrottle;
 				final switch (m_searchPattern)
@@ -188,10 +188,24 @@ final class TorpedoGuidance
 		}
 	}
 
-	/// process sensor signals and, if homing, return true.
-	private bool handleSensors()
+	private
 	{
-		return false;
+		usecs_t m_lastPing;
+	}
+
+	/// process sensor signals and, if homing, return true.
+	private bool handleSensors(usecs_t dt)
+	{
+		switch (m_sensorMode)
+		{
+			case WeaponSensorMode.active:
+				ActiveSonar sonar = m_torpedo.m_sonar;
+				assert(sonar !is null);
+				sonar.active = true;
+				break;
+			default:
+				assert(0, "not implemented");
+		}
 	}
 }
 
@@ -224,7 +238,7 @@ final class TorpedoCollection
 		m_torpedoes.length = 0;
 	}
 
-	void updateGuidances(float dt)
+	void updateGuidances(usecs_t dt)
 	{
 		foreach (i, ref torp; Globals.taskPool.parallel(m_torpedoes, 8))
 			torp.guidance.update(dt);
@@ -378,6 +392,7 @@ final class TorpedoFactory: VesselFactory
 				case WeaponParamType.sensorMode:
 					enforce(sensorModes & param.sensorMode, "invalid sensor mode");
 					enforce(popcnt(param.sensorMode) == 1, "must choose one");
+					enforce(param.sensorMode == WeaponSensorMode.active, "only active sensor mode implemented");
 					g.m_sensorMode = param.sensorMode;
 					break;
 				case WeaponParamType.searchPattern:
