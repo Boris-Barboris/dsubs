@@ -5,9 +5,11 @@ import core.bitop: popcnt;
 import dsubs_common.api.constants;
 import dsubs_common.api.entities;
 import dsubs_common.math;
+import dsubs_common.event;
 
 import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
+import dsubs_sound.common: uniform, GLOBAL_SRATE;
 
 import dsubs_server.common;
 import dsubs_server.vessel;
@@ -49,9 +51,15 @@ final class Torpedo: Vessel
 		m_guidance.m_lastPos = transform.position;
 		m_guidance.setUnassignedParams();
 		if (m_hydrophone)
+		{
+			m_hydrophone.active = true;
 			Globals.acous.registerHydrophone(m_hydrophone);
+		}
 		if (m_sonar)
+		{
+			m_sonar.active = true;
 			Globals.acous.registerSonar(m_sonar);
+		}
 	}
 
 	override void shutdown()
@@ -113,6 +121,7 @@ final class TorpedoGuidance
 	private this(Torpedo owner)
 	{
 		m_torpedo = owner;
+		m_pingTdsOffset = uniform(0, GLOBAL_SRATE);
 	}
 
 	/// verify some variables that could have been missed for some reason
@@ -179,6 +188,10 @@ final class TorpedoGuidance
 						break;
 				}
 			}
+			else
+			{
+				// homing mode
+			}
 		}
 		else
 		{
@@ -190,8 +203,15 @@ final class TorpedoGuidance
 
 	private
 	{
-		usecs_t m_lastPing;
+		usecs_t m_sinceLastPing;
+		size_t m_pingTdsOffset;
+		int m_pingIntervalSearch = 5;
+		SonarPing m_currentPing;
+		ubyte[] m_sonarImage;
+		size_t m_sliceByteSize;
 	}
+
+	Event!(void delegate(ubyte[] image, int w, int h)) onSonarImageReady;
 
 	/// process sensor signals and, if homing, return true.
 	private bool handleSensors(usecs_t dt)
@@ -199,13 +219,51 @@ final class TorpedoGuidance
 		switch (m_sensorMode)
 		{
 			case WeaponSensorMode.active:
+			{
 				ActiveSonar sonar = m_torpedo.m_sonar;
 				assert(sonar !is null);
-				sonar.active = true;
+				if (sonar.hasSliceToSend)
+				{
+					// we need to process new slice data from active ping
+					int sliceId = sonar.readySliceId;
+					size_t idxStart = (sonar.secDur - 1 - sliceId) * m_sliceByteSize;
+					size_t idxEnd = idxStart + m_sliceByteSize;
+					m_sonarImage[idxStart .. idxEnd] = sonar.getLastSlice();
+					sonar.markSliceSent();
+					processSonarSlice(m_sonarImage[idxStart .. idxEnd], sliceId);
+					if (!sonar.canGenerateSlice)
+					{
+						// image is finished
+						onSonarImageReady(m_sonarImage,
+							sonar.proto.getSliceXResol(),
+							sonar.proto.radialRes * (sliceId + 1));
+					}
+				}
+				if (m_sinceLastPing == 0)
+				{
+					m_currentPing = sonar.startPing(
+						sonar.proto.maxPeakIlevel, &m_pingTdsOffset);
+					assert(m_currentPing);
+					Globals.acous.registerPing(m_currentPing);
+					m_sliceByteSize =
+						sonar.proto.getSliceXResol() * sonar.proto.radialRes;
+					m_sonarImage.length = m_sliceByteSize * sonar.maxSec;
+				}
+				m_sinceLastPing += dt;
+				if (m_sinceLastPing >= m_pingIntervalSearch * 1_000_000)
+					m_sinceLastPing = 0;
 				break;
+			}
 			default:
 				assert(0, "not implemented");
 		}
+		return false;
+	}
+
+	/// look for targets in the sonar slice
+	private void processSonarSlice(const(ubyte)[] slice, int sliceId)
+	{
+		ActiveSonar sonar = m_torpedo.m_sonar;
 	}
 }
 
@@ -240,7 +298,7 @@ final class TorpedoCollection
 
 	void updateGuidances(usecs_t dt)
 	{
-		foreach (i, ref torp; Globals.taskPool.parallel(m_torpedoes, 8))
+		foreach (Torpedo torp; Globals.taskPool.parallel(m_torpedoes, 4))
 			torp.guidance.update(dt);
 	}
 }

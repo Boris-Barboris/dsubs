@@ -3,6 +3,8 @@ module dsubs_server.tests.common;
 import std.stdio;
 import std.file: mkdirRecurse;
 
+import imageformats: write_image, ColFmt;
+
 import dsubs_common.api: usecs_t;
 import dsubs_common.math;
 
@@ -35,4 +37,13 @@ auto captureVesselRbCsv(File* f, Vessel s, usecs_t shutdownOn = -1)
 		if (worldTime == shutdownOn)
 			s.shutdown();
 	};
+}
+
+void writeSonarImage(string testGroup, string testName, string entityName,
+	const(ubyte)[] rawBytes, int w, int h, int imageIndex)
+{
+	string dirName = "test_data/" ~ testGroup ~ "/" ~ testName ~ "_images";
+	mkdirRecurse(dirName);
+	string fileName = entityName ~ "_sonar" ~ imageIndex.to!string ~ ".png";
+	write_image(dirName ~ "/" ~ fileName, w, h, rawBytes, ColFmt.Y);
 }

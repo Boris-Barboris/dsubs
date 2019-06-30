@@ -221,8 +221,10 @@ final class Player
 			{
 				auto ping = s.sonar.startPing(req.ilevel);
 				if (ping)
+				{
 					Globals.acous.registerPing(ping);
-				m_lastPingEmit = Globals.sim.worldTime;
+					m_lastPingEmit = Globals.sim.worldTime;
+				}
 			}
 		}
 	}

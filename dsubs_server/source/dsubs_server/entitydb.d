@@ -192,11 +192,20 @@ private:
 		// minoga's active sonar
 		tf.asprot = new ActiveSonarPrototype();
 		tf.asprot.pingParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600);
-		tf.asprot.omniBeamCount = 64;
+		tf.asprot.maxPeakIlevel = tf.asprot.minPeakIlevel = 205.0f;
+		tf.asprot.omniBeamCount = 90;
+		tf.asprot.waterReflectivity = 1e-4;
+		tf.asprot.reflRangeNoise = 100 / 1e4;
+		tf.asprot.perlinCellSize = [23, 11];
+		tf.asprot.flowNoiseGain = 0.0f;
+		tf.asprot.baseNoise = 1.5f;
+		tf.asprot.pingDirPower = 2.4f;
+		tf.asprot.dissMod = 3.5f;
 		tf.asprot.span = 120.0f;
 		tf.asprot.radialRes = 20;
 		tf.asprot.maxSec = 3;
-		tf.asprot.zeroLevel = dB(seaNoiseIL(3600).val + 20.0f);
+		tf.asprot.zeroLevel = dB(seaNoiseIL(3600).val + 80.0f);
+		tf.asprot.endScale = 0.02f;
 
 		tf.defaultSensorMode = WeaponSensorMode.active;
 		tf.fuelEffExponent = 2.5f;
@@ -205,11 +214,12 @@ private:
 		tf.snakeAngle = dgr2rad(60.0f);
 		tf.spiralStartTarget = 1.0f;
 		tf.spiralTargetRedPerRange = 0.08f;
-		tf.fuel = RolledF(6000 / 29.0f, 2);
+		float tgtMaxPeed = 29.0f;
+		tf.fuel = RolledF(6000 / tgtMaxPeed, 2);
 		tf.mass = RolledF(1.5f, 2e-3);
 		tf.Cd0 = RolledF(0.2f, 1e-3f);
 		tf.Cd1 = RolledF(
-			(pf.posThrustK.mean - tf.Cd0.mean * 29.0f) / pow(29.0f, 2), 3e-4f);
+			(pf.posThrustK.mean - tf.Cd0.mean * tgtMaxPeed) / pow(tgtMaxPeed, 2), 3e-4f);
 		tf.Cda = 1.5f;
 		tf.equilDrift = dgr2rad(10);
 		double cl = calcClForTurningRadius(tf.equilDrift,
@@ -223,6 +233,7 @@ private:
 		tf.rudderPosChangeSpeed = 2.0f;
 		// vec2f dims = getHullDims(tf.tmpl.hullModel);
 		tf.hullLength = 5.2f;
+		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.2f), [-10.0f, -7.0f, -5.0f]);
 		m_torpedos["Minoga"] = tf;
 
 		pdescs.length = 0;
@@ -284,7 +295,7 @@ Active sonar:
 				],
 				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
-					asp.getSliceResol(), asp.radialRes, asp.maxSec)
+					asp.getSliceXResol(), asp.radialRes, asp.maxSec)
 			));
 		sp.mass = RolledF(1700.0f, 10.0f);
 		sp.Cd0 = RolledF(5.0, 0.1f);

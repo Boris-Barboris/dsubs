@@ -36,6 +36,8 @@ final class Reflector
 	this(Transform2D t, const ReflectorPrototype p)
 	{
 		m_transform = t;
+		assert(!isNaN(p.size.x));
+		assert(!isNaN(p.size.y));
 		m_proto = p;
 	}
 
@@ -375,9 +377,9 @@ struct ActiveSonarPrototype
 	float endScale = 1 / 110.0f;
 
 	/// Slice horizontal resolution
-	int getSliceResol() const
+	int getSliceXResol() const
 	{
-		return (span / omniBeamCount * 360.0f).to!int;
+		return (span / 360.0f * omniBeamCount).to!int;
 	}
 }
 
@@ -390,7 +392,7 @@ final class ActiveSonar
 		m_transform = trans;
 		m_proto = proto;
 		m_secDur = proto.maxSec;
-		m_nextSliceImage = ByteImage(q.ctx, proto.getSliceResol(), proto.radialRes);
+		m_nextSliceImage = ByteImage(q.ctx, proto.getSliceXResol(), proto.radialRes);
 		m_nextSlice = new ubyte[m_nextSliceImage.size];
 		onPreSimulation += () { m_worldRotStart = m_transform.wrotation; };
 		onPostSimulation += () { m_worldRotEnd = m_transform.wrotation; };
@@ -444,6 +446,7 @@ final class ActiveSonar
 		PreparedPingTds* m_refPingTds;
 	}
 
+	@property const(ActiveSonarPrototype) proto() const { return m_proto; }
 	@property float maxRange() const { return m_secDur * SOUND_SPD / 2; }
 	@property int maxSec() const { return m_proto.maxSec; }
 	@property int secDur() const { return m_secDur; }
@@ -498,6 +501,7 @@ final class ActiveSonar
 	}
 
 	@property bool hasSliceToSend() const { return m_hasSliceToSend; }
+	/// True when more slices can be generated.
 	@property bool canGenerateSlice() const { return (m_slicesLeft > 0); }
 	@property int pingCounter() const { return m_pingCounter; }
 
@@ -512,12 +516,12 @@ final class ActiveSonar
 		m_hasSliceToSend = false;
 	}
 
-	SonarPing startPing(dB ilevel)
+	SonarPing startPing(dB ilevel, const(size_t)* pingTdsOffset = null)
 	{
 		if (m_pingJustStarted)
 			return null;
 		enforce(ilevel <= m_proto.maxPeakIlevel && ilevel >= m_proto.minPeakIlevel,
-			"desired ping intensity out of allowed interval");
+			"desired ping intensity outside of allowed interval");
 		m_curPingIlevel = ilevel;
 		m_sliceOffset = 0;
 		m_slicesLeft = m_secDur;
@@ -528,7 +532,7 @@ final class ActiveSonar
 		m_pkparams = PingKernelParams(m_curPingIlevel,
 			m_curPingIlevel + m_proto.antiPeakIlevelDiff, m_proto.pingDirPower);
 		return new SonarPing(m_transform.wposition, m_omiWrot,
-			m_proto.pingParams.effectiveFreq, m_pkparams, m_refPingTds);
+			m_proto.pingParams.effectiveFreq, m_pkparams, m_refPingTds, pingTdsOffset);
 	}
 
 	@property bool pingJustStarted() const { return m_pingJustStarted; }
@@ -548,6 +552,9 @@ final class ActiveSonar
 			pr.range = dir.length;
 			if (pr.range > maxRange + max(r.m_proto.size[0], r.m_proto.size[1]))
 				continue;
+			if (pr.range < 1e-6f)
+				continue;
+			pr.range = max(pr.range, 5.0f);
 			pr.relBearing = clampAnglePi(courseAngle(dir) - m_transform.wrotation);
 			r.calcForEmitter(m_transform.wposition, pr);
 			prepr ~= pr;
@@ -607,7 +614,20 @@ final class ActiveSonar
 		k.setArg(11, m_proto.perlinGain);	// perlNoiseGain
 		k.setArg(12, uintSeed());	// seed
 		k.enqueue(q, 2, null, [m_omniImage.w, m_omniImage.h], null, null);
+
+		if (onmiImageCallback)
+		{
+			float[] debugImage = new float[m_omniImage.w * m_omniImage.h];
+			debugImage[] = 0.0f;
+			m_omniImage.enqueueRead(q, debugImage, [0, 0],
+				[m_omniImage.w, m_omniImage.h]).release();
+			q.finish();
+			onmiImageCallback(debugImage, m_omniImage.w, m_omniImage.h);
+		}
 	}
+
+	/// WARNING: stalls the pipeline
+	void delegate(float[] imageData, size_t w, size_t h) onmiImageCallback;
 
 	/// enqueue commands that render slice to byte buffer
 	void startSliceGeneration(CommandQueue q)
@@ -642,7 +662,8 @@ final class ActiveSonar
 			[m_nextSliceImage.w, m_nextSliceImage.h]).release();
 	}
 
-	/// Get last slice
+	/// Get last slice. First byte is left lower corner of the image, assuming
+	/// Y axis is range and X asimuth.
 	immutable(ubyte)[] getLastSlice() const
 	{
 		assert(m_hasSliceToSend);
@@ -682,7 +703,8 @@ unittest
 final class SonarPing: SoundSource
 {
 	this(vec2d position, double wrot, int freq,
-		PingKernelParams kernParam, PreparedPingTds* refTds)
+		PingKernelParams kernParam, PreparedPingTds* refTds,
+		const(size_t)* destOffset = null)
 	{
 		m_position = position;
 		m_wrot = wrot;
@@ -692,7 +714,13 @@ final class SonarPing: SoundSource
 		m_samplesLeft = refTds.tds.length;
 		assert(m_samplesLeft > 0);
 		savePrevPos();
-		m_destOffset = uniform(0, GLOBAL_SRATE);
+		if (destOffset)
+		{
+			m_destOffset = *destOffset;
+			assert(m_destOffset >= 0 && m_destOffset < GLOBAL_SRATE);
+		}
+		else
+			m_destOffset = uniform(0, GLOBAL_SRATE);
 	}
 
 	private

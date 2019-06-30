@@ -10,6 +10,7 @@ import dsubs_server.entitydb;
 import dsubs_server.submarine;
 import dsubs_server.propulsion;
 import dsubs_server.torpedo;
+import dsubs_sound.activesonar;
 
 import dsubs_server.tests.common;
 
@@ -109,12 +110,37 @@ unittest
 	pv.type = WeaponParamType.activationRange;
 	pv.range = 400.0f;
 	pvs ~= pv;
+	pv.type = WeaponParamType.activeSpeed;
+	pv.speed = 29.0f;
+	pvs ~= pv;
 	pv.type = WeaponParamType.searchPattern;
 	pv.searchPattern = WeaponSearchPattern.snake;
 	pvs ~= pv;
 
 	Torpedo t = tf.build(null, pvs);
 	t.register();
+	int imageCounter;
+	t.guidance.onSonarImageReady += (img, w, h) {
+		writeSonarImage("guidance", "minoga_snake", "minoga", img, w, h, imageCounter);
+		imageCounter++;
+	};
+	// t.sonar.onmiImageCallback = (img, w, h) {
+	// 	trace("omni image ready: ", img[0 .. 10]);
+	// };
+
+	Reflector[] reflectors;
+	ReflectorPrototype refProto = ReflectorPrototype(
+		vec2f(12.0f, 80.0f), [-25.0f, -19.0f, -10.0f]);
+	for (int i = 0; i < 4; i++)
+	{
+		auto tansform = new Transform2D();
+		tansform.position = vec2d(0, (i + 1) * 700);
+		tansform.rotation = dgr2rad(90);
+		reflectors ~= new Reflector(tansform, refProto);
+	}
+	foreach (r; reflectors)
+		Globals.acous.registerReflector(r);
+
 	File* file = writeRbodyCsvHeader("guidance", "minoga_snake", "minoga");
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
 	Globals.sim.worldTimeLimit = 90 * cast(ulong)1e6;

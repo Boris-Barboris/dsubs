@@ -54,8 +54,8 @@ final class Simulator
 	bool printTimings = true;
 	bool doSleep = true;
 
-	Event!(void delegate(usecs_t)) onSimulationPassStart;
-	Event!(void delegate(usecs_t)) onSimulationPassEnd;
+	Event!(void delegate(usecs_t now)) onSimulationPassStart;
+	Event!(void delegate(usecs_t now)) onSimulationPassEnd;
 
 	private void simulationLoop()
 	{
@@ -96,7 +96,7 @@ final class Simulator
 					profiler.stopLast();
 					m_worldTime += 1000_000;
 					profiler.start("torps.updateGuidances");
-					Globals.torps.updateGuidances(1.0f);
+					Globals.torps.updateGuidances(1000_000);
 					profiler.stopLast();
 					if (Globals.players)
 					{
