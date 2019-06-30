@@ -166,6 +166,10 @@ final class Player
 				s = Globals.entityDb.buildSubFromLoadout(req, this);
 				generateShift();
 				randomizePosition(s);
+
+				s.transform.rotation = dgr2rad(180);
+				s.rudder.targetCourse = dgr2rad(180);
+
 				m_submarine = s;
 				foreach (h; s.hydrophones)
 				{
@@ -173,6 +177,34 @@ final class Player
 					h.listenDir = -coordRot;
 				}
 				s.register();
+
+				// test minoga running at you
+				import dsubs_server.torpedo;
+
+				const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+				WeaponParamValue[] pvs;
+				WeaponParamValue pv;
+
+				pv.type = WeaponParamType.marchCourse;
+				pv.course = dgr2rad(0.0);
+				pvs ~= pv;
+				pv.type = WeaponParamType.activeCourse;
+				pv.course = dgr2rad(0.0);
+				pvs ~= pv;
+				pv.type = WeaponParamType.activationRange;
+				pv.range = 400.0f;
+				pvs ~= pv;
+				pv.type = WeaponParamType.activeSpeed;
+				pv.speed = 29.0f;
+				pvs ~= pv;
+				pv.type = WeaponParamType.searchPattern;
+				pv.searchPattern = WeaponSearchPattern.snake;
+				pvs ~= pv;
+
+				Torpedo t = tf.build(null, pvs);
+				t.transform.position = s.transform.wposition + vec2d(0, -2000);
+				t.register();
+
 				return getReconnectState();
 			}
 		}

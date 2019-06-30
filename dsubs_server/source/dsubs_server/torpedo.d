@@ -1,7 +1,7 @@
 module dsubs_server.torpedo;
 
 import std.array: array;
-import std.algorithm: map;
+import std.algorithm: map, max, min;
 import std.algorithm.searching: minElement;
 import std.algorithm.sorting: sort;
 
@@ -119,7 +119,7 @@ final class TorpedoGuidance
 		float m_spiralSinceStart = 0.0f;
 
 		// course is leading with this integral gain relative to target ang vel
-		float m_trackAngVelKi = 1.0f;
+		float m_trackAngVelKi = 0.0f;
 		float m_trackAngVelAccumul = 0.0f;
 	}
 
@@ -223,7 +223,7 @@ final class TorpedoGuidance
 	{
 		usecs_t m_sinceLastPing;
 		size_t m_pingTdsOffset;
-		int m_pingIntervalSearch = 5;
+		int m_pingIntervalSearch;
 		SonarPing m_currentPing;
 		ubyte[] m_sonarImage;
 		size_t m_sliceByteSize;
@@ -279,6 +279,8 @@ final class TorpedoGuidance
 				}
 				m_sinceLastPing += dt;
 				if (m_sinceLastPing >= m_pingIntervalSearch * 1_000_000)
+					m_sinceLastPing = 0;
+				if (m_targetTracked && m_sinceLastPing >= max(3, sonar.secDur) * 1_000_000)
 					m_sinceLastPing = 0;
 				break;
 			}
@@ -456,6 +458,9 @@ final class TorpedoFactory: VesselFactory
 	WeaponSensorMode defaultSensorMode;
 	WeaponSearchPattern defaultSearchPattern = WeaponSearchPattern.straight;
 	WeaponParamDescSearchPatterns searchPatterns;
+	// guidance
+	float trackAngVelKi = 1.0f;
+	int pingIntervalSearch = 10;
 
 	this(immutable WeaponTemplate t, PropulsorFactory pf)
 	{
@@ -508,6 +513,8 @@ final class TorpedoFactory: VesselFactory
 		res.guidance.m_snakeAngle = snakeAngle;
 		res.guidance.m_spiralStartTarget = spiralStartTarget;
 		res.guidance.m_spiralTargetRedPerRange = spiralTargetRedPerRange;
+		res.guidance.m_trackAngVelKi = trackAngVelKi;
+		res.guidance.m_pingIntervalSearch = pingIntervalSearch;
 		if (hprot)
 		{
 			Transform2D t = new Transform2D();

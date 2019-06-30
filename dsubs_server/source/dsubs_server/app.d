@@ -8,7 +8,13 @@ import dsubs_server.globals;
 version(Windows)
 {
 	extern(Windows) int SetConsoleOutputCP(uint);
-	extern(C) __gshared string[] rt_options = [ "gcopt=gc:precise", "scanDataSeg=precise" ];
+	extern(C) __gshared string[] rt_options = [
+		"gcopt=gc:precise cleanup:finalize", "scanDataSeg=precise" ];
+}
+
+version(Posix)
+{
+	extern(C) __gshared string[] rt_options = ["gcopt=gc:precise cleanup:finalize"];
 }
 
 void main(string[] argv)

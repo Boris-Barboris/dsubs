@@ -161,6 +161,8 @@ class NestedContextBtn: Button
 	{
 		if (m_spawnedMenu)
 			m_spawnedMenu.teardownWithChildren();
+		if (m_parentMenu.m_childMenu)
+			m_parentMenu.m_childMenu.teardownWithChildren();
 		m_spawnedMenu = new ContextMenu(m_toSpawn, m_rowHeight);
 		vec2i unclamped = position + vec2i(size.x, 0);
 		m_spawnedMenu.placeByLUCorner(m_mgr.window.size, unclamped);
