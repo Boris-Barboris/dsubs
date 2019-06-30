@@ -209,11 +209,13 @@ double maxSpeed(const HydroForceModel hfm, const BasicPropulsor bp)
 	return vmax;
 }
 
-/// Given constructed vessel, return the
+/// Given constructed vessel, return the throttle, required to hold specified
+/// speed.
 float throttleForSpeed(Vessel v, float speed)
 {
-	double maxSpd = maxSpeed(v.rigidBody.hydroModel, cast(BasicPropulsor) v.propulsor);
-	if (maxSpd == 0.0f)
-		return 0.0f;
-	return clamp(speed / maxSpd, -1.0f, 1.0f);
+	speed = fabs(speed);
+	BasicPropulsor bp = cast(BasicPropulsor) v.propulsor;
+	double maxT = v.rigidBody.hydroModel.Cd0 * speed +
+		speed * speed * v.rigidBody.hydroModel.Cd1;
+	return clamp(sqrt(maxT / bp.posThrustK), -1.0f, 1.0f);
 }

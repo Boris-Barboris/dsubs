@@ -392,7 +392,7 @@ float getEnergyPart(
 	const float2 cellDepth,
 	float beamAngle)
 {
-	float angDisp = atan(ref.width / ref.range);
+	float angDisp = 1.0f * atan(ref.width * 0.5f / ref.range);
 	float angArea = areaUnderNormDistCyclic(ref.relBearing, cellBearings.x,
 		cellBearings.y, angDisp);
 	float radArea = areaUnderNormDist(ref.range, cellDepth.x,

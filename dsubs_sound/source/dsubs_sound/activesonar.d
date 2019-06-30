@@ -353,7 +353,7 @@ struct ActiveSonarPrototype
 	/// antennae directivity gain, used in isotopic sea noise calculation
 	dB directivity = 30.0f;
 	/// water mass reflectivity
-	float waterReflectivity = 1e-3f;
+	float waterReflectivity = 5e-4f;
 	/// main sound dissipation modifier
 	float dissMod = 15.0f;
 	/// gain for flow noise
@@ -446,6 +446,7 @@ final class ActiveSonar
 		PreparedPingTds* m_refPingTds;
 	}
 
+	@property Transform2D transform() { return m_transform; }
 	@property const(ActiveSonarPrototype) proto() const { return m_proto; }
 	@property float maxRange() const { return m_secDur * SOUND_SPD / 2; }
 	@property int maxSec() const { return m_proto.maxSec; }

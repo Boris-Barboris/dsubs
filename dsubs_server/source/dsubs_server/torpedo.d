@@ -1,5 +1,10 @@
 module dsubs_server.torpedo;
 
+import std.array: array;
+import std.algorithm: map;
+import std.algorithm.searching: minElement;
+import std.algorithm.sorting: sort;
+
 import core.bitop: popcnt;
 
 import dsubs_common.api.constants;
@@ -112,6 +117,10 @@ final class TorpedoGuidance
 		float m_spiralStartTarget = 1.0f;
 		float m_spiralTargetRedPerRange;
 		float m_spiralSinceStart = 0.0f;
+
+		// course is leading with this integral gain relative to target ang vel
+		float m_trackAngVelKi = 1.0f;
+		float m_trackAngVelAccumul = 0.0f;
 	}
 
 	@property void fuelLeft(float rhs) { m_fuelLeft = rhs; }
@@ -161,6 +170,7 @@ final class TorpedoGuidance
 		{
 			if (!handleSensors(dt))
 			{
+				m_trackAngVelAccumul = 0.0f;
 				m_torpedo.targetThrottle = m_activeThrottle;
 				final switch (m_searchPattern)
 				{
@@ -191,6 +201,14 @@ final class TorpedoGuidance
 			else
 			{
 				// homing mode
+				m_torpedo.targetThrottle = m_activeThrottle;
+				m_torpedo.targetCourse = m_curTargetDir;
+				if (!isNaN(m_curTargetAngVel))
+				{
+					m_trackAngVelAccumul += m_curTargetAngVel;
+					m_torpedo.targetCourse = m_curTargetDir +
+						m_trackAngVelAccumul * m_trackAngVelKi;
+				}
 			}
 		}
 		else
@@ -234,6 +252,11 @@ final class TorpedoGuidance
 					if (!sonar.canGenerateSlice)
 					{
 						// image is finished
+						if (m_targetTracked && m_targetPingId < sonar.pingCounter)
+						{
+							// we've lost the target
+							m_targetTracked = false;
+						}
 						onSonarImageReady(m_sonarImage,
 							sonar.proto.getSliceXResol(),
 							sonar.proto.radialRes * (sliceId + 1));
@@ -241,13 +264,18 @@ final class TorpedoGuidance
 				}
 				if (m_sinceLastPing == 0)
 				{
+					// we may wish a more frequent ping when the tracked target is close
+					if (m_targetTracked)
+						sonar.secDur = 1 + m_targetSliceId;
+					else
+						sonar.secDur = sonar.maxSec;
 					m_currentPing = sonar.startPing(
 						sonar.proto.maxPeakIlevel, &m_pingTdsOffset);
 					assert(m_currentPing);
 					Globals.acous.registerPing(m_currentPing);
 					m_sliceByteSize =
 						sonar.proto.getSliceXResol() * sonar.proto.radialRes;
-					m_sonarImage.length = m_sliceByteSize * sonar.maxSec;
+					m_sonarImage.length = m_sliceByteSize * sonar.secDur;
 				}
 				m_sinceLastPing += dt;
 				if (m_sinceLastPing >= m_pingIntervalSearch * 1_000_000)
@@ -257,13 +285,112 @@ final class TorpedoGuidance
 			default:
 				assert(0, "not implemented");
 		}
-		return false;
+		return m_targetTracked;
+	}
+
+	private
+	{
+		bool m_targetTracked;
+		int m_targetPingId = -1;
+		int m_targetSliceId = -1;
+		double m_prevTargetDir;
+		double m_curTargetDir;
+		double m_curTargetAngVel;
+		usecs_t m_prevTargetTime;
 	}
 
 	/// look for targets in the sonar slice
 	private void processSonarSlice(const(ubyte)[] slice, int sliceId)
 	{
 		ActiveSonar sonar = m_torpedo.m_sonar;
+		if (m_targetTracked && m_targetPingId >= sonar.pingCounter)
+		{
+			// we are tracking, nothing to do
+			return;
+		}
+		int width = sonar.proto.getSliceXResol();
+		int height = sonar.proto.radialRes;
+		int[] peakColumns = findPeaks(slice, width, height, 15);
+		// trace("found peaks: ", peakColumns);
+		if (!m_targetTracked && peakColumns.length > 0)
+		{
+			// let's select random peak as target
+			m_targetTracked = true;
+			m_prevTargetDir = double.nan;
+			m_curTargetAngVel = double.nan;
+			m_prevTargetTime = Globals.sim.worldTime;
+			m_targetPingId = sonar.pingCounter;
+			m_targetSliceId = sliceId;
+			m_curTargetDir = columnToRotation(peakColumns[0], width);
+			return;
+		}
+		if (m_targetTracked && peakColumns.length > 0)
+		{
+			// find the peak in this slice that is closest to currently tracked target
+			m_prevTargetDir = m_curTargetDir;
+			m_targetPingId = sonar.pingCounter;
+			m_targetSliceId = sliceId;
+			double[] sliceTargetWrots = peakColumns.map!(
+				pc => columnToRotation(pc, width)).array();
+			sliceTargetWrots.sort!(
+				(a, b) =>
+					angleDist(a, m_prevTargetDir).fabs <
+					angleDist(b, m_prevTargetDir).fabs)();
+			m_curTargetDir = sliceTargetWrots[0];
+			m_curTargetAngVel = angleDist(m_curTargetDir, m_prevTargetDir) * 1e6 /
+				(Globals.sim.worldTime - m_prevTargetTime);
+			m_prevTargetTime = Globals.sim.worldTime;
+			return;
+		}
+	}
+
+	double columnToRotation(int col, int width)
+	{
+		return clampAngle(m_torpedo.sonar.transform.wrotation +
+			dgr2rad(m_torpedo.sonar.proto.span / 2) -
+			(col + 0.5f) / width * dgr2rad(m_torpedo.sonar.proto.span));
+	}
+
+	static int[] findPeaks(const(ubyte)[] image, int width, int height, int noiseCutoff)
+	{
+		int minimum = minElement(image);
+		int detectionLevel = minimum + noiseCutoff;
+		static int[] rowSums;
+		rowSums.length = width;
+		rowSums[] = 0;
+
+		// we accumulate energy across all rows of the slice
+		for (int row = 0; row < height; row++)
+		{
+			for (int col = 0; col < width; col++)
+			{
+				int overLevel = image[col + row * width] - detectionLevel;
+				if (overLevel > 0)
+					rowSums[col] += overLevel;
+			}
+		}
+
+		int[] peakColumns;
+
+		for (int col = 0; col < width; col++)
+		{
+			if (rowSums[col] <= 0)
+				continue;
+			// peak candidate
+			if (col == 0 && rowSums[1] < rowSums[col] ||
+				col == width - 1 && rowSums[col - 1] <= rowSums[col] ||
+				col > 0 && col < width - 1 && rowSums[col] >= rowSums[col - 1]
+					&& rowSums[col] > rowSums[col + 1])
+			{
+				// actual peak
+				peakColumns ~= col;
+			}
+		}
+
+		// sort peakColumns to place brightest first
+		peakColumns.sort!((x, y) => rowSums[x] > rowSums[y]);
+
+		return peakColumns;
 	}
 }
 

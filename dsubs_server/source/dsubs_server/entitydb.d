@@ -194,13 +194,13 @@ private:
 		tf.asprot.pingParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600);
 		tf.asprot.maxPeakIlevel = tf.asprot.minPeakIlevel = 205.0f;
 		tf.asprot.omniBeamCount = 90;
-		tf.asprot.waterReflectivity = 1e-4;
+		tf.asprot.waterReflectivity = 0.0f;
 		tf.asprot.reflRangeNoise = 100 / 1e4;
 		tf.asprot.perlinCellSize = [23, 11];
-		tf.asprot.flowNoiseGain = 0.0f;
-		tf.asprot.baseNoise = 1.5f;
+		tf.asprot.flowNoiseGain = 5.0f;
+		tf.asprot.baseNoise = 1.6f;
 		tf.asprot.pingDirPower = 2.4f;
-		tf.asprot.dissMod = 3.5f;
+		tf.asprot.dissMod = 4.0f;
 		tf.asprot.span = 120.0f;
 		tf.asprot.radialRes = 20;
 		tf.asprot.maxSec = 3;
@@ -214,12 +214,12 @@ private:
 		tf.snakeAngle = dgr2rad(60.0f);
 		tf.spiralStartTarget = 1.0f;
 		tf.spiralTargetRedPerRange = 0.08f;
-		float tgtMaxPeed = 29.0f;
-		tf.fuel = RolledF(6000 / tgtMaxPeed, 2);
+		float tgtMaxSpeed = 29.0f;
+		tf.fuel = RolledF(7000 / tgtMaxSpeed, 2);
 		tf.mass = RolledF(1.5f, 2e-3);
 		tf.Cd0 = RolledF(0.2f, 1e-3f);
 		tf.Cd1 = RolledF(
-			(pf.posThrustK.mean - tf.Cd0.mean * tgtMaxPeed) / pow(tgtMaxPeed, 2), 3e-4f);
+			(pf.posThrustK.mean - tf.Cd0.mean * tgtMaxSpeed) / pow(tgtMaxSpeed, 2), 3e-4f);
 		tf.Cda = 1.5f;
 		tf.equilDrift = dgr2rad(10);
 		double cl = calcClForTurningRadius(tf.equilDrift,

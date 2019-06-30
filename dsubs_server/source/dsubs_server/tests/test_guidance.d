@@ -1,6 +1,7 @@
 module dsubs_server.tests.test_guidance;
 
 import std.stdio;
+import std.algorithm: min;
 
 import dsubs_common.api.protocols.backend;
 import dsubs_common.math;
@@ -124,30 +125,97 @@ unittest
 		writeSonarImage("guidance", "minoga_snake", "minoga", img, w, h, imageCounter);
 		imageCounter++;
 	};
-	// t.sonar.onmiImageCallback = (img, w, h) {
-	// 	trace("omni image ready: ", img[0 .. 10]);
-	// };
 
-	Reflector[] reflectors;
-	ReflectorPrototype refProto = ReflectorPrototype(
-		vec2f(12.0f, 80.0f), [-25.0f, -19.0f, -10.0f]);
-	for (int i = 0; i < 4; i++)
-	{
-		auto tansform = new Transform2D();
-		tansform.position = vec2d(0, (i + 1) * 700);
-		tansform.rotation = dgr2rad(90);
-		reflectors ~= new Reflector(tansform, refProto);
-	}
-	foreach (r; reflectors)
-		Globals.acous.registerReflector(r);
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	s.transform.position = vec2d(-2000, 3000);
+	s.transform.rotation = -dgr2rad(90);
+	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
+	s.targetCourse = s.transform.rotation;
+	s.targetThrottle = 1.0f;
+	s.register();
+	File* storkFile = writeRbodyCsvHeader("guidance", "minoga_snake", "stork");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
 
-	File* file = writeRbodyCsvHeader("guidance", "minoga_snake", "minoga");
-	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
-	Globals.sim.worldTimeLimit = 90 * cast(ulong)1e6;
+	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_snake", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
+	Globals.sim.worldTimeLimit = 300 * cast(ulong)1e6;
+
+	double minDist = double.max;
+	Globals.sim.onSimulationPassStart += (now) {
+		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
+	};
+
 	Globals.sim.start();
 	Globals.sim.join();
 	Globals.resetForTests();
+
+	trace("minoga was ", minDist, " meters away from stork in minoga_snake test");
 }
+
+unittest
+{
+	Globals.buildForTests();
+	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 400.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeSpeed;
+	pv.speed = 20.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.marchSpeed;
+	pv.speed = 20.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.straight;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.register();
+	int imageCounter;
+	t.guidance.onSonarImageReady += (img, w, h) {
+		writeSonarImage("guidance", "minoga_straight", "minoga", img, w, h, imageCounter);
+		imageCounter++;
+	};
+
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	double mspd = 0.4 * maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	s.transform.position = vec2d(-1300, 3000);
+	s.transform.rotation = -dgr2rad(90);
+	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
+	s.targetCourse = s.transform.rotation;
+	s.targetThrottle = 0.4f;
+	s.register();
+	File* storkFile = writeRbodyCsvHeader("guidance", "minoga_straight", "stork");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+
+	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_straight", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
+	Globals.sim.worldTimeLimit = 300 * cast(ulong)1e6;
+
+	double minDist = double.max;
+	Globals.sim.onSimulationPassStart += (now) {
+		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
+	};
+
+	Globals.sim.start();
+	Globals.sim.join();
+	Globals.resetForTests();
+
+	trace("minoga was ", minDist, " meters away from stork in minoga_straight test");
+}
+
 
 unittest
 {
