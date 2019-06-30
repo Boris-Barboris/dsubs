@@ -192,7 +192,7 @@ final class Player
 				pv.course = dgr2rad(0.0);
 				pvs ~= pv;
 				pv.type = WeaponParamType.activationRange;
-				pv.range = 400.0f;
+				pv.range = 200.0f;
 				pvs ~= pv;
 				pv.type = WeaponParamType.activeSpeed;
 				pv.speed = 29.0f;
@@ -202,7 +202,7 @@ final class Player
 				pvs ~= pv;
 
 				Torpedo t = tf.build(null, pvs);
-				t.transform.position = s.transform.wposition + vec2d(0, -2000);
+				t.transform.position = s.transform.wposition + vec2d(0, -1400);
 				t.register();
 
 				return getReconnectState();

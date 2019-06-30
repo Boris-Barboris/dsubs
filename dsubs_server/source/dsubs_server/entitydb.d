@@ -192,15 +192,15 @@ private:
 		// minoga's active sonar
 		tf.asprot = new ActiveSonarPrototype();
 		tf.asprot.pingParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600);
-		tf.asprot.maxPeakIlevel = tf.asprot.minPeakIlevel = 200.0f;
+		tf.asprot.maxPeakIlevel = tf.asprot.minPeakIlevel = 195.0f;
 		tf.asprot.omniBeamCount = 90;
 		tf.asprot.waterReflectivity = 0.0f;
 		tf.asprot.reflRangeNoise = 100 / 1e4;
 		tf.asprot.perlinCellSize = [23, 11];
-		tf.asprot.flowNoiseGain = 5.0f;
+		tf.asprot.flowNoiseGain = 0.0f;
 		tf.asprot.baseNoise = 1.6f;
 		tf.asprot.pingDirPower = 2.4f;
-		tf.asprot.dissMod = 4.0f;
+		tf.asprot.dissMod = 1.0f;
 		tf.asprot.span = 120.0f;
 		tf.asprot.radialRes = 20;
 		tf.asprot.maxSec = 3;

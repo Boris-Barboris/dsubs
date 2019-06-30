@@ -505,7 +505,7 @@ final class Hydrophone
 	}
 
 	private static PowerIntegr integrateBetweenBeams(float left, float right,
-		float brngStart, float brngEnd, float halo, int integrPoints = 2)
+		float brngStart, float brngEnd, float halo, int integrPoints = 15)
 	{
 		assert(integrPoints >= 1);
 		assert(right <= left);
