@@ -282,7 +282,7 @@ final class Player
 	{
 		Submarine s = m_submarine;
 		PlayerConnection con = m_connection;
-		if (con && con.isOpen && con.simulatorFlow && s)
+		if (con && con.isOpen && con.simulatorFlow && s && !s.dead)
 		{
 			con.sendMessage(immutable SubKinematicRes(genSubSnapshot()));
 			immutable(HydrophoneData)[] hdata;

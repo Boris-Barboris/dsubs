@@ -1,12 +1,15 @@
 module dsubs_server.dynamics;
 
 import std.algorithm;
+import std.array;
 
 import dsubs_common.containers.array;
 import dsubs_common.math;
+import dsubs_common.containers.quadtree;
 import dsubs_common.event;
 
 import dsubs_server.common;
+import dsubs_server.vessel;
 
 
 struct HydroForceModel
@@ -129,6 +132,9 @@ final class RigidBody: PhysicalEntity
 	double moi;
 	double mass;
 	HydroForceModel hydroModel;
+	Vessel vesselOwner;	/// may be null
+
+	private QuadTree!(RigidBody).LeafNode* spacialTreeNode;
 
 	IForce[] forces;
 
@@ -145,6 +151,13 @@ final class RigidBody: PhysicalEntity
 		kinet.rotation = transform.rotation;
 		kinet.updateCache();
 		//trace(kinet);
+	}
+
+	private void updateSpacialTreeNode()
+	{
+		spacialTreeNode.rect = Rectangle(
+			transform.wposition.to!vec2f - vec2f(50, 50),
+			vec2f(100, 100));
 	}
 
 	/// physics update step, Eulers method
@@ -201,9 +214,6 @@ abstract class PhysicalEntity
 
 	/// integrate this entity. Implies that the problem is embarassingly-parallel.
 	void integrate(float dt);
-
-	Event!(void delegate(float dt)) onPreIntegrate;
-	Event!(void delegate(float dt)) onPostIntegrate;
 }
 
 
@@ -213,6 +223,12 @@ final class PhysicalEnv
 	private
 	{
 		PhysicalEntity[] m_entities;
+		QuadTree!RigidBody m_spacialTree;
+	}
+
+	this()
+	{
+		m_spacialTree = new QuadTree!(RigidBody)(10000.0f, 200.0f);
 	}
 
 	void registerEntity(PhysicalEntity e)
@@ -220,6 +236,12 @@ final class PhysicalEnv
 		synchronized(this)
 		{
 			m_entities ~= e;
+			RigidBody rb = cast(RigidBody) e;
+			if (rb)
+				rb.spacialTreeNode = m_spacialTree.addLeaf(
+					Rectangle(rb.transform.wposition.to!vec2f - vec2f(50, 50),
+						vec2f(100, 100)),
+					rb);
 		}
 	}
 
@@ -228,6 +250,12 @@ final class PhysicalEnv
 		synchronized(this)
 		{
 			m_entities.removeFirstUnstable(e);
+			RigidBody rb = cast(RigidBody) e;
+			if (rb && rb.spacialTreeNode)
+			{
+				m_spacialTree.removeLeaf(rb.spacialTreeNode);
+				rb.spacialTreeNode = null;
+			}
 		}
 	}
 
@@ -235,6 +263,7 @@ final class PhysicalEnv
 	void clean()
 	{
 		m_entities.length = 0;
+		m_spacialTree.clear();
 	}
 
 	/// perform physics update for all entities
@@ -243,14 +272,25 @@ final class PhysicalEnv
 		long stepCount = lrint(fwd / maxDt);
 		assert(stepCount > 0);
 		float dt = fwd / stepCount;
-		foreach (i, ref entity; Globals.taskPool.parallel(m_entities, 8))
-			entity.onPreIntegrate(dt);
 		for (int i = 0; i < stepCount; i++)
 		{
 			foreach (i, ref entity; Globals.taskPool.parallel(m_entities, 8))
 				entity.integrate(dt);
 		}
-		foreach (i, ref entity; Globals.taskPool.parallel(m_entities, 8))
-			entity.onPostIntegrate(dt);
+		foreach (entity; m_entities)
+		{
+			RigidBody rb = cast(RigidBody) entity;
+			if (rb)
+				rb.updateSpacialTreeNode();
+		}
+	}
+
+	RigidBody[] findRigidBodiesInCirlce(vec2f center, float searchRadius) const
+	{
+		QuadTree!(RigidBody).LeafNode*[] leafs;
+		m_spacialTree.findCentersInCircle(center, searchRadius, leafs, true);
+		if (leafs.length == 0)
+			return null;
+		return leafs.map!(l => l.payload).array;
 	}
 }

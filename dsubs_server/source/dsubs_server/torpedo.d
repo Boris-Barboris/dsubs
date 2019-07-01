@@ -18,6 +18,7 @@ import dsubs_sound.common: uniform, GLOBAL_SRATE;
 
 import dsubs_server.common;
 import dsubs_server.vessel;
+import dsubs_server.dynamics;
 import dsubs_server.propulsion;
 import dsubs_server.submarine: Submarine;
 
@@ -121,6 +122,11 @@ final class TorpedoGuidance
 		// course is leading with this integral gain relative to target ang vel
 		float m_trackAngVelKi = 0.0f;
 		float m_trackAngVelAccumul = 0.0f;
+
+		// detonator parameters
+		float m_detonationSearchRadius = 100.0f;
+		float m_detonationMassK = 3.0f;
+		float m_blastRadius = 50.0f;
 	}
 
 	@property void fuelLeft(float rhs) { m_fuelLeft = rhs; }
@@ -168,6 +174,17 @@ final class TorpedoGuidance
 		// assign course and throttle based on activation state
 		if (m_activated)
 		{
+			// first we check if we should detonate
+			RigidBody[] inSearchRadius = Globals.phys.findRigidBodiesInCirlce(
+				m_torpedo.transform.wposition.to!vec2f,
+				m_detonationSearchRadius);
+			inSearchRadius.removeFirstUnstable(m_torpedo.rigidBody);
+			if (inSearchRadius.length > 0)
+			{
+				if (detonateIfNeeded(inSearchRadius))
+					return;	// boom!
+			}
+
 			if (!handleSensors(dt))
 			{
 				m_trackAngVelAccumul = 0.0f;
@@ -227,6 +244,31 @@ final class TorpedoGuidance
 		SonarPing m_currentPing;
 		ubyte[] m_sonarImage;
 		size_t m_sliceByteSize;
+	}
+
+	private bool detonateIfNeeded(RigidBody[] bodies)
+	{
+		bool detonated;
+		Vessel[] inKillRadius;
+		foreach (RigidBody rb; bodies)
+		{
+			double triggerDist = pow(rb.mass, 1.0f / 3) * m_detonationMassK;
+			double dist = (m_torpedo.transform.wposition - rb.transform.wposition).length;
+			detonated |= triggerDist >= dist;
+			if (rb.vesselOwner && dist <= m_blastRadius)
+				inKillRadius ~= rb.vesselOwner;
+		}
+		if (detonated)
+			detonate(inKillRadius);
+		return detonated;
+	}
+
+	private void detonate(Vessel[] inKillRadius)
+	{
+		foreach (v; inKillRadius)
+			v.kill();
+		m_torpedo.kill();
+		trace("Torpedo detonated!!!");
 	}
 
 	Event!(void delegate(ubyte[] image, int w, int h)) onSonarImageReady;
@@ -428,7 +470,8 @@ final class TorpedoCollection
 	void updateGuidances(usecs_t dt)
 	{
 		foreach (Torpedo torp; Globals.taskPool.parallel(m_torpedoes, 4))
-			torp.guidance.update(dt);
+			if (!torp.dead)
+				torp.guidance.update(dt);
 	}
 }
 

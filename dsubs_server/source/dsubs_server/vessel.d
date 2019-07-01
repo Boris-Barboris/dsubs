@@ -24,6 +24,8 @@ class Vessel
 		Propulsor m_propulsor;
 		Reflector m_reflector;
 		string m_prototypeName;
+		bool m_dead;
+		usecs_t m_deathTime;
 	}
 
 	final
@@ -40,6 +42,7 @@ class Vessel
 		@property inout(Propulsor) propulsor() inout { return m_propulsor; }
 		@property inout(BasicRudder) rudder() inout { return m_rudder; }
 		@property string prototypeName() const { return m_prototypeName; }
+		@property bool dead() const { return m_dead; }
 	}
 
 	this(string prototypeName)
@@ -47,6 +50,7 @@ class Vessel
 		m_prototypeName = prototypeName;
 		m_transform = new Transform2D();
 		m_rigidBody = new RigidBody(m_transform);
+		m_rigidBody.vesselOwner = this;
 	}
 
 	private double calcMoi() const
@@ -92,6 +96,19 @@ class Vessel
 		enforce(!isNaN(target), "NaN target course");
 		enforce(!isInfinity(target), "Infinite target course");
 		m_rudder.targetCourse = clampAngle(target);
+	}
+
+	/// Ensure that the vessel is dead. Returns true if it was killed first time.
+	bool kill()
+	{
+		if (!m_dead)
+		{
+			m_deathTime = Globals.sim.worldTime;
+			targetThrottle = 0.0f;
+			m_dead = true;
+			return true;
+		}
+		return false;
 	}
 }
 

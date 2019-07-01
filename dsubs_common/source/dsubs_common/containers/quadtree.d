@@ -254,6 +254,14 @@ public:
 		m_root.area = Square(rootCenter, rootSquareSize);
 	}
 
+	/// Create new root as a copy of old root, but empty.
+	void clear()
+	{
+		CellNode* oldRoot = m_root;
+		m_root = new CellNode();
+		m_root.area = Square(oldRoot.area.center, oldRoot.area.side);
+	}
+
 	/// create new leaf and return a handle to it
 	LeafNode* addLeaf(Rectangle rect, T payload, LeafNode* hint = null)
 	{
@@ -305,7 +313,7 @@ public:
 
 	/// append all leafs that intersect 'searchRect' to 'result'
 	void findAllIntersectingRectangle(const Rectangle searchRect,
-		ref LeafNode*[] result, bool searchUp = true)
+		ref LeafNode*[] result, bool searchUp = true) const
 	{
 		const(CellNode)* start = walkDownConst(m_root, searchRect);
 
@@ -340,7 +348,7 @@ public:
 		}
 	}
 
-	void findCollisions(LeafNode* collider, ref LeafNode*[] result);
+	void findCollisions(LeafNode* collider, ref LeafNode*[] result) const;
 
 
 private:
