@@ -92,7 +92,26 @@ struct PingParameters
 private struct PreparedPingTds
 {
 	VarTds tds;
-	float meanSqr;
+	float[] samples;
+	float[] meanSqr;	/// mean squared samples of ping seconds
+
+	/// normalized (relative to first second) energy. At most one second.
+	/// integrates interval [from, end)
+	float integrateSamplesNormalized(size_t from, size_t end)
+	{
+		assert(end - from <= GLOBAL_SRATE);
+		assert(end >= from);
+		size_t firstSec = from / GLOBAL_SRATE;
+		size_t secondSec = end / GLOBAL_SRATE;
+		if (secondSec == firstSec)
+			return meanSqr[firstSec] * (end - from) / GLOBAL_SRATE;
+		assert(secondSec == firstSec + 1);
+		float k1 = (GLOBAL_SRATE * (firstSec + 1) - from) / float(GLOBAL_SRATE);
+		float k2 = (end - GLOBAL_SRATE * (firstSec + 1)) / float(GLOBAL_SRATE);
+		if (k2 == 0.0f)
+			return k1 * (meanSqr[firstSec] / meanSqr[0]);
+		return k1 * (meanSqr[firstSec] / meanSqr[0]) + (meanSqr[secondSec] / meanSqr[0]) * k2;
+	}
 }
 
 
@@ -109,13 +128,18 @@ package struct PingTdsCache
 		float[] samples = getPingSamples(params.tdsLength, params.chirps);
 		synchronized(q)
 		{
-			m_cache[params] = PreparedPingTds(VarTds(q, samples.length, 0.0f));
+			m_cache[params] = PreparedPingTds(VarTds(q, samples.length, 0.0f), samples);
 			VarTds zeroes = VarTds(q, samples.length, 0.0f);
 			VarTds source = VarTds(q, samples);
 			q.ctx.getFilter("octaveHp250").filter(q, zeroes, source, m_cache[params].tds);
 			m_cache[params].tds.read(q, samples);
-			m_cache[params].meanSqr = samples[0 .. GLOBAL_SRATE / 2].
-				map!(p => p * p).sum() / (GLOBAL_SRATE / 2);
+			m_cache[params].meanSqr.length = samples.length / GLOBAL_SRATE;
+			foreach (i, ref float msvalue; m_cache[params].meanSqr)
+			{
+				msvalue = samples[GLOBAL_SRATE * i .. GLOBAL_SRATE * (i + 1)].
+					map!(p => p * p).sum() / GLOBAL_SRATE;
+			}
+			trace("ping meanSqr: ", m_cache[params].meanSqr);
 		}
 	}
 
@@ -763,16 +787,18 @@ final class SonarPing: SoundSource
 		float relBearing = courseAngle(listenerPos - m_position) - m_wrot;
 		IntensityLevel ilevel = pingAtRelBearing(m_kernParam, relBearing);
 		ilevel = getILatRange(m_freq, ilevel, range, dissMod);
-		Intensity intens = ilevel.toLinear();
+		Intensity intensFirstSec = ilevel.toLinear();
+		// modify intensity to account for non-uniform chirp
 		size_t samplesUsed = GLOBAL_SRATE - m_destOffset;
-		Intensity intervalIntens = Intensity(
-			intens * min(samplesUsed, m_samplesLeft) / GLOBAL_SRATE);
+		float intensNormalized = m_refTds.integrateSamplesNormalized(
+			m_sourceOffset, min(m_refTds.tds.length, m_sourceOffset + samplesUsed));
+		Intensity intervalIntens = Intensity(intensFirstSec * intensNormalized);
 		if (needTds && maxFreq >= m_freq && minFreq <= m_freq)
 		{
 			q.s_tds.fill(q, 0.0f);
 			m_refTds.tds.copyTo(q, q.s_tds, m_sourceOffset, m_destOffset);
-			float imult = intens / m_refTds.meanSqr / GLOBAL_SRATE / GLOBAL_SRATE;
-			q.s_tds.interpolateIntensity(q, imult, imult);
+			float imultTds = intensFirstSec / m_refTds.meanSqr[0] / GLOBAL_SRATE / GLOBAL_SRATE;
+			q.s_tds.interpolateIntensity(q, imultTds, imultTds);
 			onSignalReady(&intervalIntens, null, &q.s_tds);
 		}
 		else
