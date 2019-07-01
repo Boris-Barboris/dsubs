@@ -216,7 +216,6 @@ struct Buffer
 
 	void release() nothrow @nogc
 	{
-		import core.stdc.stdio;
 		if (!m_released)
 		{
 			if (m_mem != cl_mem.init)

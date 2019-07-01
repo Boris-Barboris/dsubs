@@ -105,7 +105,8 @@ final class Hydrophone
 		float m_ktsEnd = 0.0f;
 
 		enum float MAX_HALO = dgr2rad(20);
-		enum float HALO_GAIN = 3.0f;
+		enum float HALO_GAIN = 1.0f;
+		enum float ERF_HALO_GAIN = 2.0f;
 		enum float ISOTROPIC_VAR = 2.0;
 		enum int MIN_FREQ = 20;
 		enum float LOCAL_NOISE_RANGE_FULL = 50.0f;
@@ -356,7 +357,7 @@ final class Hydrophone
 		double rangeEnd;
 		double worldBearingStart;
 		double worldBearingEnd;
-		float haloBase;
+		float haloBaseRadius;
 		float haloBound;
 		float omniFactorStart = 0.0f;
 		float omniFactorEnd = 0.0f;
@@ -390,10 +391,9 @@ final class Hydrophone
 		assert(res.range > 0.0);
 		res.worldBearingStart = courseAngle(res.dirStart);
 		res.worldBearingEnd = courseAngle(res.dirEnd);
-		// half of halo size
-		res.haloBase = (atan(s.radius / res.range) + pointHaloAngle(res.range)) *
+		res.haloBaseRadius = (atan(s.radius / res.range) + pointHaloAngle(res.range)) *
 			(1 + uniform(-0.06f, 0.06f));
-		res.haloBound = fmin(HALO_GAIN * res.haloBase, MAX_HALO);
+		res.haloBound = fmin(HALO_GAIN * res.haloBaseRadius, MAX_HALO);
 		return res;
 	}
 
@@ -457,7 +457,7 @@ final class Hydrophone
 			float left = m_listenDir + m_listenSpan / 2;
 			float right = m_listenDir - m_listenSpan / 2;
 			integr = integrateBetweenBeams(left, right,
-				p.worldBearingStart, p.worldBearingEnd, p.haloBase);
+				p.worldBearingStart, p.worldBearingEnd, p.haloBound);
 		}
 		if (needTds && integr.totalPart == 0.0f && p.omniFactorStart == 0.0f &&
 			p.omniFactorEnd == 0.0f)
@@ -505,28 +505,28 @@ final class Hydrophone
 	}
 
 	private static PowerIntegr integrateBetweenBeams(float left, float right,
-		float brngStart, float brngEnd, float halo, int integrPoints = 15)
+		float brngStart, float brngEnd, float haloRadius, int integrPoints = 13)
 	{
 		assert(integrPoints >= 1);
 		assert(right <= left);
-		halo *= HALO_GAIN;
 		PowerIntegr res;
 		float drx = angleDist(brngEnd, brngStart) / integrPoints;
 		float relBearing = brngStart + drx / 2;
 		Sector beamSector = Sector(left, right);
 		for (int i = 0; i < integrPoints; i++)
 		{
-			SectorProjection sp = projectSectorsIntersect(beamSector,
-				Sector(relBearing + halo, relBearing - halo));
+			SectorIntersection sp = projectSectorsIntersect(beamSector,
+				Sector(relBearing + haloRadius, relBearing - haloRadius));
 			assert(sp.count < 2);
 			float part = 0.0f;
 			if (sp.count == 1)
 			{
-				float normLeft = (sp.proj[0].left - 0.5f) * 2 * HALO_GAIN;
-				float normRight = (sp.proj[0].right - 0.5f) * 2 * HALO_GAIN;
+				float normLeft = (sp.proj[0].left - 0.5f) * 2 * ERF_HALO_GAIN;
+				float normRight = (sp.proj[0].right - 0.5f) * 2 * ERF_HALO_GAIN;
 				assert(normRight >= normLeft);
 				part = 0.5f * (erf(normRight) - erf(normLeft));
 				assert(part >= 0.0f);
+				assert(part <= 1.0f);
 				res.totalPart += part;
 			}
 			if (i == 0)
@@ -612,11 +612,6 @@ final class Hydrophone
 			}
 		}
 
-		int relBearingToCell(double relBearing)
-		{
-			return floor((beam0Left - relBearing) / m_beamAngle).lrint.to!int;
-		}
-
 		int sectorNormToCell(float norm)
 		{
 			return max(0, min(beams.length - 1, floor(norm * beams.length).lrint)).to!int;
@@ -635,39 +630,46 @@ final class Hydrophone
 				p.worldBearingEnd + bearingErr - m_transform.wrotation - rot);
 
 			Sector allCellsSect = Sector(beam0Left, -beam0Left);
-			SectorProjection sectProj1 = projectSectorsIntersect(
+			SectorIntersection sectIsec1 = projectSectorsIntersect(
 				Sector(
 					antPrec.relBearing1 + p.haloBound,
 					antPrec.relBearing1 - p.haloBound),
 				allCellsSect);
-			assert(sectProj1.count < 2);
-			SectorProjection sectProj2 = projectSectorsIntersect(
+			assert(sectIsec1.count < 2);
+			SectorIntersection sectIsec2 = projectSectorsIntersect(
 				Sector(
 					antPrec.relBearing2 + p.haloBound,
 					antPrec.relBearing2 - p.haloBound),
 				allCellsSect);
-			assert(sectProj2.count < 2);
+			assert(sectIsec2.count < 2);
 
 			// let's check visibility of this source
 			antPrec.beamStart = beams.length.to!int;
 			antPrec.beamEnd = -1;
-
-			if (sectProj1.count == 0 && sectProj2.count == 0)
+			if (sectIsec1.count == 0 && sectIsec2.count == 0)
 				return false;
-			if (sectProj1.count)
-			{
-				antPrec.beamStart = min(antPrec.beamStart,
-					sectorNormToCell(sectProj1.proj[0].left));
-				antPrec.beamEnd = max(antPrec.beamEnd,
-					sectorNormToCell(sectProj1.proj[0].right));
-			}
-			if (sectProj2.count)
-			{
-				antPrec.beamStart = min(antPrec.beamStart,
-					sectorNormToCell(sectProj2.proj[0].left));
-				antPrec.beamEnd = max(antPrec.beamEnd,
-					sectorNormToCell(sectProj2.proj[0].right));
-			}
+
+			// FIXME: we don't handle the case when the target passes begind the tail
+
+			// now we operate on raw non-intersected projections
+			SectorProjection proj1 = projectSectors(
+				Sector(
+					antPrec.relBearing1 + p.haloBound,
+					antPrec.relBearing1 - p.haloBound),
+				allCellsSect);
+			SectorProjection proj2 = projectSectors(
+				Sector(
+					antPrec.relBearing2 + p.haloBound,
+					antPrec.relBearing2 - p.haloBound),
+				allCellsSect);
+			antPrec.beamStart = min(antPrec.beamStart,
+				sectorNormToCell(proj1.left));
+			antPrec.beamEnd = max(antPrec.beamEnd,
+				sectorNormToCell(proj1.right));
+			antPrec.beamStart = min(antPrec.beamStart,
+				sectorNormToCell(proj2.left));
+			antPrec.beamEnd = max(antPrec.beamEnd,
+				sectorNormToCell(proj2.right));
 			return antPrec.beamEnd >= antPrec.beamStart;
 		}
 
@@ -688,15 +690,15 @@ final class Hydrophone
 					beam += bandSum * omniMult;
 			}
 			// apply broadband power to beams
-			for (int ci = antPrec.beamStart; ci <= antPrec.beamEnd; ci++)
+			for (int beamId = antPrec.beamStart; beamId <= antPrec.beamEnd; beamId++)
 			{
-				float beamLeft = beam0Left - ci * m_beamAngle;
+				float beamLeft = beam0Left - beamId * m_beamAngle;
 				float beamRight = beamLeft - m_beamAngle;
 				float powerPart = integrateBetweenBeams(beamLeft, beamRight,
-					antPrec.relBearing1, antPrec.relBearing2, p.haloBase, 3).totalPart;
+					antPrec.relBearing1, antPrec.relBearing2, p.haloBound).totalPart;
 				assert(!isNaN(powerPart));
 				if (powerPart > omniMult)
-					beams[ci] += bandSum * (1.0f - omniMult) * powerPart;
+					beams[beamId] += bandSum * (1.0f - omniMult) * powerPart;
 			}
 		}
 	}
@@ -788,7 +790,7 @@ unittest
 	{
 		h.onPreSimulation();
 		h.ktsStart = h.ktsEnd = spdKts + dspd * i;
-		h.transform.rotation = PI + 0.75f * sin(i / 10.0f);
+		h.transform.rotation = PI + i / 10.0f;
 		h.resetAndStartIsotropic(q);
 		foreach (j, float spd; speeds)
 		{

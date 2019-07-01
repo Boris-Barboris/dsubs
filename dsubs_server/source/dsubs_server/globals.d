@@ -101,6 +101,9 @@ __gshared:
 	shared static ~this()
 	{
 		if (sctx)
+		{
 			sctx.release();
+			cleanCollectionsForTests();
+		}
 	}
 }

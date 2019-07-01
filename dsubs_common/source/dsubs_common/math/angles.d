@@ -123,36 +123,52 @@ struct Sector
 	float right;	/// right beam, radians
 	private float angle; // always non-positive
 
-	void normalize()
+	void normalize(bool clampLeft = true)
 	{
 		angle = angleDist(right, left);
 		if (angle > 0)
 			angle -= 2 * PI;
 		assert(!isNaN(angle));
 		assert(angle < 0);
-		left = clampAnglePi(left);
+		if (clampLeft)
+			left = clampAnglePi(left);
 		right = left + angle;
 	}
 }
 
-struct Projection
-{
-	float left;		// [0;1]
-	float right;	// [left;1]
-}
-
-/// Two sectors is zero, one or two subsectors. This structure contains
-/// projection of those subsectors onto the 'onto' sector.
+/// Normalized ray directions, relative to the sector that is the projection base.
+/// 'onto' in case of projectSectorsIntersect. Clockwise is positive.
 struct SectorProjection
 {
-	int count = 0;
-	Projection[2] proj;
+	float left;		// [0;1] for intersecting projection
+	float right;	// [left;1] for intersecting projection
 }
 
-/// ditto
-SectorProjection projectSectorsIntersect(Sector what, Sector onto)
+/// Two sectors intersection is zero, one or two subsectors. This structure contains
+/// projection of those subsectors onto the 'onto' sector.
+struct SectorIntersection
+{
+	int count = 0;
+	SectorProjection[2] proj;	/// only the first "count" projections are valid.
+}
+
+/// Simple non-intersecting projection with no clamping. You must be careful with
+/// the relative sector position and normalization.
+SectorProjection projectSectors(Sector what, Sector onto)
 {
 	SectorProjection res;
+	what.normalize(false);
+	onto.normalize(false);
+
+	res.left = (what.left - onto.left) / onto.angle;
+	res.right = res.left + what.angle / onto.angle;
+	return res;
+}
+
+/// Intersect and return at most two projections of sector intersections
+SectorIntersection projectSectorsIntersect(Sector what, Sector onto)
+{
+	SectorIntersection res;
 	what.normalize();
 	onto.normalize();
 
