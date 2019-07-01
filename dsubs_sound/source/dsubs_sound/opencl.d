@@ -1,5 +1,7 @@
 module dsubs_sound.opencl;
 
+import core.stdc.stdio: printf;
+
 import std.algorithm.mutation: swap;
 import std.traits: isPointer;
 import std.string: toStringz;
@@ -662,10 +664,11 @@ final class DsubsSoundOpenclCtx
 		release(false);
 	}
 
-	private void release(bool releaseQueues = true) nothrow @nogc
+	void release(bool releaseQueues = true) nothrow @nogc
 	{
 		if (!m_released)
 		{
+			printf("Releasing opencl context...");
 			clReleaseContext(m_ctx);
 			if (releaseQueues)
 			{
@@ -704,5 +707,11 @@ version (unittest)
 			error(ex.toString);
 			throw ex;
 		}
+	}
+
+	shared static ~this()
+	{
+		if (s_clCtx)
+			s_clCtx.release();
 	}
 }

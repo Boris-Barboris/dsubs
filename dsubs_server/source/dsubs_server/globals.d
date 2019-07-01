@@ -97,4 +97,10 @@ __gshared:
 		acous.clean();
 		phys.clean();
 	}
+
+	shared static ~this()
+	{
+		if (sctx)
+			sctx.release();
+	}
 }
