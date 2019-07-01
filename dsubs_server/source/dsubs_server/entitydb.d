@@ -162,9 +162,9 @@ private:
 		pf.shaftRotFreq = 21.45f;
 		pf.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/minoga.png", 1.0f, 60, 120),
+				"../dsubs_sound/minoga.png", 1.0f, 60, 110),
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/minoga_cav.png", 1.0f, 60, 120),
+				"../dsubs_sound/minoga_cav.png", 1.0f, 50, 140),
 			cast(immutable) new TrochoidModulatorParams([
 				Harmonic(1.0f, 0.25f),
 				Harmonic(3.0f, 0.75f)],
@@ -192,13 +192,13 @@ private:
 		// minoga's active sonar
 		tf.asprot = new ActiveSonarPrototype();
 		tf.asprot.pingParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600);
-		tf.asprot.maxPeakIlevel = tf.asprot.minPeakIlevel = 195.0f;
+		tf.asprot.maxPeakIlevel = tf.asprot.minPeakIlevel = 197.0f;
 		tf.asprot.omniBeamCount = 90;
 		tf.asprot.waterReflectivity = 0.0f;
 		tf.asprot.reflRangeNoise = 100 / 1e4;
 		tf.asprot.perlinCellSize = [23, 11];
 		tf.asprot.flowNoiseGain = 0.0f;
-		tf.asprot.baseNoise = 1.6f;
+		tf.asprot.baseNoise = 1.5f;
 		tf.asprot.pingDirPower = 2.4f;
 		tf.asprot.dissMod = 1.0f;
 		tf.asprot.span = 120.0f;

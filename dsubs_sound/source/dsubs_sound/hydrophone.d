@@ -35,7 +35,7 @@ struct HydrophonePrototype
 	float flowNoiseMult = 1.8e-5f;
 	float omniNoiseMult = 1e-2f;
 	/// client listens to beam of this size
-	float listenSpan = dgr2rad(2);
+	float listenSpan = dgr2rad(3);
 }
 
 
