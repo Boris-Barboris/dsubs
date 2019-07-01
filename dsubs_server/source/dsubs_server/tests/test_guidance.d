@@ -152,6 +152,67 @@ unittest
 	Globals.resetForTests();
 
 	trace("minoga was ", minDist, " meters away from stork in minoga_snake test");
+	assert(s.dead);
+}
+
+unittest
+{
+	Globals.buildForTests();
+	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 300.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeSpeed;
+	pv.speed = 29.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.snake;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.register();
+	int imageCounter;
+	t.guidance.onSonarImageReady += (img, w, h) {
+		writeSonarImage("guidance", "minoga_headon", "minoga", img, w, h, imageCounter);
+		imageCounter++;
+	};
+
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	s.transform.position = vec2d(0, 2500);
+	s.transform.rotation = dgr2rad(180);
+	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
+	s.targetCourse = s.transform.rotation;
+	s.targetThrottle = 0.1f;
+	s.register();
+	File* storkFile = writeRbodyCsvHeader("guidance", "minoga_headon", "stork");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+
+	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_headon", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
+	Globals.sim.worldTimeLimit = 200 * cast(ulong)1e6;
+
+	double minDist = double.max;
+	Globals.sim.onSimulationPassStart += (now) {
+		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
+	};
+
+	Globals.sim.start();
+	Globals.sim.join();
+	Globals.resetForTests();
+
+	trace("minoga was ", minDist, " meters away from stork in minoga_snake test");
+	assert(s.dead);
 }
 
 unittest
@@ -214,6 +275,7 @@ unittest
 	Globals.resetForTests();
 
 	trace("minoga was ", minDist, " meters away from stork in minoga_straight test");
+	assert(s.dead);
 }
 
 

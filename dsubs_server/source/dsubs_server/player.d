@@ -204,7 +204,7 @@ final class Player
 				pvs ~= pv;
 
 				Torpedo t = tf.build(null, pvs);
-				t.transform.position = s.transform.wposition + vec2d(0, -1400);
+				t.transform.position = s.transform.wposition + vec2d(0, -1000);
 				t.register();
 
 				return getReconnectState();

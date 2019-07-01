@@ -124,7 +124,7 @@ final class TorpedoGuidance
 
 		// detonator parameters
 		float m_detonationSearchRadius = 100.0f;
-		float m_detonationMassK = 3.0f;
+		float m_detonationMassK = 3.5f;
 		float m_blastRadius = 50.0f;
 	}
 

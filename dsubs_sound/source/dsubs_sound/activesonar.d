@@ -869,8 +869,8 @@ unittest
 	samples.length = 3 * GLOBAL_SRATE;
 	PreparedPingTds* ptds = s_clCtx.pingTds.get(mfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
-	writeWavFile("midfreq-chirp.wav", samples, 0.01f / ptds.meanSqr, GLOBAL_SRATE);
+	writeWavFile("midfreq-chirp.wav", samples, 0.01f / ptds.meanSqr[0], GLOBAL_SRATE);
 	ptds = s_clCtx.pingTds.get(hfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
-	writeWavFile("highfreq-chirp.wav", samples, 0.01f / ptds.meanSqr, GLOBAL_SRATE);
+	writeWavFile("highfreq-chirp.wav", samples, 0.01f / ptds.meanSqr[0], GLOBAL_SRATE);
 }

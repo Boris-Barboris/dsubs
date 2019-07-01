@@ -119,6 +119,20 @@ void __kernel interpolateIntensity(
 }
 
 
+// Linearly interpolates intensity level of the signal
+void __kernel interpolateIntensityLevel(
+	__global float *tds,
+	const dB startLevel,
+	const dB endLevel)
+{
+	uint idx = get_global_id(0);
+	uint len = get_global_size(0);
+	float delta = endLevel - startLevel;
+	float thisLevel = startLevel + delta * idx / (len - 1);
+	tds[idx] = tds[idx] * sqrt(toLinear(thisLevel));
+}
+
+
 // same but with buffers as data sources
 void __kernel interpolateIntensity2(
 	__global float *tds,

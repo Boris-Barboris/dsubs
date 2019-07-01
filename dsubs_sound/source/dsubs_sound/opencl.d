@@ -507,6 +507,7 @@ final class CommandQueue
 		mk_energyToPressure = new Kernel(prog, "energyToPressure");
 		mk_interpolateIntensity = new Kernel(prog, "interpolateIntensity");
 		mk_interpolateIntensity2 = new Kernel(prog, "interpolateIntensity2");
+		mk_interpolateIntensityLevel = new Kernel(prog, "interpolateIntensityLevel");
 		mk_modulateTrochoid = new Kernel(prog, "modulateTrochoid");
 		mk_addTo = new Kernel(prog, "addTo");
 		mk_toShortPcb = new Kernel(prog, "toShortPcb");
@@ -550,6 +551,7 @@ final class CommandQueue
 		Kernel mk_energyToPressure;
 		Kernel mk_interpolateIntensity;
 		Kernel mk_interpolateIntensity2;
+		Kernel mk_interpolateIntensityLevel;
 		Kernel mk_modulateTrochoid;
 		Kernel mk_addTo;
 		Kernel mk_toShortPcb;
@@ -667,7 +669,7 @@ final class DsubsSoundOpenclCtx
 	{
 		if (!m_released)
 		{
-			printf("Releasing opencl context...");
+			printf("Releasing opencl context...\n");
 			clReleaseContext(m_ctx);
 			if (releaseQueues)
 			{

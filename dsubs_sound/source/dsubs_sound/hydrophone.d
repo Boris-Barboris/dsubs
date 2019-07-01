@@ -33,7 +33,7 @@ struct HydrophonePrototype
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 4e-3f;
 	float flowNoiseMult = 1.8e-5f;
-	float omniNoiseMult = 1e-2f;
+	float omniNoiseMult = 0.1f;
 	/// client listens to beam of this size
 	float listenSpan = dgr2rad(3);
 }
@@ -105,11 +105,11 @@ final class Hydrophone
 		float m_ktsEnd = 0.0f;
 
 		enum float MAX_HALO = dgr2rad(20);
-		enum float HALO_GAIN = 1.0f;
+		enum float HALO_GAIN = 1.25f;
+		enum float SOUND_HALO_GAIN = 2.5f;
 		enum float ERF_HALO_GAIN = 2.0f;
 		enum float ISOTROPIC_VAR = 2.0;
-		enum int MIN_FREQ = 20;
-		enum float LOCAL_NOISE_RANGE_FULL = 50.0f;
+		enum float LOCAL_NOISE_RANGE_FULL = 10.0f;
 		enum float LOCAL_NOISE_RANGE_CUTOFF = 200.0f;
 
 		// broadband sea background noise intensity
@@ -401,7 +401,9 @@ final class Hydrophone
 	{
 		if (range <= LOCAL_NOISE_RANGE_FULL)
 			return 1.0f;
-		return max(0.0f, 1.0f - (range - LOCAL_NOISE_RANGE_FULL) / LOCAL_NOISE_RANGE_CUTOFF);
+		float linGain = max(0.0f, 1.0f -
+			(range - LOCAL_NOISE_RANGE_FULL) / LOCAL_NOISE_RANGE_CUTOFF);
+		return pow(linGain, 2);
 	}
 
 	void applySoundSource(CommandQueue q, SoundSource s)
@@ -457,7 +459,7 @@ final class Hydrophone
 			float left = m_listenDir + m_listenSpan / 2;
 			float right = m_listenDir - m_listenSpan / 2;
 			integr = integrateBetweenBeams(left, right,
-				p.worldBearingStart, p.worldBearingEnd, p.haloBound);
+				p.worldBearingStart, p.worldBearingEnd, p.haloBound * SOUND_HALO_GAIN);
 		}
 		if (needTds && integr.totalPart == 0.0f && p.omniFactorStart == 0.0f &&
 			p.omniFactorEnd == 0.0f)
@@ -485,9 +487,13 @@ final class Hydrophone
 			{
 				float omniImultStart = p.omniFactorStart * m_directivity * m_omniNoiseMult;
 				float omniImultEnd = p.omniFactorEnd * m_directivity * m_omniNoiseMult;
-				modulateIInterp(q, *tds,
-					omniImultStart + (1.0f - omniImultStart) * integr.startPart,
-					omniImultEnd + (1.0f - omniImultEnd) * integr.endPart);
+				dB intensStart = max(-60.0f, toDb(
+					omniImultStart + (1.0f - omniImultStart) * integr.startPart));
+				assert(intensStart <= 0.0f);
+				dB intensEnd = max(-60.0f, toDb(
+					omniImultEnd + (1.0f - omniImultEnd) * integr.endPart));
+				assert(intensEnd <= 0.0f);
+				modulateILevelInterp(q, *tds, intensStart, intensEnd);
 				tds.addTo(q, m_curTds);
 			}
 			p.components++;
@@ -507,11 +513,11 @@ final class Hydrophone
 	private static PowerIntegr integrateBetweenBeams(float left, float right,
 		float brngStart, float brngEnd, float haloRadius, int integrPoints = 13)
 	{
-		assert(integrPoints >= 1);
+		assert(integrPoints >= 2);
 		assert(right <= left);
 		PowerIntegr res;
-		float drx = angleDist(brngEnd, brngStart) / integrPoints;
-		float relBearing = brngStart + drx / 2;
+		float drx = angleDist(brngEnd, brngStart) / (integrPoints - 1);
+		float relBearing = brngStart;
 		Sector beamSector = Sector(left, right);
 		for (int i = 0; i < integrPoints; i++)
 		{
@@ -527,7 +533,10 @@ final class Hydrophone
 				part = 0.5f * (erf(normRight) - erf(normLeft));
 				assert(part >= 0.0f);
 				assert(part <= 1.0f);
-				res.totalPart += part;
+				float totalPartPart = part;
+				if (i == 0 || i == integrPoints - 1)
+					totalPartPart *= 0.5f;
+				res.totalPart += totalPartPart;
 			}
 			if (i == 0)
 				res.startPart = part;
@@ -535,7 +544,7 @@ final class Hydrophone
 				res.endPart = part;
 			relBearing += drx;
 		}
-		res.totalPart /= integrPoints;
+		res.totalPart /= (integrPoints - 1);
 		assert(!isNaN(res.totalPart));
 		return res;
 	}
