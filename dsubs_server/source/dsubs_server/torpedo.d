@@ -106,7 +106,6 @@ final class TorpedoGuidance
 		float m_activeRange;
 		vec2d m_lastPos;
 		bool m_activated;
-		bool m_exhausted;
 
 		// snake-related parameters
 		float m_snakeArm;
@@ -152,14 +151,11 @@ final class TorpedoGuidance
 	void update(usecs_t dt)
 	{
 		// perform fuel-related calculations
-		if (m_exhausted)
-			return;
 		float fuelSpent = pow(m_torpedo.propulsor.throttle.fabs, m_fuelEffExponent);
 		m_fuelLeft -= fuelSpent;
 		if (m_fuelLeft < 0.0f)
 		{
-			m_torpedo.targetThrottle = 0.0f;
-			m_exhausted = true;
+			m_torpedo.kill("fuel exhausted");
 			return;
 		}
 		// activation logic
@@ -266,8 +262,8 @@ final class TorpedoGuidance
 	private void detonate(Vessel[] inKillRadius)
 	{
 		foreach (v; inKillRadius)
-			v.kill();
-		m_torpedo.kill();
+			v.kill("Killed by " ~ m_torpedo.prototypeName ~ " torpedo");
+		m_torpedo.kill("detonation");
 		trace("Torpedo detonated!!!");
 	}
 

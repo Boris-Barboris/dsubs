@@ -175,3 +175,11 @@ struct EmitPingReq
 	int sonarIdx;
 	float ilevel;	/// intensity level
 }
+
+/// Server sends when the player dies.
+struct DeathRes
+{
+	__gshared const int g_marshIdx;
+	string cause;
+	string longReport;
+}

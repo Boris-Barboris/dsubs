@@ -26,6 +26,7 @@ class Vessel
 		string m_prototypeName;
 		bool m_dead;
 		usecs_t m_deathTime;
+		string m_causeOfDeath;
 	}
 
 	final
@@ -43,6 +44,8 @@ class Vessel
 		@property inout(BasicRudder) rudder() inout { return m_rudder; }
 		@property string prototypeName() const { return m_prototypeName; }
 		@property bool dead() const { return m_dead; }
+		@property usecs_t deathTime() const { return m_deathTime; }
+		@property string causeOfDeath() const { return m_causeOfDeath; }
 	}
 
 	this(string prototypeName)
@@ -99,13 +102,14 @@ class Vessel
 	}
 
 	/// Ensure that the vessel is dead. Returns true if it was killed first time.
-	bool kill()
+	bool kill(string cause)
 	{
 		if (!m_dead)
 		{
 			m_deathTime = Globals.sim.worldTime;
 			targetThrottle = 0.0f;
 			m_dead = true;
+			m_causeOfDeath = cause;
 			return true;
 		}
 		return false;

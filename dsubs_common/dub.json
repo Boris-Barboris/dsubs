@@ -7,7 +7,7 @@
 	"dependencies": {
 		"gfm:math": "~>6.2.7",
 		"painlesstraits": "0.3.0",
-		"crypto": "~>0.1.8"
+		"crypto": "~>0.2.4"
 	},
 	"dflags": [],
 	"buildRequirements": [

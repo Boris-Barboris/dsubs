@@ -29,6 +29,7 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 	@property void player(Player rhs) { m_player = rhs; }
 
 	@property bool simulatorFlow() const { return m_simulatorFlow; }
+	@property void simulatorFlow(bool rhs) { m_simulatorFlow = rhs; }
 
 	this(Socket sock)
 	{

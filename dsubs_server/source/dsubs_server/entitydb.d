@@ -233,7 +233,7 @@ private:
 		tf.rudderPosChangeSpeed = 2.0f;
 		// vec2f dims = getHullDims(tf.tmpl.hullModel);
 		tf.hullLength = 5.2f;
-		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.2f), [-10.0f, -7.0f, -5.0f]);
+		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.2f), [-29.0f, -22.0f, -15.0f]);
 		m_torpedos["Minoga"] = tf;
 
 		pdescs.length = 0;

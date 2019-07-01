@@ -130,6 +130,8 @@ final class Player
 			con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
 			if (m_submarine)
 			{
+				if (m_submarine.dead)
+					throw new Exception("submarine is dead");
 				foreach (h; m_submarine.hydrophones)
 					h.active = true;
 				m_submarine.sonar.active = true;
@@ -216,6 +218,8 @@ final class Player
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to set throttle");
+			if (s.dead)
+				return;
 			s.targetThrottle = req.target;
 		}
 	}
@@ -226,6 +230,8 @@ final class Player
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to set course");
+			if (s.dead)
+				return;
 			s.targetCourse = req.target - coordRot;
 		}
 	}
@@ -236,6 +242,8 @@ final class Player
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to listenDir");
+			if (s.dead)
+				return;
 			int hcount = s.hydrophones.length.to!int;
 			enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < hcount, "no such hydrophone");
 			s.hydrophones[req.hydrophoneIdx].listenDir = req.dir - coordRot;
@@ -248,6 +256,8 @@ final class Player
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to EmitPingReq");
+			if (s.dead)
+				return;
 			enforce(req.sonarIdx == 0, "no such sonar");
 			if (Globals.sim.worldTime - m_lastPingEmit >= 5_000_000)
 			{
@@ -282,8 +292,19 @@ final class Player
 	{
 		Submarine s = m_submarine;
 		PlayerConnection con = m_connection;
-		if (con && con.isOpen && con.simulatorFlow && s && !s.dead)
+
+		// handle death
+		if (s && s.dead)
+			m_submarine = null;
+
+		if (con && con.isOpen && con.simulatorFlow && s)
 		{
+			if (s.dead)
+			{
+				con.simulatorFlow = false;
+				con.sendMessage(immutable DeathRes(s.causeOfDeath, ""));
+				return;
+			}
 			con.sendMessage(immutable SubKinematicRes(genSubSnapshot()));
 			immutable(HydrophoneData)[] hdata;
 			foreach (i, const h; s.hydrophones)
