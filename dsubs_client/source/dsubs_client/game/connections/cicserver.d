@@ -69,6 +69,8 @@ private:
 		enforce(!m_inSimFlow, "already in simulator flow");
 		synchronized(m_cicserv.state.ctcMut)
 		{
+			if (m_cicserv.dead)
+				throw new Exception("CIC server is dead");
 			// required to wait on condition
 			synchronized(m_cicserv.state.rsMut)
 			{

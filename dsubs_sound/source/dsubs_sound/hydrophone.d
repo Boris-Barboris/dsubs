@@ -33,7 +33,7 @@ struct HydrophonePrototype
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 4e-3f;
 	float flowNoiseMult = 1.8e-5f;
-	float omniNoiseMult = 0.1f;
+	float omniNoiseMult = 0.025f;
 	/// client listens to beam of this size
 	float listenSpan = dgr2rad(3);
 }

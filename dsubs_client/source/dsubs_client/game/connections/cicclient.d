@@ -18,6 +18,7 @@ import dsubs_client.game;
 import dsubs_client.game.entities;
 import dsubs_client.game.gamestate;
 import dsubs_client.game.states.simulation;
+import dsubs_client.game.states.deathscreen;
 
 
 /// TCP connection to CIC server.
@@ -134,6 +135,14 @@ private:
 		synchronized(Game.mainMutex)
 		{
 			Game.activeState = new SimulatorState(res);
+		}
+	}
+
+	void h_deathRes(CICDeathRes res)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.activeState = new DeathScreenState(res);
 		}
 	}
 

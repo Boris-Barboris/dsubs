@@ -15,7 +15,7 @@ public import dsubs_client.game.connections.cicclient;
 
 
 /**
-CIC stands for command information center. It is a broadcast and synchronization
+CIC stands for combat information center. It is a broadcast and synchronization
 server responsible for cooperative gameplay.
 */
 final class CICServer
@@ -26,6 +26,7 @@ final class CICServer
 		CICState m_state;
 		BackendConnection m_bcon;
 		WaterfallAnalyzer[] m_wfAnalizers;
+		bool m_dead;
 	}
 
 	mixin Readonly!(int, "spawnId");
@@ -47,6 +48,7 @@ final class CICServer
 
 	@property CICListener listener() { return m_listener; }
 	@property CICState state() { return m_state; }
+	@property bool dead() const { return m_dead; }
 
 	void stop()
 	{
@@ -80,6 +82,8 @@ final class CICServer
 		{
 			synchronized(m_state.rsMut)
 			{
+				if (m_dead)
+					return;
 				m_state.handleThrottleReq(req);
 			}
 			m_bcon.sendMessage(cast(immutable ThrottleReq) req);
@@ -93,6 +97,8 @@ final class CICServer
 		{
 			synchronized(m_state.rsMut)
 			{
+				if (m_dead)
+					return;
 				m_state.handleCourseReq(req);
 			}
 			m_bcon.sendMessage(cast(immutable CourseReq) req);
@@ -106,11 +112,25 @@ final class CICServer
 		{
 			synchronized(m_state.rsMut)
 			{
+				if (m_dead)
+					return;
 				m_state.handleListenDirReq(req);
 			}
 			m_bcon.sendMessage(cast(immutable ListenDirReq) req);
 			m_listener.broadcast(cast(immutable) req);
 		}
+	}
+
+	void handleDeathRes(DeathRes res)
+	{
+		synchronized(m_state.ctcMut)
+		{
+			synchronized(m_state.rsMut)
+			{
+				m_dead = true;
+			}
+		}
+		m_listener.broadcast(cast(immutable CICDeathRes) res);
 	}
 
 	void handleAcousticStreamRes(AcousticStreamRes res)
@@ -156,6 +176,11 @@ final class CICServer
 
 	void handleCICEmitPingReq(CICEmitPingReq req)
 	{
+		synchronized(m_state.rsMut)
+		{
+			if (m_dead)
+				return;
+		}
 		m_bcon.sendMessage(cast(immutable EmitPingReq) req);
 	}
 
@@ -171,6 +196,8 @@ final class CICServer
 		CICContactCreatedFromDataRes res;
 		synchronized (m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			Contact* ctc = m_state.createContact(req.ctcIdPrefix);
 			req.initialData.ctcId = ctc.id;
 			ContactData* data = m_state.updateOrCreateData(req.initialData);
@@ -189,6 +216,8 @@ final class CICServer
 		CICContactCreatedFromHTrackerRes res;
 		synchronized (m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			Contact* ctc = m_state.createContact(req.ctcIdPrefix);
 			res.newContact = *ctc;
 			TrackerId tid = TrackerId(req.hydrophoneIdx, ctc.id);
@@ -201,6 +230,8 @@ final class CICServer
 	{
 		synchronized (m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			if (m_state.updateContact(req.contact))
 				m_listener.broadcast(cast(immutable) req);
 		}
@@ -225,6 +256,8 @@ final class CICServer
 	{
 		synchronized (m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			processContactData(req.data);
 		}
 	}
@@ -233,6 +266,8 @@ final class CICServer
 	{
 		synchronized (m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			if (m_state.dropContact(req.ctcId))
 			{
 				foreach (WaterfallAnalyzer wa; m_wfAnalizers)
@@ -246,6 +281,8 @@ final class CICServer
 	{
 		synchronized (m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			if (m_state.dropData(req.dataId))
 				m_listener.broadcast(cast(immutable) req);
 		}
@@ -256,6 +293,8 @@ final class CICServer
 		enforce(req.sourceCtcId != req.destCtcId, "cannot merge into itself");
 		synchronized(m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			if (m_state.mergeContacts(req.sourceCtcId, req.destCtcId))
 			{
 				foreach (WaterfallAnalyzer wa; m_wfAnalizers)
@@ -274,6 +313,8 @@ final class CICServer
 			req.tracker.id.sensorIdx < m_wfAnalizers.length);
 		synchronized (m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			HydrophoneTracker newState;
 			if (m_wfAnalizers[req.tracker.id.sensorIdx].updateTracker(
 				req.tracker.id.ctcId, req.tracker.bearing, newState))
@@ -288,6 +329,8 @@ final class CICServer
 		enforce(req.tid.sensorIdx >= 0 && req.tid.sensorIdx < m_wfAnalizers.length);
 		synchronized (m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			if (m_wfAnalizers[req.tid.sensorIdx].dropTracker(req.tid.ctcId))
 			{
 				m_listener.broadcast(req);
@@ -299,6 +342,8 @@ final class CICServer
 	{
 		synchronized (m_state.ctcMut)
 		{
+			if (m_dead)
+				return;
 			if (m_state.trimData(req.ctcId, req.olderThan))
 				m_listener.broadcast(req);
 		}

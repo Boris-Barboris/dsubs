@@ -102,6 +102,13 @@ struct CICEmitPingReq
 	float ilevel;
 }
 
+struct CICDeathRes
+{
+	__gshared const int g_marshIdx;
+	string cause;
+	string longReport;
+}
+
 
 /*
 Contact and sensor data management API.

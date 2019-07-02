@@ -86,6 +86,11 @@ private:
 	{
 		Game.cic.handleSonarStreamRes(res);
 	}
+
+	void h_deathRes(DeathRes res)
+	{
+		Game.cic.handleDeathRes(res);
+	}
 }
 
 

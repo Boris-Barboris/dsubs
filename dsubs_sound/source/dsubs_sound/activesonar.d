@@ -763,7 +763,7 @@ final class SonarPing: SoundSource
 	/// when zero, ping is over and should be disposed of
 	@property size_t samplesLeft() const { return m_samplesLeft; }
 
-	override float minOmniFactor(float range) const { return 0.02f; }
+	override float minOmniFactor(float range) const { return 1e-3f; }
 
 	override @property vec2d position() { return m_position; }
 
