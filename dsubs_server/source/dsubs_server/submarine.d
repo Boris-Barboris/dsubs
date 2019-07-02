@@ -59,6 +59,18 @@ final class Submarine: Vessel
 			m_owner = null;
 		}
 	}
+
+	override bool kill(string cause)
+	{
+		bool res = super.kill(cause);
+		if (res)
+		{
+			foreach (h; m_hydrophones)
+				h.active = false;
+			m_sonar.active = false;
+		}
+		return res;
+	}
 }
 
 

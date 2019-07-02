@@ -83,6 +83,19 @@ final class Torpedo: Vessel
 			m_sonar.release();
 		}
 	}
+
+	override bool kill(string cause)
+	{
+		bool res = super.kill(cause);
+		if (res)
+		{
+			if (m_hydrophone)
+				m_hydrophone.active = false;
+			if (m_sonar)
+				m_sonar.active = false;
+		}
+		return res;
+	}
 }
 
 
