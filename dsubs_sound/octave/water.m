@@ -9,7 +9,7 @@ function res = waterRangeDissipationK(freq)
 end
 
 freqSpace = linspace(1, sf2, sf2);
-freqResponse = 10 .^ ( - 8000 .* 4 .* waterRangeDissipationK(freqSpace) ./ 20);
+freqResponse = 10 .^ ( - 7000 .* 4 .* waterRangeDissipationK(freqSpace) ./ 20);
 
 figure();
 subplot(121);
@@ -27,6 +27,8 @@ for i = 1:sf2
   desiredResponse(i * 2) = freqResponse(i);
 end
 
-[h, w] = freqz(fir2(50,freqBands,desiredResponse));
+# fir2 is imprecise
+# firls: https://cnx.org/contents/6x7LNQOp@7/Linear-Phase-Fir-Filter-Design-By-Least-Squares
+[h, w] = freqz(firls(20,freqBands,desiredResponse));
 subplot(122);
 plot(freqBands, desiredResponse,';target response;', w ./pi, abs(h), ';filter response;');
