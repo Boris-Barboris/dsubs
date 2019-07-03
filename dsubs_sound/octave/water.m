@@ -52,8 +52,9 @@ B2 = firls(20, freqBands, desiredResponse);
 filteredAudio1 = filter(B1, 1, audio);
 filteredAudio2 = filter(B2, 1, audio);
 
-interpGains = linspace(1.0, 0.0, length(filteredAudio1)).';
+interpGains = linspace(1.0, 0.0, 8192).';
+interpGains = [interpGains; zeros(length(audio) - 8192, 1)];
 filteredAudio = filteredAudio1 .* interpGains + filteredAudio2 .* (1.0 .- interpGains);
 
-audiowrite('big_iron_8192_filtered.wav', filteredAudio, sf);
+audiowrite('big_iron_8192_filtered.wav', filteredAudio1, sf);
 

@@ -41,7 +41,7 @@ abstract class SoundSource
 	void buildSignals(CommandQueue q, vec2d listenerPos,
 		scope void delegate(Intensity* bandIntensityReady,
 			Buffer* bandIntensityBuf, Tds* tds) onSignalReady,
-		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f);
+		int minFreq, int maxFreq, bool needTds, float dissMod = 4.0f);
 }
 
 struct PropellerSoundPrototype

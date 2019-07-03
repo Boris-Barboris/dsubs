@@ -172,6 +172,18 @@ void __kernel sumBuf(
 	*dest = res;
 }
 
+// reduse sum of squared samples
+void __kernel sumSquaredBuf(
+	__global const float* what,
+	__global float* dest,
+	uint start,
+	uint end)
+{
+	float res = 0.0f;
+	for (uint i = start; i < end; i++)
+		res += what[i] * what[i];
+	*dest = res;
+}
 
 dB seaNoiseIL(float freq)
 {
