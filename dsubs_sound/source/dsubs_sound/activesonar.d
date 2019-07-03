@@ -87,6 +87,7 @@ struct PingParameters
 	Chirp[] chirps;
 	int tdsLength = 2;		/// tds length in seconds
 	int effectiveFreq;		/// abstracted away "main" frequency.
+	string filterName;		/// filter to apply to the time-domain signal
 }
 
 private struct PreparedPingTds
@@ -128,11 +129,16 @@ package struct PingTdsCache
 		float[] samples = getPingSamples(params.tdsLength, params.chirps);
 		synchronized(q)
 		{
-			m_cache[params] = PreparedPingTds(VarTds(q, samples.length, 0.0f), samples);
-			VarTds zeroes = VarTds(q, samples.length, 0.0f);
-			VarTds source = VarTds(q, samples);
-			q.ctx.getFilter("octaveHp250").filter(q, zeroes, source, m_cache[params].tds);
-			m_cache[params].tds.read(q, samples);
+			if (params.filterName)
+			{
+				m_cache[params] = PreparedPingTds(VarTds(q, samples.length, 0.0f), samples);
+				VarTds zeroes = VarTds(q, samples.length, 0.0f);
+				VarTds source = VarTds(q, samples);
+				q.ctx.getFilter(params.filterName).filter(q, zeroes, source, m_cache[params].tds);
+				m_cache[params].tds.read(q, samples);
+			}
+			else
+				m_cache[params] = PreparedPingTds(VarTds(q, samples), samples);
 			m_cache[params].meanSqr.length = samples.length / GLOBAL_SRATE;
 			foreach (i, ref float msvalue; m_cache[params].meanSqr)
 			{
@@ -350,7 +356,7 @@ unittest
 }
 
 immutable PingParameters g_stdPingParams = immutable PingParameters(
-		[Chirp(2100, 2300, 0.3f)], 3, 2200);
+		[Chirp(2100, 2300, 0.3f)], 3, 2200, "octaveBp1900_2500");
 
 
 struct ActiveSonarPrototype
@@ -861,16 +867,16 @@ private float[] getPingSamples(int lifeTime, const Chirp[] chirps,
 
 unittest
 {
-	auto mfParams = PingParameters([Chirp(2100, 2300, 0.3f)], 3, 2200);
-	auto hfParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600);
+	auto mfParams = g_stdPingParams;
+	auto hfParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600, "octaveHp3500");
 	s_clCtx.pingTds.put(s_clCtx.queue(0), mfParams);
 	s_clCtx.pingTds.put(s_clCtx.queue(0), hfParams);
 	float[] samples;
 	samples.length = 3 * GLOBAL_SRATE;
 	PreparedPingTds* ptds = s_clCtx.pingTds.get(mfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
-	writeWavFile("midfreq-chirp.wav", samples, 0.01f / ptds.meanSqr[0], GLOBAL_SRATE);
+	writeWavFile("midfreq-chirp.wav", samples, 0.001f / ptds.meanSqr[0], GLOBAL_SRATE);
 	ptds = s_clCtx.pingTds.get(hfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
-	writeWavFile("highfreq-chirp.wav", samples, 0.01f / ptds.meanSqr[0], GLOBAL_SRATE);
+	writeWavFile("highfreq-chirp.wav", samples, 0.001f / ptds.meanSqr[0], GLOBAL_SRATE);
 }

@@ -29,6 +29,9 @@ end
 
 # fir2 is imprecise
 # firls: https://cnx.org/contents/6x7LNQOp@7/Linear-Phase-Fir-Filter-Design-By-Least-Squares
-[h, w] = freqz(firls(20,freqBands,desiredResponse));
+B = firls(20,freqBands,desiredResponse)
+[h, w] = freqz(B);
 subplot(122);
 plot(freqBands, desiredResponse,';target response;', w ./pi, abs(h), ';filter response;');
+
+

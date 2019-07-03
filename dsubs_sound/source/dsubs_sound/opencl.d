@@ -655,6 +655,8 @@ final class DsubsSoundOpenclCtx
 			m_queues[i] = new CommandQueue(this, m_prog);
 		trace("OpenCL kernels loaded, preparing filters");
 		m_filters["octaveHp250"] = new LinearFilter(queue(0), octaveHp250);
+		m_filters["octaveBp1900_2500"] = new LinearFilter(queue(0), octaveBp1900_2500);
+		m_filters["octaveHp3500"] = new LinearFilter(queue(0), octaveHp3500);
 		m_queues[0].finish();
 		trace("Filters loaded");
 		b_wrdks = Buffer(queue(0), wrdk);
