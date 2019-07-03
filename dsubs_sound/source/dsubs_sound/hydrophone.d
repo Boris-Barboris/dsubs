@@ -88,7 +88,7 @@ final class Hydrophone
 		vec2d m_prevPos;
 		double m_prevRot;
 		Antennae[] m_ant;
-		LinearFilter* m_tdsFilter;
+		FIRFilter* m_tdsFilter;
 		int m_minFreq, m_maxFreq;
 		float m_span;
 		float m_beamAngle;

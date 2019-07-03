@@ -13,7 +13,7 @@ import dsubs_sound.opencl;
 
 
 /// OpenCL linear time-domain filter
-struct LinearFilter
+struct FIRFilter
 {
 	this(CommandQueue q, immutable(float)[] taps)
 	{

@@ -622,10 +622,10 @@ final class DsubsSoundOpenclCtx
 		CommandQueue[] m_queues;
 
 		// global stuff
-		LinearFilter*[string] m_filters;
+		FIRFilter*[string] m_filters;
 	}
 
-	package LinearFilter* getFilter(string name) { return m_filters[name]; }
+	package FIRFilter* getFilter(string name) { return m_filters[name]; }
 
 	package
 	{
@@ -654,9 +654,9 @@ final class DsubsSoundOpenclCtx
 		for (int i = 0; i < queueCount; i++)
 			m_queues[i] = new CommandQueue(this, m_prog);
 		trace("OpenCL kernels loaded, preparing filters");
-		m_filters["octaveHp250"] = new LinearFilter(queue(0), octaveHp250);
-		m_filters["octaveBp1900_2500"] = new LinearFilter(queue(0), octaveBp1900_2500);
-		m_filters["octaveHp3500"] = new LinearFilter(queue(0), octaveHp3500);
+		m_filters["octaveHp250"] = new FIRFilter(queue(0), octaveHp250);
+		m_filters["octaveBp1900_2500"] = new FIRFilter(queue(0), octaveBp1900_2500);
+		m_filters["octaveHp3500"] = new FIRFilter(queue(0), octaveHp3500);
 		m_queues[0].finish();
 		trace("Filters loaded");
 		b_wrdks = Buffer(queue(0), wrdk);
