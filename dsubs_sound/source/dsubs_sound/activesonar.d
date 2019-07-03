@@ -94,7 +94,8 @@ private struct PreparedPingTds
 {
 	VarTds tds;
 	float[] samples;
-	float[] meanSqr;	/// mean squared samples of ping seconds
+	float[] meanSqr;		/// mean squared samples of ping seconds
+	float meanSqrActive;	/// mean squared samples of active chirp phase
 
 	/// normalized (relative to first second) energy. At most one second.
 	/// integrates interval [from, end)
@@ -146,6 +147,11 @@ package struct PingTdsCache
 					map!(p => p * p).sum() / GLOBAL_SRATE;
 			}
 			trace("ping meanSqr: ", m_cache[params].meanSqr);
+			float activePhaseDuration = params.chirps.map!(c => c.duration).sum();
+			size_t activeSampleCount = lrint(GLOBAL_SRATE * activePhaseDuration).to!size_t;
+			m_cache[params].meanSqrActive =
+				samples[0 .. activeSampleCount].map!(p => p * p).sum() / activeSampleCount;
+			trace("ping meanSqrActive: ", m_cache[params].meanSqrActive);
 		}
 	}
 
@@ -803,7 +809,7 @@ final class SonarPing: SoundSource
 		{
 			q.s_tds.fill(q, 0.0f);
 			m_refTds.tds.copyTo(q, q.s_tds, m_sourceOffset, m_destOffset);
-			float imultTds = intensFirstSec / m_refTds.meanSqr[0] / GLOBAL_SRATE / GLOBAL_SRATE;
+			float imultTds = intensFirstSec / m_refTds.meanSqrActive / GLOBAL_SRATE / GLOBAL_SRATE;
 			q.s_tds.interpolateIntensity(q, imultTds, imultTds);
 			onSignalReady(&intervalIntens, null, &q.s_tds);
 		}
@@ -875,8 +881,8 @@ unittest
 	samples.length = 3 * GLOBAL_SRATE;
 	PreparedPingTds* ptds = s_clCtx.pingTds.get(mfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
-	writeWavFile("midfreq-chirp.wav", samples, 0.001f / ptds.meanSqr[0], GLOBAL_SRATE);
+	writeWavFile("midfreq-chirp.wav", samples, 0.01f / ptds.meanSqrActive, GLOBAL_SRATE);
 	ptds = s_clCtx.pingTds.get(hfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
-	writeWavFile("highfreq-chirp.wav", samples, 0.001f / ptds.meanSqr[0], GLOBAL_SRATE);
+	writeWavFile("highfreq-chirp.wav", samples, 0.01f / ptds.meanSqrActive, GLOBAL_SRATE);
 }

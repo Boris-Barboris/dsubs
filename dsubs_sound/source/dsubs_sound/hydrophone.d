@@ -106,7 +106,7 @@ final class Hydrophone
 
 		enum float MAX_HALO = dgr2rad(20);
 		enum float HALO_GAIN = 1.25f;
-		enum float SOUND_HALO_GAIN = 2.5f;
+		enum float SOUND_HALO_GAIN = 1.5f;
 		enum float ERF_HALO_GAIN = 2.0f;
 		enum float ISOTROPIC_VAR = 2.0;
 		enum float LOCAL_NOISE_RANGE_FULL = 10.0f;
