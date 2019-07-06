@@ -719,7 +719,7 @@ void __kernel firTds(
 	const int tapCount,
 	__global float *dest)
 {
-	const int tdsSize = get_global_size(0);
+	const int destSize = get_global_size(0);
 	const int idx = get_global_id(0);
 	float outVal = 0.0;
 	int i = 0;
@@ -731,8 +731,41 @@ void __kernel firTds(
 		if (curIdx >= 0)
 			sourceVal = curSource[curIdx];
 		else
-			sourceVal = prevSource[tdsSize + curIdx];
+			sourceVal = prevSource[destSize + curIdx];
 		outVal += sourceVal * taps[i];
+	}
+	dest[idx] = outVal;
+}
+
+
+// Filter VarTDS with two FIR filters, while linearly changing weight.
+void __kernel firTdsTwoFilters(
+	__global const float *curSource,
+	__constant float *taps1,
+	__constant float *taps2,
+	const int tapCount,
+	const int curSourceOffset,
+	const float tap1WeightStart,
+	const float tap1WeightEnd,
+	__global float *dest)
+{
+	const int destSize = get_global_size(0);
+	const int idx = get_global_id(0);
+	const float tap1Weight = mix(
+		tap1WeightStart, tap1WeightEnd, idx / (float)(destSize - 1));
+	const float tap2Weight = 1.0f - tap1Weight;
+	float outVal = 0.0;
+	int i = 0;
+
+	for (i = 0; i < tapCount; i++)
+	{
+		const int curIdx = curSourceOffset + idx - i;
+		float sourceVal;
+		if (curIdx >= 0)
+			sourceVal = curSource[curIdx];
+		else
+			sourceVal = 0.0f;
+		outVal += sourceVal * (tap1Weight * taps1[i] + tap2Weight * taps2[i]);
 	}
 	dest[idx] = outVal;
 }

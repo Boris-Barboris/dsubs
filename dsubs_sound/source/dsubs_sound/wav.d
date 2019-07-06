@@ -8,9 +8,11 @@ import std.math;
 import std.stdio;
 import std.traits: Unqual;
 
+import dsubs_sound.common: GLOBAL_SRATE;
+
 
 // http://soundfile.sapp.org/doc/WaveFormat/
-void writeWavFile(SR)(string filename, SR samples, int srate = 4096)
+void writeWavFile(SR)(string filename, SR samples, int srate = GLOBAL_SRATE)
 	if (isInputRange!SR && is(Unqual!(ElementType!SR) == short))
 {
 	File f = File(filename, "wb");
@@ -40,7 +42,7 @@ void writeWavFile(SR)(string filename, SR samples, int srate = 4096)
 	f.rawWrite([(sampleCount * short.sizeof).to!int]);
 }
 
-void writeWavFile(SR)(string filename, SR samples, float norm, int srate = 4096)
+void writeWavFile(SR)(string filename, SR samples, float norm, int srate = GLOBAL_SRATE)
 	if (isInputRange!SR && is(Unqual!(ElementType!SR) == float))
 {
 	writeWavFile(filename,

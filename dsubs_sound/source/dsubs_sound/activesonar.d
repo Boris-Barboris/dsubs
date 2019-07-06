@@ -435,11 +435,11 @@ final class ActiveSonar
 		synchronized
 		{
 			// atomically generate tds if needed
-			m_refPingTds = q.ctx.pingTds.get(proto.pingParams);
+			m_refPingTds = q.ctx.pingTdses.get(proto.pingParams);
 			if (m_refPingTds is null)
 			{
-				q.ctx.pingTds.put(q, proto.pingParams);
-				m_refPingTds = q.ctx.pingTds.get(proto.pingParams);
+				q.ctx.pingTdses.put(q, proto.pingParams);
+				m_refPingTds = q.ctx.pingTdses.get(proto.pingParams);
 				assert(m_refPingTds !is null);
 			}
 		}
@@ -875,14 +875,14 @@ unittest
 {
 	auto mfParams = g_stdPingParams;
 	auto hfParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600, "octaveHp3500");
-	s_clCtx.pingTds.put(s_clCtx.queue(0), mfParams);
-	s_clCtx.pingTds.put(s_clCtx.queue(0), hfParams);
+	s_clCtx.pingTdses.put(s_clCtx.queue(0), mfParams);
+	s_clCtx.pingTdses.put(s_clCtx.queue(0), hfParams);
 	float[] samples;
 	samples.length = 3 * GLOBAL_SRATE;
-	PreparedPingTds* ptds = s_clCtx.pingTds.get(mfParams);
+	PreparedPingTds* ptds = s_clCtx.pingTdses.get(mfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
 	writeWavFile("midfreq-chirp.wav", samples, 0.01f / ptds.meanSqrActive, GLOBAL_SRATE);
-	ptds = s_clCtx.pingTds.get(hfParams);
+	ptds = s_clCtx.pingTdses.get(hfParams);
 	ptds.tds.read(s_clCtx.queue(0), samples);
 	writeWavFile("highfreq-chirp.wav", samples, 0.01f / ptds.meanSqrActive, GLOBAL_SRATE);
 }

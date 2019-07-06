@@ -1,15 +1,21 @@
 module dsubs_sound.filter;
 
 import std.algorithm;
+import std.array;
+import std.csv;
 import std.range;
 import std.traits;
-import std.stdio: writeln;
+import std.stdio;
+import std.string: strip;
 
 import core.time;
+
+import derelict.opencl.constants;
 
 import dsubs_sound.common;
 import dsubs_sound.spectrum;
 import dsubs_sound.opencl;
+import dsubs_sound.wav;
 
 
 /// OpenCL linear time-domain filter
@@ -18,7 +24,7 @@ struct FIRFilter
 	this(CommandQueue q, immutable(float)[] taps)
 	{
 		m_tapCount = taps.length.to!int;
-		m_taps = Buffer(q, taps);
+		m_taps = Buffer(q, taps, CL_MEM_READ_ONLY);
 	}
 
 	@disable this(this);
@@ -50,6 +56,117 @@ struct FIRFilter
 		k.setArg(4, dest.mem);
 		k.enqueue(q, 1, null, [cur.length], null, null);
 	}
+}
+
+
+WaterFIRFilter loadWaterFilterFromFile(CommandQueue q, string csvContents,
+	float maxRange, float dissk)
+{
+	auto records = csvContents.strip.csvReader!float();
+	float[][] mat = records.map!(row => row.array).array;
+	WaterFIRFilter res = WaterFIRFilter(q, mat, maxRange, dissk);
+	return res;
+}
+
+/// FIR filter that simulates water-like lowpass filter with a table of
+/// gains that can be interpolated between based on target range.
+struct WaterFIRFilter
+{
+	this(CommandQueue q, float[][] tapMatrix,
+		float maxRange, float dissK)
+	{
+		m_tapCount = tapMatrix[0].length.to!int;
+		m_maxRange = maxRange;
+		m_inbuiltDissk = dissK;
+		m_bufferCount = tapMatrix.length.to!int;
+		m_tapBufs.length = m_bufferCount;
+		for (int i = 0; i < m_bufferCount; i++)
+		{
+			assert(tapMatrix[i].length == m_tapCount);
+			m_tapBufs[i] = Buffer(q, tapMatrix[i], CL_MEM_READ_ONLY);
+		}
+	}
+
+	@disable this(this);
+
+	private
+	{
+		Buffer[] m_tapBufs;
+		int m_tapCount;
+		int m_bufferCount;
+		float m_maxRange;
+		float m_inbuiltDissk;
+	}
+
+	void filter(DestBufT)(CommandQueue q, ref VarTds cur, int curOffset,
+		ref DestBufT dest, float rangeStart, float rangeEnd, float rangeDissK = 4.0f)
+	{
+		assert(rangeStart >= 0.0f);
+		assert(rangeEnd >= 0.0f);
+		float normRange1 = rangeStart * rangeDissK / m_inbuiltDissk;
+		float normRange2 = rangeEnd * rangeDissK / m_inbuiltDissk;
+		int startIdx, endIdx;
+		float tap1WeightStart, tap1WeightEnd;
+		if (normRange1 <= normRange2)
+		{
+			startIdx = max(0, min(m_bufferCount - 1,
+				floor(m_bufferCount * normRange1 / m_maxRange).to!int));
+			endIdx = max(0, min(m_bufferCount - 1,
+				ceil(m_bufferCount * normRange2 / m_maxRange).to!int));
+		}
+		else
+		{
+			startIdx = max(0, min(m_bufferCount - 1,
+				ceil(m_bufferCount * normRange1 / m_maxRange).to!int));
+			endIdx = max(0, min(m_bufferCount - 1,
+				floor(m_bufferCount * normRange2 / m_maxRange).to!int));
+		}
+		if (startIdx == endIdx)
+		{
+			tap1WeightStart = 1.0f;
+			tap1WeightEnd = 1.0f;
+		}
+		else
+		{
+			float borderStartRange = startIdx * m_maxRange / (m_bufferCount - 1);
+			float borderEndRange = endIdx * m_maxRange / (m_bufferCount - 1);
+			float span = borderEndRange - borderStartRange;
+			assert(span != 0.0f);
+			tap1WeightStart = max(0.0f, min(1.0f,
+				1.0f - (normRange1 - borderStartRange) / span));
+			tap1WeightEnd = max(0.0f, min(1.0f,
+				(borderEndRange - normRange2) / span));
+		}
+		assert(!isNaN(tap1WeightStart));
+		assert(!isNaN(tap1WeightEnd));
+		Kernel k = q.mk_firTdsTwoFilters;
+		k.setArg(0, cur.mem);
+		k.setArg(1, m_tapBufs[startIdx].mem);
+		k.setArg(2, m_tapBufs[endIdx].mem);
+		k.setArg(3, m_tapCount);
+		k.setArg(4, curOffset);
+		k.setArg(5, tap1WeightStart);
+		k.setArg(6, tap1WeightEnd);
+		k.setArg(7, dest.mem);
+		static if (is(DestBufT == Tds))
+			k.enqueue(q, 1, null, [dest.BUF_LEN], null, null);
+		else if (is(DestBufT == VarTds))
+			k.enqueue(q, 1, null, [dest.length], null, null);
+	}
+}
+
+unittest
+{
+	float[] noise = new float[GLOBAL_SRATE * 4];
+	for (int i = 0; i < noise.length; i++)
+		noise[i] = uniform(-1.0f, 1.0f);
+	CommandQueue q = s_clCtx.queue(0);
+	VarTds tds = VarTds(q, noise);
+	VarTds destTds = VarTds(q, noise.length, 0.0f);
+	s_clCtx.waterFilter.filter(q, tds, 0,
+		destTds, 0.0f, 50000.0f, 4.0f);
+	destTds.read(q, noise);
+	writeWavFile("whitenoise_water_filtered.wav", noise, 1.0f);
 }
 
 // 8192 sampling rate filters:

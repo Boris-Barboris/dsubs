@@ -499,6 +499,7 @@ final class CommandQueue
 
 		// command queue acquires kernels
 		mk_firTds = new Kernel(prog, "firTds");
+		mk_firTdsTwoFilters = new Kernel(prog, "firTdsTwoFilters");
 		mk_radix2 = new Kernel(prog, "fftRadix2Kernel");
 		mk_iradix2 = new Kernel(prog, "ifftRadix2Kernel");
 		mk_radix4 = new Kernel(prog, "fftRadix4Kernel");
@@ -543,6 +544,7 @@ final class CommandQueue
 		FFTPlan!(GLOBAL_SRATE / 2) fft;
 		// kernels
 		Kernel mk_firTds;
+		Kernel mk_firTdsTwoFilters;
 		Kernel mk_radix2;
 		Kernel mk_iradix2;
 		Kernel mk_radix4;
@@ -630,7 +632,8 @@ final class DsubsSoundOpenclCtx
 	package
 	{
 		Buffer b_wrdks;
-		PingTdsCache pingTds;
+		PingTdsCache pingTdses;
+		WaterFIRFilter waterFilter;
 	}
 
 	this(int queueCount = totalCPUs)
@@ -657,6 +660,8 @@ final class DsubsSoundOpenclCtx
 		m_filters["octaveHp250"] = new FIRFilter(queue(0), octaveHp250);
 		m_filters["octaveBp1900_2500"] = new FIRFilter(queue(0), octaveBp1900_2500);
 		m_filters["octaveHp3500"] = new FIRFilter(queue(0), octaveHp3500);
+		waterFilter = loadWaterFilterFromFile(m_queues[0],
+			import("water_filter_values.csv"), 40000.0f, 4.0f);
 		m_queues[0].finish();
 		trace("Filters loaded");
 		b_wrdks = Buffer(queue(0), wrdk);

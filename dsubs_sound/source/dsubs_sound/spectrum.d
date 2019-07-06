@@ -51,6 +51,7 @@ struct Tds
 		return buf.enqueueFullRead(q, dest.ptr, null);
 	}
 
+	/// blocking read
 	void read(CommandQueue q, float[] dest)
 	{
 		assert(dest.length >= BUF_LEN);
@@ -126,6 +127,7 @@ struct VarTds
 		return buf.enqueueFullRead(q, dest.ptr, null);
 	}
 
+	/// blocking read
 	void read(CommandQueue q, float[] dest)
 	{
 		assert(dest.length >= length);
