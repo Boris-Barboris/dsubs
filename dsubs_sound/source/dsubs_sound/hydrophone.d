@@ -503,8 +503,8 @@ final class Hydrophone
 			p.components++;
 		}
 
-		s.buildSignals(q, m_transform.wposition, &onTdsReady, m_minFreq,
-			m_maxFreq, needTds, m_dissMod, m_tdsFilter);
+		s.buildSignals(q, m_transform.wposition, m_prevPos, &onTdsReady,
+			m_minFreq, m_maxFreq, needTds, m_dissMod, m_tdsFilter);
 	}
 
 	private struct PowerIntegr
@@ -823,6 +823,8 @@ unittest
 
 	// generate sound sample of cavitating std_propeller on 1km range
 	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
+	h.active = false;
+	h.active = true;
 	h.listenDir = PI;
 	float spd = 15.0f;
 	float freq = spd * freqPerMs;
@@ -860,6 +862,8 @@ unittest
 	// generate sound sample of silent-running std_propeller on 1km range
 	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
 	h.listenDir = PI;
+	h.active = false;
+	h.active = true;
 	spd = 4.0f;
 	freq = spd * freqPerMs;
 	trace("fundamental shaft frequency = ", freq);

@@ -35,6 +35,8 @@ struct FIRFilter
 		int m_tapCount;
 	}
 
+	@property int tapCount() const { return m_tapCount; }
+
 	void filter(CommandQueue q, ref Tds prev, ref Tds cur, ref Tds dest)
 	{
 		Kernel k = q.mk_firTds;
@@ -60,6 +62,8 @@ struct FIRFilter
 	void filter(CommandQueue q, ref VarTds cur, size_t curOffset, size_t destOffset,
 		ref Tds dest)
 	{
+		assert(destOffset <= dest.BUF_LEN);
+		assert(curOffset <= cur.length);
 		Kernel k = q.mk_firTds2;
 		k.setArg(0, cur.mem);
 		k.setArg(1, curOffset.to!int - destOffset.to!int);
@@ -68,6 +72,21 @@ struct FIRFilter
 		k.setArg(4, dest.mem);
 		k.enqueue(q, 1, [destOffset],
 			[min(dest.BUF_LEN - destOffset, cur.length - curOffset)], null, null);
+	}
+
+	void filter(CommandQueue q, ref VarTds cur, size_t curOffset, size_t destOffset,
+		ref VarTds dest)
+	{
+		assert(destOffset <= dest.length);
+		assert(curOffset <= cur.length);
+		Kernel k = q.mk_firTds2;
+		k.setArg(0, cur.mem);
+		k.setArg(1, curOffset.to!int - destOffset.to!int);
+		k.setArg(2, m_taps.mem);
+		k.setArg(3, m_tapCount);
+		k.setArg(4, dest.mem);
+		k.enqueue(q, 1, [destOffset],
+			[min(dest.length - destOffset, cur.length - curOffset)], null, null);
 	}
 }
 
@@ -102,6 +121,8 @@ struct WaterFIRFilter
 
 	@disable this(this);
 
+	@property int tapCount() const { return m_tapCount; }
+
 	private
 	{
 		Buffer[] m_tapBufs;
@@ -111,7 +132,7 @@ struct WaterFIRFilter
 		float m_inbuiltDissk;
 	}
 
-	void filter(DestBufT)(CommandQueue q, ref VarTds cur, int curOffset,
+	void filter(DestBufT)(CommandQueue q, ref VarTds cur, size_t curOffset,
 		ref DestBufT dest, size_t destOffset, float rangeStart, float rangeEnd,
 		float rangeDissK = 4.0f)
 	{
@@ -158,15 +179,23 @@ struct WaterFIRFilter
 		k.setArg(1, m_tapBufs[startIdx].mem);
 		k.setArg(2, m_tapBufs[endIdx].mem);
 		k.setArg(3, m_tapCount);
-		k.setArg(4, curOffset);
+		k.setArg(4, curOffset.to!int);
 		k.setArg(5, tap1WeightStart);
 		k.setArg(6, tap1WeightEnd);
 		k.setArg(7, dest.mem);
 		k.setArg(8, destOffset.to!int);
 		static if (is(DestBufT == Tds))
-			k.enqueue(q, 1, null, [dest.BUF_LEN - destOffset], null, null);
+		{
+			k.setArg(9, dest.BUF_LEN.to!int);
+			k.enqueue(q, 1, null,
+				[min(cur.length - curOffset, dest.BUF_LEN - destOffset)], null, null);
+		}
 		else if (is(DestBufT == VarTds))
-			k.enqueue(q, 1, null, [dest.length - destOffset], null, null);
+		{
+			k.setArg(9, dest.length.to!int);
+			k.enqueue(q, 1, null,
+				[min(cur.length - curOffset, dest.length - destOffset)], null, null);
+		}
 	}
 }
 

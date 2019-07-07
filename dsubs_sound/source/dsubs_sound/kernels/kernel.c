@@ -774,12 +774,12 @@ void __kernel firTdsTwoFilters(
 	const float tap1WeightStart,
 	const float tap1WeightEnd,
 	__global float *dest,
-	const int destOffset)
+	const int destOffset,
+	const int destSize)
 {
-	const int destSize = get_global_size(0);
 	const int idx = get_global_id(0);
 	const float tap1Weight = mix(
-		tap1WeightStart, tap1WeightEnd, idx / (float)(destSize - 1));
+		tap1WeightStart, tap1WeightEnd, (destOffset + idx) / (float)(destSize - 1));
 	const float tap2Weight = 1.0f - tap1Weight;
 	float outVal = 0.0;
 	int i = 0;

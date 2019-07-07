@@ -527,6 +527,8 @@ final class CommandQueue
 		fft = new FFTPlan!(GLOBAL_SRATE / 2)(ctx);
 
 		s_tds = Tds(ctx);
+		s_vartds2sec = VarTds(ctx, GLOBAL_SRATE * 2);
+		s_vartds2sec2 = VarTds(ctx, GLOBAL_SRATE * 2);
 		s_ispec = ISpectrum(ctx);
 		s_ispec2 = ISpectrum(ctx);
 		s_ilspec = ILevelSpectrum(ctx);
@@ -571,10 +573,12 @@ final class CommandQueue
 		Kernel mk_sonarSlicePass;
 	}
 
-	/// Queue-local shared buffers
+	/// Queue-local shared buffers that are needed in a lot of workflows
 	package
 	{
 		Tds s_tds;
+		VarTds s_vartds2sec;
+		VarTds s_vartds2sec2;
 		ISpectrum s_ispec;
 		ISpectrum s_ispec2;
 		ILevelSpectrum s_ilspec;

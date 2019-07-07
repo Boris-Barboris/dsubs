@@ -155,6 +155,14 @@ struct VarTds
 			null).release();
 	}
 
+	void copyTo(CommandQueue q, ref VarTds dest, size_t sourceOffset, size_t destOffset)
+	{
+		assert(sourceOffset <= length);
+		buf.enqueueCopy(q, dest.buf, sourceOffset * float.sizeof, destOffset * float.sizeof,
+			float.sizeof * min(dest.length - destOffset, length - sourceOffset),
+			null).release();
+	}
+
 	void swapWith(ref VarTds rhs)
 	{
 		// length check inside buffer swap

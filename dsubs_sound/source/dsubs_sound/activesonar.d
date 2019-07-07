@@ -797,17 +797,20 @@ final class SonarPing: SoundSource
 		m_samplesLeft -= min(usedSamples, m_samplesLeft);
 	}
 
-	override void buildSignals(CommandQueue q, vec2d listenerPos,
+	override void buildSignals(CommandQueue q,
+		vec2d listenerPos, vec2d prevListenerPos,
 		scope void delegate(Intensity* bandIntensitySumReady,
 			Buffer* bandIntensitySumBuf, Tds* tds) onTdsReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f,
 		FIRFilter* listenerFilter = null)
 	{
 		float range = max(10.0f, (listenerPos - m_position).length);
+		float prevRange = max(10.0f, (prevListenerPos - prevPos).length);
+		float avgRange = 0.5f * (range + prevRange);
 		float relBearing = courseAngle(listenerPos - m_position) - m_wrot;
 		// if we were in the ping's active emission phase...
 		IntensityLevel ilevel = pingAtRelBearing(m_kernParam, relBearing);
-		ilevel = getILatRange(m_freq, ilevel, range, dissMod);
+		ilevel = getILatRange(m_freq, ilevel, avgRange, dissMod);
 		// If this was the first second of the ping, this is what the instantaneous
 		// intensity of active phase should have been:
 		Intensity intensActivePhase = ilevel.toLinear();

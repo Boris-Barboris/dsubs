@@ -52,7 +52,8 @@ abstract class SoundSource
 	directly via toTimeDomain method, that is it's mean square of pressure
 	samples should be 1.0f / GLOBAL_SRATE for the abovementioned unit spectrum.
 	*/
-	void buildSignals(CommandQueue q, vec2d listenerPos,
+	void buildSignals(CommandQueue q,
+		vec2d listenerPos, vec2d prevListenerPos,
 		scope void delegate(Intensity* bandIntensitySumReady,
 			Buffer* bandIntensitySumBuf, Tds* tds) onTdsReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 4.0f,
@@ -148,7 +149,7 @@ final class PropellerSound: SoundSource
 		m_transform.ensureNotDirty();
 	}
 
-	private float genISpec(CommandQueue q, float range, float relBearing,
+	private float genISpec(CommandQueue q, float avgRange, float relBearing,
 		ref ISpectrum dest, const ref ISpectrum source, int minFreq, int maxFreq,
 		float kstart, float kend, float dissMod)
 	{
@@ -166,7 +167,7 @@ final class PropellerSound: SoundSource
 		k.setArg(0, source.mem);
 		k.setArg(1, dest.mem);
 		k.setArg(2, q.ctx.b_wrdks.mem);
-		k.setArg(3, range);
+		k.setArg(3, avgRange);
 		k.setArg(4, dissMod);
 		k.setArg(5, imult);
 		k.setArg(6, m_rngSpan);
@@ -176,7 +177,9 @@ final class PropellerSound: SoundSource
 		// bin sum
 		dest.reduceSum(q, q.s_bandSumBuf, minFreq, maxFreq);
 
-		return kavg;
+		// kavg is divided on the square of avgRange to use this in later
+		// range-related modulation
+		return kavg / pow(avgRange, 2);
 	}
 
 	override float minOmniFactor(float range) const
@@ -193,7 +196,8 @@ final class PropellerSound: SoundSource
 		m_tm.modulate(q, tds);
 	}
 
-	override void buildSignals(CommandQueue q, vec2d listenerPos,
+	override void buildSignals(CommandQueue q,
+		vec2d listenerPos, vec2d prevListenerPos,
 		scope void delegate(Intensity* bandIntensitySumReady,
 			Buffer* bandIntensitySumBuf, Tds* tds) onTdsReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f,
@@ -202,6 +206,8 @@ final class PropellerSound: SoundSource
 		assert(minFreq >= 1);
 		assert(maxFreq <= ISpectrum.MAX_FREQ);
 		float range = max(10.0f, (listenerPos - m_transform.wposition).length);
+		float prevRange = max(10.0f, (prevListenerPos - prevPos).length);
+		float avgRange = 0.5f * (range + prevRange);
 		float relBearing =
 			courseAngle(listenerPos - m_transform.wposition) - m_transform.wrotation;
 		// now actual power calculation
@@ -220,23 +226,25 @@ final class PropellerSound: SoundSource
 			0.0f;
 		assert(!isNaN(cavSqrEnd));
 		// broadband component
-		float kavg = genISpec(q, range, relBearing, q.s_ispec, *m_baseBBSpectrum,
+		float kavg = genISpec(q, avgRange, relBearing, q.s_ispec, *m_baseBBSpectrum,
 			minFreq, maxFreq, freqCubeStart, freqCubeEnd, dissMod);
 		if (needTds && kavg > 0.0f)
 		{
 			q.s_ispec.toTimeDomain(q, q.s_tds);
-			doModulate(q, q.s_tds, kavg, freqCubeStart, freqCubeEnd);
+			doModulate(q, q.s_tds, kavg, freqCubeStart / pow(prevRange, 2),
+				freqCubeEnd / pow(range, 2));
 			onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
 		}
 		else
 			onTdsReady(null, &q.s_bandSumBuf, null);
 		// cavitation component
-		kavg = genISpec(q, range, relBearing, q.s_ispec, *m_baseCavSpectrum,
+		kavg = genISpec(q, avgRange, relBearing, q.s_ispec, *m_baseCavSpectrum,
 			minFreq, maxFreq, cavSqrStart, cavSqrEnd, dissMod);
 		if (needTds && kavg > 0.0f)
 		{
 			q.s_ispec.toTimeDomain(q, q.s_tds);
-			doModulate(q, q.s_tds, kavg, cavSqrStart, cavSqrEnd);
+			doModulate(q, q.s_tds, kavg, cavSqrStart / pow(prevRange, 2),
+				cavSqrEnd / pow(range, 2));
 			onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
 		}
 		else
@@ -245,49 +253,56 @@ final class PropellerSound: SoundSource
 }
 
 
+struct PrerecordedSoundPrototype
+{
+	VarTds* tds;
+	float radius;
+	dB addToIlevel;
+}
+
+
 final class PrerecordedSoundSource: SoundSource
 {
-	this(Transform2D t, VarTds* tds, float radius, dB addToIlevel,
-		size_t* sampleOffset)
+	this(Transform2D t, PrerecordedSoundPrototype proto,
+		size_t* destOffset)
 	{
 		m_transform = t;
-		m_tds = tds;
-		m_samplesLeft = m_tds.length;
-		m_radius = radius;
-		m_addToIlevel = addToIlevel;
-		if (sampleOffset)
-			m_offset = *sampleOffset;
+		m_proto = proto;
+		if (destOffset)
+		{
+			assert(*destOffset < GLOBAL_SRATE);
+			m_destOffset = *destOffset;
+		}
 		else
-			m_offset = uniform(0, GLOBAL_SRATE - 1);
+			m_destOffset = uniform(0, GLOBAL_SRATE - 1);
 	}
 
 	private
 	{
 		Transform2D m_transform;
-		VarTds* m_tds;
-		float m_radius;
-		dB m_addToIlevel;
+		PrerecordedSoundPrototype m_proto;
 		size_t m_sourceOffset;
-		size_t m_offset;
+		size_t m_destOffset;
 		size_t m_samplesLeft;
 	}
 
 	/// update internal offsets
 	void onAfterAcoustics()
 	{
-		size_t usedSamples = GLOBAL_SRATE - m_offset;
-		m_offset = 0;
-		m_sourceOffset = min(m_tds.length, m_sourceOffset + usedSamples);
+		size_t usedSamples = GLOBAL_SRATE - m_destOffset;
+		m_destOffset = 0;
+		m_sourceOffset = min(m_proto.tds.length, m_sourceOffset + usedSamples);
 		m_samplesLeft -= min(usedSamples, m_samplesLeft);
 	}
 
 	override @property vec2d position() { return m_transform.wposition; }
 
-	override @property float radius() const { return m_radius; }
+	override @property float radius() const { return m_proto.radius; }
 
 	override float minOmniFactor(float range) const { return 0.0f; }
 
-	override void buildSignals(CommandQueue q, vec2d listenerPos,
+	override void buildSignals(CommandQueue q,
+		vec2d listenerPos, vec2d prevListenerPos,
 		scope void delegate(Intensity* bandIntensitySumReady,
 			Buffer* bandIntensitySumBuf, Tds* tds) onTdsReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod,
@@ -296,18 +311,45 @@ final class PrerecordedSoundSource: SoundSource
 		assert(minFreq >= 1);
 		assert(maxFreq <= ISpectrum.MAX_FREQ);
 		float range = max(10.0f, (listenerPos - m_transform.wposition).length);
-		// copy active part of the signal to staging tds and apply listener's filter
-		q.s_tds.fill(q, 0.0f);
+		float prevRange = max(10.0f, (prevListenerPos - prevPos).length);
+		float avgRange = 0.5f * (range + prevRange);
+		// copy active part of the signal to separate staging vartds and apply
+		// listener's filter. We need two seconds of the data to apply two
+		// filters consequenctly instead of one.
+		q.s_vartds2sec.fill(q, 0.0f);
+		// q.s_vartds2sec is filled to have previous and current second data of
+		// the m_proto.tds.
+		ptrdiff_t prevSourceOffset = m_sourceOffset - GLOBAL_SRATE;
+		size_t prevDestOffset = m_destOffset;
+		if (prevSourceOffset < 0)
+		{
+			prevDestOffset += -prevSourceOffset;
+			prevSourceOffset = 0;
+		}
+		m_proto.tds.copyTo(q, q.s_vartds2sec,
+			prevSourceOffset.to!size_t, prevDestOffset);
+		// first we apply listener's filter. No need to filter whole 2 seconds,
+		// only 1 second + number of filter taps are allright.
 		if (listenerFilter)
-			listenerFilter.filter(q, *m_tds, m_sourceOffset,
-				m_offset + m_sourceOffset, q.s_tds);
-		else
-			m_tds.copyTo(q, q.s_tds, m_sourceOffset, m_offset);
-		// now we apply required modulation
+			listenerFilter.filter(q, q.s_vartds2sec,
+				GLOBAL_SRATE - q.ctx.waterFilter.tapCount,
+				GLOBAL_SRATE - q.ctx.waterFilter.tapCount, q.s_vartds2sec2);
+		// second we apply water filter
+		q.ctx.waterFilter.filter(q,
+			listenerFilter ? q.s_vartds2sec2 : q.s_vartds2sec,
+			GLOBAL_SRATE, q.s_tds, 0, prevRange, range, dissMod);
+		// now we apply the modulation, requested by range and the prototype.
 		IntensityLevel ilevel = getILatRange(1, IntensityLevel(0.0f), range, dissMod);
-		modulateILevelInterp(q, q.s_tds, m_addToIlevel + ilevel.val,
-			m_addToIlevel + ilevel.val);
-		q.s_tds.reduceSumSquared(q, q.s_bandSumBuf, 1.0f, 0, GLOBAL_SRATE);
+		IntensityLevel prevIlevel = getILatRange(1, IntensityLevel(0.0f),
+			prevRange, dissMod);
+		modulateILevelInterp(q, q.s_tds,
+			m_proto.addToIlevel + prevIlevel.val, m_proto.addToIlevel + ilevel.val);
+		q.s_tds.reduceSumSquared(q, q.s_bandSumBuf,
+			1.0f / (GLOBAL_SRATE * GLOBAL_SRATE / 2), 0, GLOBAL_SRATE);
+		if (needTds)
+			onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
+		else
+			onTdsReady(null, &q.s_bandSumBuf, null);
 	}
 }
 
@@ -413,5 +455,6 @@ unittest
 		assert(!isNaN(bandSum));
 	}
 
-	snd.buildSignals(q, vec2d(1000.0, 0), &onTdsReady, 500, 2048, false, 4.0f);
+	snd.buildSignals(q, vec2d(1000.0, 0), vec2d(1000.0, 0),
+		&onTdsReady, 500, 2048, false, 4.0f);
 }
