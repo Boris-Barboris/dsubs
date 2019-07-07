@@ -250,8 +250,9 @@ struct EnergySpectrum(SpectrumType stype)
 	}
 
 	/// Randomize phases and perform inverse discrete fourier transform.
-	/// For the intensity spectrum with all bins fixed at 1 watt
-	/// total (broadband) intensity will be GLOBAL_SRATE watt and
+	/// For the intensity spectrum with all bins fixed at 1.0 watt
+	/// total (broadband) intensity (based on band summation) will be
+	/// 1.0 * GLOBAL_SRATE / 2.0 watt and
 	/// resulting time-domain pressure signal mean square will be 1 / GLOBAL_SRATE.
 	void toTimeDomain(CommandQueue q, ref Tds dest)
 	{

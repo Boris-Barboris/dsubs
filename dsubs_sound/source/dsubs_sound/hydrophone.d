@@ -41,7 +41,7 @@ struct HydrophonePrototype
 }
 
 
-/// Hydrophone is a collection of identical antennaes
+/// Hydrophone is a collection of identical antennaes.
 final class Hydrophone
 {
 	this(CommandQueue q, Transform2D t, ref const HydrophonePrototype p)
@@ -471,19 +471,19 @@ final class Hydrophone
 			needTds = false;
 		}
 
-		void onTdsReady(Intensity* bandInt, Buffer* bandIntensityBuf, Tds* tds)
+		void onTdsReady(Intensity* bandIntSum, Buffer* bandIntensitySumBuf, Tds* tds)
 		{
 			assert(p.components < p.MAX_COMPONENTS);
-			if (bandInt != null)
+			if (bandIntSum != null)
 			{
-				// band intensity is already calculated on the CPU
-				p.bandSum[p.components] = *bandInt;
+				// band intensity sum is already calculated on the CPU
+				p.bandSum[p.components] = *bandIntSum;
 			}
 			else
 			{
-				// band intensity will arrive later from OpenCL
-				assert(bandIntensityBuf !is null);
-				AsyncEvent evt = bandIntensityBuf.enqueueFullRead(q,
+				// band intensity sum will arrive later from OpenCL
+				assert(bandIntensitySumBuf !is null);
+				AsyncEvent evt = bandIntensitySumBuf.enqueueFullRead(q,
 					&p.bandSum[p.components], null);
 				p.evt[p.components] = evt;
 			}
@@ -597,6 +597,7 @@ final class Hydrophone
 			assert(!isNaN(m_baseFlowNoiseEnd.val));
 			float isoIntens = m_baseSeaNoise +
 				0.5f * (m_baseFlowNoiseStart + m_baseFlowNoiseEnd);
+			// we actually draw average bin intensity
 			isoIntens /= m_listenToCellR * GLOBAL_SRATE / 2;
 			foreach (ref c; beams)
 				c += isoIntens;
@@ -695,6 +696,7 @@ final class Hydrophone
 			for (int i = 0; i < p.components; i++)
 				bandSum += p.bandSum[i].val;
 			assert(!isNaN(bandSum));
+			// we actually draw average bin intensity
 			bandSum /= GLOBAL_SRATE / 2;
 			float omniMult = p.omniFactorEnd * m_directivity * m_omniNoiseMult;
 			if (omniMult > 0.0f)

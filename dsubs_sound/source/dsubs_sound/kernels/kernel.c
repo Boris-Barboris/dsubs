@@ -242,7 +242,7 @@ dB flowNoise(int freq, float kts)
 
 struct PingParams
 {
-	dB peakIlevel;
+	dB peakIlevel;		// effective frequency band intensity level
 	dB lowestIlevel;
 	float dirPower;
 } __attribute__ ((packed));

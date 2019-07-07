@@ -94,21 +94,22 @@ struct PingParameters
 
 private struct PreparedPingTds
 {
-	VarTds tds;
-	float[] samples;
-	float[] meanSqr;		/// mean squared samples of ping seconds
-	float meanSqrActive;	/// mean squared samples of active chirp phase
+	float[] samples;		/// pressure samples
+	VarTds tds;				/// their opencl mirror
+	float[] meanSqr;		/// mean squared of pressure samples of ping seconds
+	float meanSqrActive;	/// mean squared of pressure samples of active chirp phase
+	float activePhaseDuration;
 
-	/// normalized (relative to active chirp phase) energy. At most one second.
-	/// integrates interval [from, end)
-	float integrateRelativeToActive(size_t from, size_t end)
+	/// Normalized (relative to energy, emitted during active chirp phase)
+	/// ratio of energies. At most one second. Integrates interval [from, end).
+	float relativeToActiveEnergyRatio(size_t from, size_t end)
 	{
 		assert(end - from <= GLOBAL_SRATE);
 		assert(end >= from);
 		size_t firstSec = from / GLOBAL_SRATE;
 		size_t secondSec = end / GLOBAL_SRATE;
 		if (secondSec == firstSec)
-			return meanSqr[firstSec] * (end - from) / GLOBAL_SRATE;
+			return meanSqr[firstSec] / meanSqrActive * (end - from) / GLOBAL_SRATE;
 		assert(secondSec == firstSec + 1);
 		float k1 = (GLOBAL_SRATE * (firstSec + 1) - from) / float(GLOBAL_SRATE);
 		float k2 = (end - GLOBAL_SRATE * (firstSec + 1)) / float(GLOBAL_SRATE);
@@ -135,14 +136,14 @@ package struct PingTdsCache
 		{
 			if (params.filterName)
 			{
-				m_cache[params] = PreparedPingTds(VarTds(q, samples.length, 0.0f), samples);
+				m_cache[params] = PreparedPingTds(samples, VarTds(q, samples.length, 0.0f));
 				VarTds zeroes = VarTds(q, samples.length, 0.0f);
 				VarTds source = VarTds(q, samples);
 				q.ctx.getFilter(params.filterName).filter(q, zeroes, source, m_cache[params].tds);
 				m_cache[params].tds.read(q, samples);
 			}
 			else
-				m_cache[params] = PreparedPingTds(VarTds(q, samples), samples);
+				m_cache[params] = PreparedPingTds(samples, VarTds(q, samples));
 			m_cache[params].meanSqr.length = samples.length / GLOBAL_SRATE;
 			foreach (i, ref float msvalue; m_cache[params].meanSqr)
 			{
@@ -155,6 +156,7 @@ package struct PingTdsCache
 			m_cache[params].meanSqrActive =
 				samples[0 .. activeSampleCount].map!(p => p * p).sum() / activeSampleCount;
 			trace("ping meanSqrActive: ", m_cache[params].meanSqrActive);
+			m_cache[params].activePhaseDuration = activePhaseDuration;
 		}
 	}
 
@@ -181,12 +183,13 @@ private float[] getReverbGains(float[] relBinSizes, float zeroBin)
 
 private struct PingKernelParams
 {
-	dB peakIlevel;		/// at the cental axis, during chirp phase
+	dB peakIlevel;		/// instantaneous total (band sum) intensity level
+						/// during active chirp phase
 	dB lowestIlevel;	/// opposite direction
 	float dirPower;		/// power exponent of cosine directivity formula
 }
 
-/// gets ping intensity level at relative to emitter bearing
+/// gets ping intensity level bandsum at relative to emitter bearing
 private IntensityLevel pingAtRelBearing(const PingKernelParams params, const float x)
 {
 	const float piPow = pow(PI, (params.dirPower - 1.0f) / params.dirPower);
@@ -380,7 +383,8 @@ struct ActiveSonarPrototype
 	int radialRes = 20;
 	/// ping receive window (seconds)
 	int maxSec = 15;
-	/// max ping band intensity level
+	/// max ping bandsum intensity level. We approximate bandsum with one
+	/// 'effective' frequency band - PingParameters.effectiveFreq.
 	dB maxPeakIlevel = 220.0f;
 	dB minPeakIlevel = 190.0f;
 	/// ping in the opposite direction is this different
@@ -794,8 +798,8 @@ final class SonarPing: SoundSource
 	}
 
 	override void buildSignals(CommandQueue q, vec2d listenerPos,
-		scope void delegate(Intensity* bandIntensityReady,
-			Buffer* bandIntensityBuf, Tds* tds) onSignalReady,
+		scope void delegate(Intensity* bandIntensitySumReady,
+			Buffer* bandIntensitySumBuf, Tds* tds) onTdsReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f,
 		FIRFilter* listenerFilter = null)
 	{
@@ -804,22 +808,29 @@ final class SonarPing: SoundSource
 		// if we were in the ping's active emission phase...
 		IntensityLevel ilevel = pingAtRelBearing(m_kernParam, relBearing);
 		ilevel = getILatRange(m_freq, ilevel, range, dissMod);
+		// If this was the first second of the ping, this is what the instantaneous
+		// intensity of active phase should have been:
 		Intensity intensActivePhase = ilevel.toLinear();
-		// modify intensity to account for non-uniform chirp
+		// modify intensity to account for non-uniform chirp and offsets
 		size_t samplesUsed = GLOBAL_SRATE - m_destOffset;
-		float secondNormalization = m_prepTds.integrateRelativeToActive(
+		float energyRatio = m_prepTds.relativeToActiveEnergyRatio(
 			m_sourceOffset, min(m_prepTds.tds.length, m_sourceOffset + samplesUsed));
-		Intensity wholeSecondIntens = Intensity(intensActivePhase * secondNormalization);
+		// this is the desired bnadsum that we pass to hydrophone
+		Intensity wholeSecondIntens = Intensity(intensActivePhase * energyRatio);
 		if (needTds && maxFreq >= m_freq && minFreq <= m_freq)
 		{
 			q.s_tds.fill(q, 0.0f);
 			m_prepTds.tds.copyTo(q, q.s_tds, m_sourceOffset, m_destOffset);
 			float imultTds = intensActivePhase / m_prepTds.meanSqrActive;
+			// Remember the hydrophone energy contract: tds with mean square pressure
+			// value of 1.0 corresponds to GLOBAL_SRATE * GLOBAL_SRATE / 2 bandsum.
+			// This means that we need to scale tds's intensity by 1.0f / (GSR^2 * 0.5).
+			imultTds /= GLOBAL_SRATE * GLOBAL_SRATE / 2;
 			modulateIInterp(q, q.s_tds, imultTds, imultTds);
-			onSignalReady(&wholeSecondIntens, null, &q.s_tds);
+			onTdsReady(&wholeSecondIntens, null, &q.s_tds);
 		}
 		else
-			onSignalReady(&wholeSecondIntens, null, null);
+			onTdsReady(&wholeSecondIntens, null, null);
 	}
 }
 
