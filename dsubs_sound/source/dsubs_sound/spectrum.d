@@ -250,8 +250,9 @@ struct EnergySpectrum(SpectrumType stype)
 	}
 
 	/// Randomize phases and perform inverse discrete fourier transform.
-	/// For the spectrum with all bins fixed at 1 the resulting time-domain
-	/// signal mean square will be 1 / GLOBAL_SRATE.
+	/// For the intensity spectrum with all bins fixed at 1 watt
+	/// total (broadband) intensity will be GLOBAL_SRATE watt and
+	/// resulting time-domain pressure signal mean square will be 1 / GLOBAL_SRATE.
 	void toTimeDomain(CommandQueue q, ref Tds dest)
 	{
 		Kernel k = q.mk_energyToPressure;
@@ -265,7 +266,7 @@ struct EnergySpectrum(SpectrumType stype)
 	}
 
 	/// Sum bins of frequencies from startFreq to endFreq and write result to dest
-	/// buffer
+	/// buffer.
 	void reduceSum(CommandQueue q, ref Buffer dest,
 		int startFreq = 1, int endFreq = MAX_FREQ)
 	{
