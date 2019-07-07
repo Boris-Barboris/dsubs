@@ -184,10 +184,31 @@ final class AcousticEnv
 	void postAcousticsUpdate()
 	{
 		size_t i = 0;
+
+		while (i < m_sources.length)
+		{
+			SoundSource s = m_sources[i];
+			s.onPostAcoustics();
+			PrerecordedSoundSource ps = cast(PrerecordedSoundSource) s;
+			if (ps is null)
+			{
+				i++;
+				continue;
+			}
+			if (ps.samplesLeft == 0)
+			{
+				// source is no longer active and must be unregistered
+				m_sources[i] = m_sources[$-1];
+				m_sources.length--;
+			}
+			else
+				i++;
+		}
+
+		i = 0;
 		while (i < m_pings.length)
 		{
 			SonarPing p = m_pings[i];
-			p.onAfterAcoustics();
 			if (p.samplesLeft == 0)
 			{
 				// ping is no longer active and must be unregistered

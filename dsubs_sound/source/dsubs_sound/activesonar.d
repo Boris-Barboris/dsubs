@@ -765,6 +765,7 @@ final class SonarPing: SoundSource
 		}
 		else
 			m_destOffset = uniform(0, GLOBAL_SRATE);
+		onPostAcoustics += &updateOffsets;
 	}
 
 	private
@@ -789,7 +790,7 @@ final class SonarPing: SoundSource
 	override @property float radius() const { return 20.0f; }
 
 	/// update internal offsets
-	void onAfterAcoustics()
+	private void updateOffsets()
 	{
 		size_t usedSamples = GLOBAL_SRATE - m_destOffset;
 		m_destOffset = 0;

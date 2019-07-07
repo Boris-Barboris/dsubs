@@ -37,6 +37,8 @@ abstract class SoundSource
 	Event!(void delegate()) onPreSimulation;
 	/// invoked by simulator right after kinematic update happens
 	Event!(void delegate(float dt)) onPostSimulation;
+	/// invoked by simulator in postAcousticsUpdate
+	Event!(void delegate()) onPostAcoustics;
 
 	/** Generate band intensity and time-domain signal(s) for a hydrophone.
 	'onTdsReady' callback must be called in order to imprint the time-domain
@@ -113,6 +115,8 @@ final class PropellerSound: SoundSource
 		float m_rngSpan;
 		float m_aftIntensity;
 	}
+
+	@property Transform2D transform() { return m_transform; }
 
 	override @property vec2d position() { return m_transform.wposition; }
 
@@ -275,6 +279,10 @@ final class PrerecordedSoundSource: SoundSource
 		}
 		else
 			m_destOffset = uniform(0, GLOBAL_SRATE - 1);
+		m_samplesLeft = proto.tds.length;
+		assert(m_samplesLeft > 0);
+		onPreSimulation += &savePrevPos;
+		onPostAcoustics += &updateOffsets;
 	}
 
 	private
@@ -287,13 +295,18 @@ final class PrerecordedSoundSource: SoundSource
 	}
 
 	/// update internal offsets
-	void onAfterAcoustics()
+	private void updateOffsets()
 	{
 		size_t usedSamples = GLOBAL_SRATE - m_destOffset;
 		m_destOffset = 0;
 		m_sourceOffset = min(m_proto.tds.length, m_sourceOffset + usedSamples);
 		m_samplesLeft -= min(usedSamples, m_samplesLeft);
 	}
+
+	/// when zero, sound is over and should be disposed of
+	@property size_t samplesLeft() const { return m_samplesLeft; }
+
+	@property Transform2D transform() { return m_transform; }
 
 	override @property vec2d position() { return m_transform.wposition; }
 
@@ -344,8 +357,9 @@ final class PrerecordedSoundSource: SoundSource
 			prevRange, dissMod);
 		modulateILevelInterp(q, q.s_tds,
 			m_proto.addToIlevel + prevIlevel.val, m_proto.addToIlevel + ilevel.val);
+		// hydrophone contract
 		q.s_tds.reduceSumSquared(q, q.s_bandSumBuf,
-			1.0f / (GLOBAL_SRATE * GLOBAL_SRATE / 2), 0, GLOBAL_SRATE);
+			GLOBAL_SRATE / 2.0f, 0, GLOBAL_SRATE);
 		if (needTds)
 			onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
 		else

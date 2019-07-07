@@ -5,7 +5,7 @@ import dsubs_sound.spectrum;
 import dsubs_sound.opencl;
 
 
-/// Linearly interpolate intensity of 'tds' signal (inline)
+/// Linearly interpolate intensity of 'tds' signal (inplace)
 void modulateIInterp(CommandQueue q, ref Tds tds, float startMult, float endMult)
 {
 	Kernel k = q.mk_interpolateIntensity;
@@ -15,7 +15,7 @@ void modulateIInterp(CommandQueue q, ref Tds tds, float startMult, float endMult
 	k.enqueue(q, 1, null, [tds.BUF_LEN], null, null);
 }
 
-/// Linearly interpolate intensity level of 'tds' signal (inline)
+/// Linearly interpolate intensity level of 'tds' signal (inplace)
 void modulateILevelInterp(CommandQueue q, ref Tds tds, dB startLevel, dB endLevel)
 {
 	Kernel k = q.mk_interpolateIntensityLevel;

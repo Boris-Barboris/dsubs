@@ -14,6 +14,7 @@ import dsubs_common.event;
 
 import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
+import dsubs_sound.soundsource;
 import dsubs_sound.common: uniform, GLOBAL_SRATE;
 
 import dsubs_server.common;
@@ -179,6 +180,21 @@ final class TorpedoGuidance
 		{
 			m_activated = true;
 			m_snakeArmBeforeTurn += m_snakeArm;
+			// test big iron
+			try
+			{
+				PrerecordedSoundPrototype psProto = PrerecordedSoundPrototype(
+					Globals.sctx.getWavFile("../dsubs_sound/big_iron_8192.wav"),
+					50.0f, 110.0f);
+				PrerecordedSoundSource psSource = new PrerecordedSoundSource(
+					m_torpedo.transform, psProto, null);
+				Globals.acous.registerSource(psSource);
+			}
+			catch (Error er)
+			{
+				trace(er.toString());
+				throw er;
+			}
 		}
 		// assign course and throttle based on activation state
 		if (m_activated)

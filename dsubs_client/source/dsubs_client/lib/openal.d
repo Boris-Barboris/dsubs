@@ -231,7 +231,7 @@ void loadWavFile(string filename, out short[] samples, out int byteCount, out in
 	int[] byteLen = f.rawRead(new int[1]);
 	enforce(byteLen.length == 1, "unexpected eof in wav file");
 	byteCount = byteLen[0];
-	enforce(byteCount % 2 == 0, "not 16-bit PCB?");
+	enforce(byteCount % 2 == 0, "not 16-bit PCM?");
 	int sampleCount = (byteCount / short.sizeof).to!int;
 	f.seek(44);
 	samples = f.rawRead(new short[sampleCount]);

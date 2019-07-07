@@ -2,6 +2,8 @@ module dsubs_sound.opencl;
 
 import core.stdc.stdio: printf;
 
+import std.array: array;
+import std.algorithm: map;
 import std.algorithm.mutation: swap;
 import std.traits: isPointer;
 import std.string: toStringz;
@@ -16,6 +18,7 @@ import dsubs_sound.fft;
 import dsubs_sound.spectrum;
 import dsubs_sound.activesonar;
 import dsubs_sound.water;
+import dsubs_sound.wav;
 import dsubs_sound.filter;
 
 
@@ -633,9 +636,30 @@ final class DsubsSoundOpenclCtx
 
 		// global stuff
 		FIRFilter*[string] m_filters;
+		VarTds*[string] m_wavFiles;
 	}
 
 	package FIRFilter* getFilter(string name) { return m_filters[name]; }
+
+	VarTds* getWavFile(string filePath)
+	{
+		synchronized(this)
+		{
+			VarTds** res = filePath in m_wavFiles;
+			if (res)
+				return *res;
+			short[] samples;
+			int byteCount;
+			int srate;
+			loadWavFile(filePath, samples, byteCount, srate);
+			enforce(srate == GLOBAL_SRATE,
+				"unsupported srate " ~ srate.to!string ~ " of file " ~ filePath);
+			float[] samplesFloat = samples.map!(s => s / float(short.max)).array;
+			VarTds* newTds = new VarTds(m_queues[0], samplesFloat);
+			m_wavFiles[filePath] = newTds;
+			return newTds;
+		}
+	}
 
 	package
 	{

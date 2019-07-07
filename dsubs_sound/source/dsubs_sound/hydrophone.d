@@ -893,4 +893,36 @@ unittest
 	trace("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);
 	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav",
 		samples, 0.8f / maxp, GLOBAL_SRATE);
+
+	// test prerecorded source
+	PrerecordedSoundPrototype psProto = PrerecordedSoundPrototype(
+		s_clCtx.getWavFile("../dsubs_sound/big_iron_8192.wav"),
+		15.0f, 90.0f);
+	PrerecordedSoundSource psSource = new PrerecordedSoundSource(
+		new Transform2D(), psProto, null);
+	psSource.transform.position = vec2d(0.0, -10000.0);
+	samples.length = GLOBAL_SRATE * 12;
+	for (int i = 0; i < 12; i++)
+	{
+		psSource.onPreSimulation();
+		h.resetAndStartIsotropic(q);
+		assert(h.m_listenDirValid);
+		assert(h.m_ant[0].listenCell >= 0);
+		psSource.transform.position = vec2d(0.0, -10000.0 + 9500 / 11 * i);
+		if (psSource.samplesLeft > 0)
+			h.applySoundSource(q, psSource);
+		h.flushSourceQueue();
+		h.endIsotropic();
+		h.finalizeListenTds(q);
+		q.s_tds.enqueueRead(q,
+			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
+		if (psSource.samplesLeft > 0)
+			psSource.onPostAcoustics();
+	}
+	q.finish();
+	maxp = samples.map!(a => a.abs).maxElement;
+	assert(!isNaN(maxp));
+	trace("std_hydrophone_vs_big_iron_1km maxp: ", maxp);
+	writeWavFile("std_hydrophone_vs_big_iron_1km.wav",
+		samples, 0.8f / maxp, GLOBAL_SRATE);
 }
