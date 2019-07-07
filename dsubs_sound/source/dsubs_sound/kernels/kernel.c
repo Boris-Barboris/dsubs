@@ -172,17 +172,18 @@ void __kernel sumBuf(
 	*dest = res;
 }
 
-// reduse sum of squared samples
+// reduse sum of squared samples and multiply on constant
 void __kernel sumSquaredBuf(
 	__global const float* what,
 	__global float* dest,
+	const float multiplier,
 	uint start,
 	uint end)
 {
 	float res = 0.0f;
 	for (uint i = start; i < end; i++)
 		res += what[i] * what[i];
-	*dest = res;
+	*dest = multiplier * res;
 }
 
 dB seaNoiseIL(float freq)
@@ -737,6 +738,31 @@ void __kernel firTds(
 	dest[idx] = outVal;
 }
 
+// same but without prev source and with explicit cur offset
+void __kernel firTds2(
+	__global const float *curSource,
+	const int curOffset,
+	__constant float *taps,
+	const int tapCount,
+	__global float *dest)
+{
+	const int idx = get_global_id(0);
+	float outVal = 0.0;
+	int i = 0;
+
+	for (i = 0; i < tapCount; i++)
+	{
+		const int curIdx = curOffset + idx - i;
+		float sourceVal;
+		if (curIdx >= 0)
+			sourceVal = curSource[curIdx];
+		else
+			sourceVal = 0.0f;
+		outVal += sourceVal * taps[i];
+	}
+	dest[idx] = outVal;
+}
+
 
 // Filter VarTDS with two FIR filters, while linearly changing weight.
 void __kernel firTdsTwoFilters(
@@ -747,7 +773,8 @@ void __kernel firTdsTwoFilters(
 	const int curSourceOffset,
 	const float tap1WeightStart,
 	const float tap1WeightEnd,
-	__global float *dest)
+	__global float *dest,
+	const int destOffset)
 {
 	const int destSize = get_global_size(0);
 	const int idx = get_global_id(0);
@@ -767,7 +794,7 @@ void __kernel firTdsTwoFilters(
 			sourceVal = 0.0f;
 		outVal += sourceVal * (tap1Weight * taps1[i] + tap2Weight * taps2[i]);
 	}
-	dest[idx] = outVal;
+	dest[destOffset + idx] = outVal;
 }
 
 

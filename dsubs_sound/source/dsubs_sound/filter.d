@@ -56,6 +56,19 @@ struct FIRFilter
 		k.setArg(4, dest.mem);
 		k.enqueue(q, 1, null, [cur.length], null, null);
 	}
+
+	void filter(CommandQueue q, ref VarTds cur, size_t curOffset, size_t destOffset,
+		ref Tds dest)
+	{
+		Kernel k = q.mk_firTds2;
+		k.setArg(0, cur.mem);
+		k.setArg(1, curOffset.to!int - destOffset.to!int);
+		k.setArg(2, m_taps.mem);
+		k.setArg(3, m_tapCount);
+		k.setArg(4, dest.mem);
+		k.enqueue(q, 1, [destOffset],
+			[min(dest.BUF_LEN - destOffset, cur.length - curOffset)], null, null);
+	}
 }
 
 
@@ -99,7 +112,8 @@ struct WaterFIRFilter
 	}
 
 	void filter(DestBufT)(CommandQueue q, ref VarTds cur, int curOffset,
-		ref DestBufT dest, float rangeStart, float rangeEnd, float rangeDissK = 4.0f)
+		ref DestBufT dest, size_t destOffset, float rangeStart, float rangeEnd,
+		float rangeDissK = 4.0f)
 	{
 		assert(rangeStart >= 0.0f);
 		assert(rangeEnd >= 0.0f);
@@ -148,10 +162,11 @@ struct WaterFIRFilter
 		k.setArg(5, tap1WeightStart);
 		k.setArg(6, tap1WeightEnd);
 		k.setArg(7, dest.mem);
+		k.setArg(8, destOffset.to!int);
 		static if (is(DestBufT == Tds))
-			k.enqueue(q, 1, null, [dest.BUF_LEN], null, null);
+			k.enqueue(q, 1, null, [dest.BUF_LEN - destOffset], null, null);
 		else if (is(DestBufT == VarTds))
-			k.enqueue(q, 1, null, [dest.length], null, null);
+			k.enqueue(q, 1, null, [dest.length - destOffset], null, null);
 	}
 }
 
@@ -164,7 +179,7 @@ unittest
 	VarTds tds = VarTds(q, noise);
 	VarTds destTds = VarTds(q, noise.length, 0.0f);
 	s_clCtx.waterFilter.filter(q, tds, 0,
-		destTds, 0.0f, 50000.0f, 4.0f);
+		destTds, 0, 0.0f, 50000.0f, 4.0f);
 	destTds.read(q, noise);
 	writeWavFile("whitenoise_water_filtered.wav", noise, 1.0f);
 }

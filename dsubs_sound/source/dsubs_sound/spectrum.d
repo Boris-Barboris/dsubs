@@ -77,13 +77,16 @@ struct Tds
 		buf.enqueueFullFill(q, val, null).release();
 	}
 
-	void interpolateIntensity(CommandQueue q, float start, float end)
+	void reduceSumSquared(CommandQueue q, ref Buffer dest, float multiplier,
+		uint startIndex, uint endIndex)
 	{
-		Kernel k = q.mk_interpolateIntensity;
+		Kernel k = q.mk_sumSquaredBuf;
 		k.setArg(0, mem);
-		k.setArg(1, start);
-		k.setArg(2, end);
-		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null);
+		k.setArg(1, dest.mem);
+		k.setArg(2, multiplier);
+		k.setArg(3, startIndex);
+		k.setArg(4, endIndex);
+		k.task(q, null);
 	}
 }
 

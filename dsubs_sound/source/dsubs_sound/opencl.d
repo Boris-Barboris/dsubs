@@ -499,6 +499,7 @@ final class CommandQueue
 
 		// command queue acquires kernels
 		mk_firTds = new Kernel(prog, "firTds");
+		mk_firTds2 = new Kernel(prog, "firTds2");
 		mk_firTdsTwoFilters = new Kernel(prog, "firTdsTwoFilters");
 		mk_radix2 = new Kernel(prog, "fftRadix2Kernel");
 		mk_iradix2 = new Kernel(prog, "ifftRadix2Kernel");
@@ -513,6 +514,7 @@ final class CommandQueue
 		mk_addTo = new Kernel(prog, "addTo");
 		mk_toShortPcb = new Kernel(prog, "toShortPcb");
 		mk_sumBuf = new Kernel(prog, "sumBuf");
+		mk_sumSquaredBuf = new Kernel(prog, "sumSquaredBuf");
 		mk_generateSeaNoise = new Kernel(prog, "generateSeaNoise");
 		mk_generateFlowNoise = new Kernel(prog, "generateFlowNoise");
 		mk_propellerGenISpec = new Kernel(prog, "propellerGenISpec");
@@ -544,6 +546,7 @@ final class CommandQueue
 		FFTPlan!(GLOBAL_SRATE / 2) fft;
 		// kernels
 		Kernel mk_firTds;
+		Kernel mk_firTds2;
 		Kernel mk_firTdsTwoFilters;
 		Kernel mk_radix2;
 		Kernel mk_iradix2;
@@ -558,6 +561,7 @@ final class CommandQueue
 		Kernel mk_addTo;
 		Kernel mk_toShortPcb;
 		Kernel mk_sumBuf;
+		Kernel mk_sumSquaredBuf;
 		Kernel mk_generateSeaNoise;
 		Kernel mk_generateFlowNoise;
 		Kernel mk_propellerGenISpec;

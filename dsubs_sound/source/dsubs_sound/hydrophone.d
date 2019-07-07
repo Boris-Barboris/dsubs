@@ -36,6 +36,8 @@ struct HydrophonePrototype
 	float omniNoiseMult = 0.025f;
 	/// client listens to beam of this size
 	float listenSpan = dgr2rad(3);
+	/// water dissipation modifier
+	float dissMod = 4.0f;
 }
 
 
@@ -52,6 +54,7 @@ final class Hydrophone
 		assert(m_maxFreq <= GLOBAL_SRATE / 2);
 		m_directivity = p.directivity;
 		m_baseNoise = p.baseNoise;
+		m_dissMod = p.dissMod;
 		m_span = p.antennaeSpan;
 		m_listenSpan = p.listenSpan;
 		m_bearingErrNoise = p.bearingErrNoise;
@@ -98,6 +101,7 @@ final class Hydrophone
 		float m_bearingErrNoise;
 		float m_flowNoiseMult;
 		float m_omniNoiseMult;
+		float m_dissMod;
 		dB m_baseNoise;
 
 		/// speed in knots at the start of integration
@@ -467,7 +471,7 @@ final class Hydrophone
 			needTds = false;
 		}
 
-		void onSignalReady(Intensity* bandInt, Buffer* bandIntensityBuf, Tds* tds)
+		void onTdsReady(Intensity* bandInt, Buffer* bandIntensityBuf, Tds* tds)
 		{
 			assert(p.components < p.MAX_COMPONENTS);
 			if (bandInt != null)
@@ -499,8 +503,8 @@ final class Hydrophone
 			p.components++;
 		}
 
-		s.buildSignals(q, m_transform.wposition, &onSignalReady, m_minFreq,
-			m_maxFreq, needTds, 4.0f);
+		s.buildSignals(q, m_transform.wposition, &onTdsReady, m_minFreq,
+			m_maxFreq, needTds, m_dissMod, m_tdsFilter);
 	}
 
 	private struct PowerIntegr

@@ -5,6 +5,8 @@ import std.algorithm;
 import dsubs_common.event;
 
 import dsubs_sound.common;
+import dsubs_sound.filter;
+import dsubs_sound.modulation;
 import dsubs_sound.spectrum;
 import dsubs_sound.soundsource;
 import dsubs_sound.opencl;
@@ -97,9 +99,9 @@ private struct PreparedPingTds
 	float[] meanSqr;		/// mean squared samples of ping seconds
 	float meanSqrActive;	/// mean squared samples of active chirp phase
 
-	/// normalized (relative to first second) energy. At most one second.
+	/// normalized (relative to active chirp phase) energy. At most one second.
 	/// integrates interval [from, end)
-	float integrateSamplesNormalized(size_t from, size_t end)
+	float integrateRelativeToActive(size_t from, size_t end)
 	{
 		assert(end - from <= GLOBAL_SRATE);
 		assert(end >= from);
@@ -111,8 +113,9 @@ private struct PreparedPingTds
 		float k1 = (GLOBAL_SRATE * (firstSec + 1) - from) / float(GLOBAL_SRATE);
 		float k2 = (end - GLOBAL_SRATE * (firstSec + 1)) / float(GLOBAL_SRATE);
 		if (k2 == 0.0f)
-			return k1 * (meanSqr[firstSec] / meanSqr[0]);
-		return k1 * (meanSqr[firstSec] / meanSqr[0]) + (meanSqr[secondSec] / meanSqr[0]) * k2;
+			return k1 * (meanSqr[firstSec] / meanSqrActive);
+		return k1 * (meanSqr[firstSec] / meanSqrActive) +
+			k2 * (meanSqr[secondSec] / meanSqrActive);
 	}
 }
 
@@ -178,7 +181,7 @@ private float[] getReverbGains(float[] relBinSizes, float zeroBin)
 
 private struct PingKernelParams
 {
-	dB peakIlevel;		/// at the cental axis
+	dB peakIlevel;		/// at the cental axis, during chirp phase
 	dB lowestIlevel;	/// opposite direction
 	float dirPower;		/// power exponent of cosine directivity formula
 }
@@ -747,7 +750,7 @@ final class SonarPing: SoundSource
 		m_wrot = wrot;
 		m_freq = freq;
 		m_kernParam = kernParam;
-		m_refTds = refTds;
+		m_prepTds = refTds;
 		m_samplesLeft = refTds.tds.length;
 		assert(m_samplesLeft > 0);
 		savePrevPos();
@@ -766,7 +769,7 @@ final class SonarPing: SoundSource
 		double m_wrot;
 		int m_freq;	/// effective frequency
 		PingKernelParams m_kernParam;
-		PreparedPingTds* m_refTds;
+		PreparedPingTds* m_prepTds;
 		size_t m_samplesLeft;
 		size_t m_sourceOffset;
 		size_t m_destOffset;
@@ -786,35 +789,37 @@ final class SonarPing: SoundSource
 	{
 		size_t usedSamples = GLOBAL_SRATE - m_destOffset;
 		m_destOffset = 0;
-		m_sourceOffset = min(m_refTds.tds.length, m_sourceOffset + usedSamples);
+		m_sourceOffset = min(m_prepTds.tds.length, m_sourceOffset + usedSamples);
 		m_samplesLeft -= min(usedSamples, m_samplesLeft);
 	}
 
 	override void buildSignals(CommandQueue q, vec2d listenerPos,
 		scope void delegate(Intensity* bandIntensityReady,
 			Buffer* bandIntensityBuf, Tds* tds) onSignalReady,
-		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f)
+		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f,
+		FIRFilter* listenerFilter = null)
 	{
 		float range = max(10.0f, (listenerPos - m_position).length);
 		float relBearing = courseAngle(listenerPos - m_position) - m_wrot;
+		// if we were in the ping's active emission phase...
 		IntensityLevel ilevel = pingAtRelBearing(m_kernParam, relBearing);
 		ilevel = getILatRange(m_freq, ilevel, range, dissMod);
-		Intensity intensFirstSec = ilevel.toLinear();
+		Intensity intensActivePhase = ilevel.toLinear();
 		// modify intensity to account for non-uniform chirp
 		size_t samplesUsed = GLOBAL_SRATE - m_destOffset;
-		float intensNormalized = m_refTds.integrateSamplesNormalized(
-			m_sourceOffset, min(m_refTds.tds.length, m_sourceOffset + samplesUsed));
-		Intensity intervalIntens = Intensity(intensFirstSec * intensNormalized);
+		float secondNormalization = m_prepTds.integrateRelativeToActive(
+			m_sourceOffset, min(m_prepTds.tds.length, m_sourceOffset + samplesUsed));
+		Intensity wholeSecondIntens = Intensity(intensActivePhase * secondNormalization);
 		if (needTds && maxFreq >= m_freq && minFreq <= m_freq)
 		{
 			q.s_tds.fill(q, 0.0f);
-			m_refTds.tds.copyTo(q, q.s_tds, m_sourceOffset, m_destOffset);
-			float imultTds = intensFirstSec / m_refTds.meanSqrActive / GLOBAL_SRATE / GLOBAL_SRATE;
-			q.s_tds.interpolateIntensity(q, imultTds, imultTds);
-			onSignalReady(&intervalIntens, null, &q.s_tds);
+			m_prepTds.tds.copyTo(q, q.s_tds, m_sourceOffset, m_destOffset);
+			float imultTds = intensActivePhase / m_prepTds.meanSqrActive;
+			modulateIInterp(q, q.s_tds, imultTds, imultTds);
+			onSignalReady(&wholeSecondIntens, null, &q.s_tds);
 		}
 		else
-			onSignalReady(&intervalIntens, null, null);
+			onSignalReady(&wholeSecondIntens, null, null);
 	}
 }
 

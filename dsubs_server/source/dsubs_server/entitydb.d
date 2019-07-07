@@ -191,7 +191,8 @@ private:
 		tf.sensorsMount.mountCenter = vec2d(0, 2.5);
 		// minoga's active sonar
 		tf.asprot = new ActiveSonarPrototype();
-		tf.asprot.pingParams = PingParameters([Chirp(3600, 3600, 0.1f)], 3, 3600, "octaveHp3500");
+		tf.asprot.pingParams = PingParameters(
+			[Chirp(3600, 3600, 0.1f)], 3, 3600, "octaveHp3500");
 		tf.asprot.maxPeakIlevel = tf.asprot.minPeakIlevel = 197.0f;
 		tf.asprot.omniBeamCount = 90;
 		tf.asprot.waterReflectivity = 0.0f;
