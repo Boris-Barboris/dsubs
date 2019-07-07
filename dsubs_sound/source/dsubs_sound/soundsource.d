@@ -348,20 +348,20 @@ unittest
 {
 	DsubsSoundOpenclCtx ctx = s_clCtx;
 	CommandQueue q = ctx.queue(0);
-	ISpectrum spec = ISpectrum(q, 1.0f);
+	ISpectrum spec = ISpectrum(q, 2.0f);
 	float sum;
 	Buffer sumBuf = Buffer(ctx, float.sizeof);
 	spec.reduceSum(q, sumBuf);
 	sumBuf.enqueueFullRead(q, &sum, null).waitFor();
-	assert(fabs(sum - GLOBAL_SRATE / 2.0) < 1e-3);
+	assert(fabs(sum - GLOBAL_SRATE) < 1e-3);
 	Tds timeDomain = Tds(q, 0.0f);
 	spec.toTimeDomain(q, timeDomain);
 	float[] signal;
 	signal.length = GLOBAL_SRATE;
 	timeDomain.read(q, signal);
 	float sqr = signal.map!(a => a * a).sum();
-	trace("square sum of ifft samples of one-sized intensity spectrum: ", sqr);
-	assert(fabs(sqr - 1.0f) < 1e-3);
+	trace("square sum of ifft samples of intensity spectrum: ", sqr);
+	assert(fabs(sqr - 2.0f) < 1e-3);
 }
 
 unittest

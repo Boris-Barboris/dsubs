@@ -250,6 +250,8 @@ struct EnergySpectrum(SpectrumType stype)
 	}
 
 	/// Randomize phases and perform inverse discrete fourier transform.
+	/// For the spectrum with all bins fixed at 1 the resulting time-domain
+	/// signal mean square will be 1 / GLOBAL_SRATE.
 	void toTimeDomain(CommandQueue q, ref Tds dest)
 	{
 		Kernel k = q.mk_energyToPressure;
