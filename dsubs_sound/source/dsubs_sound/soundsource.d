@@ -13,54 +13,78 @@ import dsubs_sound.modulation;
 import dsubs_sound.image;
 
 
+/// Spherical sound emitter.
 abstract class SoundSource
 {
-	private vec2d m_prevPos;
+	private
+	{
+		vec2d m_prevPos;
+	 	Transform2D m_transform;
+	}
 
-	/// world-space position
-	@property vec2d position();
+	this(Transform2D t)
+	{
+		m_transform = t;
+		savePrevPos();
+		onPreKinematics += &savePrevPos;
+	}
 
-	/// return source position before kinematics integration
+	/// world-space position of emitter center
+	final @property vec2d position() { return m_transform.wposition; }
+
+	/// transform, assigned to the source
+	final @property Transform2D transform() { return m_transform; }
+
+	/// return source position before kinematics update
 	final @property vec2d prevPos() const { return m_prevPos; }
 
 	/// save current position of transform to m_prevPos
 	final void savePrevPos() { m_prevPos = position; }
 
-	/// Physical radius of emitting area. Affects tha halo size on
+	/// Physical radius of emitting area, meters. Affects waterfall halo size on
 	/// close distances.
 	@property float radius() const;
 
-	/// Returns minimal omnidirectional factor at the range
+	/// Returns minimal omnidirectional factor at the specified range.
 	float minOmniFactor(float range) const;
 
-	/// invoked by simulator before kinematic update happens
-	Event!(void delegate()) onPreSimulation;
-	/// invoked by simulator right after kinematic update happens
-	Event!(void delegate(float dt)) onPostSimulation;
-	/// invoked by simulator in postAcousticsUpdate
+	/// Must be invoked by simulator before kinematic update.
+	Event!(void delegate()) onPreKinematics;
+	/// Must be invoked by simulator right after kinematic update.
+	Event!(void delegate(float dt)) onPostKinematics;
+	/// Must be invoked by simulator in postAcousticsUpdate.
 	Event!(void delegate()) onPostAcoustics;
 
 	/** Generate band intensity and time-domain signal(s) for a hydrophone.
 	'onTdsReady' callback must be called in order to imprint the time-domain
-	signal onto the listener. SoundSource is responsible for range-related
-	signal attenuation.
+	signal onto the listener. SoundSource is responsible for signal distortion
+	and weakening, caused by range and water. Listener's properties are respected
+	by accounting for it's passband.
 
 	Note on band intensity - pressure relations:
 
-	Ideal allpass hydrophone for intensity spectrum with all bins of value 1 watt
+	Ideal allpass hydrophone for emitter's intensity spectrum with all bins of value 1 watt
 	expects from SoundSource a band sum value of GLOBAL_SRATE / 2.0f. You must reduceSum
 	only the part of the spectrum that is specified by [minFreq; maxFreq].
 	Hydrophone then expects sound source to pass tds to it that is produced
-	directly via toTimeDomain method, that is it's mean square of pressure
+	directly via toTimeDomain method, meaning it's mean square of pressure
 	samples should be 1.0f / GLOBAL_SRATE for the abovementioned unit spectrum.
 	*/
-	void buildSignals(CommandQueue q,
-		vec2d listenerPos, vec2d prevListenerPos,
-		scope void delegate(Intensity* bandIntensitySumReady,
-			Buffer* bandIntensitySumBuf, Tds* tds) onTdsReady,
-		int minFreq, int maxFreq, bool needTds, float dissMod = 4.0f,
-		FIRFilter* listenerFilter = null);
+	void buildSignals(
+		CommandQueue q,
+		vec2d listenerPos,		// hydrophone's world-space position.
+		vec2d prevListenerPos,	// hydrophone's world-space position before the last kinematics update.
+		scope void delegate(
+				Intensity* bandIntensitySumReady,	// if can be calculated on cpu, pass it here.
+				Buffer* bandIntensitySumBuf,		// otherwise, pass reference to buffer.
+				Tds* tds)							// should pass when 'needTds' is true.
+			onTdsReady,			// call at most Hydrophone.SourcePrecalc.MAX_COMPONENTS times.
+		int minFreq, int maxFreq,			// listener's passband.
+		bool needTds,						// wether tds generation is requested by listener
+		float dissMod = 4.0f,				// water dissipation modifier
+		FIRFilter* listenerFilter = null);	// filter, used to implement listener's passband
 }
+
 
 struct PropellerSoundPrototype
 {
@@ -79,7 +103,7 @@ final class PropellerSound: SoundSource
 {
 	this(Transform2D t, const PropellerSoundPrototype p)
 	{
-		m_transform = t;
+		super(t);
 		m_baseBBSpectrum = p.baseBBSpectrum;
 		m_baseCavSpectrum = p.baseCavSpectrum;
 		//m_am = templ.am;
@@ -95,8 +119,6 @@ final class PropellerSound: SoundSource
 
 	private
 	{
-		Transform2D m_transform;
-
 		// Base reference intensity spectrum of non-cavitating component on 1Hz
 		const ISpectrum* m_baseBBSpectrum;
 		// Base reference intensity spectrum of cavitation noise component on
@@ -116,13 +138,9 @@ final class PropellerSound: SoundSource
 		float m_aftIntensity;
 	}
 
-	@property Transform2D transform() { return m_transform; }
-
-	override @property vec2d position() { return m_transform.wposition; }
-
 	override @property float radius() const { return 1.5f * m_bladeRadius; }
 
-	/// Update state at the beginning of kinematic simulation. rotFreq is shaft rotation
+	/// Update state before kinematic update. rotFreq is shaft rotation
 	/// frequency. waterSpeedStart is projection of water relative speed on shaft axis.
 	void preUpdate(float shaftFreqStart, float waterSpeedStart)
 	{
@@ -130,7 +148,6 @@ final class PropellerSound: SoundSource
 		assert(!isNaN(waterSpeedStart));
 		m_shaftFreqStart = shaftFreqStart;
 		m_normalVelStart = caclNormalVel(shaftFreqStart, waterSpeedStart);
-		savePrevPos();
 	}
 
 	private float caclNormalVel(float freq, float waterSpeed) const
@@ -142,6 +159,7 @@ final class PropellerSound: SoundSource
 	}
 
 	/// Modulator needs to know final rotation speed to simulate a smooth transition.
+	/// This shuld be called after kinematic's update and after propulsor's update.
 	void postUpdate(float endShaftFreq, float waterSpeedEnd, float dt)
 	{
 		assert(!isNaN(endShaftFreq));
@@ -257,6 +275,57 @@ final class PropellerSound: SoundSource
 }
 
 
+/// Sound source that can be exhausted and must be removed after it's finished.
+abstract class FiniteSoundSource: SoundSource
+{
+	this(Transform2D t) { super(t); }
+
+	/// true when there will be no more sound.
+	@property bool finished();
+}
+
+/// Sound source with fixed recording length.
+abstract class FixedLengthSoundSource: FiniteSoundSource
+{
+	this(Transform2D t, size_t totalSamples, const(size_t)* destOffset = null)
+	{
+		super(t);
+		m_totalSamples = totalSamples;
+		assert(samplesLeft > 0);
+		if (destOffset)
+		{
+			assert(*destOffset < GLOBAL_SRATE);
+			m_destOffset = *destOffset;
+		}
+		else
+			m_destOffset = uniform(0, GLOBAL_SRATE - 1);
+		onPostAcoustics += &updateOffsets;
+	}
+
+	protected
+	{
+		size_t m_totalSamples;
+		size_t m_sourceOffset;
+		size_t m_destOffset;
+	}
+
+	final @property size_t totalSamples() const { return m_totalSamples; }
+
+	/// when zero, recording is over and should be disposed of.
+	final @property size_t samplesLeft() const { return m_totalSamples - m_sourceOffset; }
+
+	final override @property bool finished() { return samplesLeft == 0; }
+
+	/// move offsets one second further.
+	private void updateOffsets()
+	{
+		size_t usedSamples = GLOBAL_SRATE - m_destOffset;
+		m_destOffset = 0;
+		m_sourceOffset = min(m_totalSamples, m_sourceOffset + usedSamples);
+	}
+}
+
+
 struct PrerecordedSoundPrototype
 {
 	VarTds* tds;
@@ -265,50 +334,18 @@ struct PrerecordedSoundPrototype
 }
 
 
-final class PrerecordedSoundSource: SoundSource
+final class PrerecordedSoundSource: FixedLengthSoundSource
 {
-	this(Transform2D t, PrerecordedSoundPrototype proto,
-		size_t* destOffset)
+	this(Transform2D t, PrerecordedSoundPrototype proto, size_t* destOffset = null)
 	{
-		m_transform = t;
+		super(t, proto.tds.length, destOffset);
 		m_proto = proto;
-		if (destOffset)
-		{
-			assert(*destOffset < GLOBAL_SRATE);
-			m_destOffset = *destOffset;
-		}
-		else
-			m_destOffset = uniform(0, GLOBAL_SRATE - 1);
-		m_samplesLeft = proto.tds.length;
-		assert(m_samplesLeft > 0);
-		onPreSimulation += &savePrevPos;
-		onPostAcoustics += &updateOffsets;
 	}
 
 	private
 	{
-		Transform2D m_transform;
 		PrerecordedSoundPrototype m_proto;
-		size_t m_sourceOffset;
-		size_t m_destOffset;
-		size_t m_samplesLeft;
 	}
-
-	/// update internal offsets
-	private void updateOffsets()
-	{
-		size_t usedSamples = GLOBAL_SRATE - m_destOffset;
-		m_destOffset = 0;
-		m_sourceOffset = min(m_proto.tds.length, m_sourceOffset + usedSamples);
-		m_samplesLeft -= min(usedSamples, m_samplesLeft);
-	}
-
-	/// when zero, sound is over and should be disposed of
-	@property size_t samplesLeft() const { return m_samplesLeft; }
-
-	@property Transform2D transform() { return m_transform; }
-
-	override @property vec2d position() { return m_transform.wposition; }
 
 	override @property float radius() const { return m_proto.radius; }
 
@@ -323,7 +360,7 @@ final class PrerecordedSoundSource: SoundSource
 	{
 		assert(minFreq >= 1);
 		assert(maxFreq <= ISpectrum.MAX_FREQ);
-		float range = max(10.0f, (listenerPos - m_transform.wposition).length);
+		float range = max(10.0f, (listenerPos - position).length);
 		float prevRange = max(10.0f, (prevListenerPos - prevPos).length);
 		float avgRange = 0.5f * (range + prevRange);
 		// copy active part of the signal to separate staging vartds and apply

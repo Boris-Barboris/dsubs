@@ -102,8 +102,8 @@ final class SubmarineFactory: VesselFactory
 			res.transform.addChild(t);
 			Hydrophone h = new Hydrophone(Globals.sctx.queue(0), t, hp);
 			res.m_hydrophones ~= h;
-			h.onPreSimulation += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
-			h.onPostSimulation += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+			h.onPreKinematics += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+			h.onPostKinematics += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
 		}
 		// active sonar
 		{
@@ -112,12 +112,12 @@ final class SubmarineFactory: VesselFactory
 			t.rotation = tmpl.sonar.mount.rotation;
 			res.transform.addChild(t);
 			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, asprot);
-			res.m_sonar.onPreSimulation += ()
+			res.m_sonar.onPreKinematics += ()
 			{
 				res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;
 				res.m_sonar.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts;
 			};
-			res.m_sonar.onPostSimulation += ()
+			res.m_sonar.onPostKinematics += ()
 			{
 				res.m_sonar.angVelEnd = res.rigidBody.kinet.angVel;
 				res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;

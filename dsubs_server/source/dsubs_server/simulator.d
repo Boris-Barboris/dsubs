@@ -75,15 +75,15 @@ final class Simulator
 				{
 					onSimulationPassStart(m_worldTime);
 					profiler.start();
-					profiler.start("acous.preSimulation");
-					Globals.acous.preSimulation();
+					profiler.start("acous.preKinematics");
+					Globals.acous.preKinematics();
 					profiler.stopLast();
 					// physics integration. All rigid bodies are moved.
 					profiler.start("phys.integratePBodies");
 					Globals.phys.integratePBodies(1.0f, 0.25f);
 					profiler.stopLast();
-					profiler.start("acous.postSimulation");
-					Globals.acous.postSimulation(1.0f);
+					profiler.start("acous.postKinematics");
+					Globals.acous.postKinematics(1.0f);
 					profiler.stopLast();
 					profiler.start("acous.processActiveSonars");
 					Globals.acous.processActiveSonars();

@@ -67,7 +67,7 @@ final class Hydrophone
 		m_sourceQueue = CircQueue!SourcePrecalc(16);
 		foreach (rot; p.antennaeRots)
 			m_ant ~= new Antennae(p.beamCount, rot);
-		onPreSimulation += &savePrevPos;
+		onPreKinematics += &savePrevPos;
 		savePrevPos();
 
 		synchronized(q)
@@ -81,9 +81,9 @@ final class Hydrophone
 	}
 
 	/// invoked by simulator before kinematic update happens
-	Event!(void delegate()) onPreSimulation;
+	Event!(void delegate()) onPreKinematics;
 	/// invoked by simulator right after kinematic update happens
-	Event!(void delegate()) onPostSimulation;
+	Event!(void delegate()) onPostKinematics;
 
 	private
 	{
@@ -775,20 +775,21 @@ unittest
 		250, GLOBAL_SRATE / 2, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f);
 	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
 	h.transform.rotation = PI; // good corner case
-	h.onPreSimulation();
+	h.onPreKinematics();
 	IntensityLevel[][] ilevels;
 	ilevels.length = 200;
 	float spdKts = mps2kts(0);
 	h.ktsStart = h.ktsEnd = spdKts;
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
-		// h.onPreSimulation();
+		// h.onPreKinematics();
 		// h.transform.rotation = i * dgr2rad(0.5);
 		h.resetAndStartIsotropic(q);
 		foreach (j, float spd; speeds)
 		{
 			float freq = spd * freqPerMs;
 			propTrans.position = rotateVector(vec2d(0.0, (i + 1) * -150.0), relBearings[j]);
+			prop.onPreKinematics();
 			prop.preUpdate(freq, spd);
 			prop.postUpdate(freq, spd, 1.0f);
 			h.applySoundSource(q, prop);
@@ -803,7 +804,7 @@ unittest
 	float dspd = mps2kts(17) / ilevels.length;
 	for (size_t i = 0; i < ilevels.length; i++)
 	{
-		h.onPreSimulation();
+		h.onPreKinematics();
 		h.ktsStart = h.ktsEnd = spdKts + dspd * i;
 		h.transform.rotation = PI + i / 10.0f;
 		h.resetAndStartIsotropic(q);
@@ -811,6 +812,7 @@ unittest
 		{
 			float freq = spd * freqPerMs;
 			propTrans.position = rotateVector(vec2d(0.0, -2000.0), relBearings[j]);
+			prop.onPreKinematics();
 			prop.preUpdate(freq, spd);
 			prop.postUpdate(freq, spd, 1.0f);
 			h.applySoundSource(q, prop);
@@ -831,12 +833,13 @@ unittest
 	trace("fundamental shaft frequency = ", freq);
 	h.ktsStart = h.ktsEnd = mps2kts(0);
 	h.transform.rotation = PI;
-	h.onPreSimulation();
+	h.onPreKinematics();
 
 	float[] samples;
 	samples.length = GLOBAL_SRATE * 8;
 	for (int i = 0; i < 8; i++)
 	{
+		prop.onPreKinematics();
 		prop.preUpdate(freq, spd);
 		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
 			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
@@ -872,6 +875,7 @@ unittest
 	samples.length = GLOBAL_SRATE * 8;
 	for (int i = 0; i < 8; i++)
 	{
+		prop.onPreKinematics();
 		prop.preUpdate(freq, spd);
 		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
 			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
@@ -904,19 +908,19 @@ unittest
 	samples.length = GLOBAL_SRATE * 12;
 	for (int i = 0; i < 12; i++)
 	{
-		psSource.onPreSimulation();
+		psSource.onPreKinematics();
 		h.resetAndStartIsotropic(q);
 		assert(h.m_listenDirValid);
 		assert(h.m_ant[0].listenCell >= 0);
 		psSource.transform.position = vec2d(0.0, -10000.0 + 9500 / 11 * i);
-		if (psSource.samplesLeft > 0)
+		if (!psSource.finished)
 			h.applySoundSource(q, psSource);
 		h.flushSourceQueue();
 		h.endIsotropic();
 		h.finalizeListenTds(q);
 		q.s_tds.enqueueRead(q,
 			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
-		if (psSource.samplesLeft > 0)
+		if (!psSource.finished)
 			psSource.onPostAcoustics();
 	}
 	q.finish();

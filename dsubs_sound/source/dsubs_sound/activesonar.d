@@ -437,8 +437,8 @@ final class ActiveSonar
 		m_secDur = proto.maxSec;
 		m_nextSliceImage = ByteImage(q.ctx, proto.getSliceXResol(), proto.radialRes);
 		m_nextSlice = new ubyte[m_nextSliceImage.size];
-		onPreSimulation += () { m_worldRotStart = m_transform.wrotation; };
-		onPostSimulation += () { m_worldRotEnd = m_transform.wrotation; };
+		onPreKinematics += () { m_worldRotStart = m_transform.wrotation; };
+		onPostKinematics += () { m_worldRotEnd = m_transform.wrotation; };
 		synchronized
 		{
 			// atomically generate tds if needed
@@ -510,9 +510,9 @@ final class ActiveSonar
 	}
 
 	/// invoked by simulator before kinematic update happens
-	Event!(void delegate()) onPreSimulation;
+	Event!(void delegate()) onPreKinematics;
 	/// invoked by simulator right after kinematic update happens
-	Event!(void delegate()) onPostSimulation;
+	Event!(void delegate()) onPostKinematics;
 
 	/// set speed at the start of integration
 	@property void ktsStart(float rhs)
@@ -731,8 +731,8 @@ unittest
 	s.ktsStart = 0.0f;
 	s.angVelEnd = 0.0f;
 	s.ktsEnd = 0.0f;
-	s.onPreSimulation();
-	s.onPostSimulation();
+	s.onPreKinematics();
+	s.onPostKinematics();
 	Reflector refl = new Reflector(new Transform2D(),
 		ReflectorPrototype(vec2f(50, 50), [-1, -1, -1]));
 	refl.transform.position = vec2d(0, 2000);
@@ -743,60 +743,29 @@ unittest
 }
 
 
-/// Immovable sonar ping source.
-final class SonarPing: SoundSource
+/// Immovable sonar ping sound source.
+final class SonarPing: FixedLengthSoundSource
 {
 	this(vec2d position, double wrot, int freq,
 		PingKernelParams kernParam, PreparedPingTds* refTds,
 		const(size_t)* destOffset = null)
 	{
-		m_position = position;
-		m_wrot = wrot;
+		super(new Transform2D(position, wrot), refTds.tds.length, destOffset);
 		m_freq = freq;
 		m_kernParam = kernParam;
 		m_prepTds = refTds;
-		m_samplesLeft = refTds.tds.length;
-		assert(m_samplesLeft > 0);
-		savePrevPos();
-		if (destOffset)
-		{
-			m_destOffset = *destOffset;
-			assert(m_destOffset >= 0 && m_destOffset < GLOBAL_SRATE);
-		}
-		else
-			m_destOffset = uniform(0, GLOBAL_SRATE);
-		onPostAcoustics += &updateOffsets;
 	}
 
 	private
 	{
-		vec2d m_position;
-		double m_wrot;
-		int m_freq;	/// effective frequency
+		int m_freq;		/// effective frequency
 		PingKernelParams m_kernParam;
 		PreparedPingTds* m_prepTds;
-		size_t m_samplesLeft;
-		size_t m_sourceOffset;
-		size_t m_destOffset;
 	}
-
-	/// when zero, ping is over and should be disposed of
-	@property size_t samplesLeft() const { return m_samplesLeft; }
 
 	override float minOmniFactor(float range) const { return 1e-3f; }
 
-	override @property vec2d position() { return m_position; }
-
 	override @property float radius() const { return 20.0f; }
-
-	/// update internal offsets
-	private void updateOffsets()
-	{
-		size_t usedSamples = GLOBAL_SRATE - m_destOffset;
-		m_destOffset = 0;
-		m_sourceOffset = min(m_prepTds.tds.length, m_sourceOffset + usedSamples);
-		m_samplesLeft -= min(usedSamples, m_samplesLeft);
-	}
 
 	override void buildSignals(CommandQueue q,
 		vec2d listenerPos, vec2d prevListenerPos,
@@ -805,10 +774,10 @@ final class SonarPing: SoundSource
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f,
 		FIRFilter* listenerFilter = null)
 	{
-		float range = max(10.0f, (listenerPos - m_position).length);
+		float range = max(10.0f, (listenerPos - position).length);
 		float prevRange = max(10.0f, (prevListenerPos - prevPos).length);
 		float avgRange = 0.5f * (range + prevRange);
-		float relBearing = courseAngle(listenerPos - m_position) - m_wrot;
+		float relBearing = courseAngle(listenerPos - position) - transform.wrotation;
 		// if we were in the ping's active emission phase...
 		IntensityLevel ilevel = pingAtRelBearing(m_kernParam, relBearing);
 		ilevel = getILatRange(m_freq, ilevel, avgRange, dissMod);

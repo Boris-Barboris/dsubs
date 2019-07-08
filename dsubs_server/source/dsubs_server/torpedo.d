@@ -339,7 +339,7 @@ final class TorpedoGuidance
 					m_currentPing = sonar.startPing(
 						sonar.proto.maxPeakIlevel, &m_pingTdsOffset);
 					assert(m_currentPing);
-					Globals.acous.registerPing(m_currentPing);
+					Globals.acous.registerSource(m_currentPing);
 					m_sliceByteSize =
 						sonar.proto.getSliceXResol() * sonar.proto.radialRes;
 					m_sonarImage.length = m_sliceByteSize * sonar.secDur;
@@ -591,8 +591,8 @@ final class TorpedoFactory: VesselFactory
 			res.transform.addChild(t);
 			Hydrophone h = new Hydrophone(Globals.sctx.queue(0), t, *hprot);
 			res.m_hydrophone = h;
-			h.onPreSimulation += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
-			h.onPostSimulation += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+			h.onPreKinematics += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+			h.onPostKinematics += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
 		}
 		if (asprot)
 		{
@@ -601,12 +601,12 @@ final class TorpedoFactory: VesselFactory
 			t.rotation = sensorsMount.rotation;
 			res.transform.addChild(t);
 			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot);
-			res.m_sonar.onPreSimulation += ()
+			res.m_sonar.onPreKinematics += ()
 			{
 				res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;
 				res.m_sonar.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts;
 			};
-			res.m_sonar.onPostSimulation += ()
+			res.m_sonar.onPostKinematics += ()
 			{
 				res.m_sonar.angVelEnd = res.rigidBody.kinet.angVel;
 				res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;

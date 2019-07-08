@@ -83,11 +83,11 @@ final class BasicPropulsor: Propulsor
 	override void bootstrap(RigidBody vesselRb)
 	{
 		m_vesselRb = vesselRb;
-		m_sound.onPreSimulation += ()
+		m_sound.onPreKinematics += ()
 		{
 			m_sound.preUpdate(m_throttle * shaftRotFreq, m_vesselRb.kinet.progradeSpeed);
 		};
-		m_sound.onPostSimulation += (float dt)
+		m_sound.onPostKinematics += (float dt)
 		{
 			m_sound.postUpdate(m_throttle * shaftRotFreq, m_vesselRb.kinet.progradeSpeed, dt);
 		};

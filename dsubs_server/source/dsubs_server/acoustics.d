@@ -18,7 +18,6 @@ final class AcousticEnv
 		SoundSource[] m_sources;
 		ActiveSonar[] m_sonars;
 		Reflector[] m_reflectors;
-		SonarPing[] m_pings;
 	}
 
 	// all register and unregister calls are supposed to
@@ -29,15 +28,6 @@ final class AcousticEnv
 		synchronized(this)
 		{
 			m_hydrophones ~= e;
-		}
-	}
-
-	void registerPing(SonarPing e)
-	{
-		synchronized(this)
-		{
-			m_pings ~= e;
-			m_sources ~= e;
 		}
 	}
 
@@ -107,28 +97,27 @@ final class AcousticEnv
 			s.release();
 		m_sonars.length = 0;
 		m_reflectors.length = 0;
-		m_pings.length = 0;
 		m_sources.length = 0;
 	}
 
-	void preSimulation()
+	void preKinematics()
 	{
 		foreach (source; Globals.taskPool.parallel(m_sources, 8))
-			source.onPreSimulation();
+			source.onPreKinematics();
 		foreach (h; m_hydrophones)
-			h.onPreSimulation();
+			h.onPreKinematics();
 		foreach (s; m_sonars)
-			s.onPreSimulation();
+			s.onPreKinematics();
 	}
 
-	void postSimulation(float dt)
+	void postKinematics(float dt)
 	{
 		foreach (source; Globals.taskPool.parallel(m_sources, 8))
-			source.onPostSimulation(dt);
+			source.onPostKinematics(dt);
 		foreach (h; m_hydrophones)
-			h.onPostSimulation();
+			h.onPostKinematics();
 		foreach (s; m_sonars)
-			s.onPostSimulation();
+			s.onPostKinematics();
 	}
 
 	void processActiveSonars()
@@ -184,40 +173,22 @@ final class AcousticEnv
 	void postAcousticsUpdate()
 	{
 		size_t i = 0;
-
 		while (i < m_sources.length)
 		{
 			SoundSource s = m_sources[i];
 			s.onPostAcoustics();
-			PrerecordedSoundSource ps = cast(PrerecordedSoundSource) s;
-			if (ps is null)
+			FiniteSoundSource finiteSource = cast(FiniteSoundSource) s;
+			if (finiteSource is null || !finiteSource.finished)
 			{
 				i++;
 				continue;
 			}
-			if (ps.samplesLeft == 0)
+			else
 			{
 				// source is no longer active and must be unregistered
 				m_sources[i] = m_sources[$-1];
 				m_sources.length--;
 			}
-			else
-				i++;
-		}
-
-		i = 0;
-		while (i < m_pings.length)
-		{
-			SonarPing p = m_pings[i];
-			if (p.samplesLeft == 0)
-			{
-				// ping is no longer active and must be unregistered
-				m_pings[i] = m_pings[$-1];
-				m_pings.length--;
-				m_sources.removeFirstUnstable(p);
-			}
-			else
-				i++;
 		}
 	}
 }

@@ -32,6 +32,19 @@ class Transform2D
 		Transform2D[] m_children;
 	}
 
+	this() {}
+
+	this(vec2d pos)
+	{
+		position = pos;
+	}
+
+	this(vec2d pos, double rot)
+	{
+		position = pos;
+		rotation = rot;
+	}
+
 	protected
 	{
 		bool m_dirty = true;
