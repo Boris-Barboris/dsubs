@@ -330,7 +330,8 @@ struct PrerecordedSoundPrototype
 {
 	VarTds* tds;
 	float radius;
-	dB addToIlevel;
+	dB addToIlevel = 0.0f;
+	float minOmniFactor = 0.0f;
 }
 
 
@@ -349,7 +350,7 @@ final class PrerecordedSoundSource: FixedLengthSoundSource
 
 	override @property float radius() const { return m_proto.radius; }
 
-	override float minOmniFactor(float range) const { return 0.0f; }
+	override float minOmniFactor(float range) const { return m_proto.minOmniFactor; }
 
 	override void buildSignals(CommandQueue q,
 		vec2d listenerPos, vec2d prevListenerPos,
@@ -418,7 +419,7 @@ version (unittest)
 		bbSpec.addUniformNoise(q, 0.5f);
 		tmpl.baseBBSpectrum = bbSpec;
 		ISpectrum* cavSpec = new ISpectrum(ctx);
-		loadSpectrumFromImage(q, *cavSpec, "std_propeller_cav.png", 60.0f, 140.0f);
+		loadSpectrumFromImage(q, *cavSpec, "std_propeller_cav.png", 70.0f, 150.0f);
 		cavSpec.addUniformNoise(q, 0.5f);
 		tmpl.baseCavSpectrum = cavSpec;
 		TrochoidModulatorParams* tmParams = new TrochoidModulatorParams();

@@ -207,6 +207,9 @@ private:
 		tf.asprot.maxSec = 3;
 		tf.asprot.zeroLevel = dB(seaNoiseIL(3600).val + 80.0f);
 		tf.asprot.endScale = 0.02f;
+		tf.detonationSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/explosion1_8192.wav"),
+			40.0f, 145.0f, 2e-3f);
 
 		tf.defaultSensorMode = WeaponSensorMode.active;
 		tf.fuelEffExponent = 2.5f;

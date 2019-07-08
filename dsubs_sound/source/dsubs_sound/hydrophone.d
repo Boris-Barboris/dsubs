@@ -6,6 +6,8 @@ import std.array: array;
 import std.range;
 import std.mathspecial;
 
+import imageformats;
+
 import dsubs_common.math;
 import dsubs_common.event;
 import dsubs_common.containers.circqueue;
@@ -32,7 +34,7 @@ struct HydrophonePrototype
 	float directivity;
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 4e-3f;
-	float flowNoiseMult = 1.8e-5f;
+	float flowNoiseMult = 1e-5f;
 	float omniNoiseMult = 0.025f;
 	/// client listens to beam of this size
 	float listenSpan = dgr2rad(3);
@@ -720,38 +722,84 @@ final class Hydrophone
 }
 
 
+/// print passive sonar data to PNG image
+void printIlevelsToPng(string filename, IntensityLevel[][] data,
+	dB zeroLevel = 0.0f, dB maxLvl = 90.0f)
+{
+	long width = data[0].length.to!long;
+	long height = data.length;
+	ubyte[] pixels;
+	pixels.length = (width * height).to!size_t;
+	size_t idx = 0;
+	const float dynRange = maxLvl - zeroLevel;
+	float minRaw = float.max;
+	float maxRaw = -minRaw;
+	for (int row = 0; row < height; row++)
+		for (int col = 0; col < width; col++)
+		{
+			dB raw = data[row][col];
+			assert(!isNaN(raw));
+			minRaw = fmin(minRaw, raw);
+			maxRaw = fmax(maxRaw, raw);
+			dB transformed = (raw - zeroLevel) / dynRange;
+			transformed = fmax(0.0f, fmin(1.0f, transformed));
+			pixels[idx++] = (transformed * ubyte.max).to!ubyte;
+		}
+	write_png(filename, width, height, pixels, 1);
+}
+
+void hydrophoneVsPropellerBalancingPlot(CommandQueue q,
+	string testFileTitle, HydrophonePrototype hp,
+	PropellerSoundPrototype pp, float shaftFreqPerMs, float minPropSpeed,
+	float maxPropSpeed, float maxRange = 30000.0f, float maxListenerSpeed = 17.0f,
+	int rowCount = 100, int spdMarksCount = 5)
+{
+	import std.array;
+	import std.range;
+	import std.algorithm;
+
+	Transform2D propTrans = new Transform2D();
+	PropellerSound prop = new PropellerSound(propTrans, pp);
+	float[] propSpeeds = iota(minPropSpeed, maxPropSpeed + 0.1f,
+		(maxPropSpeed - minPropSpeed) / 9).array;
+	float[] relBearings = iota(0, propSpeeds.length).map!(
+		i => (dgr2rad(75) - i * dgr2rad(150) / (propSpeeds.length - 1)).to!float).array;
+	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
+	IntensityLevel[][] ilevels;
+	ilevels.length = rowCount * spdMarksCount;
+	h.ktsStart = h.ktsEnd = 0.0f;
+
+	float dspd = mps2kts(maxListenerSpeed) / (spdMarksCount - 1);
+	float drange = maxRange / rowCount;
+
+	for (size_t k = 0; k < spdMarksCount; k++)
+	{
+		for (size_t i = 0; i < rowCount; i++)
+		{
+			h.onPreKinematics();
+			h.ktsStart = h.ktsEnd = dspd * k;
+			h.resetAndStartIsotropic(q);
+			foreach (j, float spd; propSpeeds)
+			{
+				float shaftFreq = spd * shaftFreqPerMs;
+				propTrans.position = rotateVector(vec2d(0.0, (i + 1) * drange),
+					relBearings[j]);
+				prop.onPreKinematics();
+				prop.preUpdate(shaftFreq, spd);
+				prop.postUpdate(shaftFreq, spd, 1.0f);
+				h.applySoundSource(q, prop);
+			}
+			h.flushSourceQueue();
+			h.endIsotropic();
+			h.m_ant[0].imprint(ilevels[i + k * rowCount]);
+		}
+	}
+	printIlevelsToPng(testFileTitle ~ ".png", ilevels, 0.0f, 90.0f);
+}
+
+
 unittest
 {
-
-	import imageformats;
-
-	// print passive sonar data to PNG image
-	static void printToPng(string filename, IntensityLevel[][] data, dB zeroLevel, dB maxLvl)
-	{
-		long width = data[0].length.to!long;
-		long height = data.length;
-		ubyte[] pixels;
-		pixels.length = (width * height).to!size_t;
-		size_t idx = 0;
-		const float dynRange = maxLvl - zeroLevel;
-		float minRaw = float.max;
-		float maxRaw = -minRaw;
-		for (int row = 0; row < height; row++)
-			for (int col = 0; col < width; col++)
-			{
-				dB raw = data[row][col];
-				assert(!isNaN(raw));
-				minRaw = fmin(minRaw, raw);
-				maxRaw = fmax(maxRaw, raw);
-				dB transformed = (raw - zeroLevel) / dynRange;
-				transformed = fmax(0.0f, fmin(1.0f, transformed));
-				pixels[idx++] = (transformed * ubyte.max).to!ubyte;
-			}
-		write_png(filename, width, height, pixels, 1);
-		trace(filename, " written, min/max raw dB: ", minRaw, " ", maxRaw);
-	}
-
-
 	import std.array;
 	import std.algorithm: map, maxElement;
 	import std.range;
@@ -776,52 +824,54 @@ unittest
 	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
 	h.transform.rotation = PI; // good corner case
 	h.onPreKinematics();
-	IntensityLevel[][] ilevels;
-	ilevels.length = 200;
 	float spdKts = mps2kts(0);
 	h.ktsStart = h.ktsEnd = spdKts;
-	for (size_t i = 0; i < ilevels.length; i++)
-	{
-		// h.onPreKinematics();
-		// h.transform.rotation = i * dgr2rad(0.5);
-		h.resetAndStartIsotropic(q);
-		foreach (j, float spd; speeds)
-		{
-			float freq = spd * freqPerMs;
-			propTrans.position = rotateVector(vec2d(0.0, (i + 1) * -150.0), relBearings[j]);
-			prop.onPreKinematics();
-			prop.preUpdate(freq, spd);
-			prop.postUpdate(freq, spd, 1.0f);
-			h.applySoundSource(q, prop);
-		}
-		h.flushSourceQueue();
-		h.endIsotropic();
-		h.m_ant[0].imprint(ilevels[i]);
-	}
-	printToPng("std_hydrophone_vs_std_propeller_30km.png", ilevels, 0.0f, 90.0f);
 
-	// test own speed vs detection capability
-	float dspd = mps2kts(17) / ilevels.length;
-	for (size_t i = 0; i < ilevels.length; i++)
-	{
-		h.onPreKinematics();
-		h.ktsStart = h.ktsEnd = spdKts + dspd * i;
-		h.transform.rotation = PI + i / 10.0f;
-		h.resetAndStartIsotropic(q);
-		foreach (j, float spd; speeds)
-		{
-			float freq = spd * freqPerMs;
-			propTrans.position = rotateVector(vec2d(0.0, -2000.0), relBearings[j]);
-			prop.onPreKinematics();
-			prop.preUpdate(freq, spd);
-			prop.postUpdate(freq, spd, 1.0f);
-			h.applySoundSource(q, prop);
-		}
-		h.flushSourceQueue();
-		h.endIsotropic();
-		h.m_ant[0].imprint(ilevels[i]);
-	}
-	printToPng("std_hydrophone_0-17ms_2km_target.png", ilevels, 0.0f, 90.0f);
+	hydrophoneVsPropellerBalancingPlot(q, "std_hydrophone_vs_stdProp_30km",
+		hp, stdPropellerProto(), 2.19f / 17.0f, 1.0f, 17.0f);
+
+	// for (size_t i = 0; i < ilevels.length; i++)
+	// {
+	// 	// h.onPreKinematics();
+	// 	// h.transform.rotation = i * dgr2rad(0.5);
+	// 	h.resetAndStartIsotropic(q);
+	// 	foreach (j, float spd; speeds)
+	// 	{
+	// 		float freq = spd * freqPerMs;
+	// 		propTrans.position = rotateVector(vec2d(0.0, (i + 1) * -150.0), relBearings[j]);
+	// 		prop.onPreKinematics();
+	// 		prop.preUpdate(freq, spd);
+	// 		prop.postUpdate(freq, spd, 1.0f);
+	// 		h.applySoundSource(q, prop);
+	// 	}
+	// 	h.flushSourceQueue();
+	// 	h.endIsotropic();
+	// 	h.m_ant[0].imprint(ilevels[i]);
+	// }
+	// printIlevelsToPng("std_hydrophone_vs_std_propeller_30km.png", ilevels, 0.0f, 90.0f);
+
+	// // test own speed vs detection capability
+	// float dspd = mps2kts(17) / ilevels.length;
+	// for (size_t i = 0; i < ilevels.length; i++)
+	// {
+	// 	h.onPreKinematics();
+	// 	h.ktsStart = h.ktsEnd = spdKts + dspd * i;
+	// 	h.transform.rotation = PI + i / 10.0f;
+	// 	h.resetAndStartIsotropic(q);
+	// 	foreach (j, float spd; speeds)
+	// 	{
+	// 		float freq = spd * freqPerMs;
+	// 		propTrans.position = rotateVector(vec2d(0.0, -2000.0), relBearings[j]);
+	// 		prop.onPreKinematics();
+	// 		prop.preUpdate(freq, spd);
+	// 		prop.postUpdate(freq, spd, 1.0f);
+	// 		h.applySoundSource(q, prop);
+	// 	}
+	// 	h.flushSourceQueue();
+	// 	h.endIsotropic();
+	// 	h.m_ant[0].imprint(ilevels[i]);
+	// }
+	// printIlevelsToPng("std_hydrophone_0-17ms_2km_target.png", ilevels, 0.0f, 90.0f);
 
 	// generate sound sample of cavitating std_propeller on 1km range
 	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
@@ -928,5 +978,68 @@ unittest
 	assert(!isNaN(maxp));
 	trace("std_hydrophone_vs_big_iron_1km maxp: ", maxp);
 	writeWavFile("std_hydrophone_vs_big_iron_1km.wav",
+		samples, 0.8f / maxp, GLOBAL_SRATE);
+}
+
+
+unittest
+{
+	import std.array;
+	import std.algorithm: map, maxElement;
+	import std.range;
+	import std.stdio;
+	import core.time: MonoTime;
+	import dsubs_sound.image;
+	import dsubs_sound.wav;
+
+	DsubsSoundOpenclCtx ctx = s_clCtx;
+	CommandQueue q = ctx.queue(0);
+	Transform2D propTrans = new Transform2D();
+	PropellerSoundPrototype pp = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(q,
+				"../dsubs_sound/minoga.png", 1.0f, 60, 110),
+			loadSpectrumFromImageAndWarp(q,
+				"../dsubs_sound/minoga_cav.png", 1.0f, 45, 130),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.25f),
+				Harmonic(3.0f, 0.75f)],
+				0.4, 0.7, -0.4),
+			0.25f, dgr2rad(30), 5.0f, 0.03f, 0.7f
+		);
+	PropellerSound prop = new PropellerSound(propTrans, pp);
+	HydrophonePrototype hp = HydrophonePrototype(
+		[0.0f],
+		250, GLOBAL_SRATE / 2, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f);
+	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
+	h.transform.rotation = PI; // good corner case
+	propTrans.position = vec2d(0.0, -1000.0);
+	float shaftRotFreq = 21.45f;
+	float spd = 29.0f;
+
+	hydrophoneVsPropellerBalancingPlot(q, "std_hydrophone_vs_minoga_30km",
+		hp, pp, shaftRotFreq / spd, 20.0f, 29.0f);
+
+	float[] samples;
+	h.listenDir = PI;
+	h.ktsStart = h.ktsEnd = 0.0f;
+	h.active = true;
+	samples.length = GLOBAL_SRATE * 4;
+	for (int i = 0; i < 4; i++)
+	{
+		prop.onPreKinematics();
+		prop.preUpdate(shaftRotFreq, spd);
+		prop.postUpdate(shaftRotFreq, spd, 1.0f);
+		h.resetAndStartIsotropic(q);
+		h.applySoundSource(q, prop);
+		h.flushSourceQueue();
+		h.endIsotropic();
+		h.finalizeListenTds(q);
+		q.s_tds.enqueueRead(q,
+			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
+	}
+	q.finish();
+	float maxp = samples.map!(a => a.abs).maxElement;
+	assert(!isNaN(maxp));
+	writeWavFile("std_hydrophone_vs_current.wav",
 		samples, 0.8f / maxp, GLOBAL_SRATE);
 }

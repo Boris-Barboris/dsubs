@@ -56,5 +56,3 @@ bool removeFirstUnstable(T)(ref T[] arr, T el)
 		}
 	return false;
 }
-
-//size_t removeAll()

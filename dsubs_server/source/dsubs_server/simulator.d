@@ -98,6 +98,9 @@ final class Simulator
 					profiler.start("torps.updateGuidances");
 					Globals.torps.updateGuidances(1000_000);
 					profiler.stopLast();
+					profiler.start("phys.collectDeadVessels");
+					Globals.phys.collectDeadVessels();
+					profiler.stopLast();
 					if (Globals.players)
 					{
 						// stream updates to players

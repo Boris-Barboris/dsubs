@@ -1,7 +1,7 @@
 module dsubs_server.torpedo;
 
 import std.array: array;
-import std.algorithm: map, max, min;
+import std.algorithm: map, max, min, remove, SwapStrategy, filter;
 import std.algorithm.searching: minElement;
 import std.algorithm.sorting: sort;
 
@@ -34,6 +34,7 @@ final class Torpedo: Vessel
 		Submarine m_shooter;
 		TorpedoGuidance m_guidance;
 		const TorpedoFactory m_factory;
+		bool m_detonated;
 	}
 
 	@property Submarine shooter() { return m_shooter; }
@@ -140,6 +141,7 @@ final class TorpedoGuidance
 		float m_detonationSearchRadius = 100.0f;
 		float m_detonationMassK = 3.5f;
 		float m_blastRadius = 50.0f;
+		PrerecordedSoundPrototype m_detonationSoundProto;
 	}
 
 	@property void fuelLeft(float rhs) { m_fuelLeft = rhs; }
@@ -180,21 +182,6 @@ final class TorpedoGuidance
 		{
 			m_activated = true;
 			m_snakeArmBeforeTurn += m_snakeArm;
-			// test big iron
-			try
-			{
-				PrerecordedSoundPrototype psProto = PrerecordedSoundPrototype(
-					Globals.sctx.getWavFile("../dsubs_sound/big_iron_8192.wav"),
-					50.0f, 110.0f);
-				PrerecordedSoundSource psSource = new PrerecordedSoundSource(
-					m_torpedo.transform, psProto, null);
-				Globals.acous.registerSource(psSource);
-			}
-			catch (Error er)
-			{
-				trace(er.toString());
-				throw er;
-			}
 		}
 		// assign course and throttle based on activation state
 		if (m_activated)
@@ -290,10 +277,15 @@ final class TorpedoGuidance
 
 	private void detonate(Vessel[] inKillRadius)
 	{
+		trace("Torpedo detonated!!!");
+		m_torpedo.m_detonated = true;
 		foreach (v; inKillRadius)
 			v.kill("Killed by " ~ m_torpedo.prototypeName ~ " torpedo");
 		m_torpedo.kill("detonation");
-		trace("Torpedo detonated!!!");
+		SoundSource detonationSoundSource = new PrerecordedSoundSource(
+			new Transform2D(m_torpedo.transform.wposition),
+			m_detonationSoundProto, null);
+		Globals.acous.registerSource(detonationSoundSource);
 	}
 
 	Event!(void delegate(ubyte[] image, int w, int h)) onSonarImageReady;
@@ -497,6 +489,10 @@ final class TorpedoCollection
 		foreach (Torpedo torp; Globals.taskPool.parallel(m_torpedoes, 4))
 			if (!torp.dead)
 				torp.guidance.update(dt);
+		// remove all detonated torpedoes
+		Torpedo[] detonatedTorps = m_torpedoes.filter!(t => t.m_detonated).array;
+		foreach (t; detonatedTorps)
+			t.shutdown();
 	}
 }
 
@@ -529,6 +525,7 @@ final class TorpedoFactory: VesselFactory
 	// guidance
 	float trackAngVelKi = 1.0f;
 	int pingIntervalSearch = 10;
+	PrerecordedSoundPrototype detonationSoundProto;
 
 	this(immutable WeaponTemplate t, PropulsorFactory pf)
 	{
@@ -583,6 +580,7 @@ final class TorpedoFactory: VesselFactory
 		res.guidance.m_spiralTargetRedPerRange = spiralTargetRedPerRange;
 		res.guidance.m_trackAngVelKi = trackAngVelKi;
 		res.guidance.m_pingIntervalSearch = pingIntervalSearch;
+		res.guidance.m_detonationSoundProto = cast() detonationSoundProto;
 		if (hprot)
 		{
 			Transform2D t = new Transform2D();
