@@ -186,19 +186,23 @@ final class TorpedoGuidance
 		// assign course and throttle based on activation state
 		if (m_activated)
 		{
-			// first we check if we should detonate
-			RigidBody[] inSearchRadius = Globals.phys.findRigidBodiesInCirlce(
-				m_torpedo.transform.wposition.to!vec2f,
-				m_detonationSearchRadius);
-			inSearchRadius.removeFirstUnstable(m_torpedo.rigidBody);
-			if (inSearchRadius.length > 0)
+			// first we check if we should detonate. We only detonate if tracking.
+			if (m_targetTracked)
 			{
-				if (detonateIfNeeded(inSearchRadius))
-					return;	// boom!
+				RigidBody[] inSearchRadius = Globals.phys.findRigidBodiesInCirlce(
+					m_torpedo.transform.wposition.to!vec2f,
+					m_detonationSearchRadius);
+				inSearchRadius.removeFirstUnstable(m_torpedo.rigidBody);
+				if (inSearchRadius.length > 0)
+				{
+					if (detonateIfNeeded(inSearchRadius))
+						return;	// boom!
+				}
 			}
-
-			if (!handleSensors(dt))
+			handleSensors(dt);
+			if (!m_targetTracked)
 			{
+				// no target is sight
 				m_trackAngVelAccumul = 0.0f;
 				m_torpedo.targetThrottle = m_activeThrottle;
 				final switch (m_searchPattern)
@@ -290,8 +294,8 @@ final class TorpedoGuidance
 
 	Event!(void delegate(ubyte[] image, int w, int h)) onSonarImageReady;
 
-	/// process sensor signals and, if homing, return true.
-	private bool handleSensors(usecs_t dt)
+	/// process sensor signals.
+	private void handleSensors(usecs_t dt)
 	{
 		switch (m_sensorMode)
 		{
@@ -346,7 +350,6 @@ final class TorpedoGuidance
 			default:
 				assert(0, "not implemented");
 		}
-		return m_targetTracked;
 	}
 
 	private

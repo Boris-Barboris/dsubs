@@ -75,6 +75,12 @@ struct SubmarineTemplate
 
 	/// Built-in active sonar
 	SonarTemplate sonar;
+
+	/// All ammo rooms.
+	AmmoRoomTemplate[] ammoRooms;
+
+	/// Both torpedo and decoy tubes.
+	TubeTemplate[] tubes;
 }
 
 /// Weapons need to be configured before launch. This is a set of available parameters.
@@ -179,10 +185,13 @@ struct WeaponTemplate
 
 struct WeaponSet
 {
-	int id;		/// submarine-unique id
-	/// set of weapon names that can be loaded into the tubes wich are bound
-	/// to this set.
 	string[] weaponNames;
+}
+
+struct WeaponCount
+{
+	string weaponName;
+	int count;
 }
 
 enum TubeType: ubyte
@@ -193,26 +202,24 @@ enum TubeType: ubyte
 
 /**
 Standard tube state evolution:
-	empty -> loading -> loaded -> flooding -> flooded -> opening ->
-		ready -> firing -> openEmpty -> closing -> flooded ->
-		drying -> empty.
+	dry -> loading -> dry -> flooding -> flooded -> opening ->
+		open -> firing -> open -> closing -> flooded ->
+		drying -> dry.
 Decoy tube:
-	empty -> loading -> ready -> firing -> empty.
+	dry -> loading -> open -> firing -> dry.
 */
 enum TubeState: ushort
 {
-	empty,
+	dry,
 	loading,	/// weapon is being loaded
 	unloading,	/// weapon is being unloaded
-	loaded,		/// weapon is loaded
 	flooding,
 	drying,
 	flooded,
 	opening,
 	closing,
-	ready,		/// ready to fire,
-	firing,
-	openEmpty	/// futureproof for wire-guided torps
+	open,		/// ready to fire, if loaded
+	firing
 }
 
 struct TubeTemplate
@@ -222,19 +229,18 @@ struct TubeTemplate
 	/// submarine-unique id of ammo room. Only weapons from this room can be loaded
 	/// into this tube.
 	int roomId;
-	/// submarine-unique id of allowed weapon set. There may be more restrictions
-	/// that are bound to the torpedo room.
-	int allowedWeaponSetId;
+	WeaponSet allowedWeaponSet;
+	TubeType type;
 	/// when true, you can select the ammunition that will be loaded
 	bool loadedOnSpawn;
-	/// Precise time it takes to open or close tube.
-	usecs_t openCloseTime;
-	/// Precise time the tube spends in firing state.
-	usecs_t firingTime;
-	/// Precise time the tube spends in flood/dry states.
-	usecs_t floodTime;
-	/// Estimate of time to load/unload the tube.
-	usecs_t loadTimeEstimate;
+}
+
+struct TubeFullState
+{
+	int tubeId;
+	string loadedWeapon;	/// empty string when the tube is empty
+	TubeState currentState;
+	TubeState desiredState;
 }
 
 /// Torpedo/decoy storage
@@ -243,10 +249,15 @@ struct AmmoRoomTemplate
 	int id;		/// submarine-unique id of the room
 	/// submarine-unique human-readable name of the room
 	string name;
-	/// id of a set of weapons that can be stored in this room
-	int allowedWeaponSetId;
+	WeaponSet allowedWeaponSet;
 	/// max number of weapons that can be stored in this room
 	int capacity;
+}
+
+struct AmmoRoomFullState
+{
+	int roomId;
+	WeaponCount storedWeapons;
 }
 
 /// Some rigid body kinematics at specific time
@@ -263,9 +274,9 @@ enum HydrophoneType: byte
 {
 	/// both broadband and narrowband data available, operator
 	/// can listen to raw signal in one direction.
-	STANDARD,
+	standard,
 	/// Only broadband data is present, no raw signal is streamed
-	BROADBANDONLY
+	broadbandonly
 }
 
 struct HydrophoneTemplate
