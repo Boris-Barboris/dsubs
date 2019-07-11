@@ -92,7 +92,7 @@ private:
 				"Seven-blade screw",
 				"Seven-blade screw with no outstanding traits, " ~
 				"but relatively good high-speed performance.\n\nMass: 50t",
-				PropulsorType.SCREW,
+				PropulsorType.screw,
 				7,
 				ConvexPolygon([
 					vec2f(1.1f, 0.6f),
@@ -151,7 +151,7 @@ private:
 			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
 				"Minoga screw",
 				null,
-				PropulsorType.SCREW,
+				PropulsorType.screw,
 				3,
 				ConvexPolygon.init
 			));

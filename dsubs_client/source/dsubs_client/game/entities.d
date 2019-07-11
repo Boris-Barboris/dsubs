@@ -141,7 +141,7 @@ final class PumpPropulsor: Propulsor
 private Propulsor createPropulsor(EntityManager man, string propName)
 {
 	auto tmpl = man.m_propTemplates[propName];
-	if (tmpl.type == PropulsorType.SCREW)
+	if (tmpl.type == PropulsorType.screw)
 		return new ScrewPropulsor(man, propName, tmpl.bladeCount);
 	else
 		return new PumpPropulsor(man, propName);

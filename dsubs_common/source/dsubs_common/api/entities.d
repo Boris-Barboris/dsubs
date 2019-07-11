@@ -24,8 +24,8 @@ struct ConvexPolygon
 
 enum PropulsorType: ubyte
 {
-	SCREW,
-	PUMP
+	screw,
+	pump
 }
 
 struct PropulsorTemplate
@@ -185,24 +185,63 @@ struct WeaponSet
 	string[] weaponNames;
 }
 
-/// Torpedo tube
-struct TorpedoTubeTemplate
+enum TubeType: ubyte
+{
+	standard,		/// standard tube for most types of torpedoes.
+	decoy			/// simplified state machine for decoys
+}
+
+/**
+Standard tube state evolution:
+	empty -> loading -> loaded -> flooding -> flooded -> opening ->
+		ready -> firing -> openEmpty -> closing -> flooded ->
+		drying -> empty.
+Decoy tube:
+	empty -> loading -> ready -> firing -> empty.
+*/
+enum TubeState: ushort
+{
+	empty,
+	loading,	/// weapon is being loaded
+	unloading,	/// weapon is being unloaded
+	loaded,		/// weapon is loaded
+	flooding,
+	drying,
+	flooded,
+	opening,
+	closing,
+	ready,		/// ready to fire,
+	firing,
+	openEmpty	/// futureproof for wire-guided torps
+}
+
+struct TubeTemplate
 {
 	int id; 	/// submarine-unique id of the tube
 	MountPoint mount;
-	/// submarine-unique id of torpedo room. Only weapons from this room can be loaded
+	/// submarine-unique id of ammo room. Only weapons from this room can be loaded
 	/// into this tube.
 	int roomId;
 	/// submarine-unique id of allowed weapon set. There may be more restrictions
 	/// that are bound to the torpedo room.
 	int allowedWeaponSetId;
+	/// when true, you can select the ammunition that will be loaded
+	bool loadedOnSpawn;
+	/// Precise time it takes to open or close tube.
+	usecs_t openCloseTime;
+	/// Precise time the tube spends in firing state.
+	usecs_t firingTime;
+	/// Precise time the tube spends in flood/dry states.
+	usecs_t floodTime;
+	/// Estimate of time to load/unload the tube.
+	usecs_t loadTimeEstimate;
 }
 
-/// Torpedo storage
-struct TorpedoRoomTemplate
+/// Torpedo/decoy storage
+struct AmmoRoomTemplate
 {
-	int id;			/// submarine-unique id of the room
-	/// human-readable name of the room
+	int id;		/// submarine-unique id of the room
+	/// submarine-unique human-readable name of the room
 	string name;
 	/// id of a set of weapons that can be stored in this room
 	int allowedWeaponSetId;
