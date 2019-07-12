@@ -77,9 +77,8 @@ struct SpawnReq
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
 	@MaxLenAttr(16) AmmoRoomFullState[] ammoRoomLoadouts;
-	/// Only the tubes with 'loadedOnSpawn'=true must be here.
-	/// 'state' field is ignored.
-	@MaxLenAttr(16) TubeFullState[] loadableTubeLoadouts;
+	/// Only the tubes with 'loadedOnSpawn'=true must be specified here.
+	@MaxLenAttr(16) TubeSpawnState[] loadableTubeLoadouts;
 }
 
 /// If spawn was allowed (spawnAllowed == true), this message will be followed by
@@ -209,8 +208,8 @@ struct SetTubeStateReq
 	__gshared const int g_marshIdx;
 	int tubeId;
 	/// Server will walk through the state machine until the tube reaches
-	/// desired state. Cannot be 'firing'.
-	TubeState desiredState;
+	/// desired state.
+	TubeStableState desiredState;
 }
 
 /// Client requests to launch the weapon in the tube.
@@ -223,10 +222,16 @@ struct LaunchTubeReq
 	@MaxLenAttr(32) WeaponParamValue[] weaponParams;
 }
 
-/// Server reports weapon subsystem state changes.
-struct TubeAndAmmoStateUpdateRes
+/// Server reports tube state change.
+struct TubeStateUpdateRes
 {
 	__gshared const int g_marshIdx;
-	TubeFullState[] tubeUpdates;		/// tubes that have changed
-	AmmoRoomFullState[] roomUpdates;	/// rooms that have changed
+	TubeFullState tube;
+}
+
+/// Server reports ammo room state change.
+struct AmmoRoomStateUpdateRes
+{
+	__gshared const int g_marshIdx;
+	AmmoRoomFullState room;
 }

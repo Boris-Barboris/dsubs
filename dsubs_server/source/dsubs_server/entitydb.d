@@ -292,7 +292,7 @@ Active sonar:
 				1,
 				[
 					HydrophoneTemplate(
-						"bow", HydrophoneType.STANDARD,
+						"bow", HydrophoneType.standard,
 						MountPoint(vec2f(0.0f, 31.0f)),
 						dgr2rad(210), [0.0f]
 					)

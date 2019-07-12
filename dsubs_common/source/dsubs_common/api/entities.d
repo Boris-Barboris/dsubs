@@ -210,16 +210,24 @@ Decoy tube:
 */
 enum TubeState: ushort
 {
-	dry,
+	dry = 0,
+	flooded = 1,
+	open = 2,
 	loading,	/// weapon is being loaded
 	unloading,	/// weapon is being unloaded
 	flooding,
 	drying,
-	flooded,
 	opening,
 	closing,
-	open,		/// ready to fire, if loaded
 	firing
+}
+
+/// Stable states that are not associated with a process.
+enum TubeStableState: ushort
+{
+	dry = 0,
+	flooded = 1,
+	open = 2
 }
 
 struct TubeTemplate
@@ -235,10 +243,17 @@ struct TubeTemplate
 	bool loadedOnSpawn;
 }
 
-struct TubeFullState
+struct TubeSpawnState
 {
 	int tubeId;
 	string loadedWeapon;	/// empty string when the tube is empty
+}
+
+struct TubeFullState
+{
+	int tubeId;
+	string loadedWeapon;
+	string desiredWeapon;
 	TubeState currentState;
 	TubeState desiredState;
 }
@@ -257,7 +272,7 @@ struct AmmoRoomTemplate
 struct AmmoRoomFullState
 {
 	int roomId;
-	WeaponCount storedWeapons;
+	WeaponCount[] storedWeapons;
 }
 
 /// Some rigid body kinematics at specific time
