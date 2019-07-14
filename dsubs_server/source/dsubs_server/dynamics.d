@@ -147,8 +147,8 @@ final class RigidBody: PhysicalEntity
 	/// update kinematics position and rotation from this body's transform
 	void updateFromTransform()
 	{
-		kinet.pos = transform.position;
-		kinet.rotation = transform.rotation;
+		kinet.pos = transform.wposition;
+		kinet.rotation = transform.wrotation;
 		kinet.updateCache();
 		//trace(kinet);
 	}
