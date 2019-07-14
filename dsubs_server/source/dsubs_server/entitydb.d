@@ -23,6 +23,7 @@ import dsubs_server.dynamics;
 import dsubs_server.player: Player;
 public import dsubs_server.submarine;
 public import dsubs_server.torpedo;
+public import dsubs_server.weaponry;
 
 
 
@@ -69,7 +70,7 @@ final class EntityDb
 		PropulsorFactory* pp = req.propulsorName in m_propulsors;
 		enforce(pp !is null, "Unknown propulsor");
 		Propulsor prop = pp.build();
-		Submarine sub = sp.build(p, prop);
+		Submarine sub = sp.build(p, prop, req.ammoRoomLoadouts, req.loadableTubeLoadouts);
 		trace("built new submarine from request ", req);
 		return sub;
 	}
@@ -130,7 +131,7 @@ private:
 
 		// Minoga torpedo
 		pd.type = WeaponParamType.marchSpeed;
-		pd.speedRange = MinMax(20, 29);
+		pd.speedRange = MinMax(21, 29);
 		pdescs ~= pd;
 		pd.type = WeaponParamType.activeSpeed;
 		pdescs ~= pd;
@@ -248,16 +249,31 @@ private:
 	{
 		SubmarineFactory sp;
 
+		// Stork
 		ActiveSonarPrototype asp = ActiveSonarPrototype();
+		AmmoRoomPrototype[int] roomProtos;
+		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 20,
+			["Minoga": true]);
+		TubePrototype bowProtoTemplate = TubePrototype(TubeTemplate(0,
+			MountPoint(vec2f(-4.5, 28.5), dgr2rad(20)),
+			0, TubeType.standard, false),
+			cast(usecs_t)10e6, cast(usecs_t)6e6, cast(usecs_t)3e6, cast(usecs_t)3e6);
+		TubePrototype[int] tubeProtos;
+		tubeProtos[0] = bowProtoTemplate;
+		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(4.5, 28.5), -dgr2rad(20));
+		bowProtoTemplate.tmpl.id = 1;
+		tubeProtos[1] = bowProtoTemplate;
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Stork",
-`Light attack submarine "Stork" offers good balance of stealth, ` ~
-`offensive capabilities and survivability.
+`Light attack submarine "Stork" offers good balance of stealth,
+offensive capabilities and survivability.
 
 Length: 70m
 Displacement: 1600t
 Top speed: 17m/s
+Armament:
+  2x bow torpedo tubes.
 Hydrophones:
   Bow: passive spherical array, 210 deg FoV
 Active sonar:
@@ -299,8 +315,12 @@ Active sonar:
 				],
 				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
-					asp.getSliceXResol(), asp.radialRes, asp.maxSec)
+					asp.getSliceXResol(), asp.radialRes, asp.maxSec),
+				roomProtos.byValue.map!(p => p.toTemplate()).array,
+				tubeProtos.byValue.map!(p => p.tmpl).array
 			));
+		sp.roomProtos = roomProtos;
+		sp.tubeProtos = tubeProtos;
 		sp.mass = RolledF(1700.0f, 10.0f);
 		sp.Cd0 = RolledF(5.0, 0.1f);
 		sp.Cd1 = RolledF(5.6, 0.07f);
@@ -318,7 +338,7 @@ Active sonar:
 			210, 2 / 90.0f, 3.0f)
 		];
 		sp.asprot = asp;
-		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-25.0f, -19.0f, -10.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-22.0f, -19.0f, -10.0f]);
 		m_submarines[sp.tmpl.name] = sp;
 	}
 

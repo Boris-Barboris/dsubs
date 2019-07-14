@@ -276,6 +276,15 @@ struct AmmoRoomFullState
 {
 	int roomId;
 	WeaponCount[] storedWeapons;
+
+	int[string] toWeaponCountDict() const
+	{
+		int[string] res;
+		foreach (wc; storedWeapons)
+			res.update(wc.weaponName, { return wc.count; },
+				(ref int count) { return count + wc.count; });
+		return res;
+	}
 }
 
 /// Some rigid body kinematics at specific time

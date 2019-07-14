@@ -8,6 +8,7 @@ import dsubs_sound.hydrophone;
 
 import dsubs_server.common;
 import dsubs_server.vessel;
+import dsubs_server.weaponry;
 import dsubs_server.propulsion: Propulsor;
 import dsubs_server.player: Player;
 
@@ -21,6 +22,8 @@ final class Submarine: Vessel
 		ActiveSonar m_sonar;
 		Player m_owner;
 		int m_spawnId;
+		Tube[int] m_tubes;
+		AmmoRoom[int] m_rooms;
 	}
 
 	@property int spawnId() const { return m_spawnId; }
@@ -34,6 +37,9 @@ final class Submarine: Vessel
 		m_owner = owner;
 		m_spawnId = uniform(0, int.max);
 	}
+
+	Tube getTube(int id) { return m_tubes[id]; }
+	AmmoRoom getAmmoRoom(int id) { return m_rooms[id]; }
 
 	override void register()
 	{
@@ -79,6 +85,8 @@ final class SubmarineFactory: VesselFactory
 	immutable SubmarineTemplate tmpl;
 	HydrophonePrototype[] hprots;
 	ActiveSonarPrototype asprot;
+	AmmoRoomPrototype[int] roomProtos;
+	TubePrototype[int] tubeProtos;
 
 	this(immutable SubmarineTemplate t)
 	{
@@ -123,12 +131,44 @@ final class SubmarineFactory: VesselFactory
 				res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;
 			};
 		}
+		// tubes
+		foreach (Tube tube; res.m_tubes.byValue)
+		{
+			res.onPreKinematics += &tube.onPreKinematics;
+			res.onPostKinematics += &tube.onPostKinematics;
+		}
 	}
 
-	Submarine build(Player p, Propulsor prop) const
+	// untrusted roomStates and tubeStates input
+	Submarine build(Player p, Propulsor prop,
+		const(AmmoRoomFullState)[] roomStates, const(TubeSpawnState)[] tubeStates) const
 	{
 		Submarine res = new Submarine(p, tmpl.name);
 		res.propulsor = prop;
+		AmmoRoomFullState[int] specifiedRoomStates;
+		foreach (rs; roomStates)
+			specifiedRoomStates[rs.roomId] = cast() rs;
+		foreach (roomProtoTuple; roomProtos.byKeyValue)
+		{
+			int roomId = roomProtoTuple.key;
+			const AmmoRoomPrototype roomProto = roomProtoTuple.value;
+			assert(roomId == roomProto.id);
+			const(AmmoRoomFullState)* specifiedState = roomId in specifiedRoomStates;
+			res.m_rooms[roomId] = new AmmoRoom(res, roomProto,
+				specifiedState ? specifiedState.storedWeapons : []);
+		}
+		TubeSpawnState[int] specifiedTubeStates;
+		foreach (ts; tubeStates)
+			specifiedTubeStates[ts.tubeId] = cast() ts;
+		foreach (tubeProtoTuple; tubeProtos.byKeyValue)
+		{
+			int tubeId = tubeProtoTuple.key;
+			const TubePrototype tubeProto = tubeProtoTuple.value;
+			assert(tubeId == tubeProto.tmpl.id);
+			const(TubeSpawnState)* specifiedState = tubeId in specifiedTubeStates;
+			res.m_tubes[tubeId] = new Tube(res, res.m_rooms[tubeProto.tmpl.roomId],
+				tubeProto, specifiedState ? specifiedState.loadedWeapon : null);
+		}
 		bootstrap(res);
 		return res;
 	}

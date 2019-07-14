@@ -56,7 +56,7 @@ unittest
 	pv.course = dgr2rad(-45.0f);
 	pvs ~= pv;
 	pv.type = WeaponParamType.marchSpeed;
-	pv.speed = 20.0f;
+	pv.speed = 21.0f;
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
 	pv.range = 5000.0f;
@@ -66,7 +66,7 @@ unittest
 	t.guidance.fuelLeft = 20.0f;
 	t.transform.rotation = dgr2rad(-45.0f);
 	t.register();
-	File* file = writeRbodyCsvHeader("guidance", "minoga_endurance", "minoga20mps");
+	File* file = writeRbodyCsvHeader("guidance", "minoga_endurance", "minoga21mps");
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
 
 	// fast torp
@@ -121,6 +121,7 @@ unittest
 	Torpedo t = tf.build(null, pvs);
 	t.register();
 	int imageCounter;
+	cleanFolderForSonarImages("guidance", "minoga_snake");
 	t.guidance.onSonarImageReady += (img, w, h) {
 		writeSonarImage("guidance", "minoga_snake", "minoga", img, w, h, imageCounter);
 		imageCounter++;
@@ -181,6 +182,7 @@ unittest
 	Torpedo t = tf.build(null, pvs);
 	t.register();
 	int imageCounter;
+	cleanFolderForSonarImages("guidance", "minoga_headon");
 	t.guidance.onSonarImageReady += (img, w, h) {
 		writeSonarImage("guidance", "minoga_headon", "minoga", img, w, h, imageCounter);
 		imageCounter++;
@@ -200,7 +202,7 @@ unittest
 
 	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_headon", "minoga");
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
-	Globals.sim.worldTimeLimit = 200 * cast(ulong)1e6;
+	Globals.sim.worldTimeLimit = 180 * cast(ulong)1e6;
 
 	double minDist = double.max;
 	Globals.sim.onSimulationPassStart += (now) {
@@ -211,7 +213,7 @@ unittest
 	Globals.sim.join();
 	Globals.resetForTests();
 
-	trace("minoga was ", minDist, " meters away from stork in minoga_snake test");
+	trace("minoga was ", minDist, " meters away from stork in minoga_headon test");
 	assert(s.dead);
 }
 
@@ -232,10 +234,10 @@ unittest
 	pv.range = 400.0f;
 	pvs ~= pv;
 	pv.type = WeaponParamType.activeSpeed;
-	pv.speed = 20.0f;
+	pv.speed = 21.0f;
 	pvs ~= pv;
 	pv.type = WeaponParamType.marchSpeed;
-	pv.speed = 20.0f;
+	pv.speed = 21.0f;
 	pvs ~= pv;
 	pv.type = WeaponParamType.searchPattern;
 	pv.searchPattern = WeaponSearchPattern.straight;
@@ -244,6 +246,7 @@ unittest
 	Torpedo t = tf.build(null, pvs);
 	t.register();
 	int imageCounter;
+	cleanFolderForSonarImages("guidance", "minoga_straight");
 	t.guidance.onSonarImageReady += (img, w, h) {
 		writeSonarImage("guidance", "minoga_straight", "minoga", img, w, h, imageCounter);
 		imageCounter++;

@@ -1,7 +1,7 @@
 module dsubs_server.tests.common;
 
 import std.stdio;
-import std.file: mkdirRecurse;
+import std.file;
 
 import imageformats: write_image, ColFmt;
 
@@ -37,6 +37,16 @@ auto captureVesselRbCsv(File* f, Vessel s, usecs_t shutdownOn = -1)
 		if (worldTime == shutdownOn)
 			s.shutdown();
 	};
+}
+
+void cleanFolderForSonarImages(string testGroup, string testName)
+{
+	string dirName = "test_data/" ~ testGroup ~ "/" ~ testName ~ "_images";
+	try
+	{
+		rmdirRecurse(dirName);
+	}
+	catch (Exception fileEx) {}
 }
 
 void writeSonarImage(string testGroup, string testName, string entityName,

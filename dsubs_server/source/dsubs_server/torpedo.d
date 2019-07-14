@@ -186,8 +186,7 @@ final class TorpedoGuidance
 		// assign course and throttle based on activation state
 		if (m_activated)
 		{
-			// first we check if we should detonate. We only detonate if tracking.
-			if (m_targetTracked)
+			// first we check if we should detonate.
 			{
 				RigidBody[] inSearchRadius = Globals.phys.findRigidBodiesInCirlce(
 					m_torpedo.transform.wposition.to!vec2f,
@@ -465,6 +464,8 @@ final class TorpedoCollection
 	{
 		Torpedo[] m_torpedoes;
 	}
+
+	@property Torpedo[] torpedoes() { return m_torpedoes; }
 
 	void registerEntity(Torpedo e)
 	{

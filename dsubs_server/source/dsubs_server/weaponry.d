@@ -32,7 +32,7 @@ struct AmmoRoomPrototype
 final class AmmoRoom
 {
 	// untrusted 'loadout' input
-	this(Submarine owner, AmmoRoomPrototype proto, WeaponCount[] loadout)
+	this(Submarine owner, const AmmoRoomPrototype proto, const(WeaponCount)[] loadout)
 	{
 		m_sub = owner;
 		m_proto = proto;
@@ -54,12 +54,20 @@ final class AmmoRoom
 	private
 	{
 		Submarine m_sub;
-		AmmoRoomPrototype m_proto;
+		const AmmoRoomPrototype m_proto;
 		int[string] m_storedWeapons;
 	}
 
 	@property int id() const { return m_proto.id; }
 	@property Submarine submarine() { return m_sub; }
+
+	int getWeaponCount(string weaponName)
+	{
+		int* res = weaponName in m_storedWeapons;
+		if (res)
+			return *res;
+		return 0;
+	}
 
 	// trusted input
 	void putWeapon(string weaponName)
@@ -110,7 +118,7 @@ struct TubeOperationResult
 final class Tube
 {
 	// untrusted 'initialWeapon' input
-	this(Submarine owner, AmmoRoom room, TubePrototype proto, string initialWeapon)
+	this(Submarine owner, AmmoRoom room, const TubePrototype proto, string initialWeapon)
 	{
 		m_sub = owner;
 		m_proto = proto;
@@ -131,9 +139,10 @@ final class Tube
 		Transform2D m_transform;
 		Submarine m_sub;
 		AmmoRoom m_room;
-		TubePrototype m_proto;
+		const TubePrototype m_proto;
 		string m_loadedWeapon;
 		string m_desiredWeapon;
+		float m_pushSpeed = 10.0f;
 		usecs_t m_transitionTimeCounter;
 
 		TubeState m_state = TubeState.dry;
@@ -146,6 +155,14 @@ final class Tube
 	@property Submarine submarine() { return m_sub; }
 	@property Transform2D transform() { return m_transform; }
 	@property AmmoRoom room() { return m_room; }
+	@property TubeState state() const { return m_state; }
+	@property TubeState desiredState() const { return m_desiredState; }
+	@property string loadedWeapon() const { return m_loadedWeapon; }
+	@property string desiredWeapon() const { return m_desiredWeapon; }
+	@property TubeOperationResult lastSimUpdateResult() const
+	{
+		return m_lastSimUpdateResults;
+	}
 
 	TubeOperationResult processLoadRequest(string newWeaponName)
 	{
@@ -176,6 +193,7 @@ final class Tube
 				// try to start loading new weapon
 				if (m_room.removeWeapon(newWeaponName))
 				{
+					m_state = TubeState.loading;
 					m_loadedWeapon = newWeaponName;
 					m_desiredWeapon = newWeaponName;
 					return TubeOperationResult(true, true);
@@ -248,6 +266,10 @@ final class Tube
 		Torpedo t = tf.build(m_sub, weaponParams);
 		t.transform.position = m_transform.wposition;
 		t.transform.rotation = m_transform.wrotation;
+		t.rigidBody.kinet.vel = m_sub.rigidBody.kinet.vel +
+			m_pushSpeed * t.transform.wforward;
+		t.rigidBody.kinet.angVel = m_sub.rigidBody.kinet.angVel;
+		t.register();
 		m_desiredWeapon = m_loadedWeapon = null;
 		m_state = TubeState.firing;
 		return TubeOperationResult(true, false);
