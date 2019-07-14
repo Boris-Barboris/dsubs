@@ -1,6 +1,7 @@
 module dsubs_server.vessel;
 
 import dsubs_common.api.entities;
+import dsubs_common.event;
 import dsubs_common.math;
 import dsubs_common.containers.array: removeFirstUnstable;
 
@@ -55,6 +56,9 @@ class Vessel
 		m_rigidBody = new RigidBody(m_transform);
 		m_rigidBody.vesselOwner = this;
 	}
+
+	Event!(void delegate()) onPreKinematics;
+	Event!(void delegate(usecs_t dt)) onPostKinematics;
 
 	private double calcMoi() const
 	{
@@ -139,6 +143,31 @@ final class VesselCollection
 		{
 			m_entities.removeFirstUnstable(e);
 		}
+	}
+
+	void preKinematics()
+	{
+		foreach (vessel; Globals.taskPool.parallel(m_entities, 8))
+			vessel.onPreKinematics();
+	}
+
+	void postKinematics(usecs_t dt)
+	{
+		foreach (vessel; Globals.taskPool.parallel(m_entities, 8))
+			vessel.onPostKinematics(dt);
+	}
+
+	void collectDeadVessels()
+	{
+		Vessel[] deadVessels;
+		usecs_t reapAge = uniform(240, 360) * 1000_000;
+		foreach (vessel; m_entities)
+		{
+			if (vessel.dead && vessel.deathTime < Globals.sim.worldTime - reapAge)
+				deadVessels ~= vessel;
+		}
+		foreach (v; deadVessels)
+			v.shutdown();
 	}
 
 	/// shutdown all elements of the collection and clear the container

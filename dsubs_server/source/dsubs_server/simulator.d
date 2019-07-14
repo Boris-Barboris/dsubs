@@ -75,6 +75,9 @@ final class Simulator
 				{
 					onSimulationPassStart(m_worldTime);
 					profiler.start();
+					profiler.start("vessels.preKinematics");
+					Globals.vessels.preKinematics();
+					profiler.stopLast();
 					profiler.start("acous.preKinematics");
 					Globals.acous.preKinematics();
 					profiler.stopLast();
@@ -82,6 +85,7 @@ final class Simulator
 					profiler.start("phys.integratePBodies");
 					Globals.phys.integratePBodies(1.0f, 0.25f);
 					profiler.stopLast();
+					m_worldTime += 1000_000;
 					profiler.start("acous.postKinematics");
 					Globals.acous.postKinematics(1.0f);
 					profiler.stopLast();
@@ -94,12 +98,14 @@ final class Simulator
 					profiler.start("acous.postAcousticsUpdate");
 					Globals.acous.postAcousticsUpdate();
 					profiler.stopLast();
-					m_worldTime += 1000_000;
 					profiler.start("torps.updateGuidances");
 					Globals.torps.updateGuidances(1000_000);
 					profiler.stopLast();
-					profiler.start("phys.collectDeadVessels");
-					Globals.phys.collectDeadVessels();
+					profiler.start("vessels.postKinematics");
+					Globals.vessels.postKinematics(1000_000);
+					profiler.stopLast();
+					profiler.start("vessels.collectDeadVessels");
+					Globals.vessels.collectDeadVessels();
 					profiler.stopLast();
 					if (Globals.players)
 					{

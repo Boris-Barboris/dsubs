@@ -285,21 +285,6 @@ final class PhysicalEnv
 		}
 	}
 
-	void collectDeadVessels()
-	{
-		Vessel[] deadVessels;
-		usecs_t reapAge = uniform(240, 360) * 1000_000;
-		foreach (entity; m_entities)
-		{
-			RigidBody rb = cast(RigidBody) entity;
-			if (rb && rb.vesselOwner.dead &&
-				rb.vesselOwner.deathTime < Globals.sim.worldTime - reapAge)
-				deadVessels ~= rb.vesselOwner;
-		}
-		foreach (v; deadVessels)
-			v.shutdown();
-	}
-
 	RigidBody[] findRigidBodiesInCirlce(vec2f center, float searchRadius) const
 	{
 		QuadTree!(RigidBody).LeafNode*[] leafs;

@@ -210,9 +210,11 @@ Decoy tube:
 */
 enum TubeState: ushort
 {
+	// stable states
 	dry = 0,
 	flooded = 1,
 	open = 2,
+	// following states are unstable transition states
 	loading,	/// weapon is being loaded
 	unloading,	/// weapon is being unloaded
 	flooding,
@@ -222,12 +224,14 @@ enum TubeState: ushort
 	firing
 }
 
-/// Stable states that are not associated with a process.
-enum TubeStableState: ushort
+bool isStableState(TubeState s)
 {
-	dry = 0,
-	flooded = 1,
-	open = 2
+	return s <= TubeState.open;
+}
+
+bool isTransientState(TubeState s)
+{
+	return s > TubeState.open;
 }
 
 struct TubeTemplate
@@ -237,7 +241,6 @@ struct TubeTemplate
 	/// submarine-unique id of ammo room. Only weapons from this room can be loaded
 	/// into this tube.
 	int roomId;
-	WeaponSet allowedWeaponSet;
 	TubeType type;
 	/// when true, you can select the ammunition that will be loaded
 	bool loadedOnSpawn;

@@ -189,7 +189,7 @@ struct DeathRes
 	string longReport;
 }
 
-/// Client requests to load 'weaponName' into the tube.
+/// Client requests to change desired loaded weapon.
 /// If the tube is in incorrect state, message is ignored.
 /// To unload the weapon from the tube completely, set
 /// 'weaponName' to empty string.
@@ -208,13 +208,12 @@ struct SetTubeStateReq
 	__gshared const int g_marshIdx;
 	int tubeId;
 	/// Server will walk through the state machine until the tube reaches
-	/// desired state.
-	TubeStableState desiredState;
+	/// desired state. Only one of 3 stable states can be specified here.
+	TubeState desiredState;
 }
 
 /// Client requests to launch the weapon in the tube.
-/// Weapon parameters MUST be correct, or the server
-/// drops the connection.
+/// Weapon parameters MUST be correct.
 struct LaunchTubeReq
 {
 	__gshared const int g_marshIdx;
