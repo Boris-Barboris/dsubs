@@ -21,6 +21,7 @@ import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.dynamics;
 import dsubs_server.propulsion;
+import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 
 
@@ -159,9 +160,9 @@ final class TorpedoGuidance
 	{
 		// dumbfire snapshot in straight direction
 		if (isNaN(m_marchCourse))
-			m_marchCourse = m_torpedo.rigidBody.kinet.rotation;
+			m_marchCourse = m_torpedo.transform.wrotation;
 		if (isNaN(m_activeCourse))
-			m_activeCourse = m_torpedo.rigidBody.kinet.rotation;
+			m_activeCourse = m_marchCourse;
 	}
 
 	void update(usecs_t dt)

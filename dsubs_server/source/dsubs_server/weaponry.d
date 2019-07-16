@@ -12,6 +12,24 @@ import dsubs_server.torpedo;
 import dsubs_server.submarine;
 
 
+interface IGuidance
+{
+	void update(usecs_t dt);
+}
+
+
+abstract class Launchable: Vessel
+{
+	private
+	{
+		Submarine m_shooter;
+		IGuidance m_guidance;
+		const TorpedoFactory m_factory;
+		bool m_detonated;
+	}
+}
+
+
 struct AmmoRoomPrototype
 {
 	int id;
