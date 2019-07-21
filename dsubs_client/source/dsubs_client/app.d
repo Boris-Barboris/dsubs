@@ -31,17 +31,14 @@ void main(string[] argv)
 	loadGlobalFonts();
 	// runModuleTests();
 	// testGuiElements();
-	scope(failure) exit(1);
-	scope(failure) unloadAudioLib();
+	scope(exit) unloadAudioLib();
 	try
 	{
 		Game.start();
-		unloadAudioLib();
 	}
 	catch (Throwable t)
 	{
 		error(t.toString);
 		throw t;
 	}
-	exit(0);	// workaround for openal that segfaults
 }

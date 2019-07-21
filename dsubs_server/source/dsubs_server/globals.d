@@ -9,7 +9,7 @@ import dsubs_server.player: PlayerCollection;
 import dsubs_server.dynamics: PhysicalEnv;
 import dsubs_server.acoustics;
 import dsubs_server.vessel: VesselCollection;
-import dsubs_server.torpedo: TorpedoCollection;
+import dsubs_server.torpedo: LaunchableCollection;
 import dsubs_server.entitydb: EntityDb;
 import dsubs_server.simulator: Simulator;
 import dsubs_server.connections.listener: ConListener;
@@ -38,8 +38,8 @@ __gshared:
 	AcousticEnv acous;
 	/// Active vessels
 	VesselCollection vessels;
-	/// Active torpedoes
-	TorpedoCollection torps;
+	/// Active launchables
+	LaunchableCollection launchables;
 	/// Simulator
 	Simulator sim;
 	/// OpenCL context
@@ -53,7 +53,7 @@ __gshared:
 		entityDb = new EntityDb();
 		players = new PlayerCollection();
 		vessels = new VesselCollection();
-		torps = new TorpedoCollection();
+		launchables = new LaunchableCollection();
 		cons = new ConListener();
 		phys = new PhysicalEnv();
 		acous = new AcousticEnv();
@@ -70,7 +70,7 @@ __gshared:
 		if (entityDb is null)
 			entityDb = new EntityDb();
 		vessels = new VesselCollection();
-		torps = new TorpedoCollection();
+		launchables = new LaunchableCollection();
 		phys = new PhysicalEnv();
 		acous = new AcousticEnv();
 		sim = new Simulator();
@@ -93,7 +93,7 @@ __gshared:
 	static void cleanCollectionsForTests()
 	{
 		vessels.clean();
-		torps.clean();
+		launchables.clean();
 		acous.clean();
 		phys.clean();
 	}

@@ -98,8 +98,8 @@ final class Simulator
 					profiler.start("acous.postAcousticsUpdate");
 					Globals.acous.postAcousticsUpdate();
 					profiler.stopLast();
-					profiler.start("torps.updateGuidances");
-					Globals.torps.updateGuidances(1000_000);
+					profiler.start("launchables.updateGuidances");
+					Globals.launchables.updateGuidances(1000_000);
 					profiler.stopLast();
 					profiler.start("vessels.postKinematics");
 					Globals.vessels.postKinematics(1000_000);

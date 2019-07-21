@@ -25,40 +25,79 @@ import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 
 
+
+
+interface IGuidance
+{
+	void update(usecs_t dt);
+
+	void setUnassignedParams();
+}
+
+
+abstract class Launchable: Vessel
+{
+	protected
+	{
+		Submarine m_shooter;
+		IGuidance m_guidance;
+	}
+
+	final @property Submarine shooter() { return m_shooter; }
+	@property IGuidance guidance() { return m_guidance; }
+
+	// all detonated launchables will be unregistered by launchables
+	// component during updateGuidances().
+	@property bool detonated() const;
+
+	this(Submarine shooter, string templateName)
+	{
+		super(templateName);
+		m_shooter = shooter;
+	}
+
+	override void register()
+	{
+		super.register();
+		targetThrottle = 1.0f;	// by-default torps spawn with max throttle
+		Globals.launchables.registerEntity(this);
+		m_guidance.setUnassignedParams();
+	}
+
+	override void shutdown()
+	{
+		super.shutdown();
+		Globals.launchables.unregisterEntity(this);
+	}
+}
+
+
+
 /// Server-side torpedo model
-final class Torpedo: Vessel
+final class Torpedo: Launchable
 {
 	private
 	{
 		Hydrophone m_hydrophone;
 		ActiveSonar m_sonar;
-		Submarine m_shooter;
-		TorpedoGuidance m_guidance;
-		const TorpedoFactory m_factory;
 		bool m_detonated;
 	}
 
-	@property Submarine shooter() { return m_shooter; }
 	@property inout(Hydrophone) hydrophone() inout { return m_hydrophone; }
 	@property ActiveSonar sonar() { return m_sonar; }
-	@property TorpedoGuidance guidance() { return m_guidance; }
-	@property const(TorpedoFactory) factory() const { return m_factory; }
+	override @property TorpedoGuidance guidance() { return cast(TorpedoGuidance) m_guidance; }
+	override @property bool detonated() const { return m_detonated; }
 
-	this(Submarine shooter, const TorpedoFactory fact)
+	this(Submarine shooter, string templateName)
 	{
-		super(fact.templateName);
-		m_factory = fact;
-		m_shooter = shooter;
+		super(shooter, templateName);
 		m_guidance = new TorpedoGuidance(this);
 	}
 
 	override void register()
 	{
 		super.register();
-		Globals.torps.registerEntity(this);
-		targetThrottle = 1.0f;	// by-default torps spawn with max throttle
-		m_guidance.m_lastPos = transform.position;
-		m_guidance.setUnassignedParams();
+		guidance.m_lastPos = transform.position;
 		if (m_hydrophone)
 		{
 			m_hydrophone.active = true;
@@ -74,7 +113,6 @@ final class Torpedo: Vessel
 	override void shutdown()
 	{
 		super.shutdown();
-		Globals.torps.unregisterEntity(this);
 		if (m_hydrophone)
 		{
 			Globals.acous.unregisterHydrophone(m_hydrophone);
@@ -103,7 +141,7 @@ final class Torpedo: Vessel
 
 
 /// Torpedo guidance, detonation and fuel controller
-final class TorpedoGuidance
+final class TorpedoGuidance: IGuidance
 {
 	private
 	{
@@ -459,44 +497,44 @@ final class TorpedoGuidance
 }
 
 
-final class TorpedoCollection
+final class LaunchableCollection
 {
 	private
 	{
-		Torpedo[] m_torpedoes;
+		Launchable[] m_entities;
 	}
 
-	@property Torpedo[] torpedoes() { return m_torpedoes; }
+	@property Launchable[] entities() { return m_entities; }
 
-	void registerEntity(Torpedo e)
+	void registerEntity(Launchable e)
 	{
 		synchronized(this)
 		{
-			m_torpedoes ~= e;
+			m_entities ~= e;
 		}
 	}
 
-	void unregisterEntity(Torpedo e)
+	void unregisterEntity(Launchable e)
 	{
 		synchronized(this)
 		{
-			m_torpedoes.removeFirstUnstable(e);
+			m_entities.removeFirstUnstable(e);
 		}
 	}
 
 	void clean()
 	{
-		m_torpedoes.length = 0;
+		m_entities.length = 0;
 	}
 
 	void updateGuidances(usecs_t dt)
 	{
-		foreach (Torpedo torp; Globals.taskPool.parallel(m_torpedoes, 4))
+		foreach (Launchable torp; Globals.taskPool.parallel(m_entities, 4))
 			if (!torp.dead)
 				torp.guidance.update(dt);
 		// remove all detonated torpedoes
-		Torpedo[] detonatedTorps = m_torpedoes.filter!(t => t.m_detonated).array;
-		foreach (t; detonatedTorps)
+		Launchable[] detonatedEntities = m_entities.filter!(t => t.detonated).array;
+		foreach (t; detonatedEntities)
 			t.shutdown();
 	}
 }
@@ -686,7 +724,7 @@ final class TorpedoFactory: VesselFactory
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
 	Torpedo build(Submarine shooter, const(WeaponParamValue)[] launchParams) const
 	{
-		Torpedo res = new Torpedo(shooter, this);
+		Torpedo res = new Torpedo(shooter, templateName);
 		res.propulsor = propFactory.build();
 		configureGuidance(res, launchParams);
 		bootstrap(res);
