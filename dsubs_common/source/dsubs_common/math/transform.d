@@ -188,19 +188,19 @@ class Transform2D
 		propagate();
 	}
 
-	/// returns world rotation
+	/// returns world-space rotation
 	final @property double wrotation()
 	{
 		if (m_parent is null)
 			return m_rotation;
-		return world.transformAngle(m_rotation);
+		return world.transformAngle(0.0);
 	}
 
 	final @property double wrotation() const
 	{
 		if (m_parent is null)
 			return m_rotation;
-		return world.transformAngle(m_rotation);
+		return world.transformAngle(0.0);
 	}
 
 	/// returns local translation
@@ -220,8 +220,7 @@ class Transform2D
 	{
 		if (m_parent is null)
 			return m_position;
-
-		return world.transformPoint(m_position);
+		return world.transformPoint(vec2d(0.0, 0.0));
 	}
 
 	/// ditto
@@ -229,7 +228,7 @@ class Transform2D
 	{
 		if (m_parent is null)
 			return m_position;
-		return world.transformPoint(m_position);
+		return world.transformPoint(vec2d(0.0, 0.0));
 	}
 
 	/// world-space unit forward vector
@@ -330,28 +329,42 @@ unittest
 	//import std.stdio;
 
 	auto t = new Transform2D;
-	t.scale = vec2d(2.0, 1.0);
-	vec2d point = vec2d(1.0, 0.0);
+	t.scale = vec2d(1.0, 1.0);
+	const vec2d point = vec2d(1.0, 0.0);
 	vec2d tpoint = t.world.transformPoint(point);
-	assert(abs(tpoint.x - 2.0) < 1e-6);
+	assert(abs(tpoint.x - 1.0) < 1e-6);
 	assert(abs(tpoint.y - 0.0) < 1e-6);
 	t.rotation = PI_2;
 	tpoint = t.world.transformPoint(point);
 	assert(abs(tpoint.x - 0.0) < 1e-6);
-	assert(abs(tpoint.y - 2.0) < 1e-6);
+	assert(abs(tpoint.y - 1.0) < 1e-6);
 	t.position = vec2d(3.0, 3.0);
 	tpoint = t.world.transformPoint(point);
 	assert(abs(tpoint.x - 3.0) < 1e-6);
-	assert(abs(tpoint.y - 5.0) < 1e-6);
+	assert(abs(tpoint.y - 4.0) < 1e-6);
 	auto t_child = new Transform2D;
 	t_child.position = vec2d(1.0, 0.0);
+	t_child.rotation = PI_2;
 	t.addChild(t_child);
 	tpoint = t_child.world.transformPoint(point);
-	assert(abs(tpoint.x - 3.0) < 1e-6);
-	assert(abs(tpoint.y - 7.0) < 1e-6);
-	assert(abs(angleDist(t_child.world.transformAngle(0.0), PI_2)) < 1e-6);
+	vec2d wpospoint = t_child.wposition;
+	vec2d wforward = t_child.wforward;
+	assert(abs(tpoint.x - 2.0) < 1e-6);
+	assert(abs(tpoint.y - 4.0) < 1e-6);
+	assert(abs(wpospoint.x - 3.0) < 1e-6);
+	assert(abs(wpospoint.y - 4.0) < 1e-6);
+	assert(abs(angleDist(t_child.world.transformAngle(0.0), PI)) < 1e-6);
+	assert(abs(angleDist(t_child.wrotation, PI)) < 1e-6);
+	assert(abs(wforward.x - 0.0) < 1e-6);
+	assert(abs(wforward.y + 1.0) < 1e-6);
 	t.removeChild(t_child);
 	tpoint = t_child.world.transformPoint(point);
-	assert(abs(tpoint.x - 2.0) < 1e-6);
-	assert(abs(tpoint.y - 0.0) < 1e-6);
+	wpospoint = t_child.wposition;
+	wforward = t_child.wforward;
+	assert(abs(tpoint.x - 1.0) < 1e-6);
+	assert(abs(tpoint.y - 1.0) < 1e-6);
+	assert(abs(wpospoint.x - 1.0) < 1e-6);
+	assert(abs(wpospoint.y - 0.0) < 1e-6);
+	assert(abs(wforward.x + 1.0) < 1e-6);
+	assert(abs(wforward.y - 0.0) < 1e-6);
 }

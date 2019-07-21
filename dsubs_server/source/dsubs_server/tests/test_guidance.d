@@ -19,7 +19,7 @@ import dsubs_server.tests.common;
 unittest
 {
 	Globals.buildForTests();
-	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
@@ -39,15 +39,15 @@ unittest
 	File* file = writeRbodyCsvHeader("guidance", "minoga_turning", "minoga");
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
 	Globals.sim.worldTimeLimit = 40 * cast(ulong)1e6;
+	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
-	Globals.resetForTests();
 }
 
 unittest
 {
 	Globals.buildForTests();
-	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
@@ -90,15 +90,15 @@ unittest
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
 
 	Globals.sim.worldTimeLimit = 60 * cast(ulong)1e6;
+	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
-	Globals.resetForTests();
 }
 
 unittest
 {
 	Globals.buildForTests();
-	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
@@ -148,9 +148,9 @@ unittest
 		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
 	};
 
+	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
-	Globals.resetForTests();
 
 	trace("minoga was ", minDist, " meters away from stork in minoga_snake test");
 	assert(s.dead);
@@ -159,7 +159,7 @@ unittest
 unittest
 {
 	Globals.buildForTests();
-	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
@@ -209,9 +209,9 @@ unittest
 		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
 	};
 
+	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
-	Globals.resetForTests();
 
 	trace("minoga was ", minDist, " meters away from stork in minoga_headon test");
 	assert(s.dead);
@@ -220,7 +220,7 @@ unittest
 unittest
 {
 	Globals.buildForTests();
-	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
@@ -273,9 +273,9 @@ unittest
 		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
 	};
 
+	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
-	Globals.resetForTests();
 
 	trace("minoga was ", minDist, " meters away from stork in minoga_straight test");
 	assert(s.dead);
@@ -285,7 +285,7 @@ unittest
 unittest
 {
 	Globals.buildForTests();
-	const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
@@ -307,7 +307,7 @@ unittest
 	File* file = writeRbodyCsvHeader("guidance", "minoga_spiral", "minoga");
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
 	Globals.sim.worldTimeLimit = 180 * cast(ulong)1e6;
+	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
-	Globals.resetForTests();
 }

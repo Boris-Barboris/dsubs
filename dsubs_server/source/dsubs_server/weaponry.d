@@ -128,8 +128,12 @@ final class Tube
 		enforce(initialWeapon == null || initialWeapon in room.m_proto.allowedWeaponSet,
 			"weapon cannot be stored in the room");
 		m_loadedWeapon = m_desiredWeapon = initialWeapon;
-		if (initialWeapon && m_proto.tmpl.type == TubeType.decoy)
+		if (initialWeapon)
+		{
+			assert(m_proto.tmpl.type == TubeType.decoy);
 			m_state = TubeState.open;
+			m_desiredState = m_state;
+		}
 		m_transform = new Transform2D();
 		m_transform.position = proto.tmpl.mount.mountCenter.to!vec2d;
 		m_transform.rotation = proto.tmpl.mount.rotation;
@@ -269,7 +273,7 @@ final class Tube
 		w.transform.position = m_transform.wposition;
 		w.transform.rotation = m_transform.wrotation;
 		w.rigidBody.kinet.vel = m_sub.rigidBody.kinet.vel +
-			m_pushSpeed * w.transform.wforward;
+			m_pushSpeed * m_transform.wforward;
 		w.rigidBody.kinet.angVel = m_sub.rigidBody.kinet.angVel;
 		w.register();
 		m_desiredWeapon = m_loadedWeapon = null;

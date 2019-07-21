@@ -33,9 +33,9 @@ unittest
 			file, s, (30 / throttle).to!usecs_t * 1000000);
 	}
 	Globals.sim.worldTimeLimit = 120 * cast(ulong)1e6;
+	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
-	Globals.resetForTests();
 }
 
 unittest
@@ -52,9 +52,9 @@ unittest
 	File* file = writeRbodyCsvHeader("steering", "stork_turn", "stork");
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, s);
 	Globals.sim.worldTimeLimit = 45 * cast(ulong)1e6;
+	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
-	Globals.resetForTests();
 }
 
 unittest
@@ -68,7 +68,7 @@ unittest
 	File* file = writeRbodyCsvHeader("steering", "stork_accel", "stork");
 	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, s);
 	Globals.sim.worldTimeLimit = 60 * cast(ulong)1e6;
+	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
-	Globals.resetForTests();
 }

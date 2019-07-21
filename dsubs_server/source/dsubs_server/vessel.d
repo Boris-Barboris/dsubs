@@ -93,6 +93,7 @@ class Vessel
 	final @property void targetThrottle(float target)
 	{
 		enforce(!isNaN(target), "NaN target throttle");
+		enforce(m_propulsor, "vessel has no propulsor");
 		enforce(target <= 1.0f && target >= -1.0f, "Throttle not in [-1, 1] interval");
 		m_propulsor.targetThrottle = target;
 	}
@@ -113,7 +114,8 @@ class Vessel
 		if (!m_dead)
 		{
 			m_deathTime = Globals.sim.worldTime;
-			targetThrottle = 0.0f;
+			if (m_propulsor)
+				targetThrottle = 0.0f;
 			m_dead = true;
 			m_causeOfDeath = cause;
 			return true;
@@ -230,13 +232,19 @@ class VesselFactory
 		res.m_reflector = new Reflector(res.transform, reflprot);
 		// rudder and propulsor
 		assert(res.m_rudder !is null);
-		assert(res.m_propulsor !is null);
-		res.m_rigidBody.forces = [cast(IForce) res.m_rudder, cast(IForce) res.m_propulsor];
-		// add module masses to the hull
-		res.m_rigidBody.mass += res.m_propulsor.mass;
+		if (res.m_propulsor)
+		{
+			res.m_rigidBody.forces = [
+				cast(IForce) res.m_rudder, cast(IForce) res.m_propulsor];
+			// add module masses to the hull
+			res.m_rigidBody.mass += res.m_propulsor.mass;
+		}
+		else
+			res.m_rigidBody.forces = [cast(IForce) res.m_rudder];
 		// calculate final MOI
 		res.m_rigidBody.moi = res.calcMoi();
-		res.m_propulsor.bootstrap(res.m_rigidBody);
+		if (res.m_propulsor)
+			res.m_propulsor.bootstrap(res.m_rigidBody);
 		assert(!isNaN(res.m_rigidBody.mass));
 		assert(!isNaN(res.m_rigidBody.moi));
 	}

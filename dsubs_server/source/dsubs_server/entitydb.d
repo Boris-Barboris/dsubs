@@ -245,28 +245,28 @@ private:
 		ActiveDecoyFactory adf = new ActiveDecoyFactory(
 			cast(immutable(WeaponTemplate)) WeaponTemplate(
 				"Decoy(active)",
-				"Active sonar decoy",
+				"Active sonar decoy. Lives for 50 seconds.",
 				0.0f,
 				WeaponParamType.none,
 				[])
 		);
 		adf.fuel = RolledF(50 * 1e6, 5e6);
-		adf.mass = RolledF(1.5f, 2e-3);
-		adf.Cd0 = RolledF(0.2f, 1e-3f);
-		adf.Cd1 = RolledF(0.5f, 1e-3f);
-		adf.Cda = 1.5f;
-		adf.equilDrift = dgr2rad(40);
-		adf.Cl = RolledF(cl, 0.01f * cl);
-		adf.Cr0 = RolledF(0.01f, 0);
-		adf.Cr1 = RolledF(0, 0);
-		adf.Cm = RolledF(0.003f, 0);
-		adf.rudderKp = 10.0f;
-		adf.rudderKd = -30.0f;
+		adf.mass = RolledF(1.0f, 1e-3);
+		adf.Cd0 = RolledF(0.05f, 1e-5f);
+		adf.Cd1 = RolledF(0.01f, 1e-5f);
+		adf.Cda = 0.0f;
+		adf.equilDrift = 0.0f;
+		adf.Cl = RolledF(0.01f, 0.0f);
+		adf.Cr0 = RolledF(0.05f, 0);
+		adf.Cr1 = RolledF(0.25f, 0);
+		adf.Cm = RolledF(0.005f, 0);
+		adf.rudderKp = 0.0f;
+		adf.rudderKd = 0.0f;
 		adf.rudderPosChangeSpeed = 2.0f;
 		adf.hullLength = 4.0f;
 		adf.reflprot = ReflectorPrototype(vec2f(0.6f, 4.0f), [-22.0f, -22.0f, -22.0f]);
 		adf.activeReflectorProto = ReflectorPrototype(vec2f(30, 30), [-7.0f, -7.0f, -7.0f]);
-		m_weapons["Decoy(active)"] = tf;
+		m_weapons["Decoy(active)"] = adf;
 	}
 
 
@@ -277,8 +277,10 @@ private:
 		// Stork
 		ActiveSonarPrototype asp = ActiveSonarPrototype();
 		AmmoRoomPrototype[int] roomProtos;
-		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 20,
+		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 15,
 			["Minoga": true]);
+		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 30,
+			["Decoy(active)": true]);
 		TubePrototype bowProtoTemplate = TubePrototype(TubeTemplate(0,
 			MountPoint(vec2f(-4.5, 28.5), dgr2rad(20)),
 			0, TubeType.standard, false),
@@ -288,6 +290,14 @@ private:
 		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(4.5, 28.5), -dgr2rad(20));
 		bowProtoTemplate.tmpl.id = 1;
 		tubeProtos[1] = bowProtoTemplate;
+		TubePrototype decoyTubePrototype = TubePrototype(TubeTemplate(2,
+			MountPoint(vec2f(-4.5, -21.0f), dgr2rad(100)),
+			1, TubeType.decoy, true),
+			cast(usecs_t)10e6, cast(usecs_t)6e6, cast(usecs_t)3e6, cast(usecs_t)3e6);
+		tubeProtos[2] = decoyTubePrototype;
+		decoyTubePrototype.tmpl.mount = MountPoint(vec2f(4.5, -21.0f), -dgr2rad(100));
+		decoyTubePrototype.tmpl.id = 3;
+		tubeProtos[3] = decoyTubePrototype;
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Stork",

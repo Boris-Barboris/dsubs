@@ -660,15 +660,6 @@ final class ActiveDecoyFactory: WeaponFactory
 
 	this(immutable WeaponTemplate t) { super(t); }
 
-	private void bootstrap(StaticDecoy res) const
-	{
-		super.bootstrap(res);
-		ActiveDecoyGuidance adg = cast(ActiveDecoyGuidance) res.guidance;
-		adg.m_fuelLeft = fuel;
-		adg.m_activateAfter = activateAfter;
-		adg.m_activeReflectorProto = activeReflectorProto;
-	}
-
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
 	override StaticDecoy build(Submarine shooter,
 		const(WeaponParamValue)[] launchParams) const
@@ -676,7 +667,11 @@ final class ActiveDecoyFactory: WeaponFactory
 		enforce(launchParams.length == 0, "decoy is not configurable");
 		ActiveDecoyGuidance guidance = new ActiveDecoyGuidance();
 		StaticDecoy res = new StaticDecoy(shooter, tmpl.name, guidance);
-		bootstrap(res);
+		super.bootstrap(res);
+		guidance.m_decoy = res;
+		guidance.m_fuelLeft = fuel;
+		guidance.m_activateAfter = activateAfter;
+		guidance.m_activeReflectorProto = activeReflectorProto;
 		return res;
 	}
 }
