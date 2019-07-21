@@ -42,7 +42,7 @@ final class EntityDb
 		/// global map of all existing submarine factories
 		SubmarineFactory[string] m_submarines;
 		/// global map of all existing torpedo factories
-		TorpedoFactory[string] m_torpedos;
+		WeaponFactory[string] m_weapons;
 	}
 
 	this()
@@ -75,9 +75,9 @@ final class EntityDb
 		return sub;
 	}
 
-	const(TorpedoFactory) getTorpedoFactory(string torpName) const
+	const(WeaponFactory) getWeaponFactory(string torpName) const
 	{
-		return m_torpedos[torpName];
+		return m_weapons[torpName];
 	}
 
 private:
@@ -177,7 +177,6 @@ private:
 			cast(immutable(WeaponTemplate)) WeaponTemplate(
 				"Minoga",
 				"Minoga torpedo",
-				[],
 				90.0f,
 				cast(WeaponParamType)(
 					WeaponParamType.activeCourse |
@@ -239,9 +238,35 @@ private:
 		// vec2f dims = getHullDims(tf.tmpl.hullModel);
 		tf.hullLength = 5.2f;
 		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.2f), [-29.0f, -22.0f, -15.0f]);
-		m_torpedos["Minoga"] = tf;
+		m_weapons["Minoga"] = tf;
 
 		pdescs.length = 0;
+
+		ActiveDecoyFactory adf = new ActiveDecoyFactory(
+			cast(immutable(WeaponTemplate)) WeaponTemplate(
+				"Decoy(active)",
+				"Active sonar decoy",
+				0.0f,
+				WeaponParamType.none,
+				[])
+		);
+		adf.fuel = RolledF(50 * 1e6, 5e6);
+		adf.mass = RolledF(1.5f, 2e-3);
+		adf.Cd0 = RolledF(0.2f, 1e-3f);
+		adf.Cd1 = RolledF(0.5f, 1e-3f);
+		adf.Cda = 1.5f;
+		adf.equilDrift = dgr2rad(40);
+		adf.Cl = RolledF(cl, 0.01f * cl);
+		adf.Cr0 = RolledF(0.01f, 0);
+		adf.Cr1 = RolledF(0, 0);
+		adf.Cm = RolledF(0.003f, 0);
+		adf.rudderKp = 10.0f;
+		adf.rudderKd = -30.0f;
+		adf.rudderPosChangeSpeed = 2.0f;
+		adf.hullLength = 4.0f;
+		adf.reflprot = ReflectorPrototype(vec2f(0.6f, 4.0f), [-22.0f, -22.0f, -22.0f]);
+		adf.activeReflectorProto = ReflectorPrototype(vec2f(30, 30), [-7.0f, -7.0f, -7.0f]);
+		m_weapons["Decoy(active)"] = tf;
 	}
 
 

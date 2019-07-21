@@ -170,9 +170,6 @@ struct WeaponTemplate
 	/// description to present to the player on prepare screen
 	string description;
 
-	/// hull model. First elements are drawn first.
-	ConvexPolygon[] hullModel;
-
 	/// Approximate turning radius, useful for firing solution calculations
 	float turningRadius;
 

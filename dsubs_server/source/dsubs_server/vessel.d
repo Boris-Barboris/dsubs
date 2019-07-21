@@ -72,7 +72,8 @@ class Vessel
 		Globals.vessels.registerEntity(this);
 		Globals.phys.registerEntity(m_rigidBody);
 		Globals.acous.registerReflector(m_reflector);
-		m_propulsor.register();
+		if (m_propulsor)
+			m_propulsor.register();
 	}
 
 	/// call this when removing this submarine from the physical world to
@@ -82,7 +83,8 @@ class Vessel
 		Globals.vessels.unregisterEntity(this);
 		Globals.acous.unregisterReflector(m_reflector);
 		Globals.phys.unregisterEntity(m_rigidBody);
-		m_propulsor.shutdown();
+		if (m_propulsor)
+			m_propulsor.shutdown();
 	}
 
 	final @property float targetThrottle() const { return m_propulsor.targetThrottle; }

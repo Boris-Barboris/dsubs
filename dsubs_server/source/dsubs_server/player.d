@@ -183,7 +183,8 @@ final class Player
 				// test minoga running at you
 				import dsubs_server.torpedo;
 
-				const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory("Minoga");
+				const TorpedoFactory tf = cast(TorpedoFactory)
+					Globals.entityDb.getWeaponFactory("Minoga");
 				WeaponParamValue[] pvs;
 				WeaponParamValue pv;
 

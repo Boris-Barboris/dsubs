@@ -32,10 +32,12 @@ interface IGuidance
 	void update(usecs_t dt);
 
 	void setUnassignedParams();
+
+	void shutdown();
 }
 
 
-abstract class Launchable: Vessel
+abstract class Weapon: Vessel
 {
 	protected
 	{
@@ -46,7 +48,7 @@ abstract class Launchable: Vessel
 	final @property Submarine shooter() { return m_shooter; }
 	@property IGuidance guidance() { return m_guidance; }
 
-	// all detonated launchables will be unregistered by launchables
+	// all detonated weapons will be unregistered by weapons
 	// component during updateGuidances().
 	@property bool detonated() const;
 
@@ -59,22 +61,74 @@ abstract class Launchable: Vessel
 	override void register()
 	{
 		super.register();
-		targetThrottle = 1.0f;	// by-default torps spawn with max throttle
-		Globals.launchables.registerEntity(this);
 		m_guidance.setUnassignedParams();
+		Globals.weapons.registerEntity(this);
 	}
 
 	override void shutdown()
 	{
 		super.shutdown();
-		Globals.launchables.unregisterEntity(this);
+		m_guidance.shutdown();
+		Globals.weapons.unregisterEntity(this);
 	}
 }
 
+final class StaticDecoy: Weapon
+{
+	this(Submarine shooter, string templateName, IGuidance guidance)
+	{
+		super(shooter, templateName);
+		m_guidance = guidance;
+	}
+
+	override @property bool detonated() const { return false; }
+}
+
+final class ActiveDecoyGuidance: IGuidance
+{
+	private
+	{
+		StaticDecoy m_decoy;
+		bool m_active;
+		usecs_t m_activateAfter;
+		float m_fuelLeft;
+		ReflectorPrototype m_activeReflectorProto;
+		Reflector m_activeReflector;
+	}
+
+	void update(usecs_t dt)
+	{
+		if (!m_active)
+		{
+			m_activateAfter -= dt;
+			if (m_activateAfter <= 0)
+			{
+				m_active = true;
+				m_activeReflector = new Reflector(m_decoy.transform,
+					m_activeReflectorProto);
+				Globals.acous.registerReflector(m_activeReflector);
+			}
+		}
+		else
+		{
+			m_fuelLeft -= dt / 1e6;
+			if (m_fuelLeft < 0.0f)
+				m_decoy.kill("fuel exhausted");
+		}
+	}
+
+	void shutdown()
+	{
+		if (m_activeReflector)
+			Globals.acous.unregisterReflector(m_activeReflector);
+	}
+
+	void setUnassignedParams() {}
+}
 
 
 /// Server-side torpedo model
-final class Torpedo: Launchable
+final class Torpedo: Weapon
 {
 	private
 	{
@@ -192,6 +246,8 @@ final class TorpedoGuidance: IGuidance
 		m_torpedo = owner;
 		m_pingTdsOffset = uniform(0, GLOBAL_SRATE);
 	}
+
+	void shutdown() {}
 
 	/// verify some variables that could have been missed for some reason
 	void setUnassignedParams()
@@ -497,16 +553,16 @@ final class TorpedoGuidance: IGuidance
 }
 
 
-final class LaunchableCollection
+final class WeaponCollection
 {
 	private
 	{
-		Launchable[] m_entities;
+		Weapon[] m_entities;
 	}
 
-	@property Launchable[] entities() { return m_entities; }
+	@property Weapon[] entities() { return m_entities; }
 
-	void registerEntity(Launchable e)
+	void registerEntity(Weapon e)
 	{
 		synchronized(this)
 		{
@@ -514,7 +570,7 @@ final class LaunchableCollection
 		}
 	}
 
-	void unregisterEntity(Launchable e)
+	void unregisterEntity(Weapon e)
 	{
 		synchronized(this)
 		{
@@ -529,54 +585,39 @@ final class LaunchableCollection
 
 	void updateGuidances(usecs_t dt)
 	{
-		foreach (Launchable torp; Globals.taskPool.parallel(m_entities, 4))
-			if (!torp.dead)
-				torp.guidance.update(dt);
+		foreach (Weapon weapon; Globals.taskPool.parallel(m_entities, 4))
+			if (!weapon.dead)
+				weapon.guidance.update(dt);
 		// remove all detonated torpedoes
-		Launchable[] detonatedEntities = m_entities.filter!(t => t.detonated).array;
-		foreach (t; detonatedEntities)
-			t.shutdown();
+		Weapon[] detonatedEntities = m_entities.filter!(t => t.detonated).array;
+		foreach (w; detonatedEntities)
+			w.shutdown();
 	}
 }
 
 
-final class TorpedoFactory: VesselFactory
+
+abstract class WeaponFactory: VesselFactory
 {
 	immutable WeaponTemplate tmpl;
-	PropulsorFactory propFactory;	/// torpedoes have predefined propulsors
-	MountPoint propMount;
-	HydrophonePrototype* hprot;
-	ActiveSonarPrototype* asprot;
-	MountPoint sensorsMount;
+
+	this(immutable WeaponTemplate t)
+	{
+		super(t.name);
+		tmpl = t;
+		assignParamDescsFromTemplate();
+	}
+
 	RolledF fuel;
-	float fuelEffExponent = 2.0f;
-	// snake
-	float snakeArm = 300.0f;
-	float snakeArmInitial;
-	float snakeAngle = dgr2rad(45.0f);
-	// spiral
-	float spiralStartTarget = 1.0f;
-	float spiralTargetRedPerRange = 1e-2f;
+
 	// inlined weapon parameter descriptions
 	MinMax marchSpeedRange;
 	MinMax activeSpeedRange;
 	MinMax activationRange;
 	WeaponSensorMode sensorModes;
+	WeaponParamDescSearchPatterns searchPatterns;
 	WeaponSensorMode defaultSensorMode;
 	WeaponSearchPattern defaultSearchPattern = WeaponSearchPattern.straight;
-	WeaponParamDescSearchPatterns searchPatterns;
-	// guidance
-	float trackAngVelKi = 1.0f;
-	int pingIntervalSearch = 10;
-	PrerecordedSoundPrototype detonationSoundProto;
-
-	this(immutable WeaponTemplate t, PropulsorFactory pf)
-	{
-		super(t.name);
-		tmpl = t;
-		propFactory = pf;
-		assignParamDescsFromTemplate();
-	}
 
 	/// Take some torpedo parameters from the WeaponTemplate and assign them
 	/// to relevant factory fields. TODO: reverse the logic. Server-side source of
@@ -606,6 +647,65 @@ final class TorpedoFactory: VesselFactory
 					assert(0, "unexpected parameter type");
 			}
 		}
+	}
+
+	Weapon build(Submarine shooter, const(WeaponParamValue)[] launchParams) const;
+}
+
+final class ActiveDecoyFactory: WeaponFactory
+{
+	ReflectorPrototype activeReflectorProto =
+		ReflectorPrototype(vec2f(30, 30), [-7.0f, -7.0f, -7.0f]);
+	usecs_t activateAfter = 4_000_000;
+
+	this(immutable WeaponTemplate t) { super(t); }
+
+	private void bootstrap(StaticDecoy res) const
+	{
+		super.bootstrap(res);
+		ActiveDecoyGuidance adg = cast(ActiveDecoyGuidance) res.guidance;
+		adg.m_fuelLeft = fuel;
+		adg.m_activateAfter = activateAfter;
+		adg.m_activeReflectorProto = activeReflectorProto;
+	}
+
+	/// Verify launch params, build torpedo entity and assign launch params to guidance
+	override StaticDecoy build(Submarine shooter,
+		const(WeaponParamValue)[] launchParams) const
+	{
+		enforce(launchParams.length == 0, "decoy is not configurable");
+		ActiveDecoyGuidance guidance = new ActiveDecoyGuidance();
+		StaticDecoy res = new StaticDecoy(shooter, tmpl.name, guidance);
+		bootstrap(res);
+		return res;
+	}
+}
+
+
+final class TorpedoFactory: WeaponFactory
+{
+	PropulsorFactory propFactory;	/// torpedoes have predefined propulsors
+	MountPoint propMount;
+	HydrophonePrototype* hprot;
+	ActiveSonarPrototype* asprot;
+	MountPoint sensorsMount;
+	float fuelEffExponent = 2.0f;
+	// snake
+	float snakeArm = 300.0f;
+	float snakeArmInitial;
+	float snakeAngle = dgr2rad(45.0f);
+	// spiral
+	float spiralStartTarget = 1.0f;
+	float spiralTargetRedPerRange = 1e-2f;
+	// guidance
+	float trackAngVelKi = 1.0f;
+	int pingIntervalSearch = 10;
+	PrerecordedSoundPrototype detonationSoundProto;
+
+	this(immutable WeaponTemplate t, PropulsorFactory pf)
+	{
+		super(t);
+		propFactory = pf;
 	}
 
 	private void bootstrap(Torpedo res) const
@@ -722,10 +822,11 @@ final class TorpedoFactory: VesselFactory
 	}
 
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
-	Torpedo build(Submarine shooter, const(WeaponParamValue)[] launchParams) const
+	override Torpedo build(Submarine shooter, const(WeaponParamValue)[] launchParams) const
 	{
 		Torpedo res = new Torpedo(shooter, templateName);
 		res.propulsor = propFactory.build();
+		res.targetThrottle = 1.0f;	// by-default torps spawn with max throttle
 		configureGuidance(res, launchParams);
 		bootstrap(res);
 		return res;

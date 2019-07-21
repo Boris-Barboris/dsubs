@@ -8,8 +8,9 @@ import dsubs_sound.opencl;
 import dsubs_server.player: PlayerCollection;
 import dsubs_server.dynamics: PhysicalEnv;
 import dsubs_server.acoustics;
+import dsubs_server.common;
 import dsubs_server.vessel: VesselCollection;
-import dsubs_server.torpedo: LaunchableCollection;
+import dsubs_server.torpedo: WeaponCollection;
 import dsubs_server.entitydb: EntityDb;
 import dsubs_server.simulator: Simulator;
 import dsubs_server.connections.listener: ConListener;
@@ -38,8 +39,8 @@ __gshared:
 	AcousticEnv acous;
 	/// Active vessels
 	VesselCollection vessels;
-	/// Active launchables
-	LaunchableCollection launchables;
+	/// Active weapons
+	WeaponCollection weapons;
 	/// Simulator
 	Simulator sim;
 	/// OpenCL context
@@ -49,11 +50,12 @@ __gshared:
 	{
 		simMut = new ReadWriteMutex();
 		taskPool = new TaskPool(totalCPUs - 1);
+		trace("totalCPUs = ", totalCPUs);
 		sctx = new DsubsSoundOpenclCtx(totalCPUs);
 		entityDb = new EntityDb();
 		players = new PlayerCollection();
 		vessels = new VesselCollection();
-		launchables = new LaunchableCollection();
+		weapons = new WeaponCollection();
 		cons = new ConListener();
 		phys = new PhysicalEnv();
 		acous = new AcousticEnv();
@@ -70,7 +72,7 @@ __gshared:
 		if (entityDb is null)
 			entityDb = new EntityDb();
 		vessels = new VesselCollection();
-		launchables = new LaunchableCollection();
+		weapons = new WeaponCollection();
 		phys = new PhysicalEnv();
 		acous = new AcousticEnv();
 		sim = new Simulator();
@@ -93,7 +95,7 @@ __gshared:
 	static void cleanCollectionsForTests()
 	{
 		vessels.clean();
-		launchables.clean();
+		weapons.clean();
 		acous.clean();
 		phys.clean();
 	}

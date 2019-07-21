@@ -115,6 +115,8 @@ struct TubeOperationResult
 	bool roomChanged;
 }
 
+
+/// Tube that launches weapons
 final class Tube
 {
 	// untrusted 'initialWeapon' input
@@ -262,14 +264,14 @@ final class Tube
 		if (m_state != TubeState.open)
 			return TubeOperationResult(false, false);
 		enforce(m_loadedWeapon != null, "no weapon is loaded");
-		const TorpedoFactory tf = Globals.entityDb.getTorpedoFactory(m_loadedWeapon);
-		Torpedo t = tf.build(m_sub, weaponParams);
-		t.transform.position = m_transform.wposition;
-		t.transform.rotation = m_transform.wrotation;
-		t.rigidBody.kinet.vel = m_sub.rigidBody.kinet.vel +
-			m_pushSpeed * t.transform.wforward;
-		t.rigidBody.kinet.angVel = m_sub.rigidBody.kinet.angVel;
-		t.register();
+		const WeaponFactory wf = Globals.entityDb.getWeaponFactory(m_loadedWeapon);
+		Weapon w = wf.build(m_sub, weaponParams);
+		w.transform.position = m_transform.wposition;
+		w.transform.rotation = m_transform.wrotation;
+		w.rigidBody.kinet.vel = m_sub.rigidBody.kinet.vel +
+			m_pushSpeed * w.transform.wforward;
+		w.rigidBody.kinet.angVel = m_sub.rigidBody.kinet.angVel;
+		w.register();
 		m_desiredWeapon = m_loadedWeapon = null;
 		m_state = TubeState.firing;
 		return TubeOperationResult(true, false);
