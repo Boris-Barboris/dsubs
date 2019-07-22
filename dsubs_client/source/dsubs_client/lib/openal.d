@@ -47,6 +47,7 @@ void unloadAudioLib()
 	alcMakeContextCurrent(null);
 	alcDestroyContext(s_context);
 	alcCloseDevice(s_device);
+	info("unloadAudioLib returning");
 }
 
 private __gshared
