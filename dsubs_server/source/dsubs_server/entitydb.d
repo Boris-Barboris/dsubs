@@ -1,7 +1,7 @@
 module dsubs_server.entitydb;
 
 import std.array: array;
-import std.algorithm: map;
+import std.algorithm: map, any;
 import std.digest.sha;
 import std.exception;
 
@@ -69,6 +69,8 @@ final class EntityDb
 		enforce(sp !is null, "Unknown submarine");
 		PropulsorFactory* pp = req.propulsorName in m_propulsors;
 		enforce(pp !is null, "Unknown propulsor");
+		enforce(sp.tmpl.propulsors.any!(p => p == pp.tmpl.name)(),
+			"Propulsor not allowed for submarine");
 		Propulsor prop = pp.build();
 		Submarine sub = sp.build(p, prop, req.ammoRoomLoadouts, req.loadableTubeLoadouts);
 		trace("built new submarine from request ", req);
@@ -277,7 +279,7 @@ private:
 		// Stork
 		ActiveSonarPrototype asp = ActiveSonarPrototype();
 		AmmoRoomPrototype[int] roomProtos;
-		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 15,
+		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 16,
 			["Minoga": true]);
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 30,
 			["Decoy(active)": true]);
@@ -309,6 +311,7 @@ Displacement: 1600t
 Top speed: 17m/s
 Armament:
   2x bow torpedo tubes.
+  2x broadside decoy launchers.
 Hydrophones:
   Bow: passive spherical array, 210 deg FoV
 Active sonar:
@@ -351,6 +354,7 @@ Active sonar:
 				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
 					asp.getSliceXResol(), asp.radialRes, asp.maxSec),
+				["Seven-blade screw"],
 				roomProtos.byValue.map!(p => p.toTemplate()).array,
 				tubeProtos.byValue.map!(p => p.tmpl).array
 			));

@@ -41,6 +41,7 @@ final class LoadoutState: GameState
 		TextBox hullDescriptionBox;
 		Button startButton;
 		string curSelectedPropulsor;
+		string[] availableHulls;
 	}
 
 	override void handleBackendDisconnect()
@@ -57,17 +58,14 @@ final class LoadoutState: GameState
 
 	override void setup()
 	{
-		string[] hulls = Game.entityDb.controllableSubs.map!(a => a.name).array;
-		string[] propulsors = Game.entityDb.propulsors.map!(a => a.name).array;
+		availableHulls = Game.entityDb.controllableSubs.map!(a => a.name).array;
 
 		/* Layout:
-		Hull1 |				| prop1
-		Hull2 |				| prop2
-		Hull3 |_____________|______
+		Hull1 |				| hull_props
+		Hull2 |				| rack1
+		Hull3 |_____________| tubes
 			  |	Description	|Play
 		*/
-
-		curSelectedPropulsor = propulsors[0];
 
 		hullDescriptionBox = new TextBox();
 		hullDescriptionBox.fontSize = 16;
@@ -85,6 +83,30 @@ final class LoadoutState: GameState
 					if (curSelectedSub is null || curSelectedSub.tmpl.name != hullname)
 					{
 						Game.worldManager.components.length = 0;
+						string[] propulsors = curSelectedSub.tmpl.propulsors;
+						curSelectedPropulsor = propulsors[0];
+
+						// scrollist of propulsors
+						GuiElement[] propButtons;
+						foreach (propName; propulsors)
+						{
+							Button propSelector = builder(new Button()).content(propName).
+								fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
+								htextAlign(HTextAlign.LEFT).build();
+							propButtons ~= propSelector;
+							propSelector.onClick += ()
+								{
+									curSelectedPropulsor = propName;
+									if (curSelectedSub)
+										curSelectedSub.setPropulsor(Game.entityManager, propName);
+								};
+							propSelector.onMouseEnter += (o)
+								{
+									hullDescriptionBox.content =
+										Game.entityManager.propTemplates[propName].description;
+								};
+						}
+
 						curSelectedSub = new Submarine(Game.entityManager, hullname,
 							curSelectedPropulsor);
 						curSelectedSub.targetThrottle = 0.1f;
@@ -110,27 +132,6 @@ final class LoadoutState: GameState
 		Div hullDiv = builder(vDiv(hullButtons)).layoutType(LayoutType.CONTENT).
 			size(vec2i(200, BTN_SIZE * hulls.length.to!int + hulls.length.to!int)).build;
 		ScrollBar hullsScrollbar = new ScrollBar(hullDiv);
-
-		// scrollist of propulsors
-		GuiElement[] propButtons;
-		foreach (propName; propulsors)
-		{
-			Button propSelector = builder(new Button()).content(propName).
-				fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
-				htextAlign(HTextAlign.LEFT).build();
-			propButtons ~= propSelector;
-			propSelector.onClick += ()
-				{
-					curSelectedPropulsor = propName;
-					if (curSelectedSub)
-						curSelectedSub.setPropulsor(Game.entityManager, propName);
-				};
-			propSelector.onMouseEnter += (o)
-				{
-					hullDescriptionBox.content =
-						Game.entityManager.propTemplates[propName].description;
-				};
-		}
 
 		Div propsDiv = builder(vDiv(propButtons)).layoutType(LayoutType.CONTENT).
 			size(vec2i(200, BTN_SIZE * hulls.length.to!int + hulls.length.to!int)).build;

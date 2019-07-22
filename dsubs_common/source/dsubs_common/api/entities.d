@@ -76,6 +76,9 @@ struct SubmarineTemplate
 	/// Built-in active sonar
 	SonarTemplate sonar;
 
+	/// Allowed propulsors.
+	string[] propulsors;
+
 	/// All ammo rooms.
 	AmmoRoomTemplate[] ammoRooms;
 
