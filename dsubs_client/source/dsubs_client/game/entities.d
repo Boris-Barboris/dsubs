@@ -257,6 +257,7 @@ final class EntityManager
 
 	mixin Readonly!(const(PropulsorTemplate)*[string], "propTemplates");
 	mixin Readonly!(const(SubmarineTemplate)*[string], "submarineTemplates");
+	mixin Readonly!(const(WeaponTemplate)*[string], "weaponTemplates");
 
 	/// construct shape collection from entity database
 	this(const(EntityDbRes) db)
@@ -276,6 +277,12 @@ final class EntityManager
 			m_submarineTemplates[sub.name] = ptr;
 			m_submarineShapes[sub.name] =
 				sub.hullModel.map!(a => fromPolygon(a)).array;
+		}
+		foreach (wpn; db.weapons)
+		{
+			auto ptr = new WeaponTemplate;
+			*ptr = cast(WeaponTemplate) wpn;
+			m_weaponTemplates[wpn.name] = ptr;
 		}
 	}
 

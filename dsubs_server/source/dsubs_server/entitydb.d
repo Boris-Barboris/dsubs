@@ -54,6 +54,7 @@ final class EntityDb
 		immutable EntityDbRes enititydb = immutable EntityDbRes(
 			m_propulsors.values.map!(a => a.tmpl).array,
 			m_submarines.values.map!(a => a.tmpl).array,
+			m_weapons.values.map!(a => a.tmpl).array,
 		);
 		marshalledCommonEntityDb = BackendProtocol.marshal(enititydb);
 		auto sha256 = new SHA256Digest();
@@ -178,7 +179,14 @@ private:
 		tf = new TorpedoFactory(
 			cast(immutable(WeaponTemplate)) WeaponTemplate(
 				"Minoga",
-				"Minoga torpedo",
+`"Minoga" heavy torpedo.
+
+Sensors: active sonar.
+Speed range: 21-29 m/s.
+Max range (29m/s): 7000m.
+Max range (21m/s): 9500m.
+Search patterns: straight, snake, spiral.
+`,
 				90.0f,
 				cast(WeaponParamType)(
 					WeaponParamType.activeCourse |
@@ -247,7 +255,7 @@ private:
 		ActiveDecoyFactory adf = new ActiveDecoyFactory(
 			cast(immutable(WeaponTemplate)) WeaponTemplate(
 				"Decoy(active)",
-				"Active sonar decoy. Lives for 50 seconds.",
+				"Active sonar decoy. Lasts 50 seconds.",
 				0.0f,
 				WeaponParamType.none,
 				[])

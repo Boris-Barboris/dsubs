@@ -19,6 +19,7 @@ import dsubs_client.gui.label;
 import dsubs_client.core.clipboard.clipboard;
 
 
+/// One-line editable text field.
 class TextField: Label
 {
 	private
@@ -64,6 +65,13 @@ class TextField: Label
 		// set m_cursorStart
 		m_cursorStart = getCursorFromLocalCoords(x, y);
 		m_cursorEnd = m_cursorStart;
+		updateCursorVisuals();
+	}
+
+	/// move cursor right behind the last character
+	void moveCursorToEnd()
+	{
+		m_cursorEnd = m_cursorStart = max(0, content.length.to!int - 1);
 		updateCursorVisuals();
 	}
 
@@ -120,8 +128,8 @@ class TextField: Label
 		// safety check for cursors
 		if (content.length <= m_cursorStart)
 			m_cursorStart = max(0, m_content.length - 1).to!int;
-		if (content.length < m_cursorEnd)
-			m_cursorEnd = m_content.length.to!int;
+		if (content.length <= m_cursorEnd)
+			m_cursorEnd = max(0, m_content.length - 1).to!int;
 		updateCursorVisuals();
 	}
 

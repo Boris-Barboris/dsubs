@@ -74,6 +74,7 @@ class Label: GuiElement
 		sfText_setColor(m_sfText, m_fontColor);
 	}
 
+	/// null-terminated c-string content
 	@property dmutstring content() { return m_content; }
 
 	@property void content(dmutstring rhs)
