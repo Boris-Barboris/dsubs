@@ -263,9 +263,10 @@ final class Tube
 	}
 
 	// atomic weapon launch
-	TubeOperationResult processLaunchRequest(WeaponParamValue[] weaponParams)
+	TubeOperationResult processLaunchRequest(string expectedWeapon,
+		WeaponParamValue[] weaponParams)
 	{
-		if (m_state != TubeState.open)
+		if (m_state != TubeState.open || m_loadedWeapon != expectedWeapon)
 			return TubeOperationResult(false, false);
 		enforce(m_loadedWeapon != null, "no weapon is loaded");
 		const WeaponFactory wf = Globals.entityDb.getWeaponFactory(m_loadedWeapon);

@@ -132,8 +132,7 @@ unittest
 				pv.searchPattern = WeaponSearchPattern.snake;
 				pvs ~= pv;
 
-				LaunchTubeReq lreq = LaunchTubeReq(0, pvs);
-				TubeOperationResult res = s.getTube(0).processLaunchRequest(pvs);
+				TubeOperationResult res = s.getTube(0).processLaunchRequest("Minoga", pvs);
 				assert(res.tubeChanged && !res.roomChanged);
 				assert(s.getTube(0).state == TubeState.firing);
 				assert(s.getTube(0).desiredState == TubeState.open);
@@ -267,7 +266,7 @@ unittest
 				pv.searchPattern = WeaponSearchPattern.snake;
 				pvs ~= pv;
 
-				TubeOperationResult res = s1.getTube(0).processLaunchRequest(pvs);
+				s1.getTube(0).processLaunchRequest("Minoga", pvs);
 
 				launchedTorp = Globals.weapons.entities[0];
 				File* minogaFile = writeRbodyCsvHeader("weaponry", "stork_decoy_minoga",
@@ -294,7 +293,8 @@ unittest
 				assert(s2.getTube(2).loadedWeapon == "Decoy(active)");
 				trace("current tube2 state: ", s2.getTube(2).state);
 				assert(s2.getTube(2).state == TubeState.open);
-				TubeOperationResult res = s2.getTube(2).processLaunchRequest([]);
+				TubeOperationResult res = s2.getTube(2).processLaunchRequest(
+					"Decoy(active)", []);
 				assert(res.tubeChanged && !res.roomChanged);
 				assert(s2.getTube(2).state == TubeState.firing);
 				assert(s2.getTube(2).desiredState == TubeState.open);

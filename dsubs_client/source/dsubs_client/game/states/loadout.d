@@ -233,10 +233,11 @@ final class LoadoutState: GameState
 			// build gui for tubes that can be loaded on spawn
 			foreach (const AmmoRoomTemplate ammoRoom; subTmpl.ammoRooms)
 			{
-				const TubeTemplate[] roomTubes = subTmpl.tubes.filter!(
+				TubeTemplate[] roomTubes = cast(TubeTemplate[]) subTmpl.tubes.filter!(
 					tt => tt.roomId == ammoRoom.id && tt.loadedOnSpawn).array;
 				if (roomTubes.length == 0)
 					continue;
+				roomTubes.sort!("a.id < b.id");
 				Label roomHeader = builder(new Label()).content(ammoRoom.name ~ " tubes").
 					fontSize(BTN_FONT).fontColor(HINT_COLOR).fixedSize(vec2i(1, 30)).build;
 				divElements ~= roomHeader;
@@ -270,10 +271,10 @@ final class LoadoutState: GameState
 		availableHulls = Game.entityDb.controllableSubs.map!(a => a.name).array;
 
 		/* Layout:
-		Hull1 |				| hull_props
+		Hull1 |	Description	| hull_props
 		Hull2 |				| racks
-		Hull3 |_____________| tubes
-			  |	Description	|Play
+		Hull3 |				| tubes
+			  |				| Play
 		*/
 
 		hullDescriptionBox = new TextBox();
@@ -361,8 +362,7 @@ final class LoadoutState: GameState
 				builder(new Label()).fontSize(BTN_FONT).
 					fixedSize(vec2i(1, BTN_SIZE)).fontColor(HINT_COLOR).
 					content("Description").build,
-				new ScrollBar(hullDescriptionBox),
-				filler(0.75f)
+				new ScrollBar(hullDescriptionBox)
 			]),
 			filler(20),
 			rightColumnDiv

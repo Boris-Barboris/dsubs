@@ -218,6 +218,9 @@ struct LaunchTubeReq
 {
 	__gshared const int g_marshIdx;
 	int tubeId;
+	/// If this weapon does not match the actual loaded weapon,
+	/// the request is ignored. Prevents race conditions.
+	string weaponName;
 	@MaxLenAttr(32) WeaponParamValue[] weaponParams;
 }
 
