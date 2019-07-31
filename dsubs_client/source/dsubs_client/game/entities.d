@@ -12,6 +12,7 @@ import derelict.sfml2.system;
 
 import dsubs_common.api.entities;
 import dsubs_common.api.protocols.backend;
+import dsubs_common.event;
 
 import dsubs_client.core.utils;
 import dsubs_client.core.window;
@@ -148,6 +149,73 @@ private Propulsor createPropulsor(EntityManager man, string propName)
 }
 
 
+final class AmmoRoom
+{
+	this(int id)
+	{
+		m_id = id;
+	}
+
+	private
+	{
+		int m_id;
+		int[string] m_weaponCounts;
+	}
+
+	@property int id() const { return m_id; }
+	@property ref const(int[string]) weaponCounts() const { return m_weaponCounts; }
+
+	void updateFromFullState(AmmoRoomFullState newState)
+	{
+		m_weaponCounts = newState.toWeaponCountDict();
+		onStateUpdate(this);
+	}
+
+	Event!(void delegate(AmmoRoom room)) onStateUpdate;
+
+	int getWeaponCount(string wpnName) const { return m_weaponCounts.get(wpnName, 0); }
+}
+
+
+final class Tube
+{
+	this(AmmoRoom room, int id, TubeType tubeType)
+	{
+		m_room = room;
+		m_fullState.tubeId = id;
+		m_tubeType = tubeType;
+	}
+
+	private
+	{
+		AmmoRoom m_room;
+		TubeFullState m_fullState;
+		TubeType m_tubeType;
+		WeaponParamValue[WeaponParamType] m_weaponParams;
+	}
+
+	@property AmmoRoom room() { return m_room; }
+
+	@property const
+	{
+		int id() { return m_fullState.tubeId; }
+		string loadedWeapon() { return m_fullState.loadedWeapon; }
+		string desiredWeapon() { return m_fullState.desiredWeapon; }
+		TubeType tubeType() { return m_tubeType; }
+		TubeState currentState() { return m_fullState.currentState; }
+		TubeState desiredState() { return m_fullState.desiredState; }
+	}
+
+	void updateFromFullState(TubeFullState newState)
+	{
+		m_fullState = newState;
+		onStateUpdate(this);
+	}
+
+	Event!(void delegate(Tube tube)) onStateUpdate;
+}
+
+
 final class Submarine: WorldRenderable
 {
 	mixin Readonly!(const(SubmarineTemplate*), "tmpl");
@@ -155,6 +223,14 @@ final class Submarine: WorldRenderable
 	private Propulsor[] m_propulsors;
 	private ConvexShape[] m_shapes;
 	private KinematicTrace trace;
+
+	private AmmoRoom[int] m_ammoRooms;
+	private Tube[int] m_tubes;
+
+	AmmoRoom ammoRoom(int roomId) { return m_ammoRooms[roomId]; }
+	Tube tube(int tubeId) { return m_tubes[tubeId]; }
+	auto ammoRoomRange() { return m_ammoRooms.byValue; }
+	auto tubeRange() { return m_tubes.byValue; }
 
 	float targetCourse = 0.0f;
 	private float m_targetThrottle = 0.0f;
@@ -173,6 +249,10 @@ final class Submarine: WorldRenderable
 		m_tmpl = man.m_submarineTemplates[hullName];
 		m_shapes = man.m_submarineShapes[hullName];
 		setPropulsor(man, propName);
+		foreach (const AmmoRoomTemplate at; m_tmpl.ammoRooms)
+			m_ammoRooms[at.id] = new AmmoRoom(at.id);
+		foreach (const TubeTemplate tt; m_tmpl.tubes)
+			m_tubes[tt.id] = new Tube(m_ammoRooms[tt.roomId], tt.id, tt.type);
 	}
 
 	void updateKinematics(ref const KinematicSnapshot snap)

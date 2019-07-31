@@ -89,7 +89,7 @@ final class AmmoRoom
 		return true;
 	}
 
-	AmmoRoomFullState getFullState() const
+	@property AmmoRoomFullState fullState() const
 	{
 		AmmoRoomFullState res = AmmoRoomFullState(m_proto.id);
 		foreach (kvPair; m_storedWeapons.byKeyValue)
@@ -170,6 +170,12 @@ final class Tube
 		return m_lastSimUpdateResults;
 	}
 
+	@property TubeFullState fullState() const
+	{
+		return TubeFullState(
+			id, m_loadedWeapon, m_desiredWeapon, m_state, m_desiredState);
+	}
+
 	TubeOperationResult processLoadRequest(string newWeaponName)
 	{
 		if (newWeaponName == m_desiredWeapon)
@@ -181,8 +187,6 @@ final class Tube
 		{
 			case TubeState.open:
 			{
-				if (m_proto.tmpl.type == TubeType.decoy)
-					goto case TubeState.dry;
 				return TubeOperationResult(false, false);
 			}
 			case TubeState.dry:
@@ -239,8 +243,6 @@ final class Tube
 	TubeOperationResult processStateRequest(TubeState newDesiredState)
 	{
 		enforce(isStableState(newDesiredState), "unstable state specified as desired");
-		if (m_proto.tmpl.type == TubeType.decoy)
-			throw new Exception("Decoy tubes do not support manual state transitions");
 		if (m_desiredState == newDesiredState)
 			return TubeOperationResult(false, false);
 		switch (m_state)
@@ -257,7 +259,7 @@ final class Tube
 				return TubeOperationResult(true, false);
 			}
 			default:
-				// wrong state
+				// we do not allow desired state switch during loading/unloading
 				return TubeOperationResult(false, false);
 		}
 	}
@@ -318,11 +320,9 @@ final class Tube
 					}
 					else
 					{
+						// we are dry and empty
 						m_loadedWeapon = null;
-						if (m_proto.tmpl.type == TubeType.decoy)
-							m_state = TubeState.open;
-						else
-							m_state = TubeState.dry;
+						m_state = TubeState.dry;
 					}
 				}
 				break;
@@ -335,10 +335,7 @@ final class Tube
 					m_transitionTimeCounter = 0;
 					assert(m_desiredWeapon == m_loadedWeapon);
 					m_lastSimUpdateResults.tubeChanged = true;
-					if (m_proto.tmpl.type == TubeType.decoy)
-						m_state = TubeState.open;
-					else
-						m_state = TubeState.dry;
+					m_state = TubeState.dry;
 				}
 				break;
 			}
@@ -390,13 +387,11 @@ final class Tube
 			{
 				if (m_transitionTimeCounter >= m_proto.firingTime)
 				{
-					// firing finished
+					// firing finished, start automatic transition to dry
 					m_transitionTimeCounter = 0;
 					m_lastSimUpdateResults.tubeChanged = true;
-					if (m_proto.tmpl.type == TubeType.decoy)
-						m_state = TubeState.dry;
-					else
-						m_state = TubeState.open;
+					m_state = TubeState.closing;
+					m_desiredState = TubeState.dry;
 				}
 				break;
 			}
@@ -442,6 +437,11 @@ final class Tube
 		m_transitionTimeCounter += dt;
 		// check if the transition has finished
 		if (isTransientState(m_state))
+		{
 			updateTransientState();
+			// immediately start the next transition if needed
+			if (isStableState(m_state) && m_desiredState != m_state)
+				startTransitionToDesiredState();
+		}
 	}
 }

@@ -39,7 +39,9 @@ final class Submarine: Vessel
 	}
 
 	Tube getTube(int id) { return m_tubes[id]; }
+	auto tubeRange() inout { return m_tubes.byValue; }
 	AmmoRoom getAmmoRoom(int id) { return m_rooms[id]; }
+	auto ammoRoomRange() inout { return m_rooms.byValue; }
 
 	override void register()
 	{

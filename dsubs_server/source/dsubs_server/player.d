@@ -152,8 +152,10 @@ final class Player
 		return immutable ReconnectStateRes(
 			s.spawnId, s.prototypeName, s.propulsor.prototypeName,
 			genSubSnapshot(), s.targetCourse + coordRot, s.targetThrottle,
-			cast(immutable(float)[]) s.hydrophones.map!(
-				h => float(h.listenDir + coordRot)).array
+			cast(immutable) s.hydrophones.map!(
+				h => float(h.listenDir + coordRot)).array,
+			cast(immutable) s.tubeRange.map!(t => t.fullState).array,
+			cast(immutable) s.ammoRoomRange.map!(r => r.fullState).array
 			);
 	}
 
@@ -169,8 +171,8 @@ final class Player
 				generateShift();
 				randomizePosition(s);
 
-				s.transform.rotation = dgr2rad(180);
-				s.rudder.targetCourse = dgr2rad(180);
+				// s.transform.rotation = dgr2rad(180);
+				// s.rudder.targetCourse = dgr2rad(180);
 
 				m_submarine = s;
 				foreach (h; s.hydrophones)
@@ -181,32 +183,32 @@ final class Player
 				s.register();
 
 				// test minoga running at you
-				import dsubs_server.torpedo;
+				// import dsubs_server.torpedo;
 
-				const TorpedoFactory tf = cast(TorpedoFactory)
-					Globals.entityDb.getWeaponFactory("Minoga");
-				WeaponParamValue[] pvs;
-				WeaponParamValue pv;
+				// const TorpedoFactory tf = cast(TorpedoFactory)
+				// 	Globals.entityDb.getWeaponFactory("Minoga");
+				// WeaponParamValue[] pvs;
+				// WeaponParamValue pv;
 
-				pv.type = WeaponParamType.marchCourse;
-				pv.course = dgr2rad(0.0);
-				pvs ~= pv;
-				pv.type = WeaponParamType.activeCourse;
-				pv.course = dgr2rad(0.0);
-				pvs ~= pv;
-				pv.type = WeaponParamType.activationRange;
-				pv.range = 200.0f;
-				pvs ~= pv;
-				pv.type = WeaponParamType.activeSpeed;
-				pv.speed = 29.0f;
-				pvs ~= pv;
-				pv.type = WeaponParamType.searchPattern;
-				pv.searchPattern = WeaponSearchPattern.snake;
-				pvs ~= pv;
+				// pv.type = WeaponParamType.marchCourse;
+				// pv.course = dgr2rad(0.0);
+				// pvs ~= pv;
+				// pv.type = WeaponParamType.activeCourse;
+				// pv.course = dgr2rad(0.0);
+				// pvs ~= pv;
+				// pv.type = WeaponParamType.activationRange;
+				// pv.range = 200.0f;
+				// pvs ~= pv;
+				// pv.type = WeaponParamType.activeSpeed;
+				// pv.speed = 29.0f;
+				// pvs ~= pv;
+				// pv.type = WeaponParamType.searchPattern;
+				// pv.searchPattern = WeaponSearchPattern.snake;
+				// pvs ~= pv;
 
-				Torpedo t = tf.build(null, pvs);
-				t.transform.position = s.transform.wposition + vec2d(0, -1000);
-				t.register();
+				// Torpedo t = tf.build(null, pvs);
+				// t.transform.position = s.transform.wposition + vec2d(0, -1000);
+				// t.register();
 
 				return getReconnectState();
 			}

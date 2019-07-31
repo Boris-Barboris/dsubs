@@ -23,6 +23,7 @@ import dsubs_client.game.overlay;
 import dsubs_client.game.contacts;
 import dsubs_client.game.waterfall;
 import dsubs_client.game.sonardisp;
+import dsubs_client.game.tubeui;
 import dsubs_client.lib.openal;
 
 
@@ -85,6 +86,12 @@ final class SimulatorState: GameState
 		m_gui.waterfall.listenDir = rawRecState.listenDirs[0];
 		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) rawRecState.subSnap);
 
+		// ammo room and tube initialization
+		foreach (AmmoRoomFullState roomState; rawRecState.ammoRoomStates)
+			m_playerSub.ammoRoom(roomState.roomId).updateFromFullState(roomState);
+		foreach (TubeFullState tubeState; rawRecState.tubeStates)
+			m_playerSub.tube(tubeState.tubeId).updateFromFullState(tubeState);
+
 		m_sonarSound = new StreamingSoundSource();
 		m_contactOverlayShapeCache = new ContactOverlayShapeCahe();
 		m_contactManager = new ClientContactManager(m_recState, m_playerSub.tmpl.hydrophones.length.to!int);
@@ -130,6 +137,7 @@ final class SimulationGUI
 		SonarGui m_sonarGui;
 		Div m_topLevelDiv;
 		float m_oldSonarGain = 1.0f;
+		TubeUI[int] tubeUis;
 	}
 
 	@property Waterfall waterfall() { return m_passiveGui.wf; }
@@ -310,7 +318,19 @@ final class SimulationGUI
 			).fixedSize(vec2i(1, (BTN_FONT + 6) * 2)).
 			backgroundColor(DIV_BCKGROUND).mouseTransparent(false).build;
 
-		GuiElement tabFiller = filler();
+		Div[] tubeUiDivs;
+		foreach (Tube tube; playerSub.tubeRange.array.sort!("a.id < b.id"))
+		{
+			TubeUI ui = new TubeUI(tube);
+			tubeUis[tube.id] = ui;
+			tubeUiDivs ~= ui.mainDiv;
+		}
+
+		GuiElement tabFiller = builder(vDiv([
+			filler(),
+			builder(hDiv(cast(GuiElement[]) tubeUiDivs)).fixedSize(vec2i(100, 130)).
+			borderWidth(8).build
+		])).build;
 		m_passiveGui = createWaterfallPanel(playerSub.tmpl.hydrophones[0]);
 		m_sonarGui = createSonarGui(playerSub.tmpl.sonar);
 

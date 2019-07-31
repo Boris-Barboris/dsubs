@@ -72,8 +72,19 @@ class Button: Label
 	}
 
 	// internal state, bool. Is true when toggle is activated or
-	// async button is in the process of click handling
+	// async button is in the process of handling a click.
 	final @property ButtonState state() const { return m_state; }
+
+	// force set the internal bool state, used for toggle buttons
+	@property void state(ButtonState rhs)
+	{
+		assert(m_buttonType == ButtonType.TOGGLE);
+		if (m_state != rhs)
+		{
+			m_state = rhs;
+			updateFontColor();
+		}
+	}
 
 	private void updateFontColor()
 	{

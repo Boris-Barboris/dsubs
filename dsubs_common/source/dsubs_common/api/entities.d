@@ -205,8 +205,6 @@ Standard tube state evolution:
 	dry -> loading -> dry -> flooding -> flooded -> opening ->
 		open -> firing -> open -> closing -> flooded ->
 		drying -> dry.
-Decoy tube:
-	dry -> loading -> open -> firing -> dry.
 */
 enum TubeState: ushort
 {
@@ -217,6 +215,8 @@ enum TubeState: ushort
 	// following states are unstable transition states
 	loading,	/// weapon is being loaded
 	unloading,	/// weapon is being unloaded
+	// only loading and unloading states are reversible, that is you can abort unloading
+	// and load currently loaded weapon back with less time wasted.
 	flooding,
 	drying,
 	opening,

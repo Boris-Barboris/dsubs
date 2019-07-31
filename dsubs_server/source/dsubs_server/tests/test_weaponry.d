@@ -89,7 +89,7 @@ unittest
 			case 1 + 11 + 6:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
-				assert(s.getTube(0).state == TubeState.flooded);
+				assert(s.getTube(0).state == TubeState.opening);
 				assert(s.getTube(0).desiredState == TubeState.open);
 				return;
 			}
@@ -147,18 +147,18 @@ unittest
 			case 1 + 11 + 6 + 3 + 1 + 3:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
-				assert(s.getTube(0).state == TubeState.open);
-				assert(s.getTube(0).desiredState == TubeState.open);
-				// switch desired state to dry
+				assert(s.getTube(0).state == TubeState.closing);
+				assert(s.getTube(0).desiredState == TubeState.dry);
+				// redundantly switch desired state to dry
 				TubeOperationResult res = s.getTube(0).processStateRequest(TubeState.dry);
-				assert(res.tubeChanged && !res.roomChanged);
-				assert(s.getTube(0).state == TubeState.open);
+				assert(!res.tubeChanged && !res.roomChanged);
+				assert(s.getTube(0).state == TubeState.closing);
 				assert(s.getTube(0).desiredState == TubeState.dry);
 				return;
 			}
 			case 1 + 11 + 6 + 3 + 1 + 3 + 1:
 			{
-				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
+				assert(!s.getTube(0).lastSimUpdateResult.tubeChanged);
 				assert(s.getTube(0).state == TubeState.closing);
 				assert(s.getTube(0).desiredState == TubeState.dry);
 				return;
@@ -166,7 +166,7 @@ unittest
 			case 1 + 11 + 6 + 3 + 1 + 3 + 3:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
-				assert(s.getTube(0).state == TubeState.flooded);
+				assert(s.getTube(0).state == TubeState.drying);
 				assert(s.getTube(0).desiredState == TubeState.dry);
 				return;
 			}
