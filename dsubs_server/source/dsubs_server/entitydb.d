@@ -348,7 +348,33 @@ Active sonar:
 							-1.7, 2.0,
 							-1.0, 0.5,
 							0.0, -1.0
-						]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50))
+						]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50)),
+					// bow tubes
+					ConvexPolygon([
+							vec2f(-5.3, 28.0),
+							vec2f(-5.3, 24.0),
+							vec2f(-5.0, 24.3),
+							vec2f(-5.0, 27.7),
+						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+					ConvexPolygon([
+							vec2f(5.0, 27.7),
+							vec2f(5.0, 24.3),
+							vec2f(5.3, 24.0),
+							vec2f(5.3, 28.0)
+						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+					// broadside decoy launchers
+					ConvexPolygon([
+							vec2f(-5.10, -20.0),
+							vec2f(-4.90, -22.0),
+							vec2f(-4.60, -21.9),
+							vec2f(-4.80, -20.1),
+						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+					ConvexPolygon([
+							vec2f(4.80, -20.1),
+							vec2f(4.60, -21.9),
+							vec2f(4.90, -22.0),
+							vec2f(5.10, -20.0)
+						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
 				],
 				[MountPoint(vec2f(0.0, -34.0f))],
 				1,
@@ -407,6 +433,12 @@ vec2f[] xSymmetry(const float[] coords)
 	for (int i = len - 2; i > 0; i--)
 		res ~= vec2f(-coords[i*2], coords[i*2 + 1]);
 	return res;
+}
+
+/// assume that coords describe a complete shape and reflect it
+vec2f[] xreflect(const vec2f[] coords)
+{
+	return coords.map!(c => vec2f(-c.x, c.y)).array;
 }
 
 vec2f getHullDims(const ConvexPolygon[] pols)

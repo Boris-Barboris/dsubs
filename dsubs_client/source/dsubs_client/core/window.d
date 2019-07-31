@@ -141,6 +141,11 @@ final class Window
 	/// width-height integer vector
 	@property vec2i size() const { return vec2i(m_mode.width.to!int, m_mode.height.to!int); }
 
+	@property vec2i mousePos() const
+	{
+		return cast(vec2i) sfMouse_getPositionRenderWindow(m_wnd);
+	}
+
 	@property bool hasFocus() const { return sfRenderWindow_hasFocus(m_wnd) == sfTrue; }
 
 	// reset view and scissors to window size

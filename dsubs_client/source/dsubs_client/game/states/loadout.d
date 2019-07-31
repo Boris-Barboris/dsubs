@@ -30,7 +30,10 @@ private
 	enum int BTN_SIZE = 26;
 	enum int BTN_FONT = 20;
 	enum int WPN_FONT = 18;
+	enum int TUBE_FONT = 18;
+	enum int TUBE_CONTENT_FONT = 14;
 	enum sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
+	enum sfColor TUBE_BUTTON_COLOR = sfColor(15, 15, 15, 120);
 }
 
 
@@ -44,7 +47,9 @@ final class LoadoutState: GameState
 		string curSelectedPropulsor;
 		AmmoRoomTemplate[int] roomTemplates;
 		int[string][int] roomLoadouts;
+		string[int] tubeLoadouts;
 		Label[int] roomHeaders;
+		ContextMenu tubeContextMenu;
 		string[] availableHulls;
 		Div rightColumnDiv;
 		ScrollBar rightColumnScrollbar;
@@ -116,6 +121,46 @@ final class LoadoutState: GameState
 			fixedSize(vec2i(200, BTN_FONT)).build();
 	}
 
+	private ContextMenu buildTubeLoadMenu(int tubeId, Button tubeContentBtn,
+		const string[] allowedWeapons, vec2i mousePos)
+	{
+		Button chooseEmpty = builder(new Button()).
+			content("empty").fontSize(TUBE_CONTENT_FONT).build;
+		chooseEmpty.onClick += {
+			tubeLoadouts[tubeId] = null;
+			tubeContentBtn.content = "empty";
+		};
+		Button[] contextButtons = [chooseEmpty];
+		foreach (string allowedWeapon; allowedWeapons)
+		{
+			Button btn = builder(new Button()).
+				content(allowedWeapon).fontSize(TUBE_CONTENT_FONT).build;
+			btn.onClick += {
+				tubeLoadouts[tubeId] = allowedWeapon;
+				tubeContentBtn.content = allowedWeapon;
+			};
+			contextButtons ~= btn;
+		}
+		return contextMenu(Game.guiManager, contextButtons, Game.window.size,
+			mousePos, TUBE_CONTENT_FONT + 4);
+	}
+
+	private Div buildTubeLoadDiv(int tubeId, string initialWeapon,
+		const string[] allowedWeapons)
+	{
+		Label tubeNameLabel = builder(new Label()).
+			content("tube " ~ (tubeId + 1).to!string).fontSize(TUBE_FONT).build;
+		Button tubeContentButton = builder(new Button()).
+			content(initialWeapon).fontSize(TUBE_FONT).
+			backgroundColor(TUBE_BUTTON_COLOR).fixedSize(vec2i(150, BTN_FONT)).build;
+		tubeContentButton.onClick += () {
+			tubeContextMenu = buildTubeLoadMenu(tubeId, tubeContentButton,
+				allowedWeapons, Game.window.mousePos);
+		};
+		return builder(hDiv([tubeNameLabel, tubeContentButton])).
+			fixedSize(vec2i(200, BTN_FONT)).build();
+	}
+
 	void selectHull(string hullname)
 	{
 		if (curSelectedSub is null || curSelectedSub.tmpl.name != hullname)
@@ -150,12 +195,18 @@ final class LoadoutState: GameState
 							Game.entityManager.propTemplates[propName].description;
 					};
 			}
-			divElements ~= filler(10);
+			divElements ~= filler(15);
 
-			// build ammo room gui
+			// build gui for ammo rooms
 			roomLoadouts.clear();
 			roomTemplates.clear();
 			roomHeaders.clear();
+			tubeLoadouts.clear();
+			if (tubeContextMenu)
+			{
+				tubeContextMenu.rootDiv.returnMouseFocus();
+				tubeContextMenu = null;
+			}
 
 			foreach (const AmmoRoomTemplate ammoRoom; subTmpl.ammoRooms)
 			{
@@ -176,12 +227,32 @@ final class LoadoutState: GameState
 				}
 				roomLoadouts[ammoRoom.id] = defaultLoadout;
 				roomHeader.content = getRoomCapacityString(ammoRoom.id);
+				divElements ~= filler(10);
+			}
+
+			// build gui for tubes that can be loaded on spawn
+			foreach (const AmmoRoomTemplate ammoRoom; subTmpl.ammoRooms)
+			{
+				const TubeTemplate[] roomTubes = subTmpl.tubes.filter!(
+					tt => tt.roomId == ammoRoom.id && tt.loadedOnSpawn).array;
+				if (roomTubes.length == 0)
+					continue;
+				Label roomHeader = builder(new Label()).content(ammoRoom.name ~ " tubes").
+					fontSize(BTN_FONT).fontColor(HINT_COLOR).fixedSize(vec2i(1, 30)).build;
+				divElements ~= roomHeader;
+				foreach (const TubeTemplate tt; roomTubes)
+				{
+					tubeLoadouts[tt.id] = ammoRoom.allowedWeaponSet.weaponNames[0];
+					divElements ~= buildTubeLoadDiv(tt.id, tubeLoadouts[tt.id],
+						ammoRoom.allowedWeaponSet.weaponNames);
+				}
+				divElements ~= filler(10);
 			}
 
 			// build scrollable div that combines propulsors, racks and tubes
-			int totalDivHeight = divElements.map!(e => e.size.y).sum();
-			Div combinedDiv = builder(vDiv(divElements)).fixedSize(
-				vec2i(200, totalDivHeight)).build;
+			int totalDivHeight = divElements.map!(e => e.size.y + 2).sum();
+			Div combinedDiv = builder(vDiv(divElements)).borderWidth(2).
+				fixedSize(vec2i(200, totalDivHeight)).build;
 			rightColumnScrollbar = new ScrollBar(combinedDiv);
 			if (rightColumnDiv)
 				rightColumnDiv.setChild(rightColumnScrollbar, 0);
@@ -260,7 +331,9 @@ final class LoadoutState: GameState
 									weaponName,
 									roomLoadouts[roomId][weaponName]
 								)).array
-						)).array
+						)).array,
+					tubeLoadouts.byKeyValue.map!(pair =>
+						TubeSpawnState(pair.key, pair.value)).array
 					);
 				trace("Requesting spawn: ", req);
 				Game.bconm.con.sendMessage(req);
