@@ -39,6 +39,7 @@ class Button: Label
 
 		/// true when user has pressed the button down, but didn't release it
 		bool m_pressed;
+		bool m_pressable = true;
 		ButtonState m_state;	/// actual internal state of the button in toggle\async mode
 	}
 
@@ -71,6 +72,18 @@ class Button: Label
 		return m_pressed;
 	}
 
+	final @property bool pressable() const { return m_pressable; }
+	final @property void pressable(bool rhs)
+	{
+		if (m_pressable != rhs)
+		{
+			m_pressable = rhs;
+			if (!rhs)
+				m_pressed = false;
+			updateFontColor();
+		}
+	}
+
 	// internal state, bool. Is true when toggle is activated or
 	// async button is in the process of handling a click.
 	final @property ButtonState state() const { return m_state; }
@@ -88,7 +101,7 @@ class Button: Label
 
 	private void updateFontColor()
 	{
-		if (!m_pressed && m_underCursor)
+		if (!m_pressed && m_underCursor && m_pressable)
 		{
 			sfText_setColor(m_sfText, m_hoverColor);
 			return;
@@ -101,7 +114,7 @@ class Button: Label
 
 	private void handleMouseDown(int x, int y, sfMouseButton btn)
 	{
-		if (btn != sfMouseLeft)
+		if (btn != sfMouseLeft || !m_pressable)
 			return;
 		pressed = true;
 	}

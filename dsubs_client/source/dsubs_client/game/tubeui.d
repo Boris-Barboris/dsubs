@@ -30,9 +30,9 @@ private
 	enum sfColor CONF_COLOR = sfColor(15, 15, 15, 120);
 	enum sfColor LAUNCH_COLOR = sfColor(255, 15, 15, 200);
 	enum sfColor LAUNCH_COLOR_DISABLED = sfColor(255, 15, 15, 20);
-	enum sfColor DRY_COLOR = sfColor(15, 255, 15, 200);
-	enum sfColor FLOOD_COLOR = sfColor(255, 255, 15, 200);
-	enum sfColor OPEN_COLOR = sfColor(255, 15, 15, 200);
+	enum sfColor SELECTED_STATE_COLOR = sfColor(150, 15, 15, 100);
+	enum sfColor INACTIVE_STATE_COLOR = CONF_COLOR;
+	enum sfColor HOVER_BUTTON_COLOR_ACTIVE = sfColor(255, 150, 150, 255);
 }
 
 
@@ -44,11 +44,10 @@ final class TubeUI
 		Div m_mainDiv;
 		Button[TubeState.open + 1] m_desiredStateButtons;
 		Button m_launchButton;
-		Button m_configureButton;
+		GuiElement m_configureButton;
 		Label m_currentStateLabel;
-		Label m_weaponLabel;
+		Button m_weaponButton;
 		Label m_tubeNameLabel;
-		TubeState m_activeDesiredState;
 	}
 
 	@property Div mainDiv() { return m_mainDiv; }
@@ -59,34 +58,24 @@ final class TubeUI
 
 		m_tubeNameLabel = builder(new Label()).content("tube " ~ (m_tube.id + 1).to!string).
 			fontSize(FONT).build;
-		m_weaponLabel = builder(new Label()).fontSize(FONT).build;
+		m_weaponButton = builder(new Button()).fontSize(FONT).build;
 		m_currentStateLabel = builder(new Label()).fontSize(FONT).build;
-		m_configureButton = builder(new Button()).content("Configure").
-			fontSize(FONT).backgroundColor(CONF_COLOR).build;
+		if (m_tube.tubeType == TubeType.standard)
+			m_configureButton = builder(new Button()).content("Configure").
+				fontSize(FONT).backgroundColor(CONF_COLOR).build;
+		else
+			m_configureButton = filler();
 		m_launchButton = builder(new Button()).content("Launch").
 			fontSize(LAUNCH_FONT).backgroundColor(LAUNCH_COLOR_DISABLED).build;
 		m_desiredStateButtons[TubeState.dry] =
-			builder(new Button(ButtonType.TOGGLE)).content("D").
-				fontSize(LAUNCH_FONT).backgroundColor(DRY_COLOR).build;
+			builder(new Button()).content("D").
+				fontSize(LAUNCH_FONT).backgroundColor(INACTIVE_STATE_COLOR).build;
 		m_desiredStateButtons[TubeState.flooded] =
-			builder(new Button(ButtonType.TOGGLE)).content("F").
-				fontSize(LAUNCH_FONT).backgroundColor(FLOOD_COLOR).build;
+			builder(new Button()).content("F").
+				fontSize(LAUNCH_FONT).backgroundColor(INACTIVE_STATE_COLOR).build;
 		m_desiredStateButtons[TubeState.open] =
-			builder(new Button(ButtonType.TOGGLE)).content("O").
-				fontSize(LAUNCH_FONT).backgroundColor(OPEN_COLOR).build;
-
-		foreach (Button btn; m_desiredStateButtons[])
-		{
-			btn.fontColor = sfBlack;
-			btn.onClick += (b) {
-				return
-					{
-						b.fontColor =
-						b.state == ButtonState.ACTIVE ? sfCyan : sfBlack;
-					};
-				} (btn);
-		}
-		m_desiredStateButtons[TubeState.dry].simulateClick();
+			builder(new Button()).content("O").
+				fontSize(LAUNCH_FONT).backgroundColor(INACTIVE_STATE_COLOR).build;
 
 		Div desiredStateDiv = builder(hDiv(cast(GuiElement[]) m_desiredStateButtons[])).
 			fixedSize(vec2i(100, LAUNCH_FONT + 4)).borderWidth(4).build;
@@ -97,7 +86,7 @@ final class TubeUI
 			m_launchButton,
 			desiredStateDiv,
 			m_currentStateLabel,
-			m_weaponLabel])).borderWidth(4).fixedSize(vec2i(100, 120)).build;
+			m_weaponButton])).borderWidth(4).fixedSize(vec2i(80, 110)).build;
 
 		// now we bind updates
 		m_tube.onStateUpdate += &updateFromTube;
@@ -105,7 +94,6 @@ final class TubeUI
 
 	void updateFromTube(Tube t)
 	{
-		trace("updateFromTube called");
 		assert(t is m_tube);
 		updateWeaponContent();
 		// update state label
@@ -119,31 +107,39 @@ final class TubeUI
 		string currentWeaponName = m_tube.loadedWeapon;
 		if (currentWeaponName == null)
 			currentWeaponName = "empty";
-		trace(currentWeaponName);
 		if (m_tube.currentState == TubeState.unloading ||
 			m_tube.currentState == TubeState.loading)
 		{
 			string desiredWeaponName = m_tube.desiredWeapon;
 			if (desiredWeaponName == null)
 				desiredWeaponName = "empty";
-			trace(desiredWeaponName);
-			m_weaponLabel.content = currentWeaponName ~ " -> " ~ desiredWeaponName;
+			m_weaponButton.content = currentWeaponName ~ " -> " ~ desiredWeaponName;
 		}
 		else
-			m_weaponLabel.content = currentWeaponName;
+			m_weaponButton.content = currentWeaponName;
+		if (m_tube.currentState == TubeState.dry ||
+			m_tube.currentState == TubeState.unloading ||
+			m_tube.currentState == TubeState.loading)
+		{
+			m_weaponButton.backgroundColor = CONF_COLOR;
+			m_weaponButton.pressable = true;
+		}
+		else
+		{
+			m_weaponButton.backgroundColor = sfTransparent;
+			m_weaponButton.pressable = false;
+		}
 	}
 
 	private void updateDesiredStateButtons()
 	{
-		if (m_tube.desiredState != m_activeDesiredState)
+		for (TubeState state = TubeState.dry; state <= TubeState.open; state++)
 		{
-			m_activeDesiredState = m_tube.desiredState;
-			Button newActiveBtn = m_desiredStateButtons[m_tube.desiredState];
-			assert(newActiveBtn.state == ButtonState.INACTIVE);
-			newActiveBtn.state = ButtonState.ACTIVE;
-			foreach (Button b; m_desiredStateButtons[])
-				if (b !is newActiveBtn)
-					b.state = ButtonState.INACTIVE;
+			Button btn = m_desiredStateButtons[state];
+			if (state == m_tube.desiredState)
+				btn.backgroundColor = SELECTED_STATE_COLOR;
+			else
+				btn.backgroundColor = INACTIVE_STATE_COLOR;
 		}
 	}
 
@@ -153,11 +149,13 @@ final class TubeUI
 		{
 			m_launchButton.backgroundColor = LAUNCH_COLOR;
 			m_launchButton.fontColor = sfBlack;
+			m_launchButton.pressable = true;
 		}
 		else
 		{
 			m_launchButton.backgroundColor = LAUNCH_COLOR_DISABLED;
 			m_launchButton.fontColor = sfColor(0, 0, 0, 40);
+			m_launchButton.pressable = false;
 		}
 	}
 }
