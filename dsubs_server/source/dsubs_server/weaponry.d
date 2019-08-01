@@ -390,7 +390,7 @@ final class Tube
 					// firing finished, start automatic transition to dry
 					m_transitionTimeCounter = 0;
 					m_lastSimUpdateResults.tubeChanged = true;
-					m_state = TubeState.closing;
+					m_state = TubeState.open;
 					m_desiredState = TubeState.dry;
 				}
 				break;
@@ -437,11 +437,6 @@ final class Tube
 		m_transitionTimeCounter += dt;
 		// check if the transition has finished
 		if (isTransientState(m_state))
-		{
 			updateTransientState();
-			// immediately start the next transition if needed
-			if (isStableState(m_state) && m_desiredState != m_state)
-				startTransitionToDesiredState();
-		}
 	}
 }
