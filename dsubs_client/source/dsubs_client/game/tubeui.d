@@ -90,6 +90,14 @@ final class TubeUI
 
 		// now we bind updates
 		m_tube.onStateUpdate += &updateFromTube;
+		m_launchButton.onClick += &m_tube.sendLaunchRequest;
+		for (TubeState state = TubeState.dry; state <= TubeState.open; state++)
+		{
+			Button btn = m_desiredStateButtons[state];
+			btn.onClick += (newState) {
+				return () { m_tube.sendDesiredStateRequest(newState); };
+			} (state);
+		}
 	}
 
 	void updateFromTube(Tube t)

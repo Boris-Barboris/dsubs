@@ -318,4 +318,22 @@ private:
 			manager.handleTrimContactData(msg.ctcId, msg.olderThan);
 		}
 	}
+
+	void h_tubeStateUpdateRes(CICTubeStateUpdateRes msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.playerSub.tube(msg.res.tube.tubeId).
+				updateFromFullState(msg.res.tube);
+		}
+	}
+
+	void h_ammoRoomStateUpdateRes(CICAmmoRoomStateUpdateRes msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.playerSub.ammoRoom(msg.res.room.roomId).
+				updateFromFullState(msg.res.room);
+		}
+	}
 }

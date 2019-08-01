@@ -164,4 +164,22 @@ private:
 		enforce(m_inSimFlow, "not in simulator flow");
 		m_cicserv.handleCICTrimContactData(req);
 	}
+
+	void h_loadTubeReq(CICLoadTubeReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.bcon.sendMessage(cast(immutable) req.req);
+	}
+
+	void h_setTubeStateReq(CICSetTubeStateReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.bcon.sendMessage(cast(immutable) req.req);
+	}
+
+	void h_launchTubeReq(CICLaunchTubeReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.bcon.sendMessage(cast(immutable) req.req);
+	}
 }

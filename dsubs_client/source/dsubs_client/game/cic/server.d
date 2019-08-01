@@ -31,6 +31,8 @@ final class CICServer
 
 	mixin Readonly!(int, "spawnId");
 
+	@property BackendConnection bcon() { return m_bcon; }
+
 	this(string password, BackendConnection bcon, int spawnId = -1)
 	{
 		m_listener = new CICListener(this, password);
@@ -182,6 +184,20 @@ final class CICServer
 				return;
 		}
 		m_bcon.sendMessage(cast(immutable EmitPingReq) req);
+	}
+
+	/*
+	Weapon management.
+	*/
+
+	void handleTubeStateUpdateRes(TubeStateUpdateRes res)
+	{
+		m_listener.broadcast(cast(immutable) CICTubeStateUpdateRes(res));
+	}
+
+	void handleAmmoRoomStateUpdateRes(AmmoRoomStateUpdateRes res)
+	{
+		m_listener.broadcast(cast(immutable) CICAmmoRoomStateUpdateRes(res));
 	}
 
 	/*

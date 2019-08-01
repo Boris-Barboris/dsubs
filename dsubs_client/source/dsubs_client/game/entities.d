@@ -16,6 +16,8 @@ import dsubs_common.event;
 
 import dsubs_client.core.utils;
 import dsubs_client.core.window;
+import dsubs_client.game.cic.messages;
+import dsubs_client.game: Game;
 import dsubs_client.render.shapes;
 import dsubs_client.render.worldmanager;
 import dsubs_client.math.transform;
@@ -210,6 +212,22 @@ final class Tube
 	{
 		m_fullState = newState;
 		onStateUpdate(this);
+	}
+
+	void sendLaunchRequest()
+	{
+		assert(currentState == TubeState.open);
+		assert(loadedWeapon != null);
+		Game.ciccon.sendMessage(cast(immutable) CICLaunchTubeReq(
+			LaunchTubeReq(id, loadedWeapon, m_weaponParams.values)));
+	}
+
+	void sendDesiredStateRequest(TubeState newState)
+	{
+		assert(isStableState(newState));
+		if (newState != desiredState)
+			Game.ciccon.sendMessage(cast(immutable) CICSetTubeStateReq(
+				SetTubeStateReq(id, newState)));
 	}
 
 	Event!(void delegate(Tube tube)) onStateUpdate;

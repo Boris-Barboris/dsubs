@@ -2,7 +2,7 @@
 module dsubs_client.game.cic.messages;
 
 public import dsubs_common.api.constants;
-public import dsubs_common.api.protocols.backend: ReconnectStateRes;
+public import dsubs_common.api.protocols.backend;
 public import dsubs_common.api.entities;
 public import dsubs_common.api.utils;
 
@@ -109,6 +109,41 @@ struct CICDeathRes
 	string longReport;
 }
 
+/*
+Weapon-related messages that are simply repeated.
+*/
+
+struct CICLoadTubeReq
+{
+	__gshared const int g_marshIdx;
+	LoadTubeReq req;
+}
+
+struct CICSetTubeStateReq
+{
+	__gshared const int g_marshIdx;
+	SetTubeStateReq req;
+}
+
+// proxied to backend
+struct CICLaunchTubeReq
+{
+	__gshared const int g_marshIdx;
+	LaunchTubeReq req;
+}
+
+// proxied from backend
+struct CICTubeStateUpdateRes
+{
+	__gshared const int g_marshIdx;
+	TubeStateUpdateRes res;
+}
+
+struct CICAmmoRoomStateUpdateRes
+{
+	__gshared const int g_marshIdx;
+	AmmoRoomStateUpdateRes res;
+}
 
 /*
 Contact and sensor data management API.

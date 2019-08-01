@@ -38,9 +38,17 @@ final class Submarine: Vessel
 		m_spawnId = uniform(0, int.max);
 	}
 
-	Tube getTube(int id) { return m_tubes[id]; }
+	Tube getTube(int id)
+	{
+		enforce(id in m_tubes);
+		return m_tubes[id];
+	}
 	auto tubeRange() inout { return m_tubes.byValue; }
-	AmmoRoom getAmmoRoom(int id) { return m_rooms[id]; }
+	AmmoRoom getAmmoRoom(int id)
+	{
+		enforce(id in m_rooms);
+		return m_rooms[id];
+	}
 	auto ammoRoomRange() inout { return m_rooms.byValue; }
 
 	override void register()

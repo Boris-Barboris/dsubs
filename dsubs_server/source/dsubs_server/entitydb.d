@@ -255,12 +255,12 @@ Search patterns: straight, snake, spiral.
 		ActiveDecoyFactory adf = new ActiveDecoyFactory(
 			cast(immutable(WeaponTemplate)) WeaponTemplate(
 				"Decoy(active)",
-				"Active sonar decoy. Lasts 50 seconds.",
+				"Active sonar decoy. Lasts 60 seconds.",
 				0.0f,
 				WeaponParamType.none,
 				[])
 		);
-		adf.fuel = RolledF(50 * 1e6, 5e6);
+		adf.fuel = RolledF(60, 5);
 		adf.mass = RolledF(1.0f, 1e-3);
 		adf.Cd0 = RolledF(0.05f, 1e-5f);
 		adf.Cd1 = RolledF(0.01f, 1e-5f);
@@ -303,7 +303,7 @@ Search patterns: straight, snake, spiral.
 		TubePrototype decoyTubePrototype = TubePrototype(TubeTemplate(2,
 			MountPoint(vec2f(-4.5, -21.0f), dgr2rad(100)),
 			1, TubeType.decoy, true),
-			cast(usecs_t)10e6, cast(usecs_t)6e6, cast(usecs_t)3e6, cast(usecs_t)3e6);
+			cast(usecs_t)10e6, cast(usecs_t)5e6, cast(usecs_t)2e6, cast(usecs_t)3e6);
 		tubeProtos[2] = decoyTubePrototype;
 		decoyTubePrototype.tmpl.mount = MountPoint(vec2f(4.5, -21.0f), -dgr2rad(100));
 		decoyTubePrototype.tmpl.id = 3;

@@ -135,4 +135,25 @@ private:
 		enforceAuthAndSim(p);
 		p.handleEmitPingRequest(req);
 	}
+
+	void h_loadTubeReq(LoadTubeReq req)
+	{
+		Player p = m_player;
+		enforceAuthAndSim(p);
+		p.handleLoadTubeReq(req);
+	}
+
+	void h_setTubeStateReq(SetTubeStateReq req)
+	{
+		Player p = m_player;
+		enforceAuthAndSim(p);
+		p.handleSetTubeStateReq(req);
+	}
+
+	void h_launchTubeReq(LaunchTubeReq req)
+	{
+		Player p = m_player;
+		enforceAuthAndSim(p);
+		p.handleLaunchTubeReq(req);
+	}
 }

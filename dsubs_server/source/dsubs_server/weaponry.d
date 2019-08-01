@@ -160,7 +160,7 @@ final class Tube
 	@property int id() const { return m_proto.tmpl.id; }
 	@property Submarine submarine() { return m_sub; }
 	@property Transform2D transform() { return m_transform; }
-	@property AmmoRoom room() { return m_room; }
+	@property inout(AmmoRoom) room() inout { return m_room; }
 	@property TubeState state() const { return m_state; }
 	@property TubeState desiredState() const { return m_desiredState; }
 	@property string loadedWeapon() const { return m_loadedWeapon; }
@@ -266,7 +266,7 @@ final class Tube
 
 	// atomic weapon launch
 	TubeOperationResult processLaunchRequest(string expectedWeapon,
-		WeaponParamValue[] weaponParams)
+		const(WeaponParamValue)[] weaponParams)
 	{
 		if (m_state != TubeState.open || m_loadedWeapon != expectedWeapon)
 			return TubeOperationResult(false, false);

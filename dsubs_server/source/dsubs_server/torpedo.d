@@ -113,7 +113,14 @@ final class ActiveDecoyGuidance: IGuidance
 		{
 			m_fuelLeft -= dt / 1e6;
 			if (m_fuelLeft < 0.0f)
+			{
 				m_decoy.kill("fuel exhausted");
+				if (m_activeReflector)
+				{
+					Globals.acous.unregisterReflector(m_activeReflector);
+					m_activeReflector = null;
+				}
+			}
 		}
 	}
 

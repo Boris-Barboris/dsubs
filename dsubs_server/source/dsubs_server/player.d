@@ -12,6 +12,7 @@ import dsubs_common.api.entities: KinematicSnapshot;
 import dsubs_server.common;
 import dsubs_server.connections.playercon: PlayerConnection;
 import dsubs_server.submarine: Submarine;
+import dsubs_server.weaponry;
 
 
 class AuthException: Exception
@@ -274,6 +275,59 @@ final class Player
 		}
 	}
 
+	void handleLoadTubeReq(const LoadTubeReq req)
+	{
+		synchronized(Globals.simMut.reader)
+		{
+			Submarine s = m_submarine;
+			enforce(s, "player has no submarine, unable to EmitPingReq");
+			if (s.dead)
+				return;
+			Tube tube = s.getTube(req.tubeId);
+			TubeOperationResult topRes = tube.processLoadRequest(req.weaponName);
+			PlayerConnection con = m_connection;
+			if (con && topRes.tubeChanged)
+				con.sendMessage(cast(immutable) TubeStateUpdateRes(tube.fullState));
+			if (con && topRes.roomChanged)
+				con.sendMessage(cast(immutable) AmmoRoomStateUpdateRes(tube.room.fullState));
+		}
+	}
+
+	void handleSetTubeStateReq(const SetTubeStateReq req)
+	{
+		synchronized(Globals.simMut.reader)
+		{
+			Submarine s = m_submarine;
+			enforce(s, "player has no submarine, unable to EmitPingReq");
+			if (s.dead)
+				return;
+			Tube tube = s.getTube(req.tubeId);
+			TubeOperationResult topRes = tube.processStateRequest(req.desiredState);
+			PlayerConnection con = m_connection;
+			if (con && topRes.tubeChanged)
+				con.sendMessage(immutable TubeStateUpdateRes(tube.fullState));
+			assert(!topRes.roomChanged);
+		}
+	}
+
+	void handleLaunchTubeReq(const LaunchTubeReq req)
+	{
+		synchronized(Globals.simMut.reader)
+		{
+			Submarine s = m_submarine;
+			enforce(s, "player has no submarine, unable to EmitPingReq");
+			if (s.dead)
+				return;
+			Tube tube = s.getTube(req.tubeId);
+			TubeOperationResult topRes = tube.processLaunchRequest(
+				req.weaponName, req.weaponParams);
+			PlayerConnection con = m_connection;
+			if (con && topRes.tubeChanged)
+				con.sendMessage(immutable TubeStateUpdateRes(tube.fullState));
+			assert(!topRes.roomChanged);
+		}
+	}
+
 	private KinematicSnapshot genSubSnapshot()
 	{
 		assert(m_submarine);
@@ -342,6 +396,18 @@ final class Player
 					Globals.sim.worldTime + timeShift, [sdata]));
 				s.sonar.markSliceSent();
 			}
+			// now send updates about tubes and rooms
+			bool[int] updatedRooms;
+			foreach (const Tube tube; s.tubeRange)
+			{
+				if (tube.lastSimUpdateResult.tubeChanged)
+					con.sendMessage(cast(immutable) TubeStateUpdateRes(tube.fullState));
+				if (tube.lastSimUpdateResult.roomChanged)
+					updatedRooms[tube.room.id] = true;
+			}
+			foreach (int roomId; updatedRooms.byKey)
+				con.sendMessage(cast(immutable) AmmoRoomStateUpdateRes(
+					s.getAmmoRoom(roomId).fullState));
 		}
 	}
 

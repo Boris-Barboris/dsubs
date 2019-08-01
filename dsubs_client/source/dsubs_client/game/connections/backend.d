@@ -91,6 +91,16 @@ private:
 	{
 		Game.cic.handleDeathRes(res);
 	}
+
+	void h_tubeStateUpdateRes(TubeStateUpdateRes res)
+	{
+		Game.cic.handleTubeStateUpdateRes(res);
+	}
+
+	void h_ammoRoomStateUpdateRes(AmmoRoomStateUpdateRes res)
+	{
+		Game.cic.handleAmmoRoomStateUpdateRes(res);
+	}
 }
 
 
