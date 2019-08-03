@@ -192,11 +192,19 @@ final class CICServer
 
 	void handleTubeStateUpdateRes(TubeStateUpdateRes res)
 	{
+		synchronized(m_state.rsMut)
+		{
+			m_state.handleTubeFullState(res.tube);
+		}
 		m_listener.broadcast(cast(immutable) CICTubeStateUpdateRes(res));
 	}
 
 	void handleAmmoRoomStateUpdateRes(AmmoRoomStateUpdateRes res)
 	{
+		synchronized(m_state.rsMut)
+		{
+			m_state.handleAmmoRoomFullState(res.room);
+		}
 		m_listener.broadcast(cast(immutable) CICAmmoRoomStateUpdateRes(res));
 	}
 

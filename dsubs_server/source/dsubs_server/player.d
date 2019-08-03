@@ -310,7 +310,7 @@ final class Player
 		}
 	}
 
-	void handleLaunchTubeReq(const LaunchTubeReq req)
+	void handleLaunchTubeReq(LaunchTubeReq req)
 	{
 		synchronized(Globals.simMut.reader)
 		{
@@ -319,6 +319,15 @@ final class Player
 			if (s.dead)
 				return;
 			Tube tube = s.getTube(req.tubeId);
+			// reference frame translation for courses
+			foreach (ref WeaponParamValue param; req.weaponParams)
+			{
+				if (param.type == WeaponParamType.marchCourse ||
+					param.type == WeaponParamType.activeCourse)
+				{
+					param.course = param.course - coordRot;
+				}
+			}
 			TubeOperationResult topRes = tube.processLaunchRequest(
 				req.weaponName, req.weaponParams);
 			PlayerConnection con = m_connection;

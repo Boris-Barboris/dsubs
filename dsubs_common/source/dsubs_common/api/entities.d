@@ -91,9 +91,9 @@ struct SubmarineTemplate
 enum WeaponParamType: ushort
 {
 	none = 0,				/// no weapon params available
-	marchCourse = 1,		/// march course.
+	marchCourse = 1,		/// march/RTE course.
 	sensorMode = 1 << 1,
-	marchSpeed = 1 << 2, 	/// speed before activation
+	marchSpeed = 1 << 2, 	/// speed before activation. RTE speed.
 	activeSpeed = 1 << 3,	/// speed after activation
 	searchPattern = 1 << 4,
 	activationRange = 1 << 5,
@@ -137,31 +137,37 @@ struct WeaponParamDescSearchPatterns
 	float spiralStep = 0.0f;	/// each spiral loop radius is increased by this many meters
 }
 
+union WeaponParamDescUnion
+{
+	MinMax speedRange;	/// specified when type is marchSpeed or activeSpeed
+	MinMax activationRange;
+	WeaponSensorMode sensorModes;
+	WeaponParamDescSearchPatterns searchPatterns;
+}
+
 /// Tagged union of weapon parameter descriptions
 struct WeaponParamDesc
 {
 	WeaponParamType type;
-	union
-	{
-		MinMax speedRange;	/// specified when type is marchSpeed or activeSpeed
-		MinMax activationRange;
-		WeaponSensorMode sensorModes;
-		WeaponParamDescSearchPatterns searchPatterns;
-	}
+	WeaponParamDescUnion value;
+	alias value this;
+}
+
+union WeaponParamValueUnion
+{
+	float course;
+	float speed;
+	float range;
+	WeaponSensorMode sensorMode;
+	WeaponSearchPattern searchPattern;
 }
 
 /// Tagged union of weapon parameter values, required upon weapon launch.
 struct WeaponParamValue
 {
 	WeaponParamType type;
-	union
-	{
-		float course;
-		float speed;
-		float range;
-		WeaponSensorMode sensorMode;
-		WeaponSearchPattern searchPattern;
-	}
+	WeaponParamValueUnion value;
+	alias value this;
 }
 
 /// Self-propelled weapon
@@ -179,7 +185,7 @@ struct WeaponTemplate
 	/// Set of available launch parameters
 	WeaponParamType availableParams;
 
-	/// Detailed descriptions of available launch parameters, if applicable
+	/// Detailed descriptions of launch parameters, if applicable.
 	WeaponParamDesc[] paramDescs;
 }
 

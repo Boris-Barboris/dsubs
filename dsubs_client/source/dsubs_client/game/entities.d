@@ -4,6 +4,7 @@ import std.algorithm;
 import std.array;
 import std.conv: to;
 import std.math;
+import std.traits: EnumMembers;
 import std.utf;
 import std.experimental.logger;
 
@@ -193,8 +194,17 @@ final class Tube
 		AmmoRoom m_room;
 		TubeFullState m_fullState;
 		TubeType m_tubeType;
-		WeaponParamValue[WeaponParamType] m_weaponParams;
+
+		// cached limits of current weapon parameters
+		MinMax m_marchSpeedLimits;
+		MinMax m_activeSpeedLimits;
+		MinMax m_activationRangeLimits;
+		const(WeaponParamDescSearchPatterns)* m_searchPatternDesc;
+		const(WeaponSensorMode)[] m_availableSensorModes;
 	}
+
+	// no need to encapsulate
+	WeaponParamValue[WeaponParamType] weaponParams;
 
 	@property AmmoRoom room() { return m_room; }
 
@@ -208,8 +218,139 @@ final class Tube
 		TubeState desiredState() { return m_fullState.desiredState; }
 	}
 
+	@property void marchSpeed(float rhs)
+	{
+		assert(!isNaN(rhs));
+		WeaponParamValue val;
+		val.type = WeaponParamType.marchSpeed;
+		val.speed = rhs;
+		weaponParams[val.type] = val;
+	}
+
+	@property MinMax marchSpeedLimits() const { return m_marchSpeedLimits; }
+	@property MinMax activeSpeedLimits() const { return m_activeSpeedLimits; }
+	@property MinMax activationRangeLimits() const { return m_activationRangeLimits; }
+
+	@property const(WeaponParamDescSearchPatterns)* searchPatternDesc() const
+	{
+		return m_searchPatternDesc;
+	}
+
+	@property WeaponSearchPattern[] availableSearchPatterns() const
+	{
+		return [EnumMembers!WeaponSearchPattern].filter!(
+			sp => sp & searchPatternDesc.availablePatterns).array;
+	}
+
+	@property const(WeaponSensorMode)[] availableSensorModes() const
+	{
+		return m_availableSensorModes;
+	}
+
+	@property void activeSpeed(float rhs)
+	{
+		assert(!isNaN(rhs));
+		WeaponParamValue val;
+		val.type = WeaponParamType.activeSpeed;
+		val.speed = rhs;
+		weaponParams[val.type] = val;
+	}
+
+	@property void activationRange(float rhs)
+	{
+		assert(!isNaN(rhs));
+		WeaponParamValue val;
+		val.type = WeaponParamType.activationRange;
+		val.range = rhs;
+		weaponParams[val.type] = val;
+	}
+
+	@property void marchCourse(float rhs)
+	{
+		assert(!isNaN(rhs));
+		WeaponParamValue val;
+		val.type = WeaponParamType.marchCourse;
+		val.course = rhs;
+		weaponParams[val.type] = val;
+	}
+
+	@property void activeCourse(float rhs)
+	{
+		assert(!isNaN(rhs));
+		WeaponParamValue val;
+		val.type = WeaponParamType.activeCourse;
+		val.course = rhs;
+		weaponParams[val.type] = val;
+	}
+
+	@property void sensorMode(WeaponSensorMode rhs)
+	{
+		WeaponParamValue val;
+		val.type = WeaponParamType.sensorMode;
+		val.sensorMode = rhs;
+		weaponParams[val.type] = val;
+	}
+
+	@property void searchPattern(WeaponSearchPattern rhs)
+	{
+		WeaponParamValue val;
+		val.type = WeaponParamType.searchPattern;
+		val.searchPattern = rhs;
+		weaponParams[val.type] = val;
+	}
+
+	@property const (WeaponTemplate)* currentWeaponTemplate() const
+	{
+		return Game.entityManager.weaponTemplates.get(m_fullState.loadedWeapon, null);
+	}
+
 	void updateFromFullState(TubeFullState newState)
 	{
+		if (m_fullState.loadedWeapon != newState.loadedWeapon)
+		{
+			weaponParams.clear();
+			if (m_tubeType == TubeType.standard && newState.loadedWeapon)
+			{
+				// set default parameter values from the weapon template description
+				const WeaponTemplate* wtpl =
+					Game.entityManager.weaponTemplates[newState.loadedWeapon];
+				foreach (ref const WeaponParamDesc desc; wtpl.paramDescs)
+				{
+					switch (desc.type)
+					{
+						case WeaponParamType.marchSpeed:
+							m_marchSpeedLimits = desc.speedRange;
+							marchSpeed = desc.speedRange.max;
+							break;
+						case WeaponParamType.activeSpeed:
+							m_activeSpeedLimits = desc.speedRange;
+							activeSpeed = desc.speedRange.max;
+							break;
+						case WeaponParamType.activationRange:
+							m_activationRangeLimits = desc.activationRange;
+							activationRange = desc.activationRange.min;
+							break;
+						case WeaponParamType.sensorMode:
+							m_availableSensorModes = [EnumMembers!WeaponSensorMode].
+								filter!(sm => sm & desc.sensorModes).array;
+							WeaponSensorMode firstAvailableMode =
+								[EnumMembers!WeaponSensorMode].find!(mode =>
+									mode & desc.sensorModes).front();
+							sensorMode = firstAvailableMode;
+							break;
+						case WeaponParamType.searchPattern:
+							m_searchPatternDesc = &desc.searchPatterns;
+							WeaponSearchPattern firstAvailablePattern =
+								[EnumMembers!WeaponSearchPattern].find!(pat =>
+									pat & desc.searchPatterns.availablePatterns).front();
+							searchPattern = firstAvailablePattern;
+							break;
+						default:
+							break;
+					}
+				}
+			}
+		}
 		m_fullState = newState;
 		onStateUpdate(this);
 	}
@@ -219,7 +360,7 @@ final class Tube
 		assert(currentState == TubeState.open);
 		assert(loadedWeapon != null);
 		Game.ciccon.sendMessage(cast(immutable) CICLaunchTubeReq(
-			LaunchTubeReq(id, loadedWeapon, m_weaponParams.values)));
+			LaunchTubeReq(id, loadedWeapon, weaponParams.values)));
 	}
 
 	void sendDesiredWeaponRequest(string newWeapon)

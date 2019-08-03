@@ -19,7 +19,7 @@ import dsubs_client.game.entities;
 import dsubs_client.game.states.mainmenu;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cameracontroller;
-import dsubs_client.game.overlay;
+import dsubs_client.game.tacoverlay;
 import dsubs_client.game.contacts;
 import dsubs_client.game.waterfall;
 import dsubs_client.game.sonardisp;
@@ -328,7 +328,7 @@ final class SimulationGUI
 
 		GuiElement tabFiller = builder(vDiv([
 			filler(),
-			builder(hDiv(cast(GuiElement[]) tubeUiDivs)).fixedSize(vec2i(100, 120)).
+			builder(hDiv(cast(GuiElement[]) tubeUiDivs)).fixedSize(vec2i(100, 220)).
 			borderWidth(8).build
 		])).build;
 		m_passiveGui = createWaterfallPanel(playerSub.tmpl.hydrophones[0]);

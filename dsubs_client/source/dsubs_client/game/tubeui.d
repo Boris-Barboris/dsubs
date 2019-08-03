@@ -1,7 +1,8 @@
 module dsubs_client.game.tubeui;
 
-import std.algorithm: map;
+import std.algorithm: map, canFind;
 import std.algorithm.comparison: min, max;
+import std.format;
 
 import core.time: MonoTime;
 
@@ -16,10 +17,10 @@ import dsubs_client.common;
 import dsubs_client.gui;
 import dsubs_client.render.camera;
 import dsubs_client.core.window;
+import dsubs_client.game;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.entities;
-import dsubs_client.game;
-import dsubs_client.game.overlay;
+import dsubs_client.game.tacoverlay;
 
 
 
@@ -27,6 +28,7 @@ private
 {
 	enum int FONT = 12;
 	enum int LAUNCH_FONT = 15;
+	enum int AIM_BLOCK_HEIGHT = 100;
 	enum sfColor CONF_COLOR = sfColor(15, 15, 15, 120);
 	enum sfColor LAUNCH_COLOR = sfColor(255, 15, 15, 200);
 	enum sfColor LAUNCH_COLOR_DISABLED = sfColor(255, 15, 15, 20);
@@ -42,9 +44,17 @@ final class TubeUI
 	{
 		Tube m_tube;
 		Div m_mainDiv;
+
+		// aim seciton
+		Div m_aimDiv;
+		GuiElement m_aimFiller;
+		bool m_aiming;
+
+		// main section
+		GuiElement m_aimElement;
+		Button m_aimButton;
 		Button[TubeState.open + 1] m_desiredStateButtons;
 		Button m_launchButton;
-		GuiElement m_configureButton;
 		Label m_currentStateLabel;
 		Button m_weaponButton;
 		Label m_tubeNameLabel;
@@ -61,10 +71,14 @@ final class TubeUI
 		m_weaponButton = builder(new Button()).fontSize(FONT).build;
 		m_currentStateLabel = builder(new Label()).fontSize(FONT).build;
 		if (m_tube.tubeType == TubeType.standard)
-			m_configureButton = builder(new Button()).content("Configure").
+		{
+			m_aimButton = builder(new Button()).content("Aim").
 				fontSize(FONT).backgroundColor(CONF_COLOR).build;
+			m_aimButton.onClick += &onAimButtonClick;
+			m_aimElement = m_aimButton;
+		}
 		else
-			m_configureButton = filler();
+			m_aimElement = filler();
 		m_launchButton = builder(new Button()).content("Launch").
 			fontSize(LAUNCH_FONT).backgroundColor(LAUNCH_COLOR_DISABLED).build;
 		m_desiredStateButtons[TubeState.dry] =
@@ -80,13 +94,16 @@ final class TubeUI
 		Div desiredStateDiv = builder(hDiv(cast(GuiElement[]) m_desiredStateButtons[])).
 			fixedSize(vec2i(100, LAUNCH_FONT + 4)).borderWidth(4).build;
 
+		m_aimFiller = filler(AIM_BLOCK_HEIGHT);
+
 		m_mainDiv = builder(vDiv([
+			m_aimFiller,
 			m_tubeNameLabel,
-			m_configureButton,
+			m_aimElement,
 			m_launchButton,
 			desiredStateDiv,
 			m_currentStateLabel,
-			m_weaponButton])).borderWidth(4).fixedSize(vec2i(80, 110)).build;
+			m_weaponButton])).borderWidth(4).fixedSize(vec2i(80, 160)).build;
 
 		// now we bind updates
 		m_tube.onStateUpdate += &updateFromTube;
@@ -109,6 +126,186 @@ final class TubeUI
 		m_currentStateLabel.content = m_tube.currentState.to!string;
 		updateDesiredStateButtons();
 		updateLaunchButton();
+	}
+
+	private void onAimButtonClick()
+	{
+		if (!m_aiming && m_tube.loadedWeapon)
+		{
+			m_aimButton.content = "Stop aiming";
+			buildAimDiv();
+			m_mainDiv.setChild(m_aimDiv, 0);
+		}
+		else
+		{
+			m_aimButton.content = "Aim";
+			m_mainDiv.setChild(m_aimFiller, 0);
+		}
+		m_aiming = !m_aiming;
+	}
+
+	private void buildAimDiv()
+	{
+		// build m_aimDiv
+		Label courseLabel = builder(new Label()).content("course ").
+			fontSize(FONT).fixedSize(vec2i(45, 1)).build;
+		string marchCourseContent;
+		WeaponParamValue* wpv = WeaponParamType.marchCourse in m_tube.weaponParams;
+		if (wpv)
+			marchCourseContent = format("%.1f", -wpv.course.compassAngle.rad2dgr);
+		TextField courseTextField = builder(new TextField()).symbolFilter(&numericSymbFilter).
+			content(marchCourseContent).fontSize(FONT).build;
+		courseTextField.onKeyReleased += (k) {
+			try
+			{
+				float newTgt = courseTextField.content[0..$-1].to!float;
+				if (!isNaN(newTgt))
+				{
+					float radTgt = -newTgt.dgr2rad;
+					m_tube.marchCourse = radTgt;
+					m_tube.activeCourse = radTgt;
+				}
+			}
+			catch (Exception e) {}
+		};
+
+		Label activationRangeLabel = builder(new Label()).content("RTE(m) ").
+			fontSize(FONT).fixedSize(vec2i(45, 1)).build;
+		string activationRangeContent = format("%.0f",
+			m_tube.weaponParams[WeaponParamType.activationRange].range);
+		TextField activationRangeField = builder(new TextField()).
+			symbolFilter(&numericSymbFilter).content(activationRangeContent).
+			fontSize(FONT).build;
+		activationRangeField.onKeyReleased += (k) {
+			try
+			{
+				float rawTgt = activationRangeField.content[0..$-1].to!float;
+				if (!isNaN(rawTgt))
+				{
+					float clampedTgt = max(m_tube.activationRangeLimits.min, rawTgt);
+					clampedTgt = min(m_tube.activationRangeLimits.max, clampedTgt);
+					m_tube.activationRange = clampedTgt;
+					if (rawTgt < clampedTgt && rawTgt >= 0.0f)
+						activationRangeField.content = format("%.0f", rawTgt);
+					else
+						activationRangeField.content = format("%.0f", clampedTgt);
+				}
+			}
+			catch (Exception e) {}
+		};
+		activationRangeField.onKbFocusLoss += ()
+		{
+			activationRangeField.content = format("%.0f",
+				m_tube.weaponParams[WeaponParamType.activationRange].range);
+		};
+
+		Label marchSpeedLabel = builder(new Label()).content("RTE spd ").
+			fontSize(FONT).fixedSize(vec2i(50, 1)).build;
+		string marchSpeedContent = format("%.1f",
+			m_tube.weaponParams[WeaponParamType.marchSpeed].speed);
+		TextField marchSpeedField = builder(new TextField()).
+			symbolFilter(&numericSymbFilter).content(marchSpeedContent).
+			fontSize(FONT).build;
+		marchSpeedField.onKeyReleased += (k) {
+			try
+			{
+				float rawTgt = marchSpeedField.content[0..$-1].to!float;
+				if (!isNaN(rawTgt))
+				{
+					float clampedTgt = max(m_tube.marchSpeedLimits.min, rawTgt);
+					clampedTgt = min(m_tube.marchSpeedLimits.max, clampedTgt);
+					m_tube.marchSpeed = clampedTgt;
+					if (rawTgt < clampedTgt && rawTgt >= 0.0f)
+						marchSpeedField.content = format("%.1f", rawTgt);
+					else
+						marchSpeedField.content = format("%.1f", clampedTgt);
+				}
+			}
+			catch (Exception e) {}
+		};
+		marchSpeedField.onKbFocusLoss += ()
+		{
+			marchSpeedField.content = format("%.1f",
+				m_tube.weaponParams[WeaponParamType.marchSpeed].speed);
+		};
+
+		Label activeSpeedLabel = builder(new Label()).content("ACT spd ").
+			fontSize(FONT).fixedSize(vec2i(50, 1)).build;
+		string activeSpeedContent = format("%.1f",
+			m_tube.weaponParams[WeaponParamType.activeSpeed].speed);
+		TextField activeSpeedField = builder(new TextField()).
+			symbolFilter(&numericSymbFilter).content(activeSpeedContent).
+			fontSize(FONT).build;
+		activeSpeedField.onKeyReleased += (k) {
+			try
+			{
+				float rawTgt = activeSpeedField.content[0..$-1].to!float;
+				if (!isNaN(rawTgt))
+				{
+					float clampedTgt = max(m_tube.activeSpeedLimits.min, rawTgt);
+					clampedTgt = min(m_tube.activeSpeedLimits.max, clampedTgt);
+					m_tube.activeSpeed = clampedTgt;
+					if (rawTgt < clampedTgt && rawTgt >= 0.0f)
+						activeSpeedField.content = format("%.1f", rawTgt);
+					else
+						activeSpeedField.content = format("%.1f", clampedTgt);
+				}
+			}
+			catch (Exception e) {}
+		};
+		activeSpeedField.onKbFocusLoss += ()
+		{
+			activeSpeedField.content = format("%.1f",
+				m_tube.weaponParams[WeaponParamType.activeSpeed].speed);
+		};
+
+		Label patternLabel = builder(new Label()).content("ptrn ").
+			fontSize(FONT).fixedSize(vec2i(30, 1)).build;
+		Button patternButton = builder(new Button()).content(
+			m_tube.weaponParams[WeaponParamType.searchPattern].searchPattern.to!string).
+			fontSize(FONT).backgroundColor(CONF_COLOR).build;
+		patternButton.onClick += () {
+			Button[] spButtons;
+			foreach (WeaponSearchPattern pattern; m_tube.availableSearchPatterns)
+			{
+				Button btn = builder(new Button()).content(pattern.to!string).
+					fontSize(FONT).build;
+				btn.onClick += (WeaponSearchPattern p) {
+					return {
+						// we may be way too late and the weapon was changed, so we check
+						if (m_tube.availableSearchPatterns.canFind(p))
+						{
+							m_tube.searchPattern = p;
+							patternButton.content = p.to!string;
+						}
+					};
+				} (pattern);
+				spButtons ~= btn;
+			}
+			contextMenu(Game.guiManager, spButtons, Game.window.size,
+				Game.window.mousePos, FONT + 4);
+		};
+
+		m_aimDiv = builder(vDiv([
+				builder(hDiv([courseLabel, courseTextField])).
+					fixedSize(vec2i(1, FONT + 4)).build,
+				builder(hDiv([activationRangeLabel, activationRangeField])).
+					fixedSize(vec2i(1, FONT + 4)).build,
+				builder(hDiv([marchSpeedLabel, marchSpeedField])).
+					fixedSize(vec2i(1, FONT + 4)).build,
+				builder(hDiv([activeSpeedLabel, activeSpeedField])).
+					fixedSize(vec2i(1, FONT + 4)).build,
+				builder(hDiv([patternLabel, patternButton])).
+					fixedSize(vec2i(1, FONT + 4)).build,
+				filler()
+			])).borderWidth(4).fixedSize(vec2i(80, AIM_BLOCK_HEIGHT)).build;
+	}
+
+	private static bool numericSymbFilter(dchar c)
+	{
+		if (c >= '0' && c <= '9' || c == '.' || c == '-')
+			return true;
+		return false;
 	}
 
 	private void createSelectWeaponContextMenu()
@@ -159,6 +356,20 @@ final class TubeUI
 		{
 			m_weaponButton.backgroundColor = sfTransparent;
 			m_weaponButton.pressable = false;
+		}
+		// aim-button related stuff
+		if (m_tube.loadedWeapon == null)
+		{
+			if (m_aimButton)
+				m_aimButton.pressable = false;
+			if (m_aiming)
+				onAimButtonClick();
+			assert(!m_aiming);
+		}
+		else
+		{
+			if (m_aimButton)
+				m_aimButton.pressable = true;
 		}
 	}
 

@@ -1,4 +1,4 @@
-module dsubs_client.game.overlay;
+module dsubs_client.game.tacoverlay;
 
 import std.conv: to;
 import std.math;
@@ -951,7 +951,7 @@ final class TacticalContactElement: OverlayElementWithHover
 				}
 				else
 				{
-					// pick deterministic ray bearing accordint to contact id
+					// pick deterministic ray bearing based on contact id
 					double secsSince;
 					extrapolateTime(m_solution.time, secsSince);
 					m_solution.pos = Game.simState.playerSub.transform.position +
@@ -1046,10 +1046,10 @@ final class TacticalContactElement: OverlayElementWithHover
 	private void drawPastTrailAndDataLines(Window wnd)
 	{
 		m_pastTrailLine.render(wnd);
-		// iterate all active sonar points
 		LineShape deltaShape = ctcOverlayCache.dataTrailDelta;
 		vec2d deltaPerUsec = -m_solution.vel * tacowner.m_camCtrl.camera.zoom / 1e6;
 		deltaPerUsec.y = -deltaPerUsec.y;
+		// iterate all contact data points
 		foreach (ContactDataOverlayElement el; tacowner.m_selectedContactData.byValue)
 		{
 			vec2d dataPosScreen;

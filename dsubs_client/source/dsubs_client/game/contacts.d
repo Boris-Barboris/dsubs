@@ -13,7 +13,7 @@ import dsubs_client.gui;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.sonardisp: SonarDisplay;
 import dsubs_client.game.waterfall: Waterfall;
-import dsubs_client.game.overlay;
+import dsubs_client.game.tacoverlay;
 import dsubs_client.game;
 
 

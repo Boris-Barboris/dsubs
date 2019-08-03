@@ -1,5 +1,6 @@
 module dsubs_client.game.cic.state;
 
+import std.algorithm: find;
 import std.array: array, appender;
 import std.algorithm: map;
 import std.ascii: isUpper;
@@ -95,6 +96,16 @@ final class CICState
 	{
 		enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < m_recState.listenDirs.length);
 		m_recState.listenDirs[req.hydrophoneIdx] = req.dir;
+	}
+
+	void handleTubeFullState(TubeFullState res)
+	{
+		m_recState.tubeStates.find!(fs => fs.tubeId == res.tubeId)[0] = res;
+	}
+
+	void handleAmmoRoomFullState(AmmoRoomFullState res)
+	{
+		m_recState.ammoRoomStates.find!(fs => fs.roomId == res.roomId)[0] = res;
 	}
 
 	/// Contact and it's data.

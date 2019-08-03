@@ -17,7 +17,7 @@ import dsubs_client.render.camera;
 import dsubs_client.core.window;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.waterfall: PanoramicDisplay;
-import dsubs_client.game.overlay: SonarDispContactDataElement;
+import dsubs_client.game.tacoverlay: SonarDispContactDataElement;
 import dsubs_client.game;
 
 
