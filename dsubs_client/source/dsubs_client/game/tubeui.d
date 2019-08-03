@@ -49,6 +49,7 @@ final class TubeUI
 		Div m_aimDiv;
 		GuiElement m_aimFiller;
 		bool m_aiming;
+		WeaponProjectionTrace m_overlayTrace;
 
 		// main section
 		GuiElement m_aimElement;
@@ -135,11 +136,19 @@ final class TubeUI
 			m_aimButton.content = "Stop aiming";
 			buildAimDiv();
 			m_mainDiv.setChild(m_aimDiv, 0);
+			// build trace overlay
+			m_overlayTrace = new WeaponProjectionTrace(
+				Game.simState.tacticalOverlay, m_tube);
 		}
 		else
 		{
 			m_aimButton.content = "Aim";
 			m_mainDiv.setChild(m_aimFiller, 0);
+			if (m_overlayTrace)
+			{
+				Game.simState.tacticalOverlay.remove(m_overlayTrace);
+				m_overlayTrace = null;
+			}
 		}
 		m_aiming = !m_aiming;
 	}

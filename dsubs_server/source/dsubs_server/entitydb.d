@@ -292,12 +292,12 @@ Search patterns: straight, snake, spiral.
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 30,
 			["Decoy(active)": true]);
 		TubePrototype bowProtoTemplate = TubePrototype(TubeTemplate(0,
-			MountPoint(vec2f(-4.5, 28.5), dgr2rad(20)),
+			MountPoint(vec2f(-4.5, 27.0), dgr2rad(20)),
 			0, TubeType.standard, false),
 			cast(usecs_t)10e6, cast(usecs_t)6e6, cast(usecs_t)3e6, cast(usecs_t)3e6);
 		TubePrototype[int] tubeProtos;
 		tubeProtos[0] = bowProtoTemplate;
-		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(4.5, 28.5), -dgr2rad(20));
+		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(4.5, 27.0), -dgr2rad(20));
 		bowProtoTemplate.tmpl.id = 1;
 		tubeProtos[1] = bowProtoTemplate;
 		TubePrototype decoyTubePrototype = TubePrototype(TubeTemplate(2,

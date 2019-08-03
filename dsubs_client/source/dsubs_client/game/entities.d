@@ -182,8 +182,12 @@ final class AmmoRoom
 
 final class Tube
 {
-	this(AmmoRoom room, int id, TubeType tubeType)
+	this(Transform2D subTrans, MountPoint mount, AmmoRoom room, int id, TubeType tubeType)
 	{
+		m_transform = new Transform2D();
+		m_transform.rotation = mount.rotation;
+		m_transform.position = mount.mountCenter.to!vec2d;
+		subTrans.addChild(m_transform);
 		m_room = room;
 		m_fullState.tubeId = id;
 		m_tubeType = tubeType;
@@ -194,6 +198,7 @@ final class Tube
 		AmmoRoom m_room;
 		TubeFullState m_fullState;
 		TubeType m_tubeType;
+		Transform2D m_transform;
 
 		// cached limits of current weapon parameters
 		MinMax m_marchSpeedLimits;
@@ -202,6 +207,8 @@ final class Tube
 		const(WeaponParamDescSearchPatterns)* m_searchPatternDesc;
 		const(WeaponSensorMode)[] m_availableSensorModes;
 	}
+
+	@property Transform2D transform() { return m_transform; }
 
 	// no need to encapsulate
 	WeaponParamValue[WeaponParamType] weaponParams;
@@ -418,7 +425,8 @@ final class Submarine: WorldRenderable
 		foreach (const AmmoRoomTemplate at; m_tmpl.ammoRooms)
 			m_ammoRooms[at.id] = new AmmoRoom(at.id);
 		foreach (const TubeTemplate tt; m_tmpl.tubes)
-			m_tubes[tt.id] = new Tube(m_ammoRooms[tt.roomId], tt.id, tt.type);
+			m_tubes[tt.id] = new Tube(this.transform,
+				tt.mount, m_ammoRooms[tt.roomId], tt.id, tt.type);
 	}
 
 	void updateKinematics(ref const KinematicSnapshot snap)

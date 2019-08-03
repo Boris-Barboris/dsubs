@@ -1,5 +1,6 @@
 module dsubs_client.game.tacoverlay;
 
+import std.algorithm: max, min;
 import std.conv: to;
 import std.math;
 import std.experimental.logger;
@@ -55,6 +56,8 @@ final class ContactOverlayShapeCahe
 			sfColor(232, 244, 63, 100), 1);
 		m_dataTrailDelta = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(255, 22, 154, 200), 2);
+		m_shortestToSolution = new LineShape(vec2d(0, 0), vec2d(0, 0),
+			sfColor(21, 216, 230, 200), 2);
 		m_rayTracker = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(117, 79, 255, 100), 1.0);
 	}
@@ -72,11 +75,18 @@ final class ContactOverlayShapeCahe
 	mixin Readonly!(LineShape, "pastTrailLine");
 	mixin Readonly!(LineShape, "dataTrailDelta");
 	mixin Readonly!(LineShape, "rayTracker");
+	mixin Readonly!(LineShape, "shortestToSolution");
 
 	@property LineShape rayDataLine()
 	{
 		return new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(155, 244, 66, 150), 0.5);
+	}
+
+	@property LineShape weaponProjectionLine()
+	{
+		return new LineShape(vec2d(0, 0), vec2d(0, 0),
+			sfColor(255, 10, 10, 100), 2);
 	}
 
 	CircleShape forContactType(ContactType t)
@@ -1404,6 +1414,163 @@ final class RayDataTacticalElement: DataTacticalElement
 	{
 		super.draw(wnd, usecsDelta);
 		m_mainShape.render(wnd);
+	}
+}
+
+
+final class WeaponProjectionTrace: OverlayElement
+{
+	enum float INTEGRATION_STEP = 1.0f;
+
+	private
+	{
+		Tube m_tube;
+		LineShape[] m_shapes;
+		LineShape m_shortestToSolutionShape;
+	}
+
+	@property TacticalOverlay owner() { return cast(TacticalOverlay) super.owner; }
+
+	this(TacticalOverlay o, Tube tube)
+	{
+		super(o);
+		m_tube = tube;
+		m_shortestToSolutionShape = ctcOverlayCache.shortestToSolution;
+		this.mouseTransparent = true;
+	}
+
+	override void onPreDraw()
+	{
+		generateShapes();
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		foreach (LineShape shape; m_shapes)
+			shape.render(wnd);
+		if (owner.selectedContact && owner.selectedContact.contact.solution.posAvailable)
+			m_shortestToSolutionShape.render(wnd);
+	}
+
+	private void generateShapes()
+	{
+		float rangeLimit = m_tube.activationRangeLimits.max;
+		float turningRadius = m_tube.currentWeaponTemplate.turningRadius;
+		Transform2D trans = new Transform2D();
+		trans.position = m_tube.transform.wposition;
+		trans.rotation = m_tube.transform.wrotation;
+		auto param = WeaponParamType.marchCourse in m_tube.weaponParams;
+		float course = clampAngle(param ? param.course : trans.rotation);
+		float travelled = 0.0f;
+		float speed = m_tube.weaponParams[WeaponParamType.marchSpeed].speed;
+		float activationRange = m_tube.weaponParams[WeaponParamType.activationRange].range;
+		WeaponSearchPattern pattern = m_tube.weaponParams[WeaponParamType.searchPattern].
+			searchPattern;
+		// snake-related
+		float snakeAngle = dgr2rad(45.0f);
+		float snakeArm = m_tube.searchPatternDesc.snakeWidth / cos(snakeAngle);
+		float snakeSign = 1.0f;
+		// spiral-related
+
+		// contact-related
+		TacticalContactElement ctcEl = owner.selectedContact;
+		float minDist = float.max;
+		vec2d extrapolatedCtPosMin;
+		vec2d point2AtMinDist;
+
+		bool activated = false;
+		// integrate
+		size_t shapeIdx = 0;
+		while (travelled < rangeLimit)
+		{
+			if (shapeIdx >= m_shapes.length)
+				m_shapes ~= ctcOverlayCache.weaponProjectionLine;
+			LineShape shape = m_shapes[shapeIdx];
+			vec2d point1 = trans.wposition;
+			vec2d point2;
+			// find point2
+			float desiredCourse = course;
+			if (activated)
+			{
+				// process search patterns
+				final switch (pattern)
+				{
+					case WeaponSearchPattern.straight:
+						break;
+					case WeaponSearchPattern.snake:
+					{
+						float sinceActivation = travelled - activationRange;
+						float shiftedToArm = sinceActivation + snakeArm * 0.5f;
+						int divRes = ceil(shiftedToArm / snakeArm).to!int;
+						if (divRes % 2 == 0)
+							snakeSign = -1.0f;
+						else
+							snakeSign = 1.0f;
+						desiredCourse = course + snakeAngle * snakeSign;
+						break;
+					}
+					case WeaponSearchPattern.spiral:
+					{
+						float sinceActivation = travelled - activationRange;
+						desiredCourse = trans.wrotation + (INTEGRATION_STEP * speed) /
+							(m_tube.searchPatternDesc.spiralFirstRadius * (1.0f +
+							sqrt(sinceActivation / PI /
+								m_tube.searchPatternDesc.spiralFirstRadius)));
+						break;
+					}
+				}
+			}
+			double courseDist = angleDist(desiredCourse, trans.wrotation);
+			if (courseDist == 0.0)
+			{
+				// straight line
+				point2 = point1 + trans.wforward * speed * INTEGRATION_STEP;
+			}
+			else
+			{
+				// full or partial turn
+				float maxCourseDistPerInterval = speed * INTEGRATION_STEP / turningRadius;
+				trans.rotation = trans.rotation + max(-maxCourseDistPerInterval,
+					min(maxCourseDistPerInterval, courseDist));
+				point2 = point1 + trans.wforward * speed * INTEGRATION_STEP;
+			}
+			trans.position = point2;
+			shape.setPoints(
+				owner.world2windowPos(point1),
+				owner.world2windowPos(point2),
+				true);
+			travelled += speed * INTEGRATION_STEP;
+			if (!activated && travelled >= activationRange)
+			{
+				activated = true;
+				speed = m_tube.weaponParams[WeaponParamType.activeSpeed].speed;
+			}
+			// contact-related stuff
+			if (ctcEl && ctcEl.contact.solution.posAvailable)
+			{
+				vec2d extrapolatedCtPos = ctcEl.contact.solution.pos;
+				if (ctcEl.contact.solution.velAvailable)
+					extrapolatedCtPos += shapeIdx * ctcEl.contact.solution.vel;
+				float sqrDistance = (extrapolatedCtPos - point2).squaredLength;
+				if (sqrDistance < minDist)
+				{
+					extrapolatedCtPosMin = extrapolatedCtPos;
+					minDist = sqrDistance;
+					point2AtMinDist = point2;
+				}
+			}
+
+			shapeIdx++;
+		}
+		m_shapes = m_shapes[0..shapeIdx];
+
+		if (ctcEl && ctcEl.contact.solution.posAvailable)
+		{
+			m_shortestToSolutionShape.setPoints(
+				owner.world2windowPos(point2AtMinDist),
+				owner.world2windowPos(extrapolatedCtPosMin),
+				true);
+		}
 	}
 }
 
