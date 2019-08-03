@@ -91,6 +91,7 @@ final class TubeUI
 		// now we bind updates
 		m_tube.onStateUpdate += &updateFromTube;
 		m_launchButton.onClick += &m_tube.sendLaunchRequest;
+		m_weaponButton.onClick += &createSelectWeaponContextMenu;
 		for (TubeState state = TubeState.dry; state <= TubeState.open; state++)
 		{
 			Button btn = m_desiredStateButtons[state];
@@ -110,18 +111,40 @@ final class TubeUI
 		updateLaunchButton();
 	}
 
+	private void createSelectWeaponContextMenu()
+	{
+		Button chooseEmpty = builder(new Button()).
+			content("empty").fontSize(FONT).build;
+		chooseEmpty.onClick += { m_tube.sendDesiredWeaponRequest(null); };
+		Button[] contextButtons = [chooseEmpty];
+		foreach (weaponCountPair; m_tube.room.weaponCounts.byKeyValue)
+		{
+			if (weaponCountPair.value > 0)
+			{
+				string weaponName = weaponCountPair.key;
+				Button loadWeaponBtn = builder(new Button()).
+					content(weaponName ~ " x" ~ weaponCountPair.value.to!string).
+					fontSize(FONT).build;
+				loadWeaponBtn.onClick += { m_tube.sendDesiredWeaponRequest(weaponName); };
+				contextButtons ~= loadWeaponBtn;
+			}
+		}
+		contextMenu(Game.guiManager, contextButtons, Game.window.size,
+			Game.window.mousePos, FONT + 4);
+	}
+
 	private void updateWeaponContent()
 	{
 		string currentWeaponName = m_tube.loadedWeapon;
 		if (currentWeaponName == null)
 			currentWeaponName = "empty";
-		if (m_tube.currentState == TubeState.unloading ||
-			m_tube.currentState == TubeState.loading)
+		if (m_tube.currentState == TubeState.unloading)
 		{
 			string desiredWeaponName = m_tube.desiredWeapon;
 			if (desiredWeaponName == null)
 				desiredWeaponName = "empty";
-			m_weaponButton.content = currentWeaponName ~ " -> " ~ desiredWeaponName;
+			m_weaponButton.content = currentWeaponName[0..4] ~ "->" ~
+				desiredWeaponName[0..4];
 		}
 		else
 			m_weaponButton.content = currentWeaponName;
@@ -148,6 +171,12 @@ final class TubeUI
 				btn.backgroundColor = SELECTED_STATE_COLOR;
 			else
 				btn.backgroundColor = INACTIVE_STATE_COLOR;
+			// we do not allow desired state switch during loading/unloading
+			if (m_tube.currentState == TubeState.unloading ||
+				m_tube.currentState == TubeState.loading)
+				btn.pressable = false;
+			else
+				btn.pressable = true;
 		}
 	}
 

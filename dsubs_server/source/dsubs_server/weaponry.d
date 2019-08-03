@@ -185,10 +185,6 @@ final class Tube
 		// check if we need to start unloading
 		switch (m_state)
 		{
-			case TubeState.open:
-			{
-				return TubeOperationResult(false, false);
-			}
 			case TubeState.dry:
 			{
 				if (m_loadedWeapon == newWeaponName)
@@ -321,7 +317,7 @@ final class Tube
 					else
 					{
 						// we are dry and empty
-						m_loadedWeapon = null;
+						m_loadedWeapon = m_desiredWeapon = null;
 						m_state = TubeState.dry;
 					}
 				}

@@ -222,6 +222,13 @@ final class Tube
 			LaunchTubeReq(id, loadedWeapon, m_weaponParams.values)));
 	}
 
+	void sendDesiredWeaponRequest(string newWeapon)
+	{
+		if (desiredWeapon != newWeapon)
+			Game.ciccon.sendMessage(cast(immutable) CICLoadTubeReq(
+				LoadTubeReq(id, newWeapon)));
+	}
+
 	void sendDesiredStateRequest(TubeState newState)
 	{
 		assert(isStableState(newState));
