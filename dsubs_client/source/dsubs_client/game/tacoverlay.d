@@ -86,7 +86,7 @@ final class ContactOverlayShapeCahe
 	@property LineShape weaponProjectionLine()
 	{
 		return new LineShape(vec2d(0, 0), vec2d(0, 0),
-			sfColor(255, 10, 10, 100), 2);
+			WeaponProjectionTrace.ACTIVE_COLOR, 2);
 	}
 
 	CircleShape forContactType(ContactType t)
@@ -1421,6 +1421,8 @@ final class RayDataTacticalElement: DataTacticalElement
 final class WeaponProjectionTrace: OverlayElement
 {
 	enum float INTEGRATION_STEP = 1.0f;
+	enum sfColor RTE_COLOR = sfColor(245, 141, 5, 100);
+	enum sfColor ACTIVE_COLOR = sfColor(255, 10, 10, 100);
 
 	private
 	{
@@ -1492,6 +1494,7 @@ final class WeaponProjectionTrace: OverlayElement
 			float desiredCourse = course;
 			if (activated)
 			{
+				shape.color = ACTIVE_COLOR;
 				// process search patterns
 				final switch (pattern)
 				{
@@ -1520,6 +1523,8 @@ final class WeaponProjectionTrace: OverlayElement
 					}
 				}
 			}
+			else
+				shape.color = RTE_COLOR;
 			double courseDist = angleDist(desiredCourse, trans.wrotation);
 			if (courseDist == 0.0)
 			{

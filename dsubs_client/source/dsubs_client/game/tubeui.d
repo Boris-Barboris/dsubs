@@ -165,17 +165,25 @@ final class TubeUI
 		TextField courseTextField = builder(new TextField()).symbolFilter(&numericSymbFilter).
 			content(marchCourseContent).fontSize(FONT).build;
 		courseTextField.onKeyReleased += (k) {
-			try
+			if (courseTextField.content.length == 1)
 			{
-				float newTgt = courseTextField.content[0..$-1].to!float;
-				if (!isNaN(newTgt))
-				{
-					float radTgt = -newTgt.dgr2rad;
-					m_tube.marchCourse = radTgt;
-					m_tube.activeCourse = radTgt;
-				}
+				m_tube.weaponParams.remove(WeaponParamType.marchCourse);
+				m_tube.weaponParams.remove(WeaponParamType.activeCourse);
 			}
-			catch (Exception e) {}
+			else
+			{
+				try
+				{
+					float newTgt = courseTextField.content[0..$-1].to!float;
+					if (!isNaN(newTgt))
+					{
+						float radTgt = -newTgt.dgr2rad;
+						m_tube.marchCourse = radTgt;
+						m_tube.activeCourse = radTgt;
+					}
+				}
+				catch (Exception e) {}
+			}
 		};
 
 		Label activationRangeLabel = builder(new Label()).content("RTE(m) ").

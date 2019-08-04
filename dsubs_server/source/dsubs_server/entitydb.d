@@ -255,12 +255,12 @@ Search patterns: straight, snake, spiral.
 		ActiveDecoyFactory adf = new ActiveDecoyFactory(
 			cast(immutable(WeaponTemplate)) WeaponTemplate(
 				"Decoy(active)",
-				"Active sonar decoy. Lasts 60 seconds.",
+				"Active sonar decoy. Lasts 90 seconds.",
 				0.0f,
 				WeaponParamType.none,
 				[])
 		);
-		adf.fuel = RolledF(60, 5);
+		adf.fuel = RolledF(90, 5);
 		adf.mass = RolledF(1.0f, 1e-3);
 		adf.Cd0 = RolledF(0.05f, 1e-5f);
 		adf.Cd1 = RolledF(0.01f, 1e-5f);
@@ -292,18 +292,36 @@ Search patterns: straight, snake, spiral.
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 30,
 			["Decoy(active)": true]);
 		TubePrototype bowProtoTemplate = TubePrototype(TubeTemplate(0,
-			MountPoint(vec2f(-4.5, 27.0), dgr2rad(20)),
+			MountPoint(vec2f(-4.7, 25.0), dgr2rad(20)),
 			0, TubeType.standard, false),
-			cast(usecs_t)10e6, cast(usecs_t)6e6, cast(usecs_t)3e6, cast(usecs_t)3e6);
+			cast(usecs_t)10e6, cast(usecs_t)9e6, cast(usecs_t)6e6, cast(usecs_t)3e6);
+		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
+			4.0f, 75.0f);
+		bowProtoTemplate.openSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
+			4.0f, 75.0f);
+		bowProtoTemplate.firingSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
+			4.0f, 90.0f);
 		TubePrototype[int] tubeProtos;
 		tubeProtos[0] = bowProtoTemplate;
-		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(4.5, 27.0), -dgr2rad(20));
+		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(4.7, 25.0), -dgr2rad(20));
 		bowProtoTemplate.tmpl.id = 1;
 		tubeProtos[1] = bowProtoTemplate;
 		TubePrototype decoyTubePrototype = TubePrototype(TubeTemplate(2,
 			MountPoint(vec2f(-4.5, -21.0f), dgr2rad(100)),
 			1, TubeType.decoy, true),
-			cast(usecs_t)10e6, cast(usecs_t)5e6, cast(usecs_t)2e6, cast(usecs_t)3e6);
+			cast(usecs_t)10e6, cast(usecs_t)5e6, cast(usecs_t)6e6, cast(usecs_t)3e6);
+		decoyTubePrototype.floodSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hissing2_5sec_8192.wav"),
+			4.0f, 70.0f);
+		decoyTubePrototype.openSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
+			4.0f, 70.0f);
+		decoyTubePrototype.firingSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
+			4.0f, 85.0f);
 		tubeProtos[2] = decoyTubePrototype;
 		decoyTubePrototype.tmpl.mount = MountPoint(vec2f(4.5, -21.0f), -dgr2rad(100));
 		decoyTubePrototype.tmpl.id = 3;
@@ -316,7 +334,8 @@ offensive capabilities and survivability.
 
 Length: 70m
 Displacement: 1600t
-Top speed: 17m/s
+Top speed:
+	Seven-blade screw: 16m/s
 Armament:
   2x bow torpedo tubes.
   2x broadside decoy launchers.
@@ -395,7 +414,7 @@ Active sonar:
 		sp.roomProtos = roomProtos;
 		sp.tubeProtos = tubeProtos;
 		sp.mass = RolledF(1700.0f, 10.0f);
-		sp.Cd0 = RolledF(5.0, 0.1f);
+		sp.Cd0 = RolledF(10.0, 0.1f);
 		sp.Cd1 = RolledF(5.6, 0.07f);
 		sp.Cda = 0.8;
 		sp.Cl = RolledF(35.0, 0.4f);

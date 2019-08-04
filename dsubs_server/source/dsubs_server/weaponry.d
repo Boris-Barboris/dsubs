@@ -6,6 +6,8 @@ import std.array: array;
 import dsubs_common.api.entities;
 import dsubs_common.math;
 
+import dsubs_sound.soundsource;
+
 import dsubs_server.common;
 import dsubs_server.player;
 import dsubs_server.torpedo;
@@ -107,6 +109,9 @@ struct TubePrototype
 	usecs_t floodTime;
 	usecs_t openTime;
 	usecs_t firingTime;
+	PrerecordedSoundPrototype floodSoundProto;
+	PrerecordedSoundPrototype openSoundProto;
+	PrerecordedSoundPrototype firingSoundProto;
 }
 
 struct TubeOperationResult
@@ -153,7 +158,6 @@ final class Tube
 
 		TubeState m_state = TubeState.dry;
 		TubeState m_desiredState = TubeState.dry;
-
 		TubeOperationResult m_lastSimUpdateResults;
 	}
 
@@ -277,6 +281,7 @@ final class Tube
 		w.register();
 		m_desiredWeapon = m_loadedWeapon = null;
 		m_state = TubeState.firing;
+		startPlayingSound(&m_proto.firingSoundProto);
 		return TubeOperationResult(true, false);
 	}
 
@@ -396,6 +401,15 @@ final class Tube
 		}
 	}
 
+	private void startPlayingSound(const(PrerecordedSoundPrototype)* proto)
+	{
+		if (proto is null || proto.tds is null)
+			return;
+		PrerecordedSoundSource currentSound = new PrerecordedSoundSource(
+			new Transform2D(m_transform.wposition), cast() *proto, null);
+		Globals.acous.registerSource(currentSound);
+	}
+
 	private void startTransitionToDesiredState()
 	{
 		assert(isStableState(m_state));
@@ -405,19 +419,27 @@ final class Tube
 			case TubeState.dry:
 			{
 				m_state = TubeState.flooding;
+				startPlayingSound(&m_proto.floodSoundProto);
 				break;
 			}
 			case TubeState.flooded:
 			{
 				if (m_desiredState > TubeState.flooded)
+				{
 					m_state = TubeState.opening;
+					startPlayingSound(&m_proto.openSoundProto);
+				}
 				else
+				{
 					m_state = TubeState.drying;
+					startPlayingSound(&m_proto.floodSoundProto);
+				}
 				break;
 			}
 			case TubeState.open:
 			{
 				m_state = TubeState.closing;
+				startPlayingSound(&m_proto.openSoundProto);
 				break;
 			}
 			default:
