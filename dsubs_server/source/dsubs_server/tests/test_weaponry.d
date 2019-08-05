@@ -61,7 +61,7 @@ unittest
 				assert(s.getAmmoRoom(0).getWeaponCount("Minoga") == 14);
 				return;
 			}
-			case 1 + 10:
+			case 1 + EntityDb.STORK_RELOAD_SECS:
 			{
 				// assert that the state has changed to loaded
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
@@ -70,7 +70,7 @@ unittest
 				assert(s.getAmmoRoom(0).getWeaponCount("Minoga") == 14);
 				return;
 			}
-			case 1 + 11:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 1:
 			{
 				// switch desired state to open
 				TubeOperationResult res = s.getTube(0).processStateRequest(TubeState.open);
@@ -79,35 +79,37 @@ unittest
 				assert(s.getTube(0).desiredState == TubeState.open);
 				return;
 			}
-			case 1 + 11 + 3:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 3:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged == false);
 				assert(s.getTube(0).state == TubeState.flooding);
 				assert(s.getTube(0).desiredState == TubeState.open);
 				return;
 			}
-			case 1 + 11 + 6:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 1 + EntityDb.STORK_FLOOD_SECS:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
 				assert(s.getTube(0).state == TubeState.flooded);
 				assert(s.getTube(0).desiredState == TubeState.open);
 				return;
 			}
-			case 1 + 11 + 6 + 2:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 1 + EntityDb.STORK_FLOOD_SECS + 2:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged == false);
 				assert(s.getTube(0).state == TubeState.opening);
 				assert(s.getTube(0).desiredState == TubeState.open);
 				return;
 			}
-			case 1 + 11 + 6 + 3:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 1 + EntityDb.STORK_FLOOD_SECS +
+				EntityDb.STORK_OPEN_SECS:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
 				assert(s.getTube(0).state == TubeState.open);
 				assert(s.getTube(0).desiredState == TubeState.open);
 				return;
 			}
-			case 1 + 11 + 6 + 3 + 1:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 1 + EntityDb.STORK_FLOOD_SECS +
+				EntityDb.STORK_OPEN_SECS + 1:
 			{
 				// try to launch torpedo
 				WeaponParamValue[] pvs;
@@ -144,7 +146,8 @@ unittest
 					launchedTorp);
 				return;
 			}
-			case 1 + 11 + 6 + 3 + 1 + 3:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 1 + EntityDb.STORK_FLOOD_SECS +
+				EntityDb.STORK_OPEN_SECS + 1 + EntityDb.STORK_FIRING_SECS:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
 				assert(s.getTube(0).state == TubeState.open);
@@ -156,21 +159,24 @@ unittest
 				assert(s.getTube(0).desiredState == TubeState.dry);
 				return;
 			}
-			case 1 + 11 + 6 + 3 + 1 + 3 + 1:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 1 + EntityDb.STORK_FLOOD_SECS +
+				EntityDb.STORK_OPEN_SECS + 1 + EntityDb.STORK_FIRING_SECS + 1:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
 				assert(s.getTube(0).state == TubeState.closing);
 				assert(s.getTube(0).desiredState == TubeState.dry);
 				return;
 			}
-			case 1 + 11 + 6 + 3 + 1 + 3 + 3:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 1 + EntityDb.STORK_FLOOD_SECS +
+				2 * EntityDb.STORK_OPEN_SECS + 1 + EntityDb.STORK_FIRING_SECS:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
 				assert(s.getTube(0).state == TubeState.flooded);
 				assert(s.getTube(0).desiredState == TubeState.dry);
 				return;
 			}
-			case 1 + 11 + 6 + 3 + 1 + 3 + 3 + 6:
+			case 1 + EntityDb.STORK_RELOAD_SECS + 1 + 2 * EntityDb.STORK_FLOOD_SECS +
+				2 * EntityDb.STORK_OPEN_SECS + 1 + EntityDb.STORK_FIRING_SECS:
 			{
 				assert(s.getTube(0).lastSimUpdateResult.tubeChanged);
 				assert(s.getTube(0).state == TubeState.dry);
@@ -235,13 +241,14 @@ unittest
 				s1.getTube(0).processLoadRequest("Minoga");
 				return;
 			}
-			case 1 + 11:
+			case 2 + EntityDb.STORK_RELOAD_SECS:
 			{
 				// switch desired state to open
 				TubeOperationResult res = s1.getTube(0).processStateRequest(TubeState.open);
 				return;
 			}
-			case 1 + 11 + 6 + 3 + 1:
+			case 2 + EntityDb.STORK_RELOAD_SECS + EntityDb.STORK_FLOOD_SECS +
+				EntityDb.STORK_OPEN_SECS:
 			{
 				// try to launch torpedo
 				WeaponParamValue[] pvs;
@@ -281,13 +288,8 @@ unittest
 				};
 				return;
 			}
-			case 1 + 11 + 6 + 3 + 1 + 3:
-			{
-				// switch desired state to dry
-				TubeOperationResult res = s1.getTube(0).processStateRequest(TubeState.dry);
-				return;
-			}
-			case 1 + 11 + 6 + 3 + 1 + 3 + 5:
+			case 2 + EntityDb.STORK_RELOAD_SECS + EntityDb.STORK_FLOOD_SECS +
+				EntityDb.STORK_OPEN_SECS + 5:
 			{
 				// try to launch decoy
 				assert(s2.getTube(2).loadedWeapon == "Decoy(active)");

@@ -104,7 +104,7 @@ final class TubeUI
 			m_launchButton,
 			desiredStateDiv,
 			m_currentStateLabel,
-			m_weaponButton])).borderWidth(4).fixedSize(vec2i(80, 160)).build;
+			m_weaponButton])).borderWidth(4).fixedSize(vec2i(80, AIM_BLOCK_HEIGHT + 75)).build;
 
 		// now we bind updates
 		m_tube.onStateUpdate += &updateFromTube;
@@ -316,6 +316,28 @@ final class TubeUI
 					fixedSize(vec2i(1, FONT + 4)).build,
 				filler()
 			])).borderWidth(4).fixedSize(vec2i(80, AIM_BLOCK_HEIGHT)).build;
+
+		// bind up and down keys in cycle
+		for (size_t i = 0; i < m_aimDiv.children.length - 2; i++)
+		{
+			TextField curField = cast(TextField)((cast(Div) m_aimDiv.children[i]).children[1]);
+			assert(curField);
+			TextField nextField = cast(TextField)(
+				(cast(Div) m_aimDiv.children[(i + 1) % ($ - 2)]).children[1]);
+			assert(nextField);
+			curField.onKeyPressed += (nf) {
+				return (const sfKeyEvent* evt) {
+					if (evt.code == sfKeyDown)
+						nf.requestKbFocus();
+					};
+				} (nextField);
+			nextField.onKeyPressed += (cf) {
+				return (const sfKeyEvent* evt) {
+					if (evt.code == sfKeyUp)
+						cf.requestKbFocus();
+					};
+				} (curField);
+		}
 	}
 
 	private static bool numericSymbFilter(dchar c)

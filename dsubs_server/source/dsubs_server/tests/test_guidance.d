@@ -214,7 +214,7 @@ unittest
 	Globals.sim.join();
 
 	trace("minoga was ", minDist, " meters away from stork in minoga_headon test");
-	assert(s.dead);
+	assert(s.dead, "no detonation");
 }
 
 unittest

@@ -83,6 +83,11 @@ final class EntityDb
 		return m_weapons[torpName];
 	}
 
+	enum int STORK_RELOAD_SECS = 10;
+	enum int STORK_FLOOD_SECS = 9;
+	enum int STORK_OPEN_SECS = 6;
+	enum int STORK_FIRING_SECS = 3;
+
 private:
 
 
@@ -104,8 +109,8 @@ private:
 					vec2f(4.2f, -0.9f)
 				], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 			));
-		bp.posThrustK = RolledF(1600.0f, 20.0f);
-		bp.negThrustK = RolledF(600.0f, 10.0f);
+		bp.posThrustK = RolledF(1780.0f, 20.0f);
+		bp.negThrustK = RolledF(740.0f, 10.0f);
 		bp.mass = 50.0f;
 		bp.shaftRotFreq = 2.19f;
 		bp.soundPrototype = PropellerSoundPrototype(
@@ -294,7 +299,10 @@ Search patterns: straight, snake, spiral.
 		TubePrototype bowProtoTemplate = TubePrototype(TubeTemplate(0,
 			MountPoint(vec2f(-4.7, 25.0), dgr2rad(20)),
 			0, TubeType.standard, false),
-			cast(usecs_t)10e6, cast(usecs_t)9e6, cast(usecs_t)6e6, cast(usecs_t)3e6);
+			cast(usecs_t)STORK_RELOAD_SECS * 1000_000,
+			cast(usecs_t)STORK_FLOOD_SECS * 1000_000,
+			cast(usecs_t)STORK_OPEN_SECS * 1000_000,
+			cast(usecs_t)STORK_FIRING_SECS * 1000_000);
 		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
 			4.0f, 75.0f);
@@ -335,7 +343,7 @@ offensive capabilities and survivability.
 Length: 70m
 Displacement: 1600t
 Top speed:
-	Seven-blade screw: 16m/s
+	Seven-blade screw: 16.8m/s
 Armament:
   2x bow torpedo tubes.
   2x broadside decoy launchers.

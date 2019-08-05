@@ -328,7 +328,7 @@ final class SimulationGUI
 
 		GuiElement tabFiller = builder(vDiv([
 			filler(),
-			builder(hDiv(cast(GuiElement[]) tubeUiDivs)).fixedSize(vec2i(100, 220)).
+			builder(hDiv(cast(GuiElement[]) tubeUiDivs)).fixedSize(vec2i(100, 230)).
 			borderWidth(8).build
 		])).build;
 		m_passiveGui = createWaterfallPanel(playerSub.tmpl.hydrophones[0]);
