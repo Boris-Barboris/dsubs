@@ -7,6 +7,7 @@ import dsubs_common.api.entities;
 import dsubs_common.math;
 
 import dsubs_sound.soundsource;
+import dsubs_sound.common;
 
 import dsubs_server.common;
 import dsubs_server.player;
@@ -281,7 +282,8 @@ final class Tube
 		w.register();
 		m_desiredWeapon = m_loadedWeapon = null;
 		m_state = TubeState.firing;
-		startPlayingSound(&m_proto.firingSoundProto);
+		size_t soundOffset = dsubs_sound.common.uniform!("[]", size_t, size_t)(0, GLOBAL_SRATE / 8);
+		startPlayingSound(&m_proto.firingSoundProto, &soundOffset);
 		return TubeOperationResult(true, false);
 	}
 
@@ -401,12 +403,12 @@ final class Tube
 		}
 	}
 
-	private void startPlayingSound(const(PrerecordedSoundPrototype)* proto)
+	private void startPlayingSound(const(PrerecordedSoundPrototype)* proto, size_t* sampleOffset = null)
 	{
 		if (proto is null || proto.tds is null)
 			return;
 		PrerecordedSoundSource currentSound = new PrerecordedSoundSource(
-			new Transform2D(m_transform.wposition), cast() *proto, null);
+			new Transform2D(m_transform.wposition), cast() *proto, sampleOffset);
 		Globals.acous.registerSource(currentSound);
 	}
 

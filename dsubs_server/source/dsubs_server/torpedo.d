@@ -828,7 +828,6 @@ final class TorpedoFactory: WeaponFactory
 	{
 		Torpedo res = new Torpedo(shooter, templateName);
 		res.propulsor = propFactory.build();
-		res.targetThrottle = 1.0f;	// by-default torps spawn with max throttle
 		configureGuidance(res, launchParams);
 		bootstrap(res);
 		return res;

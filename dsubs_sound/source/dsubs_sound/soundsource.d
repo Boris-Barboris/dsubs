@@ -287,15 +287,15 @@ abstract class FiniteSoundSource: SoundSource
 /// Sound source with fixed recording length.
 abstract class FixedLengthSoundSource: FiniteSoundSource
 {
-	this(Transform2D t, size_t totalSamples, const(size_t)* destOffset = null)
+	this(Transform2D t, size_t totalSamples, const(size_t)* sampleOffset = null)
 	{
 		super(t);
 		m_totalSamples = totalSamples;
 		assert(samplesLeft > 0);
-		if (destOffset)
+		if (sampleOffset)
 		{
-			assert(*destOffset < GLOBAL_SRATE);
-			m_destOffset = *destOffset;
+			assert(*sampleOffset < GLOBAL_SRATE);
+			m_destOffset = *sampleOffset;
 		}
 		else
 			m_destOffset = uniform(0, GLOBAL_SRATE - 1);
@@ -337,9 +337,9 @@ struct PrerecordedSoundPrototype
 
 final class PrerecordedSoundSource: FixedLengthSoundSource
 {
-	this(Transform2D t, PrerecordedSoundPrototype proto, size_t* destOffset = null)
+	this(Transform2D t, PrerecordedSoundPrototype proto, size_t* sampleOffset = null)
 	{
-		super(t, proto.tds.length, destOffset);
+		super(t, proto.tds.length, sampleOffset);
 		m_proto = proto;
 	}
 
