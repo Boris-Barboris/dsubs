@@ -33,7 +33,7 @@ final class Simulator
 
 	@property bool joined() const { return m_joined; }
 
-	/// asynchronous
+	/// request to stop the simulation loop.
 	void stop()
 	{
 		m_stopFlag = true;

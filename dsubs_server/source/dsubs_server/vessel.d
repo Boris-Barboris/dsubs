@@ -1,5 +1,7 @@
 module dsubs_server.vessel;
 
+import std.random: uniform;
+
 import dsubs_common.api.entities;
 import dsubs_common.event;
 import dsubs_common.math;
@@ -27,6 +29,7 @@ class Vessel
 		string m_prototypeName;
 		bool m_dead;
 		usecs_t m_deathTime;
+		usecs_t m_reapTime;
 		string m_causeOfDeath;
 	}
 
@@ -46,6 +49,7 @@ class Vessel
 		@property string prototypeName() const { return m_prototypeName; }
 		@property bool dead() const { return m_dead; }
 		@property usecs_t deathTime() const { return m_deathTime; }
+		@property usecs_t reapTime() const { return m_reapTime; }
 		@property string causeOfDeath() const { return m_causeOfDeath; }
 	}
 
@@ -114,6 +118,8 @@ class Vessel
 		if (!m_dead)
 		{
 			m_deathTime = Globals.sim.worldTime;
+			m_reapTime = m_deathTime + uniform!("[]", usecs_t, usecs_t)(240, 360) *
+				1000_000;
 			if (m_propulsor)
 				targetThrottle = 0.0f;
 			m_dead = true;
@@ -164,10 +170,9 @@ final class VesselCollection
 	void collectDeadVessels()
 	{
 		Vessel[] deadVessels;
-		usecs_t reapAge = uniform(240, 360) * 1000_000;
 		foreach (vessel; m_entities)
 		{
-			if (vessel.dead && vessel.deathTime < Globals.sim.worldTime - reapAge)
+			if (vessel.dead && vessel.reapTime < Globals.sim.worldTime)
 				deadVessels ~= vessel;
 		}
 		foreach (v; deadVessels)

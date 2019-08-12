@@ -36,7 +36,7 @@ final class Player
 		PlayerConnection m_connection;
 		Submarine m_submarine;
 
-		enum double MAX_COORD_SHIFT = 50_000.0;
+		enum double MAX_COORD_SHIFT = 100_000.0;
 		enum long MAX_TIME_SHIFT = 200_000_000L;
 
 		static shared int s_playerCount = 0;
