@@ -139,6 +139,8 @@ final class VesselCollection
 		Vessel[] m_entities;
 	}
 
+	@property Vessel[] entities() { return m_entities; }
+
 	void registerEntity(Vessel e)
 	{
 		synchronized(this)

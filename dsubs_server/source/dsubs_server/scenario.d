@@ -2,10 +2,12 @@ module dsubs_server.scenario;
 
 import std.random: uniform, uniform01;
 
-import dsubs_common.math.angles: courseVector;
+import dsubs_common.math.angles;
 import dsubs_common.api.protocols.backend: SpawnReq;
 
 import dsubs_server.common;
+import dsubs_server.vessel;
+import dsubs_server.submarine: Submarine;
 import dsubs_server.player: Player;
 
 
@@ -44,13 +46,56 @@ final class BattleRoyale: Scenario
 	this()
 	{
 		m_currentRadius = DEFAULT_RADIUS;
-		m_currentCenter = vec2d(uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)));
+		m_currentCenter = vec2d(
+			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)),
+			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)));
 		m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
 	}
 
-	override void onBeforeSimulation() {}
+	override void onBeforeSimulation()
+	{
+		if (!m_inTransition)
+		{
+			// we need to force all played submarines to stay in circle
+			foreach (Vessel v; Globals.vessels.entities)
+			{
+				Submarine sub = cast(Submarine) v;
+				if (sub is null)
+					continue;
+				if (!sub.dead && sub.owner)
+				{
+					vec2d diffVec = m_currentCenter - sub.transform.wposition;
+					if (diffVec.length > m_currentRadius)
+					{
+						// force throttle to flank and set course to center of
+						// the circle.
+						sub.targetThrottle = 1.0f;
+						sub.targetCourse = courseAngle(diffVec);
+					}
+				}
+			}
+		}
+	}
 
-	override void onAfterSimulation() {}
+	override void onAfterSimulation()
+	{
+		if (Globals.sim.worldTime >= m_nextTransitionTime)
+		{
+			if (m_inTransition)
+			{
+				m_currentCenter = m_nextCenter;
+				m_currentRadius = m_nextRadius;
+				m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
+			}
+			else
+			{
+				// TODO: generate new nextCenter and nextRadius
+				m_nextTransitionTime = Globals.sim.worldTime + TRANSITION_TIME;
+			}
+			m_inTransition = !m_inTransition;
+			// TODO: send message
+		}
+	}
 
 	override void selectPlayerSpawnPosition(Player p, const SpawnReq req,
 		out vec2d position, out double rotation)

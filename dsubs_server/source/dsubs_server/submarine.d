@@ -29,6 +29,7 @@ final class Submarine: Vessel
 	@property int spawnId() const { return m_spawnId; }
 	@property inout(Hydrophone)[] hydrophones() inout { return m_hydrophones; }
 	@property ActiveSonar sonar() { return m_sonar; }
+	@property Player owner() { return m_owner; }
 
 	/// creates transform and rigid body
 	this(Player owner, string prototypeName)
