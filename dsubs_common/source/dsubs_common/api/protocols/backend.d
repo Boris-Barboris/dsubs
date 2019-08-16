@@ -116,6 +116,8 @@ struct ReconnectStateRes
 	float[] listenDirs;
 	TubeFullState[] tubeStates;
 	AmmoRoomFullState[] ammoRoomStates;
+	MapElement[] mapElements;
+	ChatMessage[] briefing;
 }
 
 /*

@@ -44,9 +44,8 @@ Messages that duplicate backend protocol messages
 struct CICEntityDbRes
 {
 	__gshared const int g_marshIdx;
-	PropulsorTemplate[] propulsors;
-	SubmarineTemplate[] controllableSubs;
-	WeaponTemplate[] munition;
+	EntityDbRes res;
+	alias res this;
 }
 
 struct CICReconnectStateRes

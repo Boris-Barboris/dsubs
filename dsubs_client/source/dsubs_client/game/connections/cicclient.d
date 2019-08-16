@@ -122,7 +122,7 @@ private:
 		synchronized(Game.mainMutex)
 		{
 			Game.entityDbHash = awaitedDbHash;
-			Game.entityDb = cast(EntityDbRes) res;
+			Game.entityDb = res.res;
 			Game.entityManager = new EntityManager(Game.entityDb);
 		}
 		info("entityDb received from CIC, entering simulation flow");

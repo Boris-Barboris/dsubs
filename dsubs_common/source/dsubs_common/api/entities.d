@@ -380,3 +380,35 @@ struct HydrophoneAudio
 	short[] samples;	// 16-bit PCB mono
 	int samplingRate;	// usually 4096 Hz
 }
+
+enum MapElementType: byte
+{
+	circle
+}
+
+struct MapCircle
+{
+	vec2d center;
+	double radius;		// world-space radius
+	float circleWidth;	// screen-space width
+}
+
+union MapElementUnion
+{
+	MapCircle circle;
+}
+
+struct MapElement
+{
+	MapElementType type;
+	MapElementUnion value;
+	string label;
+	RgbaColor color;
+	alias value this;
+}
+
+struct ChatMessage
+{
+	int sentOnUtc;		// unix timestamp
+	string message;
+}
