@@ -38,9 +38,10 @@ final class BattleRoyale: Scenario
 		usecs_t m_nextTransitionTime;
 		bool m_inTransition;
 
-		enum FLOAT DEFAULT_RADIUS = 10000.0f;
+		enum float DEFAULT_RADIUS = 7000.0f;
+		enum float ESTIMATE_SPD = 12.0f;
 		enum usecs_t STABLE_TIME = 25 * 60 * 1000_000;
-		enum usecs_t TRANSITION_TIME = 5 * 60 * 1000_000;
+		enum usecs_t TRANSITION_TIME = cast(usecs_t) (2 * DEFAULT_RADIUS / ESTIMATE_SPD) * 1000_000;
 	}
 
 	this()
@@ -90,10 +91,12 @@ final class BattleRoyale: Scenario
 			else
 			{
 				// TODO: generate new nextCenter and nextRadius
+				m_nextCenter = m_currentCenter + rotateVector(vec2d(0, m_currentRadius * 2), uniform(0, 2 * PI));
+				m_nextRadius = m_currentRadius;
 				m_nextTransitionTime = Globals.sim.worldTime + TRANSITION_TIME;
 			}
 			m_inTransition = !m_inTransition;
-			// TODO: send message
+			// TODO: send message to players
 		}
 	}
 
