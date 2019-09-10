@@ -13,6 +13,7 @@ import dsubs_server.vessel: VesselCollection;
 import dsubs_server.torpedo: WeaponCollection;
 import dsubs_server.entitydb: EntityDb;
 import dsubs_server.simulator: Simulator;
+import dsubs_server.scenario: Scenario;
 import dsubs_server.connections.listener: ConListener;
 
 
@@ -45,6 +46,8 @@ __gshared:
 	Simulator sim;
 	/// OpenCL context
 	DsubsSoundOpenclCtx sctx;
+	/// Scenario object
+	Scenario scenario;
 
 	static void build()
 	{

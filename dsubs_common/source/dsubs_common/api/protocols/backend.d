@@ -117,7 +117,7 @@ struct ReconnectStateRes
 	TubeFullState[] tubeStates;
 	AmmoRoomFullState[] ammoRoomStates;
 	MapElement[] mapElements;
-	ChatMessage[] briefing;
+	ChatMessage briefing;
 }
 
 /*
@@ -238,4 +238,18 @@ struct AmmoRoomStateUpdateRes
 {
 	__gshared const int g_marshIdx;
 	AmmoRoomFullState room;
+}
+
+/// Map overlay state is always updated as a whole.
+struct MapOverlayUpdateRes
+{
+	__gshared const int g_marshIdx;
+	MapElement[] mapElements;
+}
+
+/// Backend sends a message to client.
+struct ChatMessageRes
+{
+	__gshared const int g_marshIdx;
+	ChatMessage message;
 }

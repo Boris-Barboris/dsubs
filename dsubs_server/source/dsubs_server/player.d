@@ -61,8 +61,9 @@ final class Player
 
 	@property string username() const { return m_username; }
 	@property Submarine submarine() { return m_submarine; }
+	@property PlayerConnection connection() { return m_connection; }
 
-	/// Set submarine to null. simMut must be held.
+	/// Set submarine to null. simMut.writer must be held.
 	bool unsetSubmarine(Submarine assumedOldSub)
 	{
 		if (m_submarine is assumedOldSub)
@@ -468,14 +469,23 @@ final class PlayerCollection
 		}
 	}
 
-	/// Run dlg on each player while holding a lock on
-	/// player collection.
+	/// Run dlg on each player in parallel.
 	void forEachPlayer(scope void delegate(Player) dlg)
 	{
-		synchronized (this)
+		foreach (Player p; Globals.taskPool.parallel(m_players.values, 1))
+			dlg(p);
+	}
+
+	/// Run dlg on each player with active connection and alive submarine.
+	void forEachAlivePlayer(scope void delegate(
+		Player p, Submarine s, PlayerConnection pcon) dlg)
+	{
+		foreach (Player p; Globals.taskPool.parallel(m_players.values, 1))
 		{
-			foreach (Player p; Globals.taskPool.parallel(m_players.values, 2))
-				dlg(p);
+			Submarine sub = p.submarine;
+			PlayerConnection pcon = p.connection;
+			if (sub !is null && !sub.dead && pcon !is null)
+				dlg(p, sub, pcon);
 		}
 	}
 }

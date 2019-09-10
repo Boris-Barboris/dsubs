@@ -69,9 +69,9 @@ private:
 		}
 		catch (AuthException aex)
 		{
+			Thread.sleep(dur!"seconds"(5));
 			sendMessage(immutable LoginRes(false, aex.msg,
 				Globals.entityDb.commonEntityDbHash, false));
-			Thread.sleep(dur!"seconds"(5));
 			throw aex;
 		}
 	}

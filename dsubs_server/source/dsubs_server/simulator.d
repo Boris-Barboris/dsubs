@@ -73,8 +73,10 @@ final class Simulator
 				// GC.disable();
 				synchronized (Globals.simMut.writer)
 				{
-					onSimulationPassStart(m_worldTime);
 					profiler.start();
+					onSimulationPassStart(m_worldTime);
+					if (Globals.scenario)
+						Globals.scenario.onBeforeSimulation();
 					profiler.start("vessels.preKinematics");
 					Globals.vessels.preKinematics();
 					profiler.stopLast();
@@ -114,6 +116,8 @@ final class Simulator
 						Globals.players.forEachPlayer((p) { p.sendUpdate(); });
 						profiler.stopLast();
 					}
+					if (Globals.scenario)
+						Globals.scenario.onAfterSimulation();
 					onSimulationPassEnd(m_worldTime);
 				}
 				profiler.stop();

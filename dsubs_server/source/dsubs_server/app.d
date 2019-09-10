@@ -4,6 +4,7 @@ import core.stdc.stdlib;
 
 import dsubs_server.common;
 import dsubs_server.globals;
+import dsubs_server.scenario;
 
 version(Windows)
 {
@@ -26,6 +27,7 @@ void main(string[] argv)
 	try
 	{
 		Globals.build();
+		Globals.scenario = new BattleRoyale();
 		Globals.cons.bindSockets();
 		Globals.sim.start();
 		Globals.cons.startListeners();
