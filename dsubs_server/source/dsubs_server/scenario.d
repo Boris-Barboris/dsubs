@@ -29,8 +29,8 @@ abstract class Scenario
 		out vec2d position, out double rotation);
 
 	/// scenario generates initial overlay state and briefing
-	abstract void generateBriefing(Player player, Submarine sub,
-		out MapElement[] mapOverlay, pit ChatMessage briefing);
+	abstract void generateBriefing(Player player, out MapElement[] mapOverlayEls,
+		out ChatMessage briefing);
 }
 
 
@@ -45,9 +45,9 @@ final class BattleRoyale: Scenario
 		usecs_t m_nextTransitionTime;
 		bool m_inTransition;
 
-		enum float DEFAULT_RADIUS = 7000.0f;
+		enum float DEFAULT_RADIUS = 5000.0f;
 		enum float ESTIMATE_SPD = 13.5f;
-		enum usecs_t STABLE_TIME = 20 * 60 * 1000_000;
+		enum usecs_t STABLE_TIME = 15 * 60 * 1000_000;
 		enum usecs_t TRANSITION_TIME = cast(usecs_t) (2 * DEFAULT_RADIUS / ESTIMATE_SPD) * 1000_000;
 	}
 
@@ -57,7 +57,10 @@ final class BattleRoyale: Scenario
 		m_currentCenter = vec2d(
 			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)),
 			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)));
-		m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
+		m_nextCenter = m_currentCenter;
+		m_nextRadius = m_currentRadius;
+		m_nextTransitionTime = Globals.sim.worldTime + 120_000_000;
+		// m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
 	}
 
 	override void onBeforeSimulation()
@@ -94,7 +97,7 @@ final class BattleRoyale: Scenario
 				m_currentCenter = m_nextCenter;
 				m_currentRadius = m_nextRadius;
 				m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
-				log.info("Scenario arena transition has finished");
+				info("Scenario arena transition has finished");
 			}
 			else
 			{
@@ -102,52 +105,49 @@ final class BattleRoyale: Scenario
 				m_nextCenter = m_currentCenter + rotateVector(vec2d(0, m_currentRadius * 2), uniform(0, 2 * PI));
 				m_nextRadius = m_currentRadius;
 				m_nextTransitionTime = Globals.sim.worldTime + TRANSITION_TIME;
-				log.info("Scenario arena transition has started");
+				info("Scenario arena transition has started");
 			}
+			m_inTransition = !m_inTransition;
 			// send message(s) to active players
-			MapOverlayUpdateRes mapBcst;
-			ChatMessageRes textBcst;
-			int unixTime = Clock.currTime.toUnixTime.to!int;
-			// circle for next/active arena
-			MapElementUnion arenaCircleUnion;
-			arenaCircleUnion.circle = MapCircle(
-				m_nextCenter, m_nextRadius, 5.0f);
-			mapBcst.mapElements ~= MapElement(
-				MapElementType.circle,
-				arenaCircleUnion,
-				"arena",
-				RgbaColor(3, 0, 204, 200));
-			if (!m_inTransition)
-			{
-				// the transition has started, we need to draw the old arena as well
-				MapElementUnion oldArenaCircleUnion;
-				oldArenaCircleUnion.circle = MapCircle(
-					m_currentCenter, m_currentRadius, 5.0f);
-				mapBcst.mapElements ~= MapElement(
-					MapElementType.circle,
-					arenaCircleUnion,
-					"old arena",
-					RgbaColor(110, 110, 110, 200));
-				textBcst.message = ChatMessage(
-					unixTime,
-					"New arena position, hurry to the blue circle! " ~
-					"Time until forced navigation: " ~
-					(TRANSITION_TIME / 1000_000).to!string ~ " seconds."
-				);
-			}
-			else
-			{
-				textBcst.message = ChatMessage(
-					unixTime,
-					"New arena is enforced now!");
-			}
 			Globals.players.forEachAlivePlayer(
 				(Player p, Submarine sub, PlayerConnection pcon)
 				{
+					MapOverlayUpdateRes mapBcst;
+					ChatMessageRes textBcst;
+					generateBriefing(p, mapBcst.mapElements, textBcst.message);
 					pcon.sendMessage(cast(immutable) textBcst);
 					pcon.sendMessage(cast(immutable) mapBcst);
 				});
-			m_inTransition = !m_inTransition;
+		}
+	}
+
+	override void generateBriefing(Player player,
+		out MapElement[] mapOverlayEls, out ChatMessage briefing)
+	{
+		int unixTime = Clock.currTime.toUnixTime.to!int;
+		// circle for next/active arena
+		MapElementUnion arenaCircleUnion;
+		arenaCircleUnion.circle = MapCircle(
+			player.posToClientSpace(m_nextCenter), m_nextRadius, 5.0f);
+		mapOverlayEls ~= MapElement(
+			MapElementType.circle,
+			arenaCircleUnion,
+			"arena",
+			RgbaColor(3, 0, 204, 200));
+		if (m_inTransition)
+		{
+			briefing = ChatMessage(
+				unixTime,
+				"New arena position, hurry to the blue circle! " ~
+				"Time until forced navigation: " ~
+				((m_nextTransitionTime - Globals.sim.worldTime) / 1000_000).
+					to!string ~ " seconds.");
+		}
+		else
+		{
+			briefing = ChatMessage(
+				unixTime,
+				"Navigation limited to blue circle!");
 		}
 	}
 

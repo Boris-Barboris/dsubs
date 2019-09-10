@@ -398,8 +398,10 @@ class PanoramicDisplay(DataIntType): GuiElement
 	/// Overlay for PanoramicElement
 	class PanoramicOverlay: Overlay
 	{
-		override double world2windowRot(double world) { return world; }
+		override double world2screenRot(double world) { return world; }
 		override double screen2worldRot(double screen) { return screen; }
+		override double world2screenLength(double world) { return world; }
+		override double screen2worldLength(double screen) { return screen; }
 
 		this()
 		{
@@ -615,7 +617,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		}
 
 		/// world.x is bearing, world.y is age of data in seconds.
-		override vec2d world2windowPos(vec2d world)
+		override vec2d world2screenPos(vec2d world)
 		{
 			return position +
 				vec2d(
@@ -738,8 +740,10 @@ final class Waterfall: PanoramicDisplay!ushort
 	{
 		override void onPanStart(int x, int y) {}
 		override void onPan(int x, int y) {}
-		override double world2windowRot(double world) { return world; }
+		override double world2screenRot(double world) { return world; }
 		override double screen2worldRot(double screen) { return screen; }
+		override double world2screenLength(double world) { return world; }
+		override double screen2worldLength(double screen) { return screen; }
 
 		private PeakOverlayElement[] m_peaks;
 
@@ -750,7 +754,7 @@ final class Waterfall: PanoramicDisplay!ushort
 			onMouseUp += &processMouseUp;
 		}
 
-		override vec2d world2windowPos(vec2d world)
+		override vec2d world2screenPos(vec2d world)
 		{
 			return position + vec2d(bearingToPixel(world.x), m_dirHeaderHeight / 2);
 		}
@@ -828,7 +832,7 @@ final class Waterfall: PanoramicDisplay!ushort
 
 		override void onPreDraw()
 		{
-			double screenX = owner.world2windowPos(vec2d(m_bearing, 0)).x;
+			double screenX = owner.world2screenPos(vec2d(m_bearing, 0)).x;
 			m_line.transform.position = vec2d(screenX, m_dirHeaderHeight);
 		}
 

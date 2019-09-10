@@ -144,6 +144,18 @@ struct CICAmmoRoomStateUpdateRes
 	AmmoRoomStateUpdateRes res;
 }
 
+struct CICMapOverlayUpdateRes
+{
+	__gshared const int g_marshIdx;
+	MapOverlayUpdateRes res;
+}
+
+struct CICChatMessageRes
+{
+	__gshared const int g_marshIdx;
+	ChatMessageRes res;
+}
+
 /*
 Contact and sensor data management API.
 */

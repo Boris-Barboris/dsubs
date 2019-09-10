@@ -288,7 +288,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 		}
 
 		/// world.x is bearing, world.y is range in meters
-		override vec2d world2windowPos(vec2d world)
+		override vec2d world2screenPos(vec2d world)
 		{
 			return position +
 				vec2d(

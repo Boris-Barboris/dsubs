@@ -390,7 +390,7 @@ struct MapCircle
 {
 	vec2d center;
 	double radius;		// world-space radius
-	float circleWidth;	// screen-space width
+	float borderWidth;	// screen-space line width
 }
 
 union MapElementUnion

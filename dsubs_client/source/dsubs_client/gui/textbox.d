@@ -55,10 +55,19 @@ final class TextBox: GuiElement
 		// let's not deal with tabs and replace them by 4 spaces
 		m_content = rhs.replace("\t"d, "    "d);
 		updateText();
-		size = vec2i(size.x, m_textFullHeight);
-		if (parent)
-			parent.childChanged(this);
+		if (layoutType == LayoutType.CONTENT)
+		{
+			size = vec2i(size.x, m_textFullHeight);
+			if (parent)
+				parent.childChanged(this);
+		}
 		return m_content;
+	}
+
+	override void updateSize()
+	{
+		super.updateSize();
+		updateText();
 	}
 
 	@property dstring content(string val)

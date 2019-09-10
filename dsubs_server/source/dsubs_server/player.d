@@ -151,14 +151,19 @@ final class Player
 	{
 		const Submarine s = m_submarine;
 		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
-		return immutable ReconnectStateRes(
+		ReconnectStateRes recState = ReconnectStateRes(
 			s.spawnId, s.prototypeName, s.propulsor.prototypeName,
 			genSubSnapshot(), s.targetCourse + coordRot, s.targetThrottle,
-			cast(immutable) s.hydrophones.map!(
+			s.hydrophones.map!(
 				h => float(h.listenDir + coordRot)).array,
-			cast(immutable) s.tubeRange.map!(t => t.fullState).array,
-			cast(immutable) s.ammoRoomRange.map!(r => r.fullState).array
+			s.tubeRange.map!(t => t.fullState).array,
+			s.ammoRoomRange.map!(r => r.fullState).array
 			);
+		if (Globals.scenario)
+		{
+			Globals.scenario.generateBriefing(this, recState.mapElements, recState.briefing);
+		}
+		return cast(immutable) recState;
 	}
 
 	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req)
@@ -171,7 +176,7 @@ final class Player
 				enforce(s is null, "Already spawned");
 				s = Globals.entityDb.buildSubFromLoadout(req, this);
 				generateShift();
-				randomizePosition(s);
+				randomizePosition(req, s);
 
 				// s.transform.rotation = dgr2rad(180);
 				// s.rudder.targetCourse = dgr2rad(180);
@@ -342,9 +347,9 @@ final class Player
 	{
 		assert(m_submarine);
 		Submarine s = m_submarine;
-		vec2d shiftedPos = rotateVector(s.transform.wposition - coordShift, coordRot);
-		double shiftedRot = s.transform.wrotation + coordRot;
-		vec2d vel = rotateVector(s.rigidBody.kinet.vel, coordRot);
+		vec2d shiftedPos = posToClientSpace(s.transform.wposition);
+		double shiftedRot = rotToClientSpace(s.transform.wrotation);
+		vec2d vel = dirToClientSpace(s.rigidBody.kinet.vel);
 		double angVel = s.rigidBody.kinet.angVel;
 		return KinematicSnapshot(
 				Globals.sim.worldTime + timeShift,
@@ -352,6 +357,21 @@ final class Player
 				vec2d(vel.x, vel.y),
 				shiftedRot,
 				angVel);
+	}
+
+	vec2d posToClientSpace(vec2d pos) const
+	{
+		return rotateVector(pos - coordShift, coordRot);
+	}
+
+	vec2d dirToClientSpace(vec2d dir) const
+	{
+		return rotateVector(dir, coordRot);
+	}
+
+	double rotToClientSpace(double rot) const
+	{
+		return rot + coordRot;
 	}
 
 	// simMut.writer is held by the simulator
@@ -421,12 +441,22 @@ final class Player
 		}
 	}
 
-	private static void randomizePosition(Submarine sub)
+	private void randomizePosition(const SpawnReq req, Submarine sub)
 	{
-		double px = uniform(-1000.0, 1000.0);
-		double py = uniform(-1000.0, 1000.0);
-		double rot = uniform(-PI, PI);
-		sub.transform.position = vec2d(px, py);
+		double rot;
+		if (Globals.scenario)
+		{
+			vec2d pos;
+			Globals.scenario.selectPlayerSpawnPosition(this, req, pos, rot);
+			sub.transform.position = pos;
+		}
+		else
+		{
+			double px = uniform(-1000.0, 1000.0);
+			double py = uniform(-1000.0, 1000.0);
+			rot = uniform(-PI, PI);
+			sub.transform.position = vec2d(px, py);
+		}
 		sub.transform.rotation = rot;
 		sub.rudder.targetCourse = rot;
 	}

@@ -101,6 +101,16 @@ private:
 	{
 		Game.cic.handleAmmoRoomStateUpdateRes(res);
 	}
+
+	void h_mapOverlayUpdateRes(MapOverlayUpdateRes res)
+	{
+		Game.cic.handleMapOverlayUpdateRes(res);
+	}
+
+	void h_chatMessageRes(ChatMessageRes res)
+	{
+		Game.cic.handleChatMessageRes(res);
+	}
 }
 
 

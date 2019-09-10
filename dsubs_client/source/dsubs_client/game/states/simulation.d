@@ -2,11 +2,13 @@ module dsubs_client.game.states.simulation;
 
 import std.algorithm;
 import std.array;
+import std.datetime: unixTimeToStdTime, DateTime, SysTime;
 import std.format;
 
 import core.time;
 
 import derelict.sfml2.window;
+import derelict.sfml2.graphics: sfColor;
 
 import dsubs_common.math;
 
@@ -80,11 +82,13 @@ final class SimulatorState: GameState
 		// set tactical overlay
 		m_tacticalOverlay = new TacticalOverlay(m_camController);
 		Game.guiManager.addPanel(new Panel(m_tacticalOverlay));
-		m_playerSubIcon= new PlayerSubIcon(m_tacticalOverlay, m_playerSub);
+		m_playerSubIcon = new PlayerSubIcon(m_tacticalOverlay, m_playerSub);
+		m_tacticalOverlay.updateScenarioElements(rawRecState.mapElements);
 
 		m_gui = new SimulationGUI();
 		m_gui.waterfall.listenDir = rawRecState.listenDirs[0];
 		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) rawRecState.subSnap);
+		m_gui.handleChatMessage(rawRecState.briefing);
 
 		// ammo room and tube initialization
 		foreach (AmmoRoomFullState roomState; rawRecState.ammoRoomStates)
@@ -121,6 +125,7 @@ private
 	enum int TAB_SIZE = 28;
 	enum int BIG_BTN_FONT = 25;
 	enum int BTN_FONT = 20;
+	enum int MSG_FONT = 18;
 	enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
 	enum sfColor DIV_BORDRCOLOR = sfColor(10, 10, 0, 200);
 }
@@ -133,6 +138,7 @@ final class SimulationGUI
 	{
 		Label curCourse, curSpeed;
 		TextField tgtCourseField, tgtThrottleField;
+		TextBox chatMessageBox;
 		WaterfallGui m_passiveGui;
 		SonarGui m_sonarGui;
 		Div m_topLevelDiv;
@@ -155,6 +161,13 @@ final class SimulationGUI
 		// pass to other classes that need it
 		m_passiveGui.wf.handleSubKinematicRes(res);
 		m_sonarGui.sonar.handleSubKinematicRes(res);
+	}
+
+	void handleChatMessage(ChatMessage msg)
+	{
+		auto stdTime = SysTime(unixTimeToStdTime(msg.sentOnUtc));
+		chatMessageBox.content = "[" ~ (cast(DateTime) stdTime).timeOfDay.to!string ~
+			"]: " ~ msg.message;
 	}
 
 	void updateTgtCourseDisplay(float newTgt)
@@ -302,6 +315,9 @@ final class SimulationGUI
 			tgtThrottleField.selectAll();
 		});
 
+		chatMessageBox = builder(new TextBox()).fontSize(MSG_FONT).
+			fontColor(sfColor(255, 255, 0, 255)).layoutType(LayoutType.GREEDY).build;
+
 		Div bottomDiv = builder(
 			hDiv(
 				[
@@ -313,7 +329,9 @@ final class SimulationGUI
 						).fixedSize(vec2i(180, 1)).build,
 					builder(
 							vDiv([tgtCourseField, tgtThrottleField])
-						).fixedSize(vec2i(65, 1)).build
+						).fixedSize(vec2i(65, 1)).build,
+					filler(20),
+					chatMessageBox
 				])
 			).fixedSize(vec2i(1, (BTN_FONT + 6) * 2)).
 			backgroundColor(DIV_BCKGROUND).mouseTransparent(false).build;

@@ -161,12 +161,15 @@ class Overlay: GuiElement
 	abstract void onPan(int x, int y);
 
 	/// must return coordinates, transformed from world space to window space.
-	abstract vec2d world2windowPos(vec2d world);
+	abstract vec2d world2screenPos(vec2d world);
 	/// must return rotation, transformed from world space to window space.
-	abstract double world2windowRot(double world);
+	abstract double world2screenRot(double world);
 	// ditto
 	abstract vec2d screen2worldPos(vec2d screen);
 	abstract double screen2worldRot(double screen);
+
+	abstract double world2screenLength(double world);
+	abstract double screen2worldLength(double screen);
 
 	override void draw(Window wnd, long usecsDelta)
 	{

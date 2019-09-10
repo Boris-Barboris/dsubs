@@ -209,6 +209,28 @@ final class CICServer
 	}
 
 	/*
+	Scenario.
+	*/
+
+	void handleMapOverlayUpdateRes(MapOverlayUpdateRes res)
+	{
+		synchronized(m_state.rsMut)
+		{
+			m_state.handleMapOverlayUpdateRes(res);
+		}
+		m_listener.broadcast(cast(immutable) CICMapOverlayUpdateRes(res));
+	}
+
+	void handleChatMessageRes(ChatMessageRes res)
+	{
+		synchronized(m_state.rsMut)
+		{
+			m_state.handleChatMessageRes(res);
+		}
+		m_listener.broadcast(cast(immutable) CICChatMessageRes(res));
+	}
+
+	/*
 	Contact management.
 	*/
 

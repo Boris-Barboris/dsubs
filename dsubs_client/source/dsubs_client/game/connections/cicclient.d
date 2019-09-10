@@ -336,4 +336,21 @@ private:
 				updateFromFullState(msg.res.room);
 		}
 	}
+
+	void h_mapOverlayUpdateRes(CICMapOverlayUpdateRes msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.tacticalOverlay.updateScenarioElements(msg.res.mapElements);
+		}
+	}
+
+	void h_chatMessageRes(CICChatMessageRes msg)
+	{
+		info("received chat message: ", msg.res);
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.gui.handleChatMessage(msg.res.message);
+		}
+	}
 }

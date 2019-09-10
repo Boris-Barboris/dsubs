@@ -11,6 +11,7 @@ import derelict.sfml2.graphics;
 
 import dsubs_common.math;
 import dsubs_common.mutstring;
+import dsubs_common.api.entities;
 
 import dsubs_client.common;
 import dsubs_client.core.window;
@@ -210,7 +211,7 @@ final class SonarDispContactDataElement: ContactDataOverlayElement
 
 	override void onPreDraw()
 	{
-		vec2d screenPos = owner.world2windowPos(vec2d(m_bearing, m_range));
+		vec2d screenPos = owner.world2screenPos(vec2d(m_bearing, m_range));
 		position = center2lu(screenPos);
 		m_mainShape.center = cast(vec2f) screenPos;
 		if (m_hovered)
@@ -337,7 +338,7 @@ final class HydrophoneTrackerElement: OverlayElementWithHover
 
 	override void onPreDraw()
 	{
-		vec2d screenPos = owner.world2windowPos(vec2d(m_bearing, 0));
+		vec2d screenPos = owner.world2screenPos(vec2d(m_bearing, 0));
 		position = center2lu(screenPos);
 		m_label.position = position;
 		if (m_hovered)
@@ -415,6 +416,7 @@ final class TacticalOverlay: Overlay
 		bool m_panned;	/// true when mouse has moved since RMB down
 		TacticalContactElement m_selectedContact;
 		ContactDataOverlayElement[int] m_selectedContactData;
+		OverlayElement[] m_scenarioElements;
 		Label m_mergeHint;
 		HoveredContactDescription m_hoverDesc;
 
@@ -546,12 +548,12 @@ final class TacticalOverlay: Overlay
 		m_camCtrl.onScroll(x, y, delta);
 	}
 
-	override vec2d world2windowPos(vec2d world)
+	override vec2d world2screenPos(vec2d world)
 	{
 		return m_camCtrl.camera.transform2screen(world);
 	}
 
-	override double world2windowRot(double world)
+	override double world2screenRot(double world)
 	{
 		return world - m_camCtrl.camera.rotation;
 	}
@@ -564,6 +566,29 @@ final class TacticalOverlay: Overlay
 	override double screen2worldRot(double screen)
 	{
 		return screen + m_camCtrl.camera.rotation;
+	}
+
+	override double world2screenLength(double world)
+	{
+		return world * m_camCtrl.camera.zoom;
+	}
+
+	override double screen2worldLength(double screen)
+	{
+		return screen / m_camCtrl.camera.zoom;
+	}
+
+	/// replace old set of map elements with the new set
+	void updateScenarioElements(const(MapElement)[] mapElements)
+	{
+		foreach (OverlayElement el; m_scenarioElements)
+			remove(el);
+		m_scenarioElements.length = 0;
+		foreach (const MapElement el; mapElements)
+		{
+			ScenarioCircleShape circle = new ScenarioCircleShape(this, el);
+			m_scenarioElements ~= circle;
+		}
 	}
 
 	@property TacticalContactElement selectedContact() { return m_selectedContact; }
@@ -686,7 +711,7 @@ final class TacticalOverlay: Overlay
 		{
 			foreach (ContactDataOverlayElement el; m_selectedContactData.byValue)
 			{
-				if (!el.hidden)
+				if (!el.hidden && !el.mouseTransparent)
 				{
 					GuiElement res = el.getFromPoint(evt, x, y);
 					if (res)
@@ -695,7 +720,7 @@ final class TacticalOverlay: Overlay
 			}
 			foreach (OverlayElement el; m_elements.byKey)
 			{
-				if (!el.hidden)
+				if (!el.hidden && !el.mouseTransparent)
 				{
 					GuiElement res = el.getFromPoint(evt, x, y);
 					if (res)
@@ -705,6 +730,41 @@ final class TacticalOverlay: Overlay
 			return this;
 		}
 		return null;
+	}
+}
+
+
+final class ScenarioCircleShape: OverlayElement
+{
+	private
+	{
+		CircleShape m_shape;
+		MapCircle m_circle;
+	}
+
+	this(TacticalOverlay to, const MapElement circleEl)
+	{
+		assert(circleEl.type == MapElementType.circle);
+		super(to);
+		mouseTransparent = true;
+		m_circle = circleEl.circle;
+		m_shape = new CircleShape(10.0f, 90, cast(sfColor) circleEl.color,
+			m_circle.borderWidth);
+	}
+
+	override void onPreDraw()
+	{
+		vec2d screenPos = owner.world2screenPos(m_circle.center);
+		m_shape.center = cast(vec2f) screenPos;
+		m_shape.radius = cast(float) owner.world2screenLength(m_circle.radius);
+		size = (2 * vec2f(m_shape.radius, m_shape.radius)).to!vec2i;
+		position = center2lu(screenPos);
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		m_shape.render(wnd);
 	}
 }
 
@@ -747,14 +807,14 @@ final class PlayerSubIcon: OverlayElement
 
 	override void onPreDraw()
 	{
-		vec2d screenPos = m_to.world2windowPos(m_sub.transform.position);
+		vec2d screenPos = m_to.world2screenPos(m_sub.transform.position);
 		m_shape.center = cast(vec2f) screenPos;
 		m_velLine.transform.position = vec2d(screenPos.x, -screenPos.y);
 		position = center2lu(screenPos);
 		KinematicSnapshot snap;
 		if (m_sub.getInterpolatedSnapshot(snap))
 		{
-			double velRot = m_to.world2windowRot(courseAngle(snap.velocity));
+			double velRot = m_to.world2screenRot(courseAngle(snap.velocity));
 			double velLen = snap.velocity.length;
 			// LineShape is horizontal when transform rotation is zero, so we need
 			// to add PI_2 in order to match it with dsubs rotation frame
@@ -977,7 +1037,7 @@ final class TacticalContactElement: OverlayElementWithHover
 			}
 		}
 		vec2d worldPos = m_solution.pos;
-		vec2d screenPos = owner.world2windowPos(worldPos);
+		vec2d screenPos = owner.world2screenPos(worldPos);
 		vec2f screenPosF = cast(vec2f) screenPos;
 		position = center2lu(screenPos);
 		m_mainShape.center = screenPosF;
@@ -991,7 +1051,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		if (m_drawRayTracker)
 		{
 			m_rayTracker.setPoints(
-				owner.world2windowPos(m_lastRayTrackerOrigin), screenPos, true);
+				owner.world2screenPos(m_lastRayTrackerOrigin), screenPos, true);
 		}
 		if (isSelected)
 		{
@@ -1068,7 +1128,7 @@ final class TacticalContactElement: OverlayElementWithHover
 			RayDataTacticalElement rel = cast(RayDataTacticalElement) el;
 			if (pel !is null)
 			{
-				dataPosScreen = owner.world2windowPos(
+				dataPosScreen = owner.world2screenPos(
 					pel.data.data.position.contactPos);
 				dataOnTrail = m_lastScreenPos +
 					deltaPerUsec * (m_solution.time - pel.data.time);
@@ -1365,7 +1425,7 @@ final class PositionDataTacticalElement: DataTacticalElement
 	override void onPreDraw()
 	{
 		vec2d worldPos = data.data.position.contactPos;
-		vec2d screenPos = owner.world2windowPos(worldPos);
+		vec2d screenPos = owner.world2screenPos(worldPos);
 		position = center2lu(screenPos);
 		m_mainShape.center = cast(vec2f) screenPos;
 		if (m_hovered)
@@ -1405,7 +1465,7 @@ final class RayDataTacticalElement: DataTacticalElement
 	override void onPreDraw()
 	{
 		vec2d worldPos = data.data.ray.origin;
-		vec2d screenPos = owner.world2windowPos(worldPos);
+		vec2d screenPos = owner.world2screenPos(worldPos);
 		m_mainShape.setPoints(screenPos, screenPos -
 			1e4 * courseVector(-data.data.ray.bearing), true);
 	}
@@ -1541,8 +1601,8 @@ final class WeaponProjectionTrace: OverlayElement
 			}
 			trans.position = point2;
 			shape.setPoints(
-				owner.world2windowPos(point1),
-				owner.world2windowPos(point2),
+				owner.world2screenPos(point1),
+				owner.world2screenPos(point2),
 				true);
 			travelled += speed * INTEGRATION_STEP;
 			if (!activated && travelled >= activationRange)
@@ -1572,8 +1632,8 @@ final class WeaponProjectionTrace: OverlayElement
 		if (ctcEl && ctcEl.contact.solution.posAvailable)
 		{
 			m_shortestToSolutionShape.setPoints(
-				owner.world2windowPos(point2AtMinDist),
-				owner.world2windowPos(extrapolatedCtPosMin),
+				owner.world2screenPos(point2AtMinDist),
+				owner.world2screenPos(extrapolatedCtPosMin),
 				true);
 		}
 	}

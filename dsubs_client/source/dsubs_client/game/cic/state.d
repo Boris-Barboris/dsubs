@@ -108,6 +108,16 @@ final class CICState
 		m_recState.ammoRoomStates.find!(fs => fs.roomId == res.roomId)[0] = res;
 	}
 
+	void handleMapOverlayUpdateRes(MapOverlayUpdateRes res)
+	{
+		m_recState.mapElements = res.mapElements;
+	}
+
+	void handleChatMessageRes(ChatMessageRes res)
+	{
+		m_recState.briefing = res.message;
+	}
+
 	/// Contact and it's data.
 	private struct ContactContext
 	{
