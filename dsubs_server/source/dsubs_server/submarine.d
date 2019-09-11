@@ -40,7 +40,8 @@ final class Submarine: Vessel
 	{
 		super(prototypeName);
 		m_captain = captain;
-		captain.submarine = this;
+		if (m_captain)
+			m_captain.submarine = this;
 		m_spawnId = uniform(0, int.max);
 	}
 
@@ -108,6 +109,7 @@ final class Submarine: Vessel
 final class SubmarineFactory: VesselFactory
 {
 	immutable SubmarineTemplate tmpl;
+	bool playable = false;
 	HydrophonePrototype[] hprots;
 	ActiveSonarPrototype* asprot;
 	AmmoRoomPrototype[int] roomProtos;

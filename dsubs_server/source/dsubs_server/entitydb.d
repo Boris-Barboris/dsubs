@@ -1,7 +1,7 @@
 module dsubs_server.entitydb;
 
 import std.array: array;
-import std.algorithm: map, any;
+import std.algorithm: map, any, filter;
 import std.digest.sha;
 import std.exception;
 
@@ -45,6 +45,21 @@ final class EntityDb
 		WeaponFactory[string] m_weapons;
 	}
 
+	PropulsorFactory getPropulsorFactory(string name)
+	{
+		return m_propulsors[name];
+	}
+
+	SubmarineFactory getSubmarineFactory(string name)
+	{
+		return m_submarines[name];
+	}
+
+	WeaponFactory getWeaponFactory(string name)
+	{
+		return m_weapons[name];
+	}
+
 	this()
 	{
 		info("Building entity database");
@@ -52,8 +67,8 @@ final class EntityDb
 		buildSubmarineTemplates();
 		buildTorpedoTemplates();
 		immutable EntityDbRes enititydb = immutable EntityDbRes(
-			m_propulsors.values.map!(a => a.tmpl).array,
-			m_submarines.values.map!(a => a.tmpl).array,
+			m_propulsors.values.filter!(a => a.playable).map!(a => a.tmpl).array,
+			m_submarines.values.filter!(a => a.playable).map!(a => a.tmpl).array,
 			m_weapons.values.map!(a => a.tmpl).array,
 		);
 		marshalledCommonEntityDb = BackendProtocol.marshal(enititydb);
@@ -127,7 +142,35 @@ private:
 				0.5, 0.7, -0.4),
 			4.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
 		);
+		bp.playable = true;
 		m_propulsors["Seven-blade screw"] = bp;
+
+		// three-blade civilian screw
+		bp = new PropulsorFactory(
+			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
+				"Civilian three-blade screw",
+				"",
+				PropulsorType.screw,
+				3
+			));
+		bp.posThrustK = RolledF(2250.0f, 20.0f);
+		bp.negThrustK = RolledF(900.0f, 10.0f);
+		bp.mass = 40.0f;
+		bp.shaftRotFreq = 4.21f;
+		bp.soundPrototype = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/civ_propeller.png", 1.0f, 80, 140),
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/civ_propeller_cav.png", 1.0f, 60, 140),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.25f),
+				Harmonic(2.0f, 0.04f),
+				Harmonic(3.0f, 0.8f)],
+				0.5, 0.7, -0.4),
+			3.4f, dgr2rad(30), 6.0f, 0.03f, 0.4f
+		);
+		bp.playable = false;
+		m_propulsors["Civilian three-blade screw"] = bp;
 	}
 
 
@@ -440,6 +483,31 @@ Active sonar:
 		];
 		sp.asprot = asp;
 		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-22.0f, -19.0f, -10.0f]);
+		sp.playable = true;
+		m_submarines[sp.tmpl.name] = sp;
+
+		// civilian (bot) trader
+		sp = new SubmarineFactory(
+			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
+				"Bot trader", "", null,
+				[MountPoint(vec2f(0.0, -46.0f))],
+				1,
+				null,
+				SonarTemplate(),
+				["Civilian three-blade screw"]
+			));
+		sp.mass = RolledF(3500.0f, 10.0f);
+		sp.Cd0 = RolledF(90.0, 1.0f);
+		sp.Cd1 = RolledF(20.0, 0.042f);
+		sp.Cda = 0.8;
+		sp.Cl = RolledF(50.0, 0.4f);
+		sp.Cr0 = RolledF(6e4, 100);
+		sp.Cr1 = RolledF(0.6e6, 1e2);
+		sp.Cm = RolledF(700.0f, 6.0f);
+		sp.equilDrift = dgr2rad(20);
+		sp.hullLength = 100;
+		sp.reflprot = ReflectorPrototype(vec2f(15.0f, 100.0f), [-12.0f, -7.0f, -5.0f]);
+		sp.playable = false;
 		m_submarines[sp.tmpl.name] = sp;
 	}
 

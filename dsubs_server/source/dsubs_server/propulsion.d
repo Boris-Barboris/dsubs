@@ -108,6 +108,7 @@ final class BasicPropulsor: Propulsor
 final class PropulsorFactory
 {
 	immutable PropulsorTemplate tmpl;
+	bool playable = false;
 	RolledF posThrustK;
 	RolledF negThrustK;
 	float mass;

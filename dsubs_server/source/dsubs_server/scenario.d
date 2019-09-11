@@ -112,7 +112,7 @@ final class BattleRoyale: Scenario
 		{
 			info("Spawning new bot");
 			BotCaptain cpt = new BotCaptain();
-			SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+			SpawnReq req = SpawnReq("Bot trader", "Civilian three-blade screw");
 			Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, cpt);
 			vec2d spawnPos;
 			double spawnRot;

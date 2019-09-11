@@ -35,7 +35,7 @@ final class BotCaptain: Captain
 	{
 		m_destination = rhs;
 		m_reachedDest = false;
-		m_chosenThrottle = uniform!("[]")(0.35f, 1.0f);
+		m_chosenThrottle = uniform!("[]")(0.4f, 1.0f);
 	}
 
 	@property bool reachedDestination() const { return m_reachedDest; }
