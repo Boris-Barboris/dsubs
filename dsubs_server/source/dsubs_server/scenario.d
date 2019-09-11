@@ -14,6 +14,7 @@ import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.connections.playercon: PlayerConnection;
 import dsubs_server.player: Player;
+import dsubs_server.bots;
 
 
 abstract class Scenario
@@ -65,7 +66,9 @@ final class BattleRoyale: Scenario
 		enum int TORPS_TO_RELOAD = 3;
 		enum int DECOYS_TO_RELOAD = 6;
 		enum usecs_t STABLE_TIME = 15 * 60 * 1000_000;
-		enum usecs_t TRANSITION_TIME = cast(usecs_t) (2 * DEFAULT_RADIUS / ESTIMATE_SPD) * 1000_000;
+		enum usecs_t TRANSITION_TIME = cast(usecs_t)
+			(2 * DEFAULT_RADIUS / ESTIMATE_SPD) * 1000_000;
+		enum int ACTIVE_BOTS = 3;
 	}
 
 	this()
@@ -103,6 +106,31 @@ final class BattleRoyale: Scenario
 				}
 			}
 		}
+		// spawn bots if necessary
+		int botsToSpawn = ACTIVE_BOTS - Globals.bots.count.to!int;
+		while (botsToSpawn-- > 0)
+		{
+			info("Spawning new bot");
+			BotCaptain cpt = new BotCaptain();
+			SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+			Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, cpt);
+			vec2d spawnPos;
+			double spawnRot;
+			getRandomSpawn(spawnPos, spawnRot);
+			botSub.transform.position = spawnPos;
+			botSub.transform.rotation = spawnRot;
+			foreach (h; botSub.hydrophones)
+				h.active = false;
+			Globals.bots.registerEntity(cpt);
+			cpt.destination = getDistantPos(spawnPos);
+			botSub.register();
+		}
+		// give new destinations to bots that have arrived
+		foreach (BotCaptain cpt; Globals.bots.captains)
+		{
+			if (cpt.reachedDestination)
+				cpt.destination = getDistantPos(cpt.submarine.transform.wposition);
+		}
 	}
 
 	/// make sure each alive player submarine has a reload circle
@@ -120,14 +148,19 @@ final class BattleRoyale: Scenario
 
 	private ReloadCircle generateReloadCirclePos(Submarine sub)
 	{
+		return ReloadCircle(getDistantPos(sub.transform.wposition));
+	}
+
+	private vec2d getDistantPos(vec2d pos)
+	{
 		double dist = 0.0;
-		ReloadCircle res;
+		vec2d res;
 		while (dist <= 0.8 * m_nextRadius)
 		{
-			res.center = m_nextCenter + rotateVector(
+			res = m_nextCenter + rotateVector(
 				vec2d(0, m_nextRadius * (0.65 + 0.3 * uniform01)),
 				uniform(0, 2 * PI));
-			dist = (sub.transform.wposition - res.center).length;
+			dist = (pos - res).length;
 		}
 		return res;
 	}
@@ -238,6 +271,11 @@ final class BattleRoyale: Scenario
 					pcon.sendMessage(cast(immutable) textBcst);
 					pcon.sendMessage(cast(immutable) mapBcst);
 				});
+			// give new destinations to bots
+			foreach (BotCaptain cpt; Globals.bots.captains)
+			{
+				cpt.destination = getDistantPos(cpt.submarine.transform.wposition);
+			}
 		}
 	}
 
@@ -282,12 +320,17 @@ final class BattleRoyale: Scenario
 			RgbaColor(187, 212, 0, 150));
 	}
 
-	override void selectPlayerSpawnPosition(Player p, const SpawnReq req,
-		out vec2d position, out double rotation)
+	private void getRandomSpawn(out vec2d position, out double rotation)
 	{
 		float fromCenter = (0.6f + (uniform01 * 0.35f)) * m_currentRadius;
 		float angularCoord = uniform(0.0f, 2 * PI);
 		position = m_currentCenter + fromCenter * courseVector(angularCoord);
 		rotation = uniform(0.0f, 2 * PI);
+	}
+
+	override void selectPlayerSpawnPosition(Player p, const SpawnReq req,
+		out vec2d position, out double rotation)
+	{
+		getRandomSpawn(position, rotation);
 	}
 }

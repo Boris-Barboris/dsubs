@@ -2,6 +2,7 @@ module dsubs_server.bots;
 
 import std.algorithm;
 import std.array: array;
+import std.random;
 
 import dsubs_common.event;
 import dsubs_common.math;
@@ -34,7 +35,9 @@ final class BotCaptain: Captain
 	{
 		m_destination = rhs;
 		m_reachedDest = false;
+		m_chosenThrottle = uniform!("[]")(0.35f, 1.0f);
 	}
+
 	@property bool reachedDestination() const { return m_reachedDest; }
 
 	void afterSimulation()
@@ -63,9 +66,16 @@ final class BotCollection
 
 	@property auto captains() { return m_captains.byKey; }
 
+	@property size_t count() const { return m_captains.length; }
+
 	void clean()
 	{
 		m_captains.clear();
+	}
+
+	void registerEntity(BotCaptain cpt)
+	{
+		m_captains[cpt] = true;
 	}
 
 	void onAfterSimulation()
