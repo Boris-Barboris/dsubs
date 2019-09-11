@@ -70,12 +70,13 @@ final class BotCollection
 
 	void onAfterSimulation()
 	{
-		foreach (BotCaptain bcpt; Globals.taskPool.parallel(m_captains.keys, 1))
-			bcpt.afterSimulation();
 		// remove captains with dead submarines
-		BotCaptain[] cptToRemove = m_captains.byKeys.filter!(cpt =>
+		BotCaptain[] cptToRemove = m_captains.byKey.filter!(cpt =>
 			cpt.submarine && cpt.submarine.dead).array;
 		foreach (BotCaptain cpt; cptToRemove)
 			m_captains.remove(cpt);
+		// alive captains need an update
+		foreach (BotCaptain bcpt; Globals.taskPool.parallel(m_captains.keys, 1))
+			bcpt.afterSimulation();
 	}
 }
