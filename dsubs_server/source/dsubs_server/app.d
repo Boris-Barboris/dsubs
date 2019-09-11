@@ -2,7 +2,10 @@ module dsubs_server.app;
 
 import core.stdc.stdlib;
 
+import std.process: environment;
+
 import dsubs_server.common;
+import dsubs_server.connections.database;
 import dsubs_server.globals;
 import dsubs_server.scenario;
 
@@ -26,6 +29,12 @@ void main(string[] argv)
 	}
 	try
 	{
+		string mysqlConStr = environment.get("MYSQL_CONSTRING");
+		if (mysqlConStr)
+		{
+			info("initializing database connector");
+			Globals.database = new DatabaseService(mysqlConStr);
+		}
 		Globals.build();
 		Globals.scenario = new BattleRoyale();
 		Globals.cons.bindSockets();

@@ -1,6 +1,7 @@
 module dsubs_server.connections.listener;
 
 import std.socket;
+import std.process: environment;
 import core.thread;
 
 import dsubs_common.network.connection;
@@ -26,7 +27,8 @@ final class ConListener
 
 	void bindSockets()
 	{
-		TcpServer server = TcpServer("0.0.0.0", 17855);
+		short port = environment.get("DSUBS_PORT", "17855").to!short;
+		TcpServer server = TcpServer("0.0.0.0", port);
 		publicSock = listenTcp(server);
 	}
 

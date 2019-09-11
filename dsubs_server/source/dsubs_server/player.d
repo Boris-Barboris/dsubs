@@ -12,6 +12,7 @@ import dsubs_common.api.entities: KinematicSnapshot;
 
 import dsubs_server.common;
 import dsubs_server.connections.playercon: PlayerConnection;
+import dsubs_server.connections.database;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.weaponry;
 
@@ -476,14 +477,23 @@ final class PlayerCollection
 				{
 					// player is already present, let's try to authorize new connection
 					enforce!AuthException(p.compareCredentials(username, password),
-						"invalid password");
+						"invalid login or password");
 					p.emplaceConnection(con);
 					return *p;
 				}
 				else
 				{
 					// new player
-					Player np = new Player(con, username, password);
+					Player np;
+					if (Globals.database)
+					{
+						PlayerDb* pdb = Globals.database.getPlayerByLogin(username);
+						if (pdb is null)
+							Globals.database.insertPlayer(username, password);
+						else if (pdb.login_password != password)
+							throw new AuthException("invalid login or password");
+					}
+					np = new Player(con, username, password);
 					m_players[username] = np;
 					return np;
 				}

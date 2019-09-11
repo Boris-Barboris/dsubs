@@ -322,9 +322,9 @@ final class BattleRoyale: Scenario
 
 	private void getRandomSpawn(out vec2d position, out double rotation)
 	{
-		float fromCenter = (0.6f + (uniform01 * 0.35f)) * m_currentRadius;
+		float fromCenter = (0.6f + (uniform01 * 0.35f)) * m_nextRadius;
 		float angularCoord = uniform(0.0f, 2 * PI);
-		position = m_currentCenter + fromCenter * courseVector(angularCoord);
+		position = m_nextCenter + fromCenter * courseVector(angularCoord);
 		rotation = uniform(0.0f, 2 * PI);
 	}
 

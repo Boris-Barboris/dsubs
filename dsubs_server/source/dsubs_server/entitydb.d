@@ -163,7 +163,7 @@ private:
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/civ_propeller_cav.png", 1.0f, 60, 140),
 			cast(immutable) new TrochoidModulatorParams([
-				Harmonic(1.0f, 0.25f),
+				Harmonic(1.0f, 0.29f),
 				Harmonic(2.0f, 0.04f),
 				Harmonic(3.0f, 0.8f)],
 				0.5, 0.7, -0.4),

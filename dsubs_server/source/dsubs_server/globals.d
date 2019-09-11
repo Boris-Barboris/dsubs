@@ -8,6 +8,7 @@ import dsubs_sound.opencl;
 import dsubs_server.player: PlayerCollection;
 import dsubs_server.bots: BotCollection;
 import dsubs_server.dynamics: PhysicalEnv;
+import dsubs_server.connections.database;
 import dsubs_server.acoustics;
 import dsubs_server.common;
 import dsubs_server.vessel: VesselCollection;
@@ -51,6 +52,8 @@ __gshared:
 	Scenario scenario;
 	/// All active bots
 	BotCollection bots;
+	/// Database connector
+	DatabaseService database;
 
 	static void build()
 	{

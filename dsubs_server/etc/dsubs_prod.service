@@ -1,0 +1,14 @@
+[Unit]
+Description=DSubs prod server
+Wants=network-online.target
+After=network.target network-online.target
+
+[Service]
+User=boris
+Environment="DSUBS_PORT=17955"
+Environment="MYSQL_CONSTRING='host=localhost;port=3306;user=dsubs_server;pwd=PASSWORD;db=dsubs_prod'"
+WorkingDirectory=/home/boris/src/dsubs/dsubs_server
+ExecStart=/home/boris/src/dsubs/dsubs_server/dsubs_server
+
+[Install]
+WantedBy=postboot.target

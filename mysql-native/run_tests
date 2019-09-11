@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Compile using $DMD if it exists, otherwise use dmd
+if [ -z "$DMD" ]; then
+	DMD=dmd
+fi
+
+echo "DMD=$DMD"
+$DMD -ofrun_tests_bin run_tests.d && ./run_tests_bin "$@"

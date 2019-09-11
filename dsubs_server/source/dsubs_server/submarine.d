@@ -99,7 +99,8 @@ final class Submarine: Vessel
 		{
 			foreach (h; m_hydrophones)
 				h.active = false;
-			m_sonar.active = false;
+			if (m_sonar)
+				m_sonar.active = false;
 		}
 		return res;
 	}

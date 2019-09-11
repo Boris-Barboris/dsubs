@@ -30,6 +30,8 @@ final class Slider: GuiElement
 		sfColor m_handleColor = sfColor(255, 255, 255, 255);
 		sfColor m_handlePressedColor = sfColor(255, 150, 150, 255);
 
+		enum float WHEEL_GAIN = 0.05f;
+
 		// dynamically calculated values
 		float m_value = 0.0f;
 		int m_railLen;
@@ -68,6 +70,7 @@ final class Slider: GuiElement
 		sfRectangleShape_setOutlineThickness(m_rail, 0.0f);
 		sfRectangleShape_setFillColor(m_handle, m_handleColor);
 		sfRectangleShape_setOutlineThickness(m_handle, 0.0f);
+		onMouseScroll += &handleMouseScroll;
 		onMouseDown += &handleMouseDown;
 		onMouseUp += &handleMouseUp;
 		onMouseMove += &handleMouseMove;
@@ -171,6 +174,11 @@ final class Slider: GuiElement
 			m_prevMousePos = (m_axis == Axis.X ? x : y);
 			dragging = true;
 		}
+	}
+
+	private void handleMouseScroll(int x, int y, float delta)
+	{
+		value = max(0.0f, min(1.0f, m_value + WHEEL_GAIN * delta));
 	}
 
 	override void handleMouseFocusLoss()
