@@ -10,7 +10,7 @@ import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.weaponry;
 import dsubs_server.propulsion: Propulsor;
-import dsubs_server.player: Player;
+import dsubs_server.player: Player, Captain;
 
 
 /// Server-side model of a submarine
@@ -20,7 +20,7 @@ final class Submarine: Vessel
 	{
 		Hydrophone[] m_hydrophones;
 		ActiveSonar m_sonar;
-		Player m_owner;
+		Captain m_captain;
 		int m_spawnId;
 		Tube[int] m_tubes;
 		AmmoRoom[int] m_rooms;
@@ -29,13 +29,18 @@ final class Submarine: Vessel
 	@property int spawnId() const { return m_spawnId; }
 	@property inout(Hydrophone)[] hydrophones() inout { return m_hydrophones; }
 	@property ActiveSonar sonar() { return m_sonar; }
-	@property Player owner() { return m_owner; }
+
+	@property Captain captain() { return m_captain; }
+	@property void captain(Captain rhs) { m_captain = rhs; }
+	/// result of captain's cast to Player class
+	@property Player player() { return cast(Player) m_captain; }
 
 	/// creates transform and rigid body
-	this(Player owner, string prototypeName)
+	this(Captain captain, string prototypeName)
 	{
 		super(prototypeName);
-		m_owner = owner;
+		m_captain = captain;
+		captain.submarine = this;
 		m_spawnId = uniform(0, int.max);
 	}
 
@@ -62,7 +67,8 @@ final class Submarine: Vessel
 		super.register();
 		foreach (h; m_hydrophones)
 			Globals.acous.registerHydrophone(h);
-		Globals.acous.registerSonar(m_sonar);
+		if (m_sonar)
+			Globals.acous.registerSonar(m_sonar);
 	}
 
 	override void shutdown()
@@ -73,12 +79,15 @@ final class Submarine: Vessel
 			Globals.acous.unregisterHydrophone(h);
 			h.release();
 		}
-		Globals.acous.unregisterSonar(m_sonar);
-		m_sonar.release();
-		if (m_owner)
+		if (m_sonar)
 		{
-			m_owner.unsetSubmarine(this);
-			m_owner = null;
+			Globals.acous.unregisterSonar(m_sonar);
+			m_sonar.release();
+		}
+		if (m_captain)
+		{
+			m_captain.unsetSubmarine(this);
+			m_captain = null;
 		}
 	}
 
@@ -100,7 +109,7 @@ final class SubmarineFactory: VesselFactory
 {
 	immutable SubmarineTemplate tmpl;
 	HydrophonePrototype[] hprots;
-	ActiveSonarPrototype asprot;
+	ActiveSonarPrototype* asprot;
 	AmmoRoomPrototype[int] roomProtos;
 	TubePrototype[int] tubeProtos;
 
@@ -135,17 +144,20 @@ final class SubmarineFactory: VesselFactory
 			t.position = tmpl.sonar.mount.mountCenter.tod;
 			t.rotation = tmpl.sonar.mount.rotation;
 			res.transform.addChild(t);
-			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, asprot);
-			res.m_sonar.onPreKinematics += ()
+			if (asprot)
 			{
-				res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;
-				res.m_sonar.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts;
-			};
-			res.m_sonar.onPostKinematics += ()
-			{
-				res.m_sonar.angVelEnd = res.rigidBody.kinet.angVel;
-				res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;
-			};
+				res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot);
+				res.m_sonar.onPreKinematics += ()
+				{
+					res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;
+					res.m_sonar.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts;
+				};
+				res.m_sonar.onPostKinematics += ()
+				{
+					res.m_sonar.angVelEnd = res.rigidBody.kinet.angVel;
+					res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;
+				};
+			}
 		}
 		// tubes
 		foreach (Tube tube; res.m_tubes.byValue)
@@ -156,10 +168,10 @@ final class SubmarineFactory: VesselFactory
 	}
 
 	// untrusted roomStates and tubeStates input
-	Submarine build(Player p, Propulsor prop,
+	Submarine build(Captain cpt, Propulsor prop,
 		const(AmmoRoomFullState)[] roomStates, const(TubeSpawnState)[] tubeStates) const
 	{
-		Submarine res = new Submarine(p, tmpl.name);
+		Submarine res = new Submarine(cpt, tmpl.name);
 		res.propulsor = prop;
 		AmmoRoomFullState[int] specifiedRoomStates;
 		foreach (rs; roomStates)

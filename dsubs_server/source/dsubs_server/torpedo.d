@@ -385,7 +385,10 @@ final class TorpedoGuidance: IGuidance
 		trace("Torpedo detonated!!!");
 		m_torpedo.m_detonated = true;
 		foreach (v; inKillRadius)
-			v.kill("Killed by " ~ m_torpedo.prototypeName ~ " torpedo");
+		{
+			synchronized(v)
+				v.kill("Killed by " ~ m_torpedo.prototypeName ~ " torpedo");
+		}
 		m_torpedo.kill("detonation");
 		SoundSource detonationSoundSource = new PrerecordedSoundSource(
 			new Transform2D(m_torpedo.transform.wposition),
@@ -592,7 +595,7 @@ final class WeaponCollection
 
 	void updateGuidances(usecs_t dt)
 	{
-		foreach (Weapon weapon; Globals.taskPool.parallel(m_entities, 4))
+		foreach (Weapon weapon; Globals.taskPool.parallel(m_entities, 1))
 			if (!weapon.dead)
 				weapon.guidance.update(dt);
 		// remove all detonated torpedoes

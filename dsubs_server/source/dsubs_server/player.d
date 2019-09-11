@@ -6,6 +6,7 @@ import std.array: array;
 import core.atomic;
 
 import dsubs_common.math;
+import dsubs_common.event;
 import dsubs_common.api.protocols.backend;
 import dsubs_common.api.entities: KinematicSnapshot;
 
@@ -21,7 +22,36 @@ class AuthException: Exception
 }
 
 
-final class Player
+class Captain
+{
+	protected
+	{
+		Submarine m_submarine;
+	}
+
+	abstract @property string name() const;
+	final @property Submarine submarine() { return m_submarine; }
+	final @property void submarine(Submarine rhs)
+	{
+		if (m_submarine !is rhs)
+			unsetSubmarine(m_submarine);
+		m_submarine = rhs;
+	}
+
+	/// Set submarine to null. simMut.writer must be held.
+	bool unsetSubmarine(Submarine assumedOldSub)
+	{
+		if (m_submarine is assumedOldSub)
+		{
+			m_submarine = null;
+			return true;
+		}
+		return false;
+	}
+}
+
+
+final class Player: Captain
 {
 	private
 	{
@@ -34,7 +64,6 @@ final class Player
 		usecs_t m_lastPingEmit = ulong.min;
 
 		PlayerConnection m_connection;
-		Submarine m_submarine;
 
 		enum double MAX_COORD_SHIFT = 100_000.0;
 		enum long MAX_TIME_SHIFT = 200_000_000L;
@@ -59,20 +88,9 @@ final class Player
 		atomicOp!"+="(s_playerCount, 1);
 	}
 
+	override @property string name() const { return m_username; }
 	@property string username() const { return m_username; }
-	@property Submarine submarine() { return m_submarine; }
 	@property PlayerConnection connection() { return m_connection; }
-
-	/// Set submarine to null. simMut.writer must be held.
-	bool unsetSubmarine(Submarine assumedOldSub)
-	{
-		if (m_submarine is assumedOldSub)
-		{
-			m_submarine = null;
-			return true;
-		}
-		return false;
-	}
 
 	private void generateShift()
 	{
@@ -181,7 +199,6 @@ final class Player
 				// s.transform.rotation = dgr2rad(180);
 				// s.rudder.targetCourse = dgr2rad(180);
 
-				m_submarine = s;
 				foreach (h; s.hydrophones)
 				{
 					h.active = true;

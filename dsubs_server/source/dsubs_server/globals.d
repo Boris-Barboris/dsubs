@@ -6,6 +6,7 @@ import core.sync.rwmutex;
 import dsubs_sound.opencl;
 
 import dsubs_server.player: PlayerCollection;
+import dsubs_server.bots: BotCollection;
 import dsubs_server.dynamics: PhysicalEnv;
 import dsubs_server.acoustics;
 import dsubs_server.common;
@@ -48,6 +49,8 @@ __gshared:
 	DsubsSoundOpenclCtx sctx;
 	/// Scenario object
 	Scenario scenario;
+	/// All active bots
+	BotCollection bots;
 
 	static void build()
 	{
@@ -57,6 +60,7 @@ __gshared:
 		sctx = new DsubsSoundOpenclCtx(totalCPUs);
 		entityDb = new EntityDb();
 		players = new PlayerCollection();
+		bots = new BotCollection();
 		vessels = new VesselCollection();
 		weapons = new WeaponCollection();
 		cons = new ConListener();
@@ -75,6 +79,7 @@ __gshared:
 		if (entityDb is null)
 			entityDb = new EntityDb();
 		vessels = new VesselCollection();
+		bots = new BotCollection();
 		weapons = new WeaponCollection();
 		phys = new PhysicalEnv();
 		acous = new AcousticEnv();
@@ -98,6 +103,7 @@ __gshared:
 	static void cleanCollectionsForTests()
 	{
 		vessels.clean();
+		bots.clean();
 		weapons.clean();
 		acous.clean();
 		phys.clean();

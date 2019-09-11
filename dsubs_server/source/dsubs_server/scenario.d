@@ -92,7 +92,7 @@ final class BattleRoyale: Scenario
 				Submarine sub = cast(Submarine) v;
 				if (sub is null)
 					continue;
-				if (!sub.dead && sub.owner)
+				if (!sub.dead && sub.player)
 				{
 					vec2d diffVec = m_currentCenter - sub.transform.wposition;
 					if (diffVec.length > m_currentRadius)

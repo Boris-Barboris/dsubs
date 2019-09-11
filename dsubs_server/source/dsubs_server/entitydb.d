@@ -20,7 +20,7 @@ import dsubs_sound.common: GLOBAL_SRATE;
 import dsubs_server.common;
 import dsubs_server.propulsion;
 import dsubs_server.dynamics;
-import dsubs_server.player: Player;
+import dsubs_server.player: Captain;
 public import dsubs_server.submarine;
 public import dsubs_server.torpedo;
 public import dsubs_server.weaponry;
@@ -64,7 +64,7 @@ final class EntityDb
 	}
 
 	/// Build submarine object from the Spawn request message
-	Submarine buildSubFromLoadout(const SpawnReq req, Player p)
+	Submarine buildSubFromLoadout(const SpawnReq req, Captain cpt)
 	{
 		SubmarineFactory* sp = req.submarineName in m_submarines;
 		enforce(sp !is null, "Unknown submarine");
@@ -73,7 +73,8 @@ final class EntityDb
 		enforce(sp.tmpl.propulsors.any!(p => p == pp.tmpl.name)(),
 			"Propulsor not allowed for submarine");
 		Propulsor prop = pp.build();
-		Submarine sub = sp.build(p, prop, req.ammoRoomLoadouts, req.loadableTubeLoadouts);
+		Submarine sub = sp.build(cpt, prop, req.ammoRoomLoadouts,
+			req.loadableTubeLoadouts);
 		trace("built new submarine from request ", req);
 		return sub;
 	}
@@ -83,7 +84,7 @@ final class EntityDb
 		return m_weapons[torpName];
 	}
 
-	enum int STORK_RELOAD_SECS = 30;
+	enum int STORK_RELOAD_SECS = 60;
 	enum int STORK_FLOOD_SECS = 9;
 	enum int STORK_OPEN_SECS = 6;
 	enum int STORK_FIRING_SECS = 3;
@@ -290,7 +291,7 @@ Search patterns: straight, snake, spiral.
 		SubmarineFactory sp;
 
 		// Stork
-		ActiveSonarPrototype asp = ActiveSonarPrototype();
+		ActiveSonarPrototype* asp = new ActiveSonarPrototype();
 		AmmoRoomPrototype[int] roomProtos;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 16,
 			TubeType.standard, ["Minoga": true]);
