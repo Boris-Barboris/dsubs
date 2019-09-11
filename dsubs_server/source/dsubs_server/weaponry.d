@@ -20,6 +20,7 @@ struct AmmoRoomPrototype
 	int id;
 	string name;
 	int capacity;
+	TubeType roomType;
 	bool[string] allowedWeaponSet;
 
 	AmmoRoomTemplate toTemplate() const
@@ -63,6 +64,23 @@ final class AmmoRoom
 
 	@property int id() const { return m_proto.id; }
 	@property Submarine submarine() { return m_sub; }
+
+	/// number of stored weapons
+	@property int weaponCount() const
+	{
+		return m_storedWeapons.values.sum;
+	}
+
+	/// storage capacity
+	@property int capacity() const
+	{
+		return m_proto.capacity;
+	}
+
+	@property ref const(AmmoRoomPrototype) prototype() const
+	{
+		return m_proto;
+	}
 
 	int getWeaponCount(string weaponName)
 	{

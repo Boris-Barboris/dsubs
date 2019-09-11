@@ -83,7 +83,7 @@ final class EntityDb
 		return m_weapons[torpName];
 	}
 
-	enum int STORK_RELOAD_SECS = 10;
+	enum int STORK_RELOAD_SECS = 30;
 	enum int STORK_FLOOD_SECS = 9;
 	enum int STORK_OPEN_SECS = 6;
 	enum int STORK_FIRING_SECS = 3;
@@ -110,7 +110,7 @@ private:
 				], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
 			));
 		bp.posThrustK = RolledF(2500.0f, 20.0f);
-		bp.negThrustK = RolledF(1250.0f, 10.0f);
+		bp.negThrustK = RolledF(1000.0f, 10.0f);
 		bp.mass = 50.0f;
 		bp.shaftRotFreq = 2.19f;
 		bp.soundPrototype = PropellerSoundPrototype(
@@ -293,9 +293,9 @@ Search patterns: straight, snake, spiral.
 		ActiveSonarPrototype asp = ActiveSonarPrototype();
 		AmmoRoomPrototype[int] roomProtos;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 16,
-			["Minoga": true]);
+			TubeType.standard, ["Minoga": true]);
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 30,
-			["Decoy(active)": true]);
+			TubeType.decoy, ["Decoy(active)": true]);
 		TubePrototype bowProtoTemplate = TubePrototype(TubeTemplate(0,
 			MountPoint(vec2f(-4.7, 25.0), dgr2rad(20)),
 			0, TubeType.standard, false),

@@ -44,13 +44,18 @@ final class Submarine: Vessel
 		enforce(id in m_tubes);
 		return m_tubes[id];
 	}
+
 	auto tubeRange() inout { return m_tubes.byValue; }
+
 	AmmoRoom getAmmoRoom(int id)
 	{
 		enforce(id in m_rooms);
 		return m_rooms[id];
 	}
-	auto ammoRoomRange() inout { return m_rooms.byValue; }
+
+	auto ammoRoomRange() const { return m_rooms.byValue; }
+	// dmd bug forces to duplicate
+	auto ammoRoomRange() { return m_rooms.byValue; }
 
 	override void register()
 	{

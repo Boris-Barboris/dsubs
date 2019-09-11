@@ -109,6 +109,8 @@ final class Simulator
 					profiler.start("vessels.collectDeadVessels");
 					Globals.vessels.collectDeadVessels();
 					profiler.stopLast();
+					if (Globals.scenario)
+						Globals.scenario.onAfterSimulation();
 					if (Globals.players)
 					{
 						// stream updates to players
@@ -116,8 +118,6 @@ final class Simulator
 						Globals.players.forEachPlayer((p) { p.sendUpdate(); });
 						profiler.stopLast();
 					}
-					if (Globals.scenario)
-						Globals.scenario.onAfterSimulation();
 					onSimulationPassEnd(m_worldTime);
 				}
 				profiler.stop();

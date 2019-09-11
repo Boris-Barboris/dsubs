@@ -374,6 +374,12 @@ final class Player
 		return rot + coordRot;
 	}
 
+	@property bool hasAliveSub() const
+	{
+		const Submarine sub = m_submarine;
+		return (sub && !sub.dead);
+	}
+
 	// simMut.writer is held by the simulator
 	void sendUpdate()
 	{
@@ -470,6 +476,8 @@ final class PlayerCollection
 		Player[string] m_players;
 	}
 
+	@property Player[string] players() { return m_players; }
+
 	/// Get or create Player for connection.
 	Player authorizeConnection(PlayerConnection con, string username, string password)
 	{
@@ -506,8 +514,9 @@ final class PlayerCollection
 			dlg(p);
 	}
 
-	/// Run dlg on each player with active connection and alive submarine.
-	void forEachAlivePlayer(scope void delegate(
+	/// Run dlg on each player with active connection and alive submarine, in
+	/// parallel.
+	void forEachAliveConnectedPlayer(scope void delegate(
 		Player p, Submarine s, PlayerConnection pcon) dlg)
 	{
 		foreach (Player p; Globals.taskPool.parallel(m_players.values, 1))

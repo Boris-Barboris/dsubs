@@ -1,14 +1,16 @@
 module dsubs_server.scenario;
 
+import std.algorithm: min, max;
 import std.random: uniform, uniform01;
 import std.datetime.systime;
 
 import dsubs_common.math.angles;
-import dsubs_common.api.protocols.backend: SpawnReq, MapOverlayUpdateRes, ChatMessageRes;
+import dsubs_common.api.protocols.backend;
 import dsubs_common.api.entities;
 
 import dsubs_server.common;
 import dsubs_server.vessel;
+import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.connections.playercon: PlayerConnection;
 import dsubs_server.player: Player;
@@ -34,6 +36,12 @@ abstract class Scenario
 }
 
 
+int intUnixTime()
+{
+	return Clock.currTime.toUnixTime.to!int;
+}
+
+
 final class BattleRoyale: Scenario
 {
 	private
@@ -45,8 +53,17 @@ final class BattleRoyale: Scenario
 		usecs_t m_nextTransitionTime;
 		bool m_inTransition;
 
+		struct ReloadCircle
+		{
+			vec2d center;
+		}
+		ReloadCircle[Player] m_playerReloadCircles;
+
 		enum float DEFAULT_RADIUS = 5000.0f;
 		enum float ESTIMATE_SPD = 13.5f;
+		enum float RELOAD_CIRCLE_RADIUS = 120.0f;
+		enum int TORPS_TO_RELOAD = 3;
+		enum int DECOYS_TO_RELOAD = 6;
 		enum usecs_t STABLE_TIME = 15 * 60 * 1000_000;
 		enum usecs_t TRANSITION_TIME = cast(usecs_t) (2 * DEFAULT_RADIUS / ESTIMATE_SPD) * 1000_000;
 	}
@@ -88,8 +105,109 @@ final class BattleRoyale: Scenario
 		}
 	}
 
+	/// make sure each alive player submarine has a reload circle
+	private void synchronizeReloadCircles()
+	{
+		auto allPlayers = Globals.players.players.values;
+		foreach (Player p; allPlayers)
+		{
+			if (p.hasAliveSub)
+				ensureReloadCircleForPlayer(p);
+			else
+				m_playerReloadCircles.remove(p);
+		}
+	}
+
+	private ReloadCircle generateReloadCirclePos(Submarine sub)
+	{
+		double dist = 0.0;
+		ReloadCircle res;
+		while (dist <= 0.8 * m_nextRadius)
+		{
+			res.center = m_nextCenter + rotateVector(
+				vec2d(0, m_nextRadius * (0.65 + 0.3 * uniform01)),
+				uniform(0, 2 * PI));
+			dist = (sub.transform.wposition - res.center).length;
+		}
+		return res;
+	}
+
+	private void ensureReloadCircleForPlayer(Player p)
+	{
+		Submarine s = p.submarine;
+		assert(s !is null);
+		ReloadCircle* rc = p in m_playerReloadCircles;
+		if (rc is null)
+			m_playerReloadCircles[p] = generateReloadCirclePos(s);
+	}
+
+	// check submarine positions and add random ammo if needed.
+	private void triggerReloadCircles()
+	{
+		Player[] triggeredPlayers;
+		int unixTime = intUnixTime();
+		foreach (playerRcPair; m_playerReloadCircles.byKeyValue)
+		{
+			Player p = playerRcPair.key;
+			ReloadCircle rc = playerRcPair.value;
+			Submarine s = p.submarine;
+			if (RELOAD_CIRCLE_RADIUS >= (s.transform.wposition - rc.center).length)
+			{
+				reloadSubmarine(p, s);
+				triggeredPlayers ~= p;
+			}
+		}
+		foreach (Player p; triggeredPlayers)
+		{
+			m_playerReloadCircles.remove(p);
+			ensureReloadCircleForPlayer(p);
+			PlayerConnection pcon = p.connection;
+			if (pcon)
+			{
+				MapOverlayUpdateRes mapBcst;
+				ChatMessageRes textBcst;
+				generateBriefing(p, mapBcst.mapElements, textBcst.message);
+				textBcst.message = ChatMessage(unixTime,
+					"Weapon racks reloaded. New reload point allocated.");
+				pcon.sendMessage(cast(immutable) mapBcst);
+				pcon.sendMessage(cast(immutable) textBcst);
+			}
+		}
+	}
+
+	private void reloadSubmarine(Player p, Submarine s)
+	{
+		PlayerConnection pcon = p.connection;
+		foreach (AmmoRoom room; s.ammoRoomRange)
+		{
+			int maxWeaponsToLoad =
+				room.prototype.roomType == TubeType.standard ?
+				TORPS_TO_RELOAD : DECOYS_TO_RELOAD;
+			int weaponsToLoad = min(maxWeaponsToLoad, room.capacity - room.weaponCount);
+			if (weaponsToLoad > 0)
+			{
+				string[] allowedWeapons = room.prototype.allowedWeaponSet.keys;
+				while (weaponsToLoad-- > 0)
+				{
+					string weaponName = allowedWeapons[
+						uniform(0, allowedWeapons.length)];
+					room.putWeapon(weaponName);
+				}
+				// send room update if possible
+				if (pcon)
+				{
+					pcon.sendMessage(cast(immutable)
+						AmmoRoomStateUpdateRes(room.fullState));
+				}
+			}
+		}
+	}
+
 	override void onAfterSimulation()
 	{
+		synchronizeReloadCircles();
+		triggerReloadCircles();
+		// check if it's time for transition
 		if (Globals.sim.worldTime >= m_nextTransitionTime)
 		{
 			if (m_inTransition)
@@ -101,15 +219,17 @@ final class BattleRoyale: Scenario
 			}
 			else
 			{
-				// TODO: generate new nextCenter and nextRadius
 				m_nextCenter = m_currentCenter + rotateVector(vec2d(0, m_currentRadius * 2), uniform(0, 2 * PI));
 				m_nextRadius = m_currentRadius;
 				m_nextTransitionTime = Globals.sim.worldTime + TRANSITION_TIME;
 				info("Scenario arena transition has started");
+				// regenerate reload circles
+				m_playerReloadCircles.clear();
+				synchronizeReloadCircles();
 			}
 			m_inTransition = !m_inTransition;
 			// send message(s) to active players
-			Globals.players.forEachAlivePlayer(
+			Globals.players.forEachAliveConnectedPlayer(
 				(Player p, Submarine sub, PlayerConnection pcon)
 				{
 					MapOverlayUpdateRes mapBcst;
@@ -124,16 +244,16 @@ final class BattleRoyale: Scenario
 	override void generateBriefing(Player player,
 		out MapElement[] mapOverlayEls, out ChatMessage briefing)
 	{
-		int unixTime = Clock.currTime.toUnixTime.to!int;
+		int unixTime = intUnixTime();
 		// circle for next/active arena
 		MapElementUnion arenaCircleUnion;
 		arenaCircleUnion.circle = MapCircle(
-			player.posToClientSpace(m_nextCenter), m_nextRadius, 5.0f);
+			player.posToClientSpace(m_nextCenter), m_nextRadius, 4.0f);
 		mapOverlayEls ~= MapElement(
 			MapElementType.circle,
 			arenaCircleUnion,
 			"arena",
-			RgbaColor(3, 0, 204, 200));
+			RgbaColor(3, 0, 204, 150));
 		if (m_inTransition)
 		{
 			briefing = ChatMessage(
@@ -149,6 +269,17 @@ final class BattleRoyale: Scenario
 				unixTime,
 				"Navigation limited to blue circle!");
 		}
+		// circle for reloading area
+		ensureReloadCircleForPlayer(player);
+		MapElementUnion reloadCircleUnion;
+		reloadCircleUnion.circle = MapCircle(
+			player.posToClientSpace(m_playerReloadCircles[player].center),
+			RELOAD_CIRCLE_RADIUS, 2.0f);
+		mapOverlayEls ~= MapElement(
+			MapElementType.circle,
+			reloadCircleUnion,
+			"reload here",
+			RgbaColor(187, 212, 0, 150));
 	}
 
 	override void selectPlayerSpawnPosition(Player p, const SpawnReq req,
