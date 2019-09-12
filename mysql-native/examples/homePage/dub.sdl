@@ -1,5 +1,0 @@
-name "example"
-dependency "mysql-native" path="../.."
-targetType "executable"
-sourcePaths "."
-mainSourceFile "example.d"

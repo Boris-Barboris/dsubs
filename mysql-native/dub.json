@@ -9,78 +9,11 @@
 	],
 	"configurations": [
 		{
-			"name": "application",
-			"targetType": "executable",
-			"versions": [
-				"VibeCustomMain"
-			]
-		},
-		{
 			"excludedSourceFiles": [
 				"source/app.d"
 			],
 			"name": "library",
 			"targetType": "library"
-		},
-		{
-			"excludedSourceFiles": [
-				"source/app.d"
-			],
-			"name": "unittest",
-			"preBuildCommands": [
-				"echo \"ERROR: Don't use 'dub test' to test mysql-native. Use 'run-tests' instead.\"",
-				"echo Bailing...",
-				"mkdir"
-			],
-			"targetType": "library"
-		},
-		{
-			"debugVersions": [
-				"MYSQLN_TESTS"
-			],
-			"dependencies": {
-				"vibe-d:core": ">=0.7.32 <0.9.0-0"
-			},
-			"excludedSourceFiles": [
-				"source/app.d"
-			],
-			"mainSourceFile": "source/mysql/package.d",
-			"name": "unittest-vibe",
-			"targetName": "mysqln-tests-vibe",
-			"targetPath": "bin/",
-			"targetType": "executable"
-		},
-		{
-			"buildOptions": [
-				"unittests"
-			],
-			"debugVersions": [
-				"MYSQLN_TESTS"
-			],
-			"dependencies": {
-				"unit-threaded": "~>0.7.45",
-				"vibe-d:core": ">=0.7.32 <0.9.0-0"
-			},
-			"excludedSourceFiles": [
-				"source/app.d"
-			],
-			"importPaths": [
-				"bin/"
-			],
-			"name": "unittest-vibe-ut",
-			"preBuildCommands": [
-				"dub run unit-threaded -c gen_ut_main -- -f bin/ut.d"
-			],
-			"sourceFiles": [
-				"bin/ut.d"
-			],
-			"targetName": "mysqln-tests-vibe",
-			"targetPath": "bin/",
-			"targetType": "executable",
-			"versions": [
-				"MYSQLN_TESTS_NO_MAIN",
-				"unitUnthreaded"
-			]
 		}
 	],
 	"copyright": "Copyright (c) 2011-2018 Steve Teale, James W. Oliphant, Simen Endsjø, Sönke Ludwig, Sergey Shamov, and Nick Sabalausky",
@@ -88,6 +21,7 @@
 	"importPaths": [
 		"source/"
 	],
+	"targetType": "library",
 	"license": "BSL-1.0",
 	"name": "mysql-native",
 	"sourcePaths": [
