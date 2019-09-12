@@ -12,6 +12,7 @@ import dsubs_common.api.protocols.backend;
 
 import dsubs_client.common;
 import dsubs_client.core.utils;
+import dsubs_client.core.settings;
 import dsubs_client.game;
 import dsubs_client.game.gamestate;
 import dsubs_client.game.states.loadout;
@@ -45,6 +46,8 @@ final class MainMenuState: GameState
 	{
 		Game.window.title = "dsubs";
 
+		JSONValue config = readConfig();
+
 		int btnSize = (MENU_BUTTON_FONTSIZE * 1.3).lrint.to!int;
 		connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").
 			fontSize(MENU_BUTTON_FONTSIZE).fixedSize(vec2i(400, btnSize)).build();
@@ -57,10 +60,12 @@ final class MainMenuState: GameState
 		Label loginLabel = builder(new Label()).content("Login:").
 			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).fraction(LOGIN_FRACT).build();
 		TextField loginField = builder(new TextField()).fontSize(LOGIN_FONT_SIZE).build();
+		loginField.content = config.object.get("login", JSONValue("")).str;
 
 		Label pwLabel = builder(new Label()).content("Password:").
 			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).fraction(LOGIN_FRACT).build();
 		PasswordField pwField = builder(new PasswordField()).fontSize(LOGIN_FONT_SIZE).build();
+		pwField.content = config.object.get("password", JSONValue("")).str;
 
 		Div credDiv = builder(vDiv([
 				hDiv([loginLabel, loginField, filler(LOGIN_FRACT)]),
@@ -99,12 +104,14 @@ final class MainMenuState: GameState
 					loginField.content.str.encrypt,
 					pwField.content.str.encrypt));
 			infoLabel.content = "Authorizing...";
+			writeConfigField("login", loginField.content.str);
+			writeConfigField("password", pwField.content.str);
 		};
 
 		Label cicIpLabel = builder(new Label()).content("coop IP:").
 			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).fraction(LOGIN_FRACT).build();
-		TextField cicIpField = builder(new TextField()).content("localhost:17900").
-			fontSize(LOGIN_FONT_SIZE).build();
+		TextField cicIpField = builder(new TextField()).fontSize(LOGIN_FONT_SIZE).build();
+		cicIpField.content = config.object.get("coopaddr", JSONValue("localhost:17900")).str;
 
 		Div cicDiv = builder(hDiv([cicIpLabel, cicIpField, filler(LOGIN_FRACT)])).
 			fixedSize(vec2i(0, loginSize + 20)).build();
@@ -144,6 +151,7 @@ final class MainMenuState: GameState
 						cicConnectCancellator = null;
 					}
 				});
+			writeConfigField("coopaddr", cicIpField.content.str);
 		};
 
 		Button exitButton = builder(new Button()).content("Exit").
