@@ -32,8 +32,8 @@ final class Window
 		m_ctxSettings.depthBits = 24;
 		m_ctxSettings.stencilBits = 8;
 		m_ctxSettings.antialiasingLevel = 4;
-		m_ctxSettings.majorVersion = 3;
-		m_ctxSettings.minorVersion = 2;
+		m_ctxSettings.majorVersion = 2;
+		m_ctxSettings.minorVersion = 0;
 		m_ctxSettings.attributeFlags = sfContextDefault;
 		m_ctxSettings.sRgbCapable = false;
 		info("OpenGL context settings: ", m_ctxSettings);
