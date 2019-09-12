@@ -9,7 +9,8 @@
 		"gfm:math": "~>6.2.7",
 		"derelict-al": "~>1.0.3",
 		"derelict-sfml2": { "path": "../DerelictSFML2" },
-		"dsubs_common": { "path": "../dsubs_common" }
+		"dsubs_common": { "path": "../dsubs_common" },
+		"standardpaths": "~>0.8.1"
 	},
 	"buildRequirements": [
 		"requireBoundsCheck"

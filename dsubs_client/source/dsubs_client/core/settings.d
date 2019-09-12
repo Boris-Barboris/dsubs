@@ -6,22 +6,17 @@ import std.process: environment;
 
 public import std.json;
 
+import standardpaths;
+
 import dsubs_client.common;
 
 
-version(Windows)
+string configFileName()
 {
-	string configFileName()
-	{
-		return "%LOCALAPPDATA%\\dsubs.json";
-	}
-}
-version(Posix)
-{
-	string configFileName()
-	{
-		return expandTilde(environment.get("XDG_CONFIG_HOME", "~/.config") ~ "/dsubs.json");
-	}
+	return buildPath(
+		writablePath(
+			StandardPath.config, buildPath("dsubs"), FolderFlag.create),
+		"dsubs.json");
 }
 
 
