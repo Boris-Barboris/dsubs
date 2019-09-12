@@ -21,6 +21,7 @@ import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.dynamics;
 import dsubs_server.propulsion;
+import dsubs_server.player: Captain;
 import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 
@@ -42,10 +43,12 @@ abstract class Weapon: Vessel
 	protected
 	{
 		Submarine m_shooter;
+		Captain m_shooterCaptain;
 		IGuidance m_guidance;
 	}
 
 	final @property Submarine shooter() { return m_shooter; }
+	final @property Captain shooterCaptain() { return m_shooterCaptain; }
 	@property IGuidance guidance() { return m_guidance; }
 
 	// all detonated weapons will be unregistered by weapons
@@ -56,6 +59,7 @@ abstract class Weapon: Vessel
 	{
 		super(templateName);
 		m_shooter = shooter;
+		m_shooterCaptain = shooter.captain;
 	}
 
 	override void register()
@@ -246,6 +250,8 @@ final class TorpedoGuidance: IGuidance
 
 	@property void fuelLeft(float rhs) { m_fuelLeft = rhs; }
 
+	@property float distanceTraveled() const { return m_distanceTraveled; }
+
 	@property Torpedo torpedo() { return m_torpedo; }
 
 	private this(Torpedo owner)
@@ -417,6 +423,20 @@ final class TorpedoGuidance: IGuidance
 		m_torpedo.m_detonated = true;
 		foreach (v; inKillRadius)
 		{
+			if (Globals.database)
+			{
+				try
+				{
+					Globals.database.insertKillRecord(
+						m_torpedo.shooterCaptain,
+						m_torpedo.shooter,
+						v, m_torpedo);
+				}
+				catch (Exception ex)
+				{
+					error("error during kill report: ", ex.toString);
+				}
+			}
 			synchronized(v)
 				v.kill("Killed by " ~ m_torpedo.prototypeName ~ " torpedo");
 		}

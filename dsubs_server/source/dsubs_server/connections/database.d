@@ -8,6 +8,12 @@ import mysql;
 
 import dsubs_server.common;
 
+import dsubs_server.player: Captain, Player;
+import dsubs_server.bots: BotCaptain;
+import dsubs_server.vessel: Vessel;
+import dsubs_server.submarine;
+import dsubs_server.torpedo;
+
 
 struct PlayerDb
 {
@@ -53,6 +59,8 @@ final class DatabaseService
 			catch (Exception ex)
 			{
 				error("Database error: ", ex.toString);
+				if (m_con)
+					m_con.close();
 				m_con = null;
 				Connection con = connection;
 				return dlg(con);
@@ -79,6 +87,45 @@ final class DatabaseService
 		{
 			con.exec("INSERT INTO players (login_name, login_password) " ~
 				"VALUES(?, ?)", login, password);
+		}
+		wrapInRetry(&func);
+	}
+
+	private static string captainType(Captain cpt)
+	{
+		if (cpt)
+		{
+			if (cast(Player) cpt)
+				return "player";
+			else
+				return "bot";
+		}
+		else
+			return null;
+	}
+
+	void insertKillRecord(Captain shooter, Submarine shooterSub, Vessel deadVessel,
+		Torpedo weapon)
+	{
+		Submarine deadSub = cast(Submarine) deadVessel;
+		if (deadSub is null)
+			return;
+		Captain deadCaptain = deadSub.captain;
+		void func(Connection con)
+		{
+			con.exec("INSERT INTO kill_records " ~
+				"(shooter_captain_name, shooter_captain_type, shooter_hull_name, " ~
+				"dead_captain_name, dead_captain_type, dead_hull_name, weapon_name, " ~
+				"weapon_travelled) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+				shooter ? shooter.name: null,
+				captainType(shooter),
+				shooterSub ? shooterSub.prototypeName : null,
+				deadCaptain ? deadCaptain.name: null,
+				captainType(deadCaptain),
+				deadSub.prototypeName,
+				weapon.prototypeName,
+				weapon.guidance.distanceTraveled
+			);
 		}
 		wrapInRetry(&func);
 	}
