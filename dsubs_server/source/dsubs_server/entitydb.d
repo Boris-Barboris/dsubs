@@ -349,13 +349,13 @@ Search patterns: straight, snake, spiral.
 			cast(usecs_t)STORK_FIRING_SECS * 1000_000);
 		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
-			4.0f, 75.0f);
+			4.0f, 80.0f);
 		bowProtoTemplate.openSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
-			4.0f, 75.0f);
+			4.0f, 80.0f);
 		bowProtoTemplate.firingSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
-			4.0f, 90.0f);
+			4.0f, 95.0f);
 		TubePrototype[int] tubeProtos;
 		tubeProtos[0] = bowProtoTemplate;
 		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(4.7, 25.0), -dgr2rad(20));
@@ -367,13 +367,13 @@ Search patterns: straight, snake, spiral.
 			cast(usecs_t)10e6, cast(usecs_t)5e6, cast(usecs_t)6e6, cast(usecs_t)3e6);
 		decoyTubePrototype.floodSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hissing2_5sec_8192.wav"),
-			4.0f, 70.0f);
+			4.0f, 75.0f);
 		decoyTubePrototype.openSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
-			4.0f, 70.0f);
+			4.0f, 75.0f);
 		decoyTubePrototype.firingSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
-			4.0f, 85.0f);
+			4.0f, 90.0f);
 		tubeProtos[2] = decoyTubePrototype;
 		decoyTubePrototype.tmpl.mount = MountPoint(vec2f(4.5, -21.0f), -dgr2rad(100));
 		decoyTubePrototype.tmpl.id = 3;
