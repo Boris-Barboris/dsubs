@@ -1,6 +1,7 @@
 module dsubs_server.simulator;
 
 import std.datetime;
+import std.parallelism: task;
 
 import core.thread;
 import core.memory;
@@ -10,6 +11,7 @@ import dsubs_common.proftimer;
 import dsubs_common.event;
 
 import dsubs_server.common;
+import dsubs_server.player: Player;
 import dsubs_server.dynamics;
 
 
@@ -130,6 +132,12 @@ final class Simulator
 				profiler.stop();
 				if (printTimings)
 					profiler.printResult();
+				if (Globals.metrics && (m_worldTime % 10_000_000 == 0))
+				{
+					Globals.taskPool.put(
+						task(&Globals.metrics.writeMetrics,
+							profiler.getTotalUsecs, Player.getPlayersOnline()));
+				}
 				auto now = MonoTime.currTime();
 				// GC.enable();
 				loopStart = loopStart + seconds(1);

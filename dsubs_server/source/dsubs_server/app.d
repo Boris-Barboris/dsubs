@@ -6,6 +6,7 @@ import std.process: environment;
 
 import dsubs_server.common;
 import dsubs_server.connections.database;
+import dsubs_server.connections.metrics;
 import dsubs_server.globals;
 import dsubs_server.scenario;
 
@@ -34,6 +35,12 @@ void main(string[] argv)
 		{
 			info("initializing database connector");
 			Globals.database = new DatabaseService(mysqlConStr);
+		}
+		string influxUrl = environment.get("INFLUXDB_URL");
+		if (influxUrl)
+		{
+			info("initializing metrics connector");
+			Globals.metrics = new MetricsService(influxUrl);
 		}
 		Globals.build();
 		Globals.scenario = new BattleRoyale();

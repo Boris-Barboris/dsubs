@@ -9,7 +9,8 @@
 		"gfm:math": "~>6.2.7",
 		"mysql-native": { "path": "../mysql-native" },
 		"dsubs_common": { "path": "../dsubs_common" },
-		"dsubs_sound": { "path": "../dsubs_sound" }
+		"dsubs_sound": { "path": "../dsubs_sound" },
+		"requests": "~>1.0.9"
 	},
 	"dflags": [
 		"-J /home/boris/src/dsubs/dsubs_sound/source/dsubs_sound/kernels"

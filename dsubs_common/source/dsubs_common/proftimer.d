@@ -61,4 +61,9 @@ final class ProfTimer
 		}
 		trace("ProfTimer total: ", (total.end - total.start).total!"usecs", "usecs");
 	}
+
+	auto getTotalUsecs() const
+	{
+		return (total.end - total.start).total!"usecs";
+	}
 }
