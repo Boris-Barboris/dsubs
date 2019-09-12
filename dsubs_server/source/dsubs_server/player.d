@@ -400,7 +400,7 @@ final class Player: Captain
 				{
 					int srate;
 					auto samples = h.pcb;
-					trace("samples start: ", samples[0..10], " end: ", samples[$-10..$]);
+					// trace("samples start: ", samples[0..10], " end: ", samples[$-10..$]);
 					haudio ~= immutable HydrophoneAudio(i.to!int, h.listenDir + coordRot,
 						samples, samples.length.to!int);
 				}

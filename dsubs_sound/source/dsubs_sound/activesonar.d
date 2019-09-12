@@ -382,7 +382,7 @@ struct ActiveSonarPrototype
 	/// rows in slice image per second
 	int radialRes = 20;
 	/// ping receive window (seconds)
-	int maxSec = 15;
+	int maxSec = 25;
 	/// max ping bandsum intensity level. We approximate bandsum with one
 	/// 'effective' frequency band - PingParameters.effectiveFreq.
 	dB maxPeakIlevel = 220.0f;

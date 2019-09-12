@@ -239,7 +239,7 @@ final class TorpedoGuidance: IGuidance
 
 		// detonator parameters
 		float m_detonationSearchRadius = 100.0f;
-		float m_detonationMassK = 3.5f;
+		float m_detonationMassK = 3.2f;
 		float m_blastRadius = 50.0f;
 		PrerecordedSoundPrototype m_detonationSoundProto;
 	}
@@ -361,23 +361,54 @@ final class TorpedoGuidance: IGuidance
 		SonarPing m_currentPing;
 		ubyte[] m_sonarImage;
 		size_t m_sliceByteSize;
+		bool m_detonatorFired;
+		double m_closestDetonatorDist = double.max;
 	}
 
+	// detonation logic tries to detonate as late as possible
 	private bool detonateIfNeeded(RigidBody[] bodies)
 	{
-		bool detonated;
-		Vessel[] inKillRadius;
+		bool inDetonationRange;
+		double currentClosestDetonatorDist = double.max;
 		foreach (RigidBody rb; bodies)
 		{
 			double triggerDist = pow(rb.mass, 1.0f / 3) * m_detonationMassK;
 			double dist = (m_torpedo.transform.wposition - rb.transform.wposition).length;
-			detonated |= triggerDist >= dist;
-			if (rb.vesselOwner && dist <= m_blastRadius)
-				inKillRadius ~= rb.vesselOwner;
+			if (triggerDist >= dist)
+			{
+				inDetonationRange = true;
+				currentClosestDetonatorDist = min(currentClosestDetonatorDist, dist);
+			}
 		}
-		if (detonated)
+
+		void chooseKilledAndDetonate()
+		{
+			Vessel[] inKillRadius;
+			foreach (RigidBody rb; bodies)
+			{
+				double dist = (m_torpedo.transform.wposition - rb.transform.wposition).length;
+				if (rb.vesselOwner && dist <= m_blastRadius)
+					inKillRadius ~= rb.vesselOwner;
+			}
 			detonate(inKillRadius);
-		return detonated;
+		}
+
+		// we're tracking detonator now
+		if (m_detonatorFired)
+		{
+			if (!inDetonationRange || currentClosestDetonatorDist > m_closestDetonatorDist)
+			{
+				// we're losing magnetic contact
+				chooseKilledAndDetonate();
+				return true;
+			}
+		}
+		if (inDetonationRange)
+		{
+			m_detonatorFired = true;
+			m_closestDetonatorDist = min(m_closestDetonatorDist, currentClosestDetonatorDist);
+		}
+		return false;
 	}
 
 	private void detonate(Vessel[] inKillRadius)

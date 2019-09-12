@@ -1615,7 +1615,12 @@ final class WeaponProjectionTrace: OverlayElement
 			{
 				vec2d extrapolatedCtPos = ctcEl.contact.solution.pos;
 				if (ctcEl.contact.solution.velAvailable)
-					extrapolatedCtPos += shapeIdx * ctcEl.contact.solution.vel;
+				{
+					usecs_t extrapolatedTime = Game.simState.extrapolatedServerTime;
+					usecs_t usecsSince = extrapolatedTime - ctcEl.contact.solution.time;
+					float secs = usecsSince / 1.0e6f;
+					extrapolatedCtPos += (shapeIdx * INTEGRATION_STEP + secs) * ctcEl.contact.solution.vel;
+				}
 				float sqrDistance = (extrapolatedCtPos - point2).squaredLength;
 				if (sqrDistance < minDist)
 				{

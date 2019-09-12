@@ -51,7 +51,7 @@ final class Simulator
 
 	usecs_t worldTimeLimit = usecs_t.max;
 
-	bool printTimings = true;
+	bool printTimings = false;
 	bool doSleep = true;
 
 	Event!(void delegate(usecs_t now)) onSimulationPassStart;

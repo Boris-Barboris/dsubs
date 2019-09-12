@@ -337,7 +337,7 @@ class ProtocolConnection(alias Protocol)
 		}
 		catch (Throwable e)
 		{
-			error(conId, " Throwable caught in writer thread: ", e.toString);
+			error(conId, " Throwable caught in writer thread: ", e.msg);
 			close();
 		}
 	}

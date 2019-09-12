@@ -496,7 +496,7 @@ Active sonar:
 				SonarTemplate(),
 				["Civilian three-blade screw"]
 			));
-		sp.mass = RolledF(3500.0f, 10.0f);
+		sp.mass = RolledF(3000.0f, 10.0f);
 		sp.Cd0 = RolledF(90.0, 1.0f);
 		sp.Cd1 = RolledF(20.0, 0.042f);
 		sp.Cda = 0.8;

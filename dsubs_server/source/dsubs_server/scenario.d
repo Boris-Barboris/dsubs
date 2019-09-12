@@ -79,8 +79,8 @@ final class BattleRoyale: Scenario
 			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)));
 		m_nextCenter = m_currentCenter;
 		m_nextRadius = m_currentRadius;
-		m_nextTransitionTime = Globals.sim.worldTime + 120_000_000;
-		// m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
+		//m_nextTransitionTime = Globals.sim.worldTime + 120_000_000;
+		m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
 	}
 
 	override void onBeforeSimulation()
