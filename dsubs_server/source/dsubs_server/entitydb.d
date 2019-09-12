@@ -257,14 +257,14 @@ Search patterns: straight, snake, spiral.
 		tf.asprot.waterReflectivity = 0.0f;
 		tf.asprot.reflRangeNoise = 100 / 1e4;
 		tf.asprot.perlinCellSize = [23, 11];
-		tf.asprot.flowNoiseGain = 0.0f;
+		tf.asprot.flowNoiseGain = -5.0f;
 		tf.asprot.baseNoise = 1.5f;
 		tf.asprot.pingDirPower = 2.4f;
 		tf.asprot.dissMod = 1.0f;
 		tf.asprot.span = 120.0f;
 		tf.asprot.radialRes = 20;
 		tf.asprot.maxSec = 3;
-		tf.asprot.zeroLevel = dB(seaNoiseIL(3600).val + 80.0f);
+		tf.asprot.zeroLevel = dB(seaNoiseIL(3600).val + 75.0f);
 		tf.asprot.endScale = 0.02f;
 		tf.detonationSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/explosion1_8192.wav"),
@@ -296,7 +296,7 @@ Search patterns: straight, snake, spiral.
 		tf.rudderPosChangeSpeed = 2.0f;
 		// vec2f dims = getHullDims(tf.tmpl.hullModel);
 		tf.hullLength = 5.2f;
-		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.2f), [-29.0f, -22.0f, -15.0f]);
+		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.2f), [-20.0f, -20.0f, -15.0f]);
 		m_weapons["Minoga"] = tf;
 
 		pdescs.length = 0;
@@ -482,7 +482,7 @@ Active sonar:
 			210, 2 / 90.0f, 3.0f)
 		];
 		sp.asprot = asp;
-		sp.reflprot = ReflectorPrototype(vec2f(12.0f, 80.0f), [-22.0f, -19.0f, -10.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-26.0f, -23.0f, -15.0f]);
 		sp.playable = true;
 		m_submarines[sp.tmpl.name] = sp;
 
@@ -506,7 +506,7 @@ Active sonar:
 		sp.Cm = RolledF(700.0f, 6.0f);
 		sp.equilDrift = dgr2rad(20);
 		sp.hullLength = 100;
-		sp.reflprot = ReflectorPrototype(vec2f(15.0f, 100.0f), [-12.0f, -7.0f, -5.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(15.0f, 100.0f), [-8.0f, -5.0f, -4.0f]);
 		sp.playable = false;
 		m_submarines[sp.tmpl.name] = sp;
 	}

@@ -398,7 +398,7 @@ struct ActiveSonarPrototype
 	/// water mass reflectivity
 	float waterReflectivity = 5e-4f;
 	/// main sound dissipation modifier
-	float dissMod = 15.0f;
+	float dissMod = 6.0f;
 	/// gain for flow noise
 	dB flowNoiseGain = 10.0f;
 	/// contact bearing error magnitude
