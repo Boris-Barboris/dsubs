@@ -62,12 +62,11 @@ final class BattleRoyale: Scenario
 
 		enum float DEFAULT_RADIUS = 5000.0f;
 		enum float ESTIMATE_SPD = 13.5f;
+		enum float PER_PLAYER_EXPANSION = 500.0f;
 		enum float RELOAD_CIRCLE_RADIUS = 120.0f;
 		enum int TORPS_TO_RELOAD = 3;
 		enum int DECOYS_TO_RELOAD = 6;
 		enum usecs_t STABLE_TIME = 15 * 60 * 1000_000;
-		enum usecs_t TRANSITION_TIME = cast(usecs_t)
-			(2 * DEFAULT_RADIUS / ESTIMATE_SPD) * 1000_000;
 		enum int ACTIVE_BOTS = 3;
 	}
 
@@ -252,9 +251,14 @@ final class BattleRoyale: Scenario
 			}
 			else
 			{
-				m_nextCenter = m_currentCenter + rotateVector(vec2d(0, m_currentRadius * 2), uniform(0, 2 * PI));
-				m_nextRadius = m_currentRadius;
-				m_nextTransitionTime = Globals.sim.worldTime + TRANSITION_TIME;
+				m_nextRadius = DEFAULT_RADIUS + PER_PLAYER_EXPANSION *
+					max(0, Player.getPlayersOnline() - 1);
+				m_nextCenter = m_currentCenter + rotateVector(
+					vec2d(0, m_currentRadius + m_nextRadius),
+					uniform(0, 2 * PI));
+				usecs_t transitionTime = cast(usecs_t)
+					((m_currentRadius + m_nextRadius) / ESTIMATE_SPD) * 1000_000;
+				m_nextTransitionTime = Globals.sim.worldTime + transitionTime;
 				info("Scenario arena transition has started");
 				// regenerate reload circles
 				m_playerReloadCircles.clear();

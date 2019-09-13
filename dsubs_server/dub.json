@@ -10,7 +10,7 @@
 		"mysql-native": { "path": "../mysql-native" },
 		"dsubs_common": { "path": "../dsubs_common" },
 		"dsubs_sound": { "path": "../dsubs_sound" },
-		"requests": { "path": "../requests" },
+		"requests": { "path": "../requests" }
 	},
 	"subConfigurations": {
 		"requests": "std"
