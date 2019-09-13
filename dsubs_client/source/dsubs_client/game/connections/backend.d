@@ -151,10 +151,23 @@ final class BackendConMaintainer
 			try
 			{
 				Socket clientSock = new Socket(AddressFamily.INET, SocketType.STREAM, ProtocolType.IP);
-				auto addr = new InternetAddress(
-					environment.get("DSUBS_BACKEND_HOST", "127.0.0.1"), 17855);
-				info("Attempting to connect to backend ", addr);
-				clientSock.connect(addr);
+				AddressInfo[] addrs;
+				version (prod)
+				{
+					addrs = getAddressInfo(
+						environment.get("DSUBS_BACKEND_HOST", "borisbarboris.duckdns.org"),
+						environment.get("DSUBS_BACKEND_PORT", "17955"));
+				}
+				else
+				{
+					addrs = getAddressInfo(
+						environment.get("DSUBS_BACKEND_HOST", "127.0.0.1"),
+						environment.get("DSUBS_BACKEND_PORT", "17855"));
+				}
+				if (addrs.length < 1)
+					throw new Exception("no backend address could be resolved");
+				info("Attempting to connect to backend ", addrs[0]);
+				clientSock.connect(addrs[0].address);
 				m_con = new BackendConnection(clientSock);
 				m_con.start();
 				m_con.sendMessage(immutable ServerStatusReq());
