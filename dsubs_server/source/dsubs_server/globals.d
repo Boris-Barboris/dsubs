@@ -28,8 +28,10 @@ __gshared:
 	/// Main simulation RW-mutex that guards game state. Write-lock is taken
 	/// by the server when the world needs to freeze.
 	ReadWriteMutex simMut;
-	/// Global task pool.
+	/// Global task pool that is used during simulation.
 	TaskPool taskPool;
+	/// Auxiliarry tasks are put to this pool queue
+	TaskPool auxTaskPool;
 
 	/// Library of submarine types, propulsors and other unit types
 	EntityDb entityDb;
@@ -62,6 +64,7 @@ __gshared:
 	{
 		simMut = new ReadWriteMutex();
 		taskPool = new TaskPool(totalCPUs - 1);
+		auxTaskPool = new TaskPool(totalCPUs - 1);
 		trace("totalCPUs = ", totalCPUs);
 		sctx = new DsubsSoundOpenclCtx(totalCPUs);
 		entityDb = new EntityDb();
@@ -80,6 +83,7 @@ __gshared:
 		if (simMut is null)
 			simMut = new ReadWriteMutex();
 		taskPool = new TaskPool(0);//totalCPUs - 1);
+		auxTaskPool = new TaskPool(1);
 		if (sctx is null)
 			sctx = new DsubsSoundOpenclCtx(1);
 		if (entityDb is null)
@@ -103,6 +107,7 @@ __gshared:
 		}
 		sim = null;
 		taskPool.finish(true);
+		auxTaskPool.finish(true);
 		cleanCollectionsForTests();
 	}
 

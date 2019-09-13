@@ -4,6 +4,7 @@ import std.array: array;
 import std.algorithm: map, max, min, remove, SwapStrategy, filter;
 import std.algorithm.searching: minElement;
 import std.algorithm.sorting: sort;
+import std.parallelism: task;
 
 import core.bitop: popcnt;
 
@@ -423,22 +424,26 @@ final class TorpedoGuidance: IGuidance
 		m_torpedo.m_detonated = true;
 		foreach (v; inKillRadius)
 		{
-			if (Globals.database)
-			{
-				try
-				{
-					Globals.database.insertKillRecord(
-						m_torpedo.shooterCaptain,
-						m_torpedo.shooter,
-						v, m_torpedo);
-				}
-				catch (Exception ex)
-				{
-					error("error during kill report: ", ex.toString);
-				}
-			}
 			synchronized(v)
 				v.kill("Killed by " ~ m_torpedo.prototypeName ~ " torpedo");
+			if (Globals.database)
+			{
+				void reportFunc()
+				{
+					try
+					{
+						Globals.database.insertKillRecord(
+							m_torpedo.shooterCaptain,
+							m_torpedo.shooter,
+							v, m_torpedo);
+					}
+					catch (Exception ex)
+					{
+						error("error during kill report: ", ex.toString);
+					}
+				}
+				Globals.auxTaskPool.put(task(&reportFunc));
+			}
 		}
 		m_torpedo.kill("detonation");
 		SoundSource detonationSoundSource = new PrerecordedSoundSource(

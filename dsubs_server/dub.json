@@ -10,7 +10,10 @@
 		"mysql-native": { "path": "../mysql-native" },
 		"dsubs_common": { "path": "../dsubs_common" },
 		"dsubs_sound": { "path": "../dsubs_sound" },
-		"requests": "~>1.0.9"
+		"requests": { "path": "../requests" },
+	},
+	"subConfigurations": {
+		"requests": "std"
 	},
 	"dflags": [
 		"-J /home/boris/src/dsubs/dsubs_sound/source/dsubs_sound/kernels"
