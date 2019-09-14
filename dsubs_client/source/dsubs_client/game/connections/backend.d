@@ -13,6 +13,8 @@ import dsubs_common.network.connection;
 
 import dsubs_client.common;
 import dsubs_client.game;
+import dsubs_client.game.gamestate: GameState;
+import dsubs_client.game.states.mainmenu: MainMenuState;
 import dsubs_client.game.entities;
 
 
@@ -39,7 +41,9 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
-			Game.mainMenuState.handleServerStatus(res);
+			GameState activeState = Game.activeState;
+			if (cast(MainMenuState) activeState)
+				Game.mainMenuState.handleServerStatus(res);
 		}
 	}
 
