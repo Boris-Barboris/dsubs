@@ -467,6 +467,8 @@ final class PlayerCollection
 	Player authorizeConnection(PlayerConnection con, string username, string password)
 	{
 		assert(con);
+		if (username.length == 0)
+			throw new AuthException("Empty login");
 		scope(success) info("Player ", username, " authorized");
 		synchronized(Globals.simMut.reader)
 		{
