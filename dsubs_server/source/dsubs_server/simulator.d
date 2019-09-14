@@ -134,7 +134,7 @@ final class Simulator
 					profiler.printResult();
 				if (Globals.metrics && (m_worldTime % 10_000_000 == 0))
 				{
-					Globals.taskPool.put(
+					Globals.auxTaskPool.put(
 						task(&Globals.metrics.writeMetrics,
 							profiler.getTotalUsecs, Player.getPlayersOnline()));
 				}

@@ -347,6 +347,7 @@ Search patterns: straight, snake, spiral.
 			cast(usecs_t)STORK_FLOOD_SECS * 1000_000,
 			cast(usecs_t)STORK_OPEN_SECS * 1000_000,
 			cast(usecs_t)STORK_FIRING_SECS * 1000_000);
+		bowProtoTemplate.openFlowNoiseMult = 3.0f;
 		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
 			4.0f, 80.0f);

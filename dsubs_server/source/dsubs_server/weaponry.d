@@ -8,6 +8,7 @@ import dsubs_common.math;
 
 import dsubs_sound.soundsource;
 import dsubs_sound.common;
+import dsubs_sound.hydrophone: IFlowNoiseMultiplier;
 
 import dsubs_server.common;
 import dsubs_server.player;
@@ -131,6 +132,7 @@ struct TubePrototype
 	PrerecordedSoundPrototype floodSoundProto;
 	PrerecordedSoundPrototype openSoundProto;
 	PrerecordedSoundPrototype firingSoundProto;
+	float openFlowNoiseMult = 1.0f;
 }
 
 struct TubeOperationResult
@@ -141,7 +143,7 @@ struct TubeOperationResult
 
 
 /// Tube that launches weapons
-final class Tube
+final class Tube: IFlowNoiseMultiplier
 {
 	// untrusted 'initialWeapon' input
 	this(Submarine owner, AmmoRoom room, const TubePrototype proto, string initialWeapon)
@@ -178,6 +180,17 @@ final class Tube
 		TubeState m_state = TubeState.dry;
 		TubeState m_desiredState = TubeState.dry;
 		TubeOperationResult m_lastSimUpdateResults;
+	}
+
+	override float getFlowNoiseMult() const
+	{
+		if (m_state == TubeState.open ||
+			m_state == TubeState.closing ||
+			m_state == TubeState.opening)
+		{
+			return m_proto.openFlowNoiseMult;
+		}
+		return 1.0f;
 	}
 
 	@property int id() const { return m_proto.tmpl.id; }

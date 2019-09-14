@@ -167,6 +167,10 @@ final class SubmarineFactory: VesselFactory
 		{
 			res.onPreKinematics += &tube.onPreKinematics;
 			res.onPostKinematics += &tube.onPostKinematics;
+			foreach (h; res.m_hydrophones)
+				h.flowNoiseMultipliers ~= tube;
+			if (res.m_sonar)
+				res.m_sonar.flowNoiseMultipliers ~= tube;
 		}
 	}
 

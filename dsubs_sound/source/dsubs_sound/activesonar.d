@@ -11,6 +11,7 @@ import dsubs_sound.spectrum;
 import dsubs_sound.soundsource;
 import dsubs_sound.opencl;
 import dsubs_sound.water;
+import dsubs_sound.hydrophone: IFlowNoiseMultiplier;
 import dsubs_sound.wav;
 import dsubs_sound.reverb;
 
@@ -150,12 +151,12 @@ package struct PingTdsCache
 				msvalue = samples[GLOBAL_SRATE * i .. GLOBAL_SRATE * (i + 1)].
 					map!(p => p * p).sum() / GLOBAL_SRATE;
 			}
-			trace("ping meanSqr: ", m_cache[params].meanSqr);
+			// trace("ping meanSqr: ", m_cache[params].meanSqr);
 			float activePhaseDuration = params.chirps.map!(c => c.duration).sum();
 			size_t activeSampleCount = lrint(GLOBAL_SRATE * activePhaseDuration).to!size_t;
 			m_cache[params].meanSqrActive =
 				samples[0 .. activeSampleCount].map!(p => p * p).sum() / activeSampleCount;
-			trace("ping meanSqrActive: ", m_cache[params].meanSqrActive);
+			// trace("ping meanSqrActive: ", m_cache[params].meanSqrActive);
 			m_cache[params].activePhaseDuration = activePhaseDuration;
 		}
 	}
@@ -489,6 +490,9 @@ final class ActiveSonar
 		PreparedPingTds* m_refPingTds;
 	}
 
+	/// torpedo tubes want to modify flow noise by being open or closed
+	IFlowNoiseMultiplier[] flowNoiseMultipliers;
+
 	@property Transform2D transform() { return m_transform; }
 	@property const(ActiveSonarPrototype) proto() const { return m_proto; }
 	@property float maxRange() const { return m_secDur * SOUND_SPD / 2; }
@@ -691,7 +695,12 @@ final class ActiveSonar
 			m_worldRotStart - m_omiWrot, m_worldRotEnd - m_omiWrot);
 		k.setArg(5, relRots);	// relRotations
 		k.setArg(6, vec2f(m_angVelStart, m_angVelEnd));		// angVels
-		k.setArg(7, m_proto.flowNoiseGain);				// flowNoiseGain
+
+		float flowNoiseMultExternal = 1.0f;
+		foreach (fnm; flowNoiseMultipliers)
+			flowNoiseMultExternal *= fnm.getFlowNoiseMult();
+
+		k.setArg(7, m_proto.flowNoiseGain + toDb(flowNoiseMultExternal));	// flowNoiseGain
 		k.setArg(8, vec2f(m_ktsStart, m_ktsEnd));		// kts
 		k.setArg(9, m_proto.pingParams.effectiveFreq);	// pingFreq
 		k.setArg(10, m_proto.endScale);		// endScale

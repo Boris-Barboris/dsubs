@@ -43,6 +43,12 @@ struct HydrophonePrototype
 }
 
 
+interface IFlowNoiseMultiplier
+{
+	float getFlowNoiseMult();
+}
+
+
 /// Hydrophone is a collection of identical antennaes.
 final class Hydrophone
 {
@@ -81,6 +87,9 @@ final class Hydrophone
 		m_baseFlowNoiseStartBuf = Buffer(q.ctx, float.sizeof);
 		m_baseFlowNoiseEndBuf = Buffer(q.ctx, float.sizeof);
 	}
+
+	/// torpedo tubes want to modify flow noise by being open or closed
+	IFlowNoiseMultiplier[] flowNoiseMultipliers;
 
 	/// invoked by simulator before kinematic update happens
 	Event!(void delegate()) onPreKinematics;
@@ -267,12 +276,17 @@ final class Hydrophone
 
 	private void startCalculateFlowNoise(CommandQueue q)
 	{
+		float flowNoiseMultExternal = 1.0f;
+		foreach (fnm; flowNoiseMultipliers)
+			flowNoiseMultExternal *= fnm.getFlowNoiseMult();
+
 		void dispatchFlowCalc(ref ISpectrum spec, float kts)
 		{
 			spec.patch(q, 0.0f);
 			Kernel k = q.mk_generateFlowNoise;
 			k.setArg(0, spec.mem);
-			k.setArg(1, m_flowNoiseMult * m_directivity * m_listenToCellR);
+			k.setArg(1, m_flowNoiseMult * m_directivity *
+				m_listenToCellR * flowNoiseMultExternal);
 			k.setArg(2, kts.abs);
 			k.setArg(3, ISOTROPIC_VAR);
 			k.setArg(4, uintSeed());
