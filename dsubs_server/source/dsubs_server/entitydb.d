@@ -99,7 +99,7 @@ final class EntityDb
 		return m_weapons[torpName];
 	}
 
-	enum int STORK_RELOAD_SECS = 60;
+	enum int STORK_RELOAD_SECS = 90;
 	enum int STORK_FLOOD_SECS = 9;
 	enum int STORK_OPEN_SECS = 6;
 	enum int STORK_FIRING_SECS = 3;
@@ -365,7 +365,7 @@ Search patterns: straight, snake, spiral.
 		TubePrototype decoyTubePrototype = TubePrototype(TubeTemplate(2,
 			MountPoint(vec2f(-4.5, -21.0f), dgr2rad(100)),
 			1, TubeType.decoy, true),
-			cast(usecs_t)10e6, cast(usecs_t)5e6, cast(usecs_t)6e6, cast(usecs_t)3e6);
+			cast(usecs_t)60e6, cast(usecs_t)5e6, cast(usecs_t)6e6, cast(usecs_t)3e6);
 		decoyTubePrototype.floodSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hissing2_5sec_8192.wav"),
 			4.0f, 75.0f);
