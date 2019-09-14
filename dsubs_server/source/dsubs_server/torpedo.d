@@ -60,7 +60,8 @@ abstract class Weapon: Vessel
 	{
 		super(templateName);
 		m_shooter = shooter;
-		m_shooterCaptain = shooter.captain;
+		if (m_shooter)
+			m_shooterCaptain = shooter.captain;
 	}
 
 	override void register()
@@ -243,9 +244,9 @@ final class TorpedoGuidance: IGuidance
 		float m_trackAngVelAccumul = 0.0f;
 
 		// detonator parameters
-		float m_detonationSearchRadius = 100.0f;
-		float m_detonationMassK = 3.2f;
-		float m_blastRadius = 50.0f;
+		float m_detonationSearchRadius = 150.0f;
+		float m_detonationMassK = 4.5f;
+		float m_blastRadius = 70.0f;
 		PrerecordedSoundPrototype m_detonationSoundProto;
 	}
 
@@ -373,11 +374,11 @@ final class TorpedoGuidance: IGuidance
 	}
 
 	// detonation logic tries to detonate as late as possible
-	private bool detonateIfNeeded(RigidBody[] bodies)
+	private bool detonateIfNeeded(RigidBody[] closeBodies)
 	{
 		bool inDetonationRange;
 		double currentClosestDetonatorDist = double.max;
-		foreach (RigidBody rb; bodies)
+		foreach (RigidBody rb; closeBodies)
 		{
 			double triggerDist = pow(rb.mass, 1.0f / 3) * m_detonationMassK;
 			double dist = (m_torpedo.transform.wposition - rb.transform.wposition).length;
@@ -391,7 +392,7 @@ final class TorpedoGuidance: IGuidance
 		void chooseKilledAndDetonate()
 		{
 			Vessel[] inKillRadius;
-			foreach (RigidBody rb; bodies)
+			foreach (RigidBody rb; closeBodies)
 			{
 				double dist = (m_torpedo.transform.wposition - rb.transform.wposition).length;
 				if (rb.vesselOwner && dist <= m_blastRadius)
