@@ -256,6 +256,8 @@ final class TorpedoGuidance: IGuidance
 
 	@property Torpedo torpedo() { return m_torpedo; }
 
+	@property bool activated() const { return m_activated; }
+
 	private this(Torpedo owner)
 	{
 		m_torpedo = owner;
@@ -343,14 +345,16 @@ final class TorpedoGuidance: IGuidance
 			else
 			{
 				// homing mode
+				m_torpedo.rudder.directMode = false;
 				m_torpedo.targetThrottle = m_activeThrottle;
-				m_torpedo.targetCourse = m_curTargetDir;
 				if (!isNaN(m_curTargetAngVel))
 				{
 					m_trackAngVelAccumul += m_curTargetAngVel;
 					m_torpedo.targetCourse = m_curTargetDir +
 						m_trackAngVelAccumul * m_trackAngVelKi;
 				}
+				else
+					m_torpedo.targetCourse = m_curTargetDir;
 			}
 		}
 		else
@@ -538,7 +542,9 @@ final class TorpedoGuidance: IGuidance
 		int height = sonar.proto.radialRes;
 		int[] peakColumns = findPeaks(slice, width, height, 15);
 		// trace("found peaks: ", peakColumns);
-		if (!m_targetTracked && peakColumns.length > 0)
+		if (peakColumns.length == 0)
+			return;
+		if (!m_targetTracked)
 		{
 			// let's select random peak as target
 			m_targetTracked = true;
@@ -547,10 +553,10 @@ final class TorpedoGuidance: IGuidance
 			m_prevTargetTime = Globals.sim.worldTime;
 			m_targetPingId = sonar.pingCounter;
 			m_targetSliceId = sliceId;
-			m_curTargetDir = columnToRotation(peakColumns[0], width);
-			return;
+			m_curTargetDir = columnToRotation(
+				peakColumns[uniform!"[)"(0, peakColumns.length)], width);
 		}
-		if (m_targetTracked && peakColumns.length > 0)
+		else
 		{
 			// find the peak in this slice that is closest to currently tracked target
 			m_prevTargetDir = m_curTargetDir;
@@ -566,7 +572,6 @@ final class TorpedoGuidance: IGuidance
 			m_curTargetAngVel = angleDist(m_curTargetDir, m_prevTargetDir) * 1e6 /
 				(Globals.sim.worldTime - m_prevTargetTime);
 			m_prevTargetTime = Globals.sim.worldTime;
-			return;
 		}
 	}
 

@@ -298,6 +298,197 @@ unittest
 	pv.type = WeaponParamType.activationRange;
 	pv.range = 400.0f;
 	pvs ~= pv;
+	pv.type = WeaponParamType.activeSpeed;
+	pv.speed = 29.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.marchSpeed;
+	pv.speed = 29.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.straight;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.register();
+	int imageCounter;
+	cleanFolderForSonarImages("guidance", "minoga_straight2");
+	t.guidance.onSonarImageReady += (img, w, h) {
+		writeSonarImage("guidance", "minoga_straight2", "minoga", img, w, h, imageCounter);
+		imageCounter++;
+	};
+
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	double mspd = 0.9 * maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	s.transform.position = vec2d(-1500, 3000);
+	s.transform.rotation = -dgr2rad(90);
+	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
+	s.targetCourse = s.transform.rotation;
+	s.targetThrottle = 0.9f;
+	s.register();
+	File* storkFile = writeRbodyCsvHeader("guidance", "minoga_straight2", "stork");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+
+	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_straight2", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
+	Globals.sim.worldTimeLimit = 300 * cast(ulong)1e6;
+
+	double minDist = double.max;
+	Globals.sim.onSimulationPassStart += (now) {
+		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
+	};
+
+	scope(exit) Globals.resetForTests();
+	Globals.sim.start();
+	Globals.sim.join();
+
+	trace("minoga was ", minDist, " meters away from stork in minoga_straight2 test");
+	assert(s.dead);
+}
+
+
+unittest
+{
+	Globals.buildForTests();
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 400.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeSpeed;
+	pv.speed = 29.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.marchSpeed;
+	pv.speed = 29.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.straight;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.register();
+	int imageCounter;
+	cleanFolderForSonarImages("guidance", "minoga_straight3");
+	t.guidance.onSonarImageReady += (img, w, h) {
+		writeSonarImage("guidance", "minoga_straight3", "minoga", img, w, h, imageCounter);
+		imageCounter++;
+	};
+
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	s.transform.position = vec2d(300, 4000);
+	s.transform.rotation = dgr2rad(180);
+	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
+	s.targetCourse = s.transform.rotation;
+	s.targetThrottle = 1.0f;
+	s.register();
+	File* storkFile = writeRbodyCsvHeader("guidance", "minoga_straight3", "stork");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+
+	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_straight3", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
+	Globals.sim.worldTimeLimit = 300 * cast(ulong)1e6;
+
+	double minDist = double.max;
+	Globals.sim.onSimulationPassStart += (now) {
+		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
+	};
+
+	scope(exit) Globals.resetForTests();
+	Globals.sim.start();
+	Globals.sim.join();
+
+	trace("minoga was ", minDist, " meters away from stork in minoga_straight3 test");
+	assert(s.dead);
+}
+
+
+unittest
+{
+	Globals.buildForTests();
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 600.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeSpeed;
+	pv.speed = 29.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.marchSpeed;
+	pv.speed = 29.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.spiral;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.transform.rotation = dgr2rad(-20.0);
+	t.register();
+	int imageCounter;
+	cleanFolderForSonarImages("guidance", "minoga_spiral_stork");
+	t.guidance.onSonarImageReady += (img, w, h) {
+		writeSonarImage("guidance", "minoga_spiral_stork", "minoga", img, w, h, imageCounter);
+		imageCounter++;
+	};
+
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	double mspd = 0.4 * maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	s.transform.position = vec2d(0.0, 0.0);
+	s.transform.rotation = 0.0;
+	s.rigidBody.kinet.vel = vec2d(0, 0);
+	s.targetCourse = 0.0f;
+	s.targetThrottle = 0.0f;
+	s.register();
+	File* storkFile = writeRbodyCsvHeader("guidance", "minoga_spiral_stork", "stork");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+
+	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_spiral_stork", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
+	Globals.sim.worldTimeLimit = 120 * cast(ulong)1e6;
+
+	double minDist = double.max;
+	Globals.sim.onSimulationPassStart += (now) {
+		if (t.guidance.activated)
+			minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
+	};
+
+	scope(exit) Globals.resetForTests();
+	Globals.sim.start();
+	Globals.sim.join();
+
+	trace("minoga was ", minDist, " meters away from stork in minoga_spiral_stork test");
+	assert(s.dead);
+}
+
+
+unittest
+{
+	Globals.buildForTests();
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 400.0f;
+	pvs ~= pv;
 	pv.type = WeaponParamType.searchPattern;
 	pv.searchPattern = WeaponSearchPattern.spiral;
 	pvs ~= pv;

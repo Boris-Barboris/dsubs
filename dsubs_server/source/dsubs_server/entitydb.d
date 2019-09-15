@@ -196,7 +196,7 @@ private:
 				WeaponSearchPattern.straight |
 				WeaponSearchPattern.snake |
 				WeaponSearchPattern.spiral),
-			400.0f, 200.0f, 200.0f
+			400.0f, 150.0f, 200.0f
 		);
 		pdescs ~= pd;
 
@@ -265,7 +265,7 @@ Search patterns: straight, snake, spiral.
 		tf.asprot.radialRes = 20;
 		tf.asprot.maxSec = 3;
 		tf.asprot.zeroLevel = dB(seaNoiseIL(3600).val + 75.0f);
-		tf.asprot.endScale = 0.02f;
+		tf.asprot.endScale = 0.03f;
 		tf.detonationSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/explosion1_8192.wav"),
 			40.0f, 145.0f, 2e-3f);

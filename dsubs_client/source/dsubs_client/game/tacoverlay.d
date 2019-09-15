@@ -1577,8 +1577,8 @@ final class WeaponProjectionTrace: OverlayElement
 						float sinceActivation = travelled - activationRange;
 						desiredCourse = trans.wrotation + (INTEGRATION_STEP * speed) /
 							(m_tube.searchPatternDesc.spiralFirstRadius * (1.0f +
-							sqrt(sinceActivation / PI /
-								m_tube.searchPatternDesc.spiralFirstRadius)));
+							sqrt(sinceActivation / 1.5f / PI /
+								m_tube.searchPatternDesc.spiralStep)));
 						break;
 					}
 				}
