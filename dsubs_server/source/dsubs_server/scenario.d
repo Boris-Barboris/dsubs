@@ -66,7 +66,7 @@ final class BattleRoyale: Scenario
 		enum float RELOAD_CIRCLE_RADIUS = 120.0f;
 		enum int TORPS_TO_RELOAD = 3;
 		enum int DECOYS_TO_RELOAD = 6;
-		enum usecs_t STABLE_TIME = 15 * 60 * 1000_000;
+		enum usecs_t STABLE_TIME = 40 * 60 * 1000_000;
 		enum int ACTIVE_BOTS = 3;
 	}
 
