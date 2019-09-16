@@ -61,12 +61,12 @@ final class BattleRoyale: Scenario
 		ReloadCircle[Player] m_playerReloadCircles;
 
 		enum float DEFAULT_RADIUS = 5000.0f;
-		enum float ESTIMATE_SPD = 13.5f;
+		enum float ESTIMATE_SPD = 12.0f;
 		enum float PER_PLAYER_EXPANSION = 500.0f;
 		enum float RELOAD_CIRCLE_RADIUS = 120.0f;
 		enum int TORPS_TO_RELOAD = 3;
 		enum int DECOYS_TO_RELOAD = 6;
-		enum usecs_t STABLE_TIME = 40 * 60 * 1000_000;
+		enum usecs_t STABLE_TIME = 60 * 60 * 1000_000;
 		enum int ACTIVE_BOTS = 3;
 	}
 
