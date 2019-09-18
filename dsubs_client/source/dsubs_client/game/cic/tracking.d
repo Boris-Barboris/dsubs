@@ -25,7 +25,7 @@ private struct HydrophoneTrackerContext
 {
 	HydrophoneTracker tracker;
 	short counter = TRACKER_GEN_FREQ - 1;			/// increases with each acoustics update
-	short lossCounter = TRACKER_LOSS_MARGIN - 2;	/// this many times the tracker did not found a signal it was bound to
+	short lossCounter = TRACKER_LOSS_TIMEOUT - 2;	/// this many times the tracker did not found a signal it was bound to
 	double prevWrot;		/// last time the tracker was active this was it's rotation
 	usecs_t prevTime;		/// same for time
 	double angVel = 0.0;	/// angular velocity of a tracker.
@@ -44,8 +44,9 @@ private
 	enum short TRACKER_GEN_FREQ = 8;
 	/// tracker is automatically switched to inactive state after this many update cycles with
 	/// no signal found.
-	enum short TRACKER_LOSS_MARGIN = 5;
-	enum float EXTRAPOLATION_MARGIN = dgr2rad(5);
+	enum short TRACKER_LOSS_TIMEOUT = 15;
+	enum float CAPTURE_SEEK_AREA_PERSEC = dgr2rad(4);
+	enum float CAPTURE_SEEK_MAX_AREA = dgr2rad(8);
 	enum float ANGVEL_FILTER_K = 0.66;
 	enum DETECT_MARGIN = ushort.max / 24;
 }
@@ -115,17 +116,18 @@ final class WaterfallAnalyzer
 		foreach (HydrophoneTrackerContext* htc; trackers)
 		{
 			float sinceLast = (subSnap.atTime - htc.prevTime) / 1e6f;
-			float expextedWrot = htc.prevWrot + htc.angVel * sinceLast;
-			assert(!isNaN(expextedWrot));
+			float expectedWrot = htc.prevWrot + htc.angVel * sinceLast;
+			assert(!isNaN(expectedWrot));
 			htc.counter = (htc.counter + 1) % TRACKER_GEN_FREQ;
 			if (m_freePeaks.length > 0)
 			{
-				// try to find the closest to expextedWrot peak
+				// try to find the closest to expectedWrot peak
 				foreach (ref Peak p; m_freePeaks)
-					p.dist = angleDist(p.rot, expextedWrot).fabs;
+					p.dist = angleDist(p.rot, expectedWrot).fabs;
 				m_freePeaks.sort!"a.dist < b.dist";
-				if (m_freePeaks[0].dist <= EXTRAPOLATION_MARGIN *
-					min(sinceLast, TRACKER_LOSS_MARGIN))
+				if (m_freePeaks[0].dist <= min(
+					CAPTURE_SEEK_AREA_PERSEC * min(sinceLast, TRACKER_LOSS_TIMEOUT),
+					CAPTURE_SEEK_MAX_AREA))
 				{
 					m_freePeaks[0].locked = true;
 					htc.lossCounter = 0;
@@ -136,14 +138,14 @@ final class WaterfallAnalyzer
 					m_freePeaks = m_freePeaks[1 .. $];
 				}
 				else
-					htc.lossCounter = min(htc.lossCounter + 1, TRACKER_LOSS_MARGIN).to!short;
+					htc.lossCounter = min(htc.lossCounter + 1, TRACKER_LOSS_TIMEOUT).to!short;
 			}
 			else
 			{
-				htc.lossCounter = min(htc.lossCounter + 1, TRACKER_LOSS_MARGIN).to!short;
+				htc.lossCounter = min(htc.lossCounter + 1, TRACKER_LOSS_TIMEOUT).to!short;
 			}
 			// too many cycles without a trace, deactivate tracker
-			if (htc.lossCounter == TRACKER_LOSS_MARGIN)
+			if (htc.lossCounter == TRACKER_LOSS_TIMEOUT)
 				htc.tracker.state = TrackerState.inactive;
 		}
 	}
@@ -213,7 +215,7 @@ final class WaterfallAnalyzer
 		ctx.angVel = 0.0;
 		ctx.prevTime = m_lastSlice.atTime;
 		ctx.prevWrot = bearing;
-		ctx.lossCounter = TRACKER_LOSS_MARGIN - 2;
+		ctx.lossCounter = TRACKER_LOSS_TIMEOUT - 2;
 		ctx.tracker.state = TrackerState.active;
 		ctx.tracker.bearing = bearing;
 		newState = ctx.tracker;

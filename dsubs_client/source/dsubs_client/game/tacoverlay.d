@@ -81,7 +81,7 @@ final class ContactOverlayShapeCahe
 	@property LineShape rayDataLine()
 	{
 		return new LineShape(vec2d(0, 0), vec2d(0, 0),
-			sfColor(155, 244, 66, 150), 0.5);
+			sfColor(155, 244, 66, 75), 0.5);
 	}
 
 	@property LineShape weaponProjectionLine()
