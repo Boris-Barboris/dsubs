@@ -50,6 +50,7 @@ final class TubeUI
 		GuiElement m_aimFiller;
 		bool m_aiming;
 		WeaponProjectionTrace m_overlayTrace;
+		WeaponAimHandle m_overlayHandle;
 
 		// main section
 		GuiElement m_aimElement;
@@ -139,6 +140,8 @@ final class TubeUI
 			// build trace overlay
 			m_overlayTrace = new WeaponProjectionTrace(
 				Game.simState.tacticalOverlay, m_tube);
+			m_overlayHandle = new WeaponAimHandle(
+				Game.simState.tacticalOverlay, m_tube, this);
 		}
 		else
 		{
@@ -149,8 +152,31 @@ final class TubeUI
 				Game.simState.tacticalOverlay.remove(m_overlayTrace);
 				m_overlayTrace = null;
 			}
+			if (m_overlayHandle)
+			{
+				Game.simState.tacticalOverlay.remove(m_overlayHandle);
+				m_overlayHandle = null;
+			}
 		}
 		m_aiming = !m_aiming;
+	}
+
+	private
+	{
+		TextField m_courseTextField;
+		TextField m_activationRangeField;
+	}
+
+	void updateAimFieldsFromTube()
+	{
+		string marchCourseContent;
+		WeaponParamValue* wpv = WeaponParamType.marchCourse in m_tube.weaponParams;
+		if (wpv)
+			marchCourseContent = format("%.1f", -wpv.course.compassAngle.rad2dgr);
+		m_courseTextField.content = marchCourseContent;
+		string activationRangeContent = format("%.0f",
+			m_tube.weaponParams[WeaponParamType.activationRange].range);
+		m_activationRangeField.content = activationRangeContent;
 	}
 
 	private void buildAimDiv()
@@ -158,14 +184,10 @@ final class TubeUI
 		// build m_aimDiv
 		Label courseLabel = builder(new Label()).content("course ").
 			fontSize(FONT).fixedSize(vec2i(45, 1)).build;
-		string marchCourseContent;
-		WeaponParamValue* wpv = WeaponParamType.marchCourse in m_tube.weaponParams;
-		if (wpv)
-			marchCourseContent = format("%.1f", -wpv.course.compassAngle.rad2dgr);
-		TextField courseTextField = builder(new TextField()).symbolFilter(&numericSymbFilter).
-			content(marchCourseContent).fontSize(FONT).build;
-		courseTextField.onKeyReleased += (k) {
-			if (courseTextField.content.length == 1)
+		m_courseTextField = builder(new TextField()).symbolFilter(&numericSymbFilter).
+			fontSize(FONT).build;
+		m_courseTextField.onKeyReleased += (k) {
+			if (m_courseTextField.content.length == 1)
 			{
 				m_tube.weaponParams.remove(WeaponParamType.marchCourse);
 				m_tube.weaponParams.remove(WeaponParamType.activeCourse);
@@ -174,7 +196,7 @@ final class TubeUI
 			{
 				try
 				{
-					float newTgt = courseTextField.content[0..$-1].to!float;
+					float newTgt = m_courseTextField.content[0..$-1].to!float;
 					if (!isNaN(newTgt))
 					{
 						float radTgt = -newTgt.dgr2rad;
@@ -188,31 +210,28 @@ final class TubeUI
 
 		Label activationRangeLabel = builder(new Label()).content("RTE(m) ").
 			fontSize(FONT).fixedSize(vec2i(45, 1)).build;
-		string activationRangeContent = format("%.0f",
-			m_tube.weaponParams[WeaponParamType.activationRange].range);
-		TextField activationRangeField = builder(new TextField()).
-			symbolFilter(&numericSymbFilter).content(activationRangeContent).
-			fontSize(FONT).build;
-		activationRangeField.onKeyReleased += (k) {
+		m_activationRangeField = builder(new TextField()).
+			symbolFilter(&numericSymbFilter).fontSize(FONT).build;
+		m_activationRangeField.onKeyReleased += (k) {
 			try
 			{
-				float rawTgt = activationRangeField.content[0..$-1].to!float;
+				float rawTgt = m_activationRangeField.content[0..$-1].to!float;
 				if (!isNaN(rawTgt))
 				{
 					float clampedTgt = max(m_tube.activationRangeLimits.min, rawTgt);
 					clampedTgt = min(m_tube.activationRangeLimits.max, clampedTgt);
 					m_tube.activationRange = clampedTgt;
 					if (rawTgt < clampedTgt && rawTgt >= 0.0f)
-						activationRangeField.content = format("%.0f", rawTgt);
+						m_activationRangeField.content = format("%.0f", rawTgt);
 					else
-						activationRangeField.content = format("%.0f", clampedTgt);
+						m_activationRangeField.content = format("%.0f", clampedTgt);
 				}
 			}
 			catch (Exception e) {}
 		};
-		activationRangeField.onKbFocusLoss += ()
+		m_activationRangeField.onKbFocusLoss += ()
 		{
-			activationRangeField.content = format("%.0f",
+			m_activationRangeField.content = format("%.0f",
 				m_tube.weaponParams[WeaponParamType.activationRange].range);
 		};
 
@@ -304,9 +323,9 @@ final class TubeUI
 		};
 
 		m_aimDiv = builder(vDiv([
-				builder(hDiv([courseLabel, courseTextField])).
+				builder(hDiv([courseLabel, m_courseTextField])).
 					fixedSize(vec2i(1, FONT + 4)).build,
-				builder(hDiv([activationRangeLabel, activationRangeField])).
+				builder(hDiv([activationRangeLabel, m_activationRangeField])).
 					fixedSize(vec2i(1, FONT + 4)).build,
 				builder(hDiv([marchSpeedLabel, marchSpeedField])).
 					fixedSize(vec2i(1, FONT + 4)).build,
@@ -338,6 +357,8 @@ final class TubeUI
 					};
 				} (curField);
 		}
+
+		updateAimFieldsFromTube();
 	}
 
 	private static bool numericSymbFilter(dchar c)

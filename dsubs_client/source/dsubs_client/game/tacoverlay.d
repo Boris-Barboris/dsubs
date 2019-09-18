@@ -24,10 +24,18 @@ import dsubs_client.game;
 import dsubs_client.game.waterfall;
 import dsubs_client.game.sonardisp;
 import dsubs_client.game.cic.messages;
+import dsubs_client.game.tubeui;
 import dsubs_client.game.entities;
 import dsubs_client.game.cameracontroller;
 import dsubs_client.game.kinetic;
 import dsubs_client.game.contacts;
+
+
+
+private
+{
+	enum sfColor TUBE_CIRCLE_COLOR = sfColor(255, 94, 0, 255);
+}
 
 
 /// Cache of pre-constructed shapes for overlay rendering
@@ -52,6 +60,7 @@ final class ContactOverlayShapeCahe
 		m_posDataOnHoverRect.position = -vec2f(1, 1);
 		m_velCircle = new CircleShape(TacticalContactElement.ZERO_SPD_PIXEL_MARGIN,
 			30, sfColor(255, 255, 255, 150), 6);
+		m_tubeCircle = new CircleShape(10, 30, TUBE_CIRCLE_COLOR, 3);
 		m_velDragLine = new LineShape(vec2d(0, 0), vec2d(0, 0), sfColor(137, 182, 255, 255), 4);
 		m_pastTrailLine = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(232, 244, 63, 100), 3);
@@ -72,6 +81,7 @@ final class ContactOverlayShapeCahe
 	mixin Readonly!(RectangleShape, "posDataMainShape");
 	mixin Readonly!(RectangleShape, "posDataOnHoverRect");
 	mixin Readonly!(CircleShape, "velCircle");
+	mixin Readonly!(CircleShape, "tubeCircle");
 	mixin Readonly!(LineShape, "velDragLine");
 	mixin Readonly!(LineShape, "pastTrailLine");
 	mixin Readonly!(LineShape, "dataTrailDelta");
@@ -1190,13 +1200,13 @@ final class TacticalContactElement: OverlayElementWithHover
 					m_velCircle.borderColor = sfColor(255, 255, 255, 150);
 				m_velCircle.render(wnd);
 			}
-			if (m_solution.velAvailable)
-				g_velLabel.draw(wnd, usecsDelta);
 		}
 		else if (m_solution.velAvailable)
 			m_velLine.render(wnd);
 		if (m_hovered)
 			m_onHoverRect.render(wnd);
+		if (isSelected && m_solution.velAvailable)
+			g_velLabel.draw(wnd, usecsDelta);
 		m_mainShape.render(wnd);
 		if (needDrawName)
 			m_contactName.draw(wnd, usecsDelta);
@@ -1644,6 +1654,103 @@ final class WeaponProjectionTrace: OverlayElement
 	}
 }
 
+
+/// Draggable element that can be used to edit march course and
+/// activation range of a weapon.
+final class WeaponAimHandle: OverlayElementWithHover
+{
+	private
+	{
+		Tube m_tube;
+		TubeUI m_tubeUi;
+		CircleShape m_circleShape;
+		Label m_tubeNumberLabel;
+	}
+
+	this(TacticalOverlay to, Tube tube, TubeUI tui)
+	{
+		super(to);
+		m_tube = tube;
+		m_tubeUi = tui;
+		m_circleShape = ctcOverlayCache.tubeCircle;
+		m_onHoverRect = ctcOverlayCache.onHoverRect;
+		m_tubeNumberLabel = builder(new Label()).mouseTransparent(true).
+			enableScissorTest(false).fontSize(18).
+			htextAlign(HTextAlign.CENTER).vtextAlign(VTextAlign.CENTER).
+			fontColor(TUBE_CIRCLE_COLOR).content((tube.id + 1).to!string).build();
+		int boxSize = (m_circleShape.radius + m_circleShape.borderWidth).to!int;
+		m_tubeNumberLabel.size = this.size = vec2i(2 * boxSize, 2 * boxSize);
+		onMouseDown += &processMouseDown;
+		onMouseUp += &processMouseUp;
+		onMouseMove += &processMouseMove;
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		if (m_hovered)
+			m_onHoverRect.render(wnd);
+		m_circleShape.render(wnd);
+		m_tubeNumberLabel.draw(wnd, usecsDelta);
+	}
+
+	override void onPreDraw()
+	{
+		Transform2D tubeTrans = m_tube.transform;
+		auto param = WeaponParamType.marchCourse in m_tube.weaponParams;
+		float course = clampAngle(param ? param.course : tubeTrans.wrotation);
+		float activationRange = m_tube.weaponParams[WeaponParamType.activationRange].range;
+
+		vec2d worldCenter = tubeTrans.wposition + courseVector(course) * activationRange;
+		vec2d screenCenter = owner.world2screenPos(worldCenter);
+		vec2f screenCenterf = cast(vec2f) screenCenter;
+		m_circleShape.center = screenCenterf;
+		position = center2lu(screenCenter);
+		m_tubeNumberLabel.position = position;
+		if (m_hovered)
+		{
+			m_onHoverRect.center = screenCenterf;
+			m_onHoverRect.size = cast(vec2f) size;
+		}
+	}
+
+	private void processMouseDown(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseLeft)
+		{
+			m_dragging = true;
+			requestMouseFocus();
+		}
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseLeft && m_dragging)
+		{
+			m_dragging = false;
+			if (!m_panning)
+				returnMouseFocus();
+		}
+	}
+
+	private void processMouseMove(int x, int y)
+	{
+		if (m_dragging)
+		{
+			vec2i newPos = vec2i(x, y) - g_dragOffset;
+			vec2d newCenter = owner.clampInsideRect(newPos);
+			vec2d newWorldCoord = owner.screen2worldPos(newCenter);
+
+			Transform2D tubeTrans = m_tube.transform;
+			vec2d delta = newWorldCoord - tubeTrans.wposition;
+			float clampedActivRange = m_tube.activationRangeLimits.clamp(delta.length);
+			float course = courseAngle(delta);
+			m_tube.activationRange = clampedActivRange;
+			m_tube.marchCourse = course;
+			m_tube.activeCourse = course;
+			m_tubeUi.updateAimFieldsFromTube();
+		}
+	}
+}
 
 
 final class HoveredContactDescription

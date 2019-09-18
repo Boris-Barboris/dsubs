@@ -1,5 +1,7 @@
 module dsubs_common.api.entities;
 
+static import std.algorithm.comparison;
+
 import std.traits;
 
 import gfm.math.vector;
@@ -117,6 +119,12 @@ struct MinMax
 	bool contains(float val) const
 	{
 		return (val <= max) && (val >= min);
+	}
+
+	float clamp(float val) const
+	{
+		return std.algorithm.comparison.max(min,
+			std.algorithm.comparison.min(max, val));
 	}
 }
 

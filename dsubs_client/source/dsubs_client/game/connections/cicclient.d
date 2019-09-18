@@ -93,7 +93,8 @@ private:
 	{
 		CICLoginRes expected;
 		if (res.apiVersion != expected.apiVersion)
-			throw new Exception("Incompatible CIC api versions");
+			throw new Exception("Incompatible CIC api versions. Yours: " ~
+				expected.apiVersion.to!string ~ ", server: " ~ res.apiVersion.to!string);
 		// let's check db versions
 		bool requireDb = false;
 		synchronized(Game.mainMutex)
