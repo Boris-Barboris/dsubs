@@ -82,7 +82,7 @@ abstract class SoundSource
 		int minFreq, int maxFreq,			// listener's passband.
 		bool needTds,						// wether tds generation is requested by listener
 		float dissMod = 4.0f,				// water dissipation modifier
-		FIRFilter* listenerFilter = null);	// filter, used to implement listener's passband
+		FIRFilter* listenerFilter = null);	// filter, used to implement listener's passband. If the sound source does not work in frequency domain, this filter should be used by the source to clamp itself to listener's passband.
 }
 
 
@@ -275,7 +275,7 @@ final class PropellerSound: SoundSource
 }
 
 
-/// Sound source that can be exhausted and must be removed after it's finished.
+/// Sound source that can be exhausted.
 abstract class FiniteSoundSource: SoundSource
 {
 	this(Transform2D t) { super(t); }
