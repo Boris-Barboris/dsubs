@@ -54,7 +54,7 @@ final class ContactOverlayShapeCahe
 			30, sfColor(255, 255, 255, 150), 6);
 		m_velDragLine = new LineShape(vec2d(0, 0), vec2d(0, 0), sfColor(137, 182, 255, 255), 4);
 		m_pastTrailLine = new LineShape(vec2d(0, 0), vec2d(0, 0),
-			sfColor(232, 244, 63, 100), 1);
+			sfColor(232, 244, 63, 100), 3);
 		m_dataTrailDelta = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(255, 22, 154, 200), 2);
 		m_shortestToSolution = new LineShape(vec2d(0, 0), vec2d(0, 0),
@@ -987,7 +987,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		point.y = -point.y;
 		vec2d altBase = m_pastTrailLine.getAltitudeBase(cast(vec2d) point, inside, k);
 		double altHeight = (altBase - point).length;
-		return (inside && altHeight < 5 && (k >= 15 / m_pastTrailLine.length));
+		return (inside && altHeight < 7 && (k >= 15 / m_pastTrailLine.length));
 	}
 
 	private void extrapolateTime(out usecs_t extrapolatedTime, out double secs)
