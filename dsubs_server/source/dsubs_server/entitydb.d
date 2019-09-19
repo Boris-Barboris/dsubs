@@ -542,8 +542,8 @@ Active sonar:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale5_8192.wav"),
 				9.0f, 95.0f)
 		];
-		af.meanSoundPause = cast(usecs_t) 20 * 60 * 1000_000;
-		af.soundPauseVariance = cast(usecs_t) 10 * 60 * 1000_000;
+		af.meanSoundPause = cast(usecs_t) 10 * 60 * 1000_000;
+		af.soundPauseVariance = cast(usecs_t) 5 * 60 * 1000_000;
 		af.mass = 30.0f;
 		af.maxSpeed = 7.0f;
 		af.reflprot = ReflectorPrototype(vec2f(4.0f, 15.0f), [-20.0f, -20.0f, -20.0f]);

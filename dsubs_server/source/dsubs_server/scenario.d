@@ -2,6 +2,7 @@ module dsubs_server.scenario;
 
 import std.algorithm: min, max;
 import std.random: uniform, uniform01;
+import std.container.rbtree;
 import std.datetime.systime;
 
 import dsubs_common.math.angles;
@@ -16,6 +17,38 @@ import dsubs_server.submarine: Submarine;
 import dsubs_server.connections.playercon: PlayerConnection;
 import dsubs_server.player: Player;
 import dsubs_server.bots;
+
+
+struct DelayedEvent
+{
+	usecs_t when;
+	void delegate() operation;
+}
+
+alias DelayedEventCollection = RedBlackTree!(DelayedEvent, "a.when < b.when", true);
+
+struct CallbackDelayer
+{
+	private DelayedEventCollection m_events;
+
+	void clear()
+	{
+		m_events = new DelayedEventCollection();
+	}
+
+	void put(DelayedEvent event)
+	{
+		m_events.insert(event);
+	}
+
+	void runCallbacks()
+	{
+		auto toRun = m_events.lowerBound(DelayedEvent(Globals.sim.worldTime));
+		foreach (DelayedEvent evt; toRun)
+			evt.operation();
+		m_events.remove(toRun);
+	}
+}
 
 
 abstract class Scenario
@@ -54,6 +87,8 @@ final class BattleRoyale: Scenario
 		double m_nextRadius;
 		usecs_t m_nextTransitionTime;
 		bool m_inTransition;
+		CallbackDelayer m_delayer;
+		int m_botSpawnRequests;
 
 		struct ReloadCircle
 		{
@@ -67,12 +102,14 @@ final class BattleRoyale: Scenario
 		enum float RELOAD_CIRCLE_RADIUS = 120.0f;
 		enum int TORPS_TO_RELOAD = 3;
 		enum int DECOYS_TO_RELOAD = 6;
+		enum usecs_t SPAWN_DELAY_BASE = cast(usecs_t) 1 * 60 * 1000_000;
 		enum usecs_t STABLE_TIME = cast(usecs_t) 60 * 60 * 1000_000;
 		enum int ACTIVE_BOTS = 3;
 	}
 
 	this()
 	{
+		m_delayer.clear();
 		m_currentRadius = DEFAULT_RADIUS;
 		m_currentCenter = vec2d(
 			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)),
@@ -107,23 +144,31 @@ final class BattleRoyale: Scenario
 			}
 		}
 		// spawn bots if necessary
-		int botsToSpawn = ACTIVE_BOTS - Globals.bots.count.to!int;
+		m_delayer.runCallbacks();
+		int botsToSpawn = ACTIVE_BOTS - m_botSpawnRequests - Globals.bots.count.to!int;
 		while (botsToSpawn-- > 0)
 		{
-			info("Spawning new bot");
-			BotCaptain cpt = new BotCaptain();
-			SpawnReq req = SpawnReq("Bot trader", "Civilian three-blade screw");
-			Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, cpt);
-			vec2d spawnPos;
-			double spawnRot;
-			getRandomSpawn(spawnPos, spawnRot);
-			botSub.transform.position = spawnPos;
-			botSub.transform.rotation = spawnRot;
-			foreach (h; botSub.hydrophones)
-				h.active = false;
-			Globals.bots.registerEntity(cpt);
-			cpt.destination = getDistantPos(spawnPos);
-			botSub.register();
+			info("Scheduling new bot spawn");
+			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
+			m_botSpawnRequests++;
+			m_delayer.put(DelayedEvent(Globals.sim.worldTime + delay,
+				{
+					info("Spawning new trader bot");
+					m_botSpawnRequests--;
+					BotCaptain cpt = new BotCaptain();
+					SpawnReq req = SpawnReq("Bot trader", "Civilian three-blade screw");
+					Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, cpt);
+					vec2d spawnPos;
+					double spawnRot;
+					getRandomSpawn(spawnPos, spawnRot);
+					botSub.transform.position = spawnPos;
+					botSub.transform.rotation = spawnRot;
+					foreach (h; botSub.hydrophones)
+						h.active = false;
+					Globals.bots.registerEntity(cpt);
+					cpt.destination = getDistantPos(spawnPos);
+					botSub.register();
+				}));
 		}
 		// give new destinations to bots that have arrived
 		foreach (BotCaptain cpt; Globals.bots.captains)
