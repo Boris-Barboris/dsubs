@@ -10,6 +10,7 @@ import dsubs_common.api.entities;
 
 import dsubs_server.common;
 import dsubs_server.vessel;
+import dsubs_server.animal;
 import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.connections.playercon: PlayerConnection;
@@ -129,6 +130,20 @@ final class BattleRoyale: Scenario
 		{
 			if (cpt.reachedDestination)
 				cpt.destination = getDistantPos(cpt.submarine.transform.wposition);
+		}
+		// spawn animals if necessary
+		int whalesToSpawn = 1 - Globals.animals.entities.length.to!int;
+		while (whalesToSpawn-- > 0)
+		{
+			info("Spawning whale");
+			Animal animal = Globals.entityDb.getAnimalFactory("humpback").build();
+			vec2d spawnPos;
+			double spawnRot;
+			getRandomSpawn(spawnPos, spawnRot);
+			animal.transform.position = spawnPos;
+			animal.transform.rotation = spawnRot;
+			animal.destination = getDistantPos(spawnPos);
+			animal.register();
 		}
 	}
 
@@ -277,9 +292,9 @@ final class BattleRoyale: Scenario
 				});
 			// give new destinations to bots
 			foreach (BotCaptain cpt; Globals.bots.captains)
-			{
 				cpt.destination = getDistantPos(cpt.submarine.transform.wposition);
-			}
+			foreach (Animal an; Globals.animals.entities)
+				an.destination = getDistantPos(an.transform.wposition);
 		}
 	}
 

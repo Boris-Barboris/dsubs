@@ -13,6 +13,7 @@ import dsubs_server.connections.metrics;
 import dsubs_server.acoustics;
 import dsubs_server.common;
 import dsubs_server.vessel: VesselCollection;
+import dsubs_server.animal: AnimalCollection;
 import dsubs_server.torpedo: WeaponCollection;
 import dsubs_server.entitydb: EntityDb;
 import dsubs_server.simulator: Simulator;
@@ -45,6 +46,8 @@ __gshared:
 	AcousticEnv acous;
 	/// Active vessels
 	VesselCollection vessels;
+	/// Active animals
+	AnimalCollection animals;
 	/// Active weapons
 	WeaponCollection weapons;
 	/// Simulator
@@ -71,6 +74,7 @@ __gshared:
 		players = new PlayerCollection();
 		bots = new BotCollection();
 		vessels = new VesselCollection();
+		animals = new AnimalCollection();
 		weapons = new WeaponCollection();
 		cons = new ConListener();
 		phys = new PhysicalEnv();
@@ -89,6 +93,7 @@ __gshared:
 		if (entityDb is null)
 			entityDb = new EntityDb();
 		vessels = new VesselCollection();
+		animals = new AnimalCollection();
 		bots = new BotCollection();
 		weapons = new WeaponCollection();
 		phys = new PhysicalEnv();
@@ -114,6 +119,7 @@ __gshared:
 	static void cleanCollectionsForTests()
 	{
 		vessels.clean();
+		animals.clean();
 		bots.clean();
 		weapons.clean();
 		acous.clean();

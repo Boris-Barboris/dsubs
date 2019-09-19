@@ -108,6 +108,9 @@ final class Simulator
 					profiler.start("vessels.postKinematics");
 					Globals.vessels.postKinematics(1000_000);
 					profiler.stopLast();
+					profiler.start("animals.postKinematics");
+					Globals.animals.postKinematics(1000_000);
+					profiler.stopLast();
 					profiler.start("vessels.collectDeadVessels");
 					Globals.vessels.collectDeadVessels();
 					profiler.stopLast();

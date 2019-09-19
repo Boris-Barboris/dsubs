@@ -22,6 +22,7 @@ import dsubs_server.propulsion;
 import dsubs_server.dynamics;
 import dsubs_server.player: Captain;
 public import dsubs_server.submarine;
+public import dsubs_server.animal;
 public import dsubs_server.torpedo;
 public import dsubs_server.weaponry;
 
@@ -43,6 +44,8 @@ final class EntityDb
 		SubmarineFactory[string] m_submarines;
 		/// global map of all existing torpedo factories
 		WeaponFactory[string] m_weapons;
+		/// global map of all existing animal factories
+		AnimalFactory[string] m_animals;
 	}
 
 	PropulsorFactory getPropulsorFactory(string name)
@@ -60,12 +63,18 @@ final class EntityDb
 		return m_weapons[name];
 	}
 
+	AnimalFactory getAnimalFactory(string name)
+	{
+		return m_animals[name];
+	}
+
 	this()
 	{
 		info("Building entity database");
 		buildPropulsorTemplates();
 		buildSubmarineTemplates();
 		buildTorpedoTemplates();
+		buildAnimalTemplates();
 		immutable EntityDbRes enititydb = immutable EntityDbRes(
 			m_propulsors.values.filter!(a => a.playable).map!(a => a.tmpl).array,
 			m_submarines.values.filter!(a => a.playable).map!(a => a.tmpl).array,
@@ -510,6 +519,35 @@ Active sonar:
 		sp.reflprot = ReflectorPrototype(vec2f(15.0f, 100.0f), [-8.0f, -5.0f, -4.0f]);
 		sp.playable = false;
 		m_submarines[sp.tmpl.name] = sp;
+	}
+
+
+	void buildAnimalTemplates()
+	{
+		AnimalFactory af = new AnimalFactory();
+		af.randomSounds = [
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale1_8192.wav"),
+				9.0f, 95.0f),
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale2_8192.wav"),
+				9.0f, 95.0f),
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale3_8192.wav"),
+				9.0f, 95.0f),
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale4_8192.wav"),
+				9.0f, 95.0f),
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale5_8192.wav"),
+				9.0f, 95.0f)
+		];
+		af.meanSoundPause = cast(usecs_t) 20 * 60 * 1000_000;
+		af.soundPauseVariance = cast(usecs_t) 10 * 60 * 1000_000;
+		af.mass = 30.0f;
+		af.maxSpeed = 7.0f;
+		af.reflprot = ReflectorPrototype(vec2f(4.0f, 15.0f), [-20.0f, -20.0f, -20.0f]);
+		m_animals["humpback"] = af;
 	}
 
 }
