@@ -1477,7 +1477,7 @@ final class RayDataTacticalElement: DataTacticalElement
 		vec2d worldPos = data.data.ray.origin;
 		vec2d screenPos = owner.world2screenPos(worldPos);
 		m_mainShape.setPoints(screenPos, screenPos -
-			1e4 * courseVector(-data.data.ray.bearing), true);
+			1e8 * courseVector(-data.data.ray.bearing), true);
 	}
 
 	override void draw(Window wnd, long usecsDelta)

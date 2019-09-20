@@ -355,12 +355,12 @@ final class BattleRoyale: Scenario
 			MapElementType.circle,
 			arenaCircleUnion,
 			"arena",
-			RgbaColor(3, 0, 204, 150));
+			RgbaColor(11, 2, 87, 150));
 		if (m_inTransition)
 		{
 			briefing = ChatMessage(
 				unixTime,
-				"New arena position, hurry to the blue circle! " ~
+				"New arena position, hurry to the dark-blue circle! " ~
 				"Time until forced navigation: " ~
 				((m_nextTransitionTime - Globals.sim.worldTime) / 1000_000).
 					to!string ~ " seconds.");
@@ -369,7 +369,7 @@ final class BattleRoyale: Scenario
 		{
 			briefing = ChatMessage(
 				unixTime,
-				"Navigation limited to blue circle!");
+				"Navigation limited to dark-blue circle!");
 		}
 		// circle for reloading area
 		ensureReloadCircleForPlayer(player);
@@ -381,7 +381,7 @@ final class BattleRoyale: Scenario
 			MapElementType.circle,
 			reloadCircleUnion,
 			"reload here",
-			RgbaColor(187, 212, 0, 150));
+			RgbaColor(212, 201, 0, 150));
 	}
 
 	private void getRandomSpawn(out vec2d position, out double rotation)
