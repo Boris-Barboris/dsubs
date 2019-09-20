@@ -11,6 +11,7 @@ import derelict.sfml2.window;
 
 import dsubs_common.event;
 
+import dsubs_client.common;
 import dsubs_client.core.window;
 import dsubs_client.input.router: InputRouter;
 
@@ -25,9 +26,6 @@ interface IWindowDrawer
 /// of the rendering pipeline.
 final class Render
 {
-	/// render clears window with this color at the beginning of each frame
-	sfColor clearColor = sfColor(30, 30, 30, 255);
-
 	private Window m_window;
 	private InputRouter m_router;
 
@@ -111,7 +109,7 @@ final class Render
 			while (!m_stopFlag)
 			{
 				m_window.resetView();
-				sfRenderWindow_clear(m_window.wnd, clearColor);
+				sfRenderWindow_clear(m_window.wnd, COLORS.renderClear);
 				if (m_stopFlag)
 					break;
 				synchronized(mutex)

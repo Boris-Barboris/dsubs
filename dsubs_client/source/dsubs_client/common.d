@@ -13,3 +13,4 @@ public import dsubs_common.api.constants: usecs_t;
 public import dsubs_common.utils;
 
 public import dsubs_client.core.utils;
+public import dsubs_client.colorscheme;

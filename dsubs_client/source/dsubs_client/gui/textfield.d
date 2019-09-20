@@ -13,6 +13,7 @@ import derelict.sfml2.window;
 
 import dsubs_client.lib.sfml;
 import dsubs_client.core.window;
+import dsubs_client.colorscheme;
 import dsubs_client.core.utils;
 import dsubs_client.input.router;
 import dsubs_client.gui.label;
@@ -24,7 +25,7 @@ class TextField: Label
 {
 	private
 	{
-		sfColor m_cursorColor = sfRed;
+		sfColor m_cursorColor = COLORS.init.textFieldCursor;
 		sfRectangleShape* m_cursorRect;
 		int m_cursorStart = 0;	// start of selection
 		int m_cursorEnd = 0;	// first character after the selection
@@ -33,10 +34,10 @@ class TextField: Label
 	this()
 	{
 		backgroundVisible = true;
-		backgroundColor = sfColor(50, 28, 28, 150);
+		backgroundColor = COLORS.textFieldBgnd;
 		m_cursorRect = sfRectangleShape_create();
-		sfRectangleShape_setFillColor(m_cursorRect, m_cursorColor);
 		sfRectangleShape_setOutlineThickness(m_cursorRect, 0.0f);
+		cursorColor = COLORS.textFieldCursor;
 		htextAlign = HTextAlign.LEFT;
 		onMouseDown += &handleMouseDown;
 		onMouseUp += &handleMouseUp;

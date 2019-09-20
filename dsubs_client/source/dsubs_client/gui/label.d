@@ -15,6 +15,7 @@ public import dsubs_common.mutstring;
 
 import dsubs_client.lib.sfml;
 import dsubs_client.lib.fonts;
+import dsubs_client.colorscheme;
 import dsubs_client.core.window;
 import dsubs_client.core.utils;
 import dsubs_client.gui.element;
@@ -50,7 +51,7 @@ class Label: GuiElement
 	{
 		sfText* m_sfText;
 		dmutstring m_content;
-		sfColor m_fontColor = sfWhite;
+		sfColor m_fontColor = COLORS.init.defaultFont;
 	}
 
 	this()
@@ -71,6 +72,7 @@ class Label: GuiElement
 		sfText_setFont(m_sfText, g_loadedFonts[m_fontName].ptr);
 		sfText_setCharacterSize(m_sfText, m_fontSize);
 		sfText_setUnicodeString(m_sfText, m_content.ptr);
+		m_fontColor = COLORS.defaultFont;
 		sfText_setColor(m_sfText, m_fontColor);
 	}
 
