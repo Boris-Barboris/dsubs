@@ -2,6 +2,8 @@ module dsubs_client.colorscheme;
 
 import derelict.sfml2.graphics;
 
+public import derelict.sfml2.graphics: sfColor, sfBlack, sfWhite, sfTransparent;
+
 /*
 
 #####  Color Palette by Paletton.com
@@ -34,6 +36,7 @@ struct ColorScheme
 	sfColor simButtonSelectedStateBgnd = sfColor(86, 41, 41, 200);
 	sfColor simLaunchButtonBgnd = sfColor(200, 50, 50, 255);
 	sfColor simMessageFont = sfColor(189, 135, 135, 255);
+	sfColor loadoutHint = sfColor(150, 150, 150, 255);
 }
 
 /// Global color scheme

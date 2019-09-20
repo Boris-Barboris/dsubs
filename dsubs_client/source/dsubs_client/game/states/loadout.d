@@ -15,6 +15,7 @@ import dsubs_common.api;
 import dsubs_common.api.protocols.backend;
 
 import dsubs_client.core.utils;
+import dsubs_client.common;
 import dsubs_client.game;
 import dsubs_client.game.entities;
 import dsubs_client.game.gamestate;
@@ -32,8 +33,6 @@ private
 	enum int WPN_FONT = 18;
 	enum int TUBE_FONT = 18;
 	enum int TUBE_CONTENT_FONT = 14;
-	enum sfColor HINT_COLOR = sfColor(150, 150, 150, 255);
-	enum sfColor TUBE_BUTTON_COLOR = sfColor(15, 15, 15, 120);
 }
 
 
@@ -152,7 +151,7 @@ final class LoadoutState: GameState
 			content("tube " ~ (tubeId + 1).to!string).fontSize(TUBE_FONT).build;
 		Button tubeContentButton = builder(new Button()).
 			content(initialWeapon).fontSize(TUBE_FONT).
-			backgroundColor(TUBE_BUTTON_COLOR).fixedSize(vec2i(150, BTN_FONT)).build;
+			backgroundColor(COLORS.simButtonBgnd).fixedSize(vec2i(150, BTN_FONT)).build;
 		tubeContentButton.onClick += () {
 			tubeContextMenu = buildTubeLoadMenu(tubeId, tubeContentButton,
 				allowedWeapons, Game.window.mousePos);
@@ -175,7 +174,7 @@ final class LoadoutState: GameState
 
 			// build scrollist of propulsors
 			divElements ~= builder(new Label()).content("Propulsors:").
-				fontSize(BTN_FONT).fontColor(HINT_COLOR).
+				fontSize(BTN_FONT).fontColor(COLORS.loadoutHint).
 				fixedSize(vec2i(1, 30)).build;
 			foreach (propName; propulsorNames)
 			{
@@ -212,7 +211,7 @@ final class LoadoutState: GameState
 			{
 				roomTemplates[ammoRoom.id] = cast() ammoRoom;
 				Label roomHeader = builder(new Label()).content(ammoRoom.name).
-					fontSize(BTN_FONT).fontColor(HINT_COLOR).fixedSize(vec2i(1, 30)).build;
+					fontSize(BTN_FONT).fontColor(COLORS.loadoutHint).fixedSize(vec2i(1, 30)).build;
 				roomHeaders[ammoRoom.id] = roomHeader;
 				divElements ~= roomHeader;
 				assert(ammoRoom.allowedWeaponSet.weaponNames.length > 0);
@@ -239,7 +238,7 @@ final class LoadoutState: GameState
 					continue;
 				roomTubes.sort!("a.id < b.id");
 				Label roomHeader = builder(new Label()).content(ammoRoom.name ~ " tubes").
-					fontSize(BTN_FONT).fontColor(HINT_COLOR).fixedSize(vec2i(1, 30)).build;
+					fontSize(BTN_FONT).fontColor(COLORS.loadoutHint).fixedSize(vec2i(1, 30)).build;
 				divElements ~= roomHeader;
 				foreach (const TubeTemplate tt; roomTubes)
 				{
@@ -312,6 +311,7 @@ final class LoadoutState: GameState
 
 		startButton = builder(new Button(ButtonType.ASYNC)).fontSize(45).
 			htextAlign(HTextAlign.CENTER).content("Start").fixedSize(vec2i(1, 70)).
+			backgroundColor(COLORS.simLaunchButtonBgnd).fontColor(sfBlack).
 			build();
 		startButton.onClick += ()
 			{
@@ -352,7 +352,7 @@ final class LoadoutState: GameState
 		auto prepareGui = hDiv([
 			builder(vDiv([
 						builder(new Label()).content("Hulls:").
-							fontSize(BTN_FONT).fontColor(HINT_COLOR).
+							fontSize(BTN_FONT).fontColor(COLORS.loadoutHint).
 							fixedSize(vec2i(1, 30)).build,
 						hullsScrollbar
 					])
@@ -360,7 +360,7 @@ final class LoadoutState: GameState
 			filler(20),
 			vDiv([
 				builder(new Label()).fontSize(BTN_FONT).
-					fixedSize(vec2i(1, BTN_SIZE)).fontColor(HINT_COLOR).
+					fixedSize(vec2i(1, BTN_SIZE)).fontColor(COLORS.loadoutHint).
 					content("Description").build,
 				new ScrollBar(hullDescriptionBox)
 			]),

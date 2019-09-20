@@ -28,7 +28,7 @@ final class ContextMenu: Panel
 		float maxContentWidth = elements.map!(
 			e => (e.contentWidth + 2 * e.padding)).reduce!(max);
 		div.fixedSize = vec2i(lrint(maxContentWidth).to!int, div.size.y);
-		div.backgroundColor = sfColor(15, 15, 15, 255);
+		div.backgroundColor = COLORS.simButtonBgnd;
 		// apply shanges to buttons
 		foreach (Button btn; elements)
 		{
