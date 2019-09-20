@@ -27,9 +27,7 @@ private
 	enum int HEADER_SECTION_HEIGHT = 32;
 	enum int PING_BUTTON_HEIGHT = 30;
 	enum int PING_BUTTON_WIDTH = 100;
-	enum sfColor PING_BUTTON_BCKGROUND = sfColor(200, 50, 50, 255);
 	enum int POWER_SECTION_WIDTH = 160;
-	enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
 }
 
 
@@ -52,7 +50,7 @@ SonarGui createSonarGui(const SonarTemplate st)
 	res.pingBtn = builder(new Button()).content("Ping").
 		fontSize(PING_BUTTON_HEIGHT - 4).fixedSize(
 			vec2i(PING_BUTTON_WIDTH, PING_BUTTON_HEIGHT)).
-			backgroundColor(PING_BUTTON_BCKGROUND).build();
+		fontColor(sfBlack).backgroundColor(COLORS.simLaunchButtonBgnd).build();
 
 	res.pingBtn.onClick += ()
 		{
@@ -79,7 +77,7 @@ SonarGui createSonarGui(const SonarTemplate st)
 		filler(5),
 		header,
 		res.sonar
-	])).backgroundColor(DIV_BCKGROUND).mouseTransparent(false).build;
+	])).backgroundColor(COLORS.simPanelBgnd).mouseTransparent(false).build;
 
 	return res;
 }

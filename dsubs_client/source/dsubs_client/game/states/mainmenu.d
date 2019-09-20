@@ -114,7 +114,7 @@ final class MainMenuState: GameState
 		cicIpField.content = config.object.get("coopaddr", JSONValue("localhost:17900")).str;
 
 		Div cicDiv = builder(hDiv([cicIpLabel, cicIpField, filler(LOGIN_FRACT)])).
-			fixedSize(vec2i(0, loginSize + 20)).build();
+			fixedSize(vec2i(0, loginSize)).build();
 
 		cicConnectButton = builder(new Button(ButtonType.ASYNC)).content("Join coop host").
 			fontSize(MENU_BUTTON_FONTSIZE / 2).fixedSize(vec2i(400, btnSize / 2)).build();

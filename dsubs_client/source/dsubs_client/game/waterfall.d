@@ -22,7 +22,6 @@ private
 	enum int HEADER_FONT_SIZE = 16;
 	enum int HEADER_SECTION_HEIGHT = 26;
 	enum int VOLUME_SECTION_WIDTH = 160;
-	enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
 }
 
 
@@ -67,7 +66,7 @@ WaterfallGui createWaterfallPanel(const HydrophoneTemplate ht)
 		filler(5),
 		header,
 		res.wf
-	])).backgroundColor(DIV_BCKGROUND).mouseTransparent(false).build;
+	])).backgroundColor(COLORS.simPanelBgnd).mouseTransparent(false).build;
 	res.volumeSlider = volumeSlider;
 
 	return res;

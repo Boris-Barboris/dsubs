@@ -125,9 +125,7 @@ private
 	enum int TAB_SIZE = 28;
 	enum int BIG_BTN_FONT = 25;
 	enum int BTN_FONT = 20;
-	enum int MSG_FONT = 18;
-	enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
-	enum sfColor DIV_BORDRCOLOR = sfColor(10, 10, 0, 200);
+	enum int MSG_FONT = 16;
 }
 
 
@@ -215,7 +213,7 @@ final class SimulationGUI
 			tacticalTab,
 			psonarTab,
 			asonarTab
-		])).fixedSize(vec2i(1, TAB_SIZE)).backgroundColor(DIV_BCKGROUND).
+		])).fixedSize(vec2i(1, TAB_SIZE)).backgroundColor(COLORS.simPanelBgnd).
 			mouseTransparent(false).build;
 
 		// Course and speed labels
@@ -316,7 +314,7 @@ final class SimulationGUI
 		});
 
 		chatMessageBox = builder(new TextBox()).fontSize(MSG_FONT).
-			fontColor(sfColor(255, 255, 0, 255)).layoutType(LayoutType.GREEDY).build;
+			fontColor(COLORS.simMessageFont).layoutType(LayoutType.GREEDY).build;
 
 		Div bottomDiv = builder(
 			hDiv(
@@ -334,7 +332,7 @@ final class SimulationGUI
 					chatMessageBox
 				])
 			).fixedSize(vec2i(1, (BTN_FONT + 6) * 2)).
-			backgroundColor(DIV_BCKGROUND).mouseTransparent(false).build;
+			backgroundColor(COLORS.simPanelBgnd).mouseTransparent(false).build;
 
 		Div[] tubeUiDivs;
 		foreach (Tube tube; playerSub.tubeRange.array.sort!("a.id < b.id"))

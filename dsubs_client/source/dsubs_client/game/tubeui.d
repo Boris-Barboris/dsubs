@@ -29,12 +29,6 @@ private
 	enum int FONT = 12;
 	enum int LAUNCH_FONT = 15;
 	enum int AIM_BLOCK_HEIGHT = 100;
-	enum sfColor CONF_COLOR = sfColor(15, 15, 15, 120);
-	enum sfColor LAUNCH_COLOR = sfColor(255, 15, 15, 200);
-	enum sfColor LAUNCH_COLOR_DISABLED = sfColor(255, 15, 15, 20);
-	enum sfColor SELECTED_STATE_COLOR = sfColor(150, 15, 15, 100);
-	enum sfColor INACTIVE_STATE_COLOR = CONF_COLOR;
-	enum sfColor HOVER_BUTTON_COLOR_ACTIVE = sfColor(255, 150, 150, 255);
 }
 
 
@@ -75,23 +69,24 @@ final class TubeUI
 		if (m_tube.tubeType == TubeType.standard)
 		{
 			m_aimButton = builder(new Button()).content("Aim").
-				fontSize(FONT).backgroundColor(CONF_COLOR).build;
+				fontSize(FONT).backgroundColor(COLORS.simButtonBgnd).build;
 			m_aimButton.onClick += &onAimButtonClick;
 			m_aimElement = m_aimButton;
 		}
 		else
 			m_aimElement = filler();
 		m_launchButton = builder(new Button()).content("Launch").
-			fontSize(LAUNCH_FONT).backgroundColor(LAUNCH_COLOR_DISABLED).build;
+			fontColor(COLORS.simButtonDisabledFont).fontSize(LAUNCH_FONT).
+			backgroundColor(COLORS.simButtonDisabledBgnd).build;
 		m_desiredStateButtons[TubeState.dry] =
 			builder(new Button()).content("D").
-				fontSize(LAUNCH_FONT).backgroundColor(INACTIVE_STATE_COLOR).build;
+				fontSize(LAUNCH_FONT).backgroundColor(COLORS.simButtonBgnd).build;
 		m_desiredStateButtons[TubeState.flooded] =
 			builder(new Button()).content("F").
-				fontSize(LAUNCH_FONT).backgroundColor(INACTIVE_STATE_COLOR).build;
+				fontSize(LAUNCH_FONT).backgroundColor(COLORS.simButtonBgnd).build;
 		m_desiredStateButtons[TubeState.open] =
 			builder(new Button()).content("O").
-				fontSize(LAUNCH_FONT).backgroundColor(INACTIVE_STATE_COLOR).build;
+				fontSize(LAUNCH_FONT).backgroundColor(COLORS.simButtonBgnd).build;
 
 		Div desiredStateDiv = builder(hDiv(cast(GuiElement[]) m_desiredStateButtons[])).
 			fixedSize(vec2i(100, LAUNCH_FONT + 4)).borderWidth(4).build;
@@ -299,7 +294,7 @@ final class TubeUI
 			fontSize(FONT).fixedSize(vec2i(30, 1)).build;
 		Button patternButton = builder(new Button()).content(
 			m_tube.weaponParams[WeaponParamType.searchPattern].searchPattern.to!string).
-			fontSize(FONT).backgroundColor(CONF_COLOR).build;
+			fontSize(FONT).backgroundColor(COLORS.simButtonBgnd).build;
 		patternButton.onClick += () {
 			Button[] spButtons;
 			foreach (WeaponSearchPattern pattern; m_tube.availableSearchPatterns)
@@ -409,7 +404,7 @@ final class TubeUI
 			m_tube.currentState == TubeState.unloading ||
 			m_tube.currentState == TubeState.loading)
 		{
-			m_weaponButton.backgroundColor = CONF_COLOR;
+			m_weaponButton.backgroundColor = COLORS.simButtonBgnd;
 			m_weaponButton.pressable = true;
 		}
 		else
@@ -439,9 +434,9 @@ final class TubeUI
 		{
 			Button btn = m_desiredStateButtons[state];
 			if (state == m_tube.desiredState)
-				btn.backgroundColor = SELECTED_STATE_COLOR;
+				btn.backgroundColor = COLORS.simButtonSelectedStateBgnd;
 			else
-				btn.backgroundColor = INACTIVE_STATE_COLOR;
+				btn.backgroundColor = COLORS.simButtonBgnd;
 			// we do not allow desired state switch during loading/unloading
 			if (m_tube.currentState == TubeState.unloading ||
 				m_tube.currentState == TubeState.loading)
@@ -455,14 +450,14 @@ final class TubeUI
 	{
 		if (m_tube.loadedWeapon != null && m_tube.currentState == TubeState.open)
 		{
-			m_launchButton.backgroundColor = LAUNCH_COLOR;
+			m_launchButton.backgroundColor = COLORS.simLaunchButtonBgnd;
 			m_launchButton.fontColor = sfBlack;
 			m_launchButton.pressable = true;
 		}
 		else
 		{
-			m_launchButton.backgroundColor = LAUNCH_COLOR_DISABLED;
-			m_launchButton.fontColor = sfColor(0, 0, 0, 40);
+			m_launchButton.backgroundColor = COLORS.simButtonDisabledBgnd;
+			m_launchButton.fontColor = COLORS.simButtonDisabledFont;
 			m_launchButton.pressable = false;
 		}
 	}
