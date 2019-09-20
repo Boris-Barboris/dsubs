@@ -37,4 +37,4 @@ struct ColorScheme
 }
 
 /// Global color scheme
-ColorScheme COLORS;
+__gshared ColorScheme COLORS;

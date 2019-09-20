@@ -26,9 +26,9 @@ import dsubs_client.gui;
 private
 {
 	enum int MENU_BUTTON_FONTSIZE = 50;
-	enum int LOGIN_FONT_SIZE = 22;
+	enum int LOGIN_FONT_SIZE = 18;
 	enum int INFO_FONT_SIZE = 18;
-	enum float LOGIN_FRACT = 0.3f;
+	enum float LOGIN_FRACT = 0.25f;
 }
 
 
@@ -50,27 +50,31 @@ final class MainMenuState: GameState
 
 		int btnSize = (MENU_BUTTON_FONTSIZE * 1.3).lrint.to!int;
 		connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").
-			fontSize(MENU_BUTTON_FONTSIZE).fixedSize(vec2i(400, btnSize)).build();
+			backgroundColor(COLORS.simButtonBgnd).
+			fontSize(MENU_BUTTON_FONTSIZE).build();
 
 		infoLabel = builder(new Label()).content("Connecting to server...").
 			fontSize(INFO_FONT_SIZE).fixedSize(vec2i(400, INFO_FONT_SIZE + 10)).
-			fontColor(sfColor(255, 255, 0, 255)).htextAlign(HTextAlign.CENTER).build();
+			fontColor(COLORS.simMessageFont).htextAlign(HTextAlign.CENTER).build();
 
-		int loginSize = (LOGIN_FONT_SIZE * 1.3).lrint.to!int;
-		Label loginLabel = builder(new Label()).content("Login:").
-			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).fraction(LOGIN_FRACT).build();
+		int loginRowSize = (LOGIN_FONT_SIZE * 1.3).lrint.to!int;
+		Label loginLabel = builder(new Label()).content("Login").
+			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).build();
 		TextField loginField = builder(new TextField()).fontSize(LOGIN_FONT_SIZE).build();
 		loginField.content = config.object.get("login", JSONValue("")).str;
 
-		Label pwLabel = builder(new Label()).content("Password:").
-			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).fraction(LOGIN_FRACT).build();
+		Label pwLabel = builder(new Label()).content("Password").
+			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).build();
 		PasswordField pwField = builder(new PasswordField()).fontSize(LOGIN_FONT_SIZE).build();
 		pwField.content = config.object.get("password", JSONValue("")).str;
 
 		Div credDiv = builder(vDiv([
-				hDiv([loginLabel, loginField, filler(LOGIN_FRACT)]),
-				hDiv([pwLabel, pwField, filler(LOGIN_FRACT)])
-			])).fixedSize(vec2i(0, loginSize * 2 + 20)).borderWidth(20).build();
+				loginLabel,
+				loginField,
+				pwLabel,
+				pwField
+			])).fixedSize(vec2i(0, loginRowSize * 4 + 20)).
+			borderWidth(4).build();
 
 		loginField.onKeyPressed += (evt)
 		{
@@ -109,15 +113,22 @@ final class MainMenuState: GameState
 		};
 
 		Label cicIpLabel = builder(new Label()).content("coop IP:").
-			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).fraction(LOGIN_FRACT).build();
+			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).
+			fraction(LOGIN_FRACT).build();
 		TextField cicIpField = builder(new TextField()).fontSize(LOGIN_FONT_SIZE).build();
 		cicIpField.content = config.object.get("coopaddr", JSONValue("localhost:17900")).str;
 
-		Div cicDiv = builder(hDiv([cicIpLabel, cicIpField, filler(LOGIN_FRACT)])).
-			fixedSize(vec2i(0, loginSize)).build();
+		Label orLabel = builder(new Label()).content("OR").
+			htextAlign(HTextAlign.CENTER).fontSize(MENU_BUTTON_FONTSIZE / 2).
+			fixedSize(vec2i(0, (MENU_BUTTON_FONTSIZE / 1.5).lrint.to!int)).build();
 
-		cicConnectButton = builder(new Button(ButtonType.ASYNC)).content("Join coop host").
-			fontSize(MENU_BUTTON_FONTSIZE / 2).fixedSize(vec2i(400, btnSize / 2)).build();
+		Div cicDiv = builder(hDiv([cicIpLabel, cicIpField, filler(LOGIN_FRACT)])).
+			fixedSize(vec2i(0, loginRowSize)).build();
+
+		cicConnectButton = builder(new Button(ButtonType.ASYNC)).
+			content("Connect to another window").
+			backgroundColor(COLORS.simButtonBgnd).
+			fontSize(MENU_BUTTON_FONTSIZE / 2).fixedSize(vec2i(200, btnSize / 2)).build();
 
 		cicConnectButton.onClick += ()
 		{
@@ -154,24 +165,22 @@ final class MainMenuState: GameState
 			writeConfigField("coopaddr", cicIpField.content.str);
 		};
 
-		Button exitButton = builder(new Button()).content("Exit").
-			fontSize(MENU_BUTTON_FONTSIZE).
-			fixedSize(vec2i(400, btnSize)).build();
-		exitButton.onClick += () { Game.window.stopEventProcessing(); };
-
 		Div mainMenuDiv = builder(vDiv([
 			filler(),
 			credDiv,
-			filler(30),
-			connectButton,
+			filler(20),
+			builder(hDiv([filler(60), connectButton, filler(60)])).
+				fixedSize(vec2i(10, btnSize)).build(),
+			filler(10),
 			infoLabel,
-			filler(50),
-			cicDiv,
+			filler(40),
+			orLabel,
+			filler(40),
 			cicConnectButton,
-			filler(50),
-			exitButton,
+			filler(20),
+			cicDiv,
 			filler()
-		])).fixedSize(vec2i(600, 10)).build();
+		])).fixedSize(vec2i(400, 10)).build();
 
 		Div mainMenuLayout = hDiv([
 			filler(),
