@@ -37,6 +37,7 @@ struct ColorScheme
 	sfColor simLaunchButtonBgnd = sfColor(200, 50, 50, 255);
 	sfColor simMessageFont = sfColor(189, 135, 135, 255);
 	sfColor loadoutHint = sfColor(150, 150, 150, 255);
+	sfColor tubeCircle = sfColor(255, 94, 0, 255);
 }
 
 /// Global color scheme

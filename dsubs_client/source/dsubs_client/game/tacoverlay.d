@@ -32,12 +32,6 @@ import dsubs_client.game.contacts;
 
 
 
-private
-{
-	enum sfColor TUBE_CIRCLE_COLOR = sfColor(255, 94, 0, 255);
-}
-
-
 /// Cache of pre-constructed shapes for overlay rendering
 final class ContactOverlayShapeCahe
 {
@@ -60,7 +54,7 @@ final class ContactOverlayShapeCahe
 		m_posDataOnHoverRect.position = -vec2f(1, 1);
 		m_velCircle = new CircleShape(TacticalContactElement.ZERO_SPD_PIXEL_MARGIN,
 			30, sfColor(255, 255, 255, 150), 6);
-		m_tubeCircle = new CircleShape(10, 30, TUBE_CIRCLE_COLOR, 3);
+		m_tubeCircle = new CircleShape(10, 30, COLORS.tubeCircle, 3);
 		m_velDragLine = new LineShape(vec2d(0, 0), vec2d(0, 0), sfColor(137, 182, 255, 255), 4);
 		m_pastTrailLine = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(232, 244, 63, 100), 3);
@@ -925,6 +919,7 @@ final class TacticalContactElement: OverlayElementWithHover
 	{
 		ClientContact m_contact;
 		ContactSolution m_solution;
+		ContactSolution m_extrapolatedSolution;
 		CircleShape m_mainShape, m_velCircle;
 		RectangleShape m_onHoverRect;
 		LineShape m_velDragLine;
@@ -936,6 +931,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		DragMode m_dragMode;
 		bool m_drawPastTrail;
 		bool m_drawRayTracker;
+		bool m_drawExtrapolatedPhantom;
 		float m_lastRayTrackerBearing;
 		vec2d m_lastRayTrackerOrigin;
 
@@ -1007,12 +1003,20 @@ final class TacticalContactElement: OverlayElementWithHover
 		secs = usecsSince / 1.0e6;
 	}
 
+	private void extrapolatePhantomTime(out usecs_t extrapolatedTime, out double secs)
+	{
+		extrapolatedTime = Game.simState.extrapolatedServerTime;
+		usecs_t usecsSince = extrapolatedTime - m_solution.time;
+		secs = usecsSince / 1.0e6;
+	}
+
 	@property bool rayTrackingMode() { return m_drawRayTracker; }
 	@property float rayTrackerBearing() { return m_lastRayTrackerBearing; }
 
 	override void onPreDraw()
 	{
 		m_drawRayTracker = false;
+		m_drawExtrapolatedPhantom = false;
 		if (!isSelected)
 		{
 			m_solution = m_contact.solution;
@@ -1044,6 +1048,17 @@ final class TacticalContactElement: OverlayElementWithHover
 				extrapolateTime(m_solution.time, secsSince);
 				if (m_solution.velAvailable)
 					m_solution.pos += secsSince * m_solution.vel;
+			}
+		}
+		else
+		{
+			if (m_solution.posAvailable && m_solution.velAvailable)
+			{
+				m_drawExtrapolatedPhantom = true;
+				m_extrapolatedSolution = m_solution;
+				double secsSince;
+				extrapolatePhantomTime(m_extrapolatedSolution.time, secsSince);
+				m_extrapolatedSolution.pos += secsSince * m_solution.vel;
 			}
 		}
 		vec2d worldPos = m_solution.pos;
@@ -1191,6 +1206,20 @@ final class TacticalContactElement: OverlayElementWithHover
 				if (m_drawPastTrail)
 					drawPastTrailAndDataLines(wnd);
 				m_velDragLine.render(wnd);
+			}
+			if (m_drawExtrapolatedPhantom)
+			{
+				sfColor savedShapeColor = m_mainShape.borderColor;
+				sfColor phantomColor = savedShapeColor;
+				phantomColor.a = max(10, savedShapeColor.a - 150).to!ubyte;
+				vec2f screenPosF = cast(vec2f) owner.world2screenPos(
+					m_extrapolatedSolution.pos);
+				vec2f savedCenter = m_mainShape.center;
+				m_mainShape.center = screenPosF;
+				m_mainShape.borderColor = phantomColor;
+				m_mainShape.render(wnd);
+				m_mainShape.borderColor = savedShapeColor;
+				m_mainShape.center = savedCenter;
 			}
 			if (!m_dragging)
 			{
@@ -1677,7 +1706,7 @@ final class WeaponAimHandle: OverlayElementWithHover
 		m_tubeNumberLabel = builder(new Label()).mouseTransparent(true).
 			enableScissorTest(false).fontSize(18).
 			htextAlign(HTextAlign.CENTER).vtextAlign(VTextAlign.CENTER).
-			fontColor(TUBE_CIRCLE_COLOR).content((tube.id + 1).to!string).build();
+			fontColor(COLORS.tubeCircle).content((tube.id + 1).to!string).build();
 		int boxSize = (m_circleShape.radius + m_circleShape.borderWidth).to!int;
 		m_tubeNumberLabel.size = this.size = vec2i(2 * boxSize, 2 * boxSize);
 		onMouseDown += &processMouseDown;
