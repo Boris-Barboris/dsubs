@@ -272,7 +272,7 @@ Search patterns: straight, snake, spiral.
 		tf.asprot.dissMod = 1.0f;
 		tf.asprot.span = 120.0f;
 		tf.asprot.radialRes = 20;
-		tf.asprot.maxSec = 3;
+		tf.asprot.maxSec = 2;
 		tf.asprot.zeroLevel = dB(seaNoiseIL(3600).val + 75.0f);
 		tf.asprot.endScale = 0.03f;
 		tf.detonationSoundProto = PrerecordedSoundPrototype(
