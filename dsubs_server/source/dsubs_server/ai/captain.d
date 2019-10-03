@@ -1,5 +1,6 @@
 module dsubs_server.ai.captain;
 
+import dsubs_common.containers.circqueue;
 
 import dsubs_server.common;
 import dsubs_server.globals;
@@ -33,9 +34,19 @@ final class AICrew: Captain
 		string m_name;
 		BOT_DIFFICULTY m_difficulty;
 		CrewState m_state;
+		CaptainGoal m_goal;
 	}
 
-	final @property CrewState state() { return m_state; }
+	@property CaptainGoal goal() { return m_goal; }
+
+	// set new goal for a captain of the crew
+	@property void goal(CaptainGoal rhs)
+	{
+		m_goal = rhs;
+		m_state.captainOrder.pushBack(rhs);
+	}
+
+	@property CrewState state() { return m_state; }
 
 	override @property void submarine(Submarine rhs)
 	{
@@ -57,14 +68,92 @@ final class AICrew: Captain
 	}
 }
 
+
+enum GoalStatus
+{
+	needAction,
+	succeeded,
+	failed
+}
+
+
+abstract class CaptainGoal
+{
+	this(AICaptain captain)
+	{
+		m_captain = captain;
+	}
+
+	protected AICaptain m_captain;
+
+	final @property AICaptain captain() { return m_captain; }
+
+	@property GoalStatus status();
+}
+
+
+final class SwimToDestinationGoal: CaptainGoal
+{
+	this(AICaptain captain, vec2d dest)
+	{
+		super(captain);
+		m_destination = dest;
+	}
+
+	private vec2d m_destination;
+	@property vec2d destination() const { return m_destination; }
+
+	override @property GoalStatus status()
+	{
+		vec2d subPos = m_captain.crew.submarine.transform.wposition;
+		double diff = (subPos - m_destination).length;
+		if (diff < 200.0)
+			return GoalStatus.succeeded;
+		else
+			return GoalStatus.needAction;
+	}
+}
+
+
+struct OrderQueue!(T)
+{
+	this(size_t queueSize)
+	{
+		m_queue = CircQueue!T(queueSize);
+	}
+
+	private CircQueue!T m_queue;
+
+	@property bool hasOrders() const
+	{
+		return m_queue.length > 0;
+	}
+
+	T popFront()
+	{
+		T front = m_queue.front;
+		m_queue.popFront();
+		return front;
+	}
+
+	void pushBack(T order)
+	{
+		m_queue.pushBack(order);
+	}
+}
+
+
 /// Strongly-typed blackboard
 final class CrewState
 {
-	/// world-space destination.
-	vec2d* destination;
-	Contact[] contacts;
+	this()
+	{
+		helmsmanOrder = OrderQueue!HelmsmanOrder(1);
+		captainOrder = OrderQueue!CaptainGoal(1);
+	}
 
-	HelmsmanOrder helmsmanOrder;
+	OrderQueue!CaptainGoal captainOrder;
+	OrderQueue!HelmsmanOrder helmsmanOrder;
 }
 
 enum ContactRelation
@@ -144,20 +233,20 @@ final class AICaptain
 	private BehavourTreeNode buildEasyCaptainBt()
 	{
 		BehavourTreeNode[] rootFallbackNodes;
-		if (m_crew.submarine.isCombatCapable)
-		{
-			rootFallbackNodes ~= new SequenceNode("Attack if target visible", [
-				new ConditionNode("Have ammo", null),
-				new ConditionNode("Any target visible and solution ready", null),
-				new FallbackNode("Approach and attack closest target", [
-						new SequenceNode("Approach target if needed", [
-							new ConditionNode("Closest target too far"),
-							new NopAction("Approach closest target")
-						]),
-						new NopAction("Attack closest target")
-					]),
-				]);
-		}
+		// if (m_crew.submarine.isCombatCapable)
+		// {
+		// 	rootFallbackNodes ~= new SequenceNode("Attack if target visible", [
+		// 		new ConditionNode("Have ammo", null),
+		// 		new ConditionNode("Any target visible and solution ready", null),
+		// 		new FallbackNode("Approach and attack closest target", [
+		// 				new SequenceNode("Approach target if needed", [
+		// 					new ConditionNode("Closest target too far"),
+		// 					new NopAction("Approach closest target")
+		// 				]),
+		// 				new NopAction("Attack closest target")
+		// 			]),
+		// 		]);
+		// }
 		rootFallbackNodes ~= [
 			new SequenceNode("Proceed to destination", [
 				new ConditionNode("Destination defined", null),

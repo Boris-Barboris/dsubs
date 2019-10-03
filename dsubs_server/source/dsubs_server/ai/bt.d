@@ -1,6 +1,7 @@
 module dsubs_server.ai.bt;
 
 import std.algorithm.comparison: min, max;
+import std.algorithm: canFind;
 
 import dsubs_common.containers.array;
 
@@ -188,6 +189,53 @@ final class FallbackNode: LinearChildrenNode
 		if (memory)
 			m_lastIdxMemory = 0;
 		return ExecutionResult.failure;
+	}
+}
+
+
+/// Distributes ticks among the children until all children either return
+/// success or failure, or the ticks are exhausted. Always returns
+/// success or running.
+final class RoundRobinNode: LinearChildrenNode
+{
+	this(string description, BehavourTreeNode[] children, int timeSlice)
+	{
+		super(description, children, true);
+		m_timeSlice = timeSlice;
+	}
+
+	private
+	{
+		int m_timeSlice;
+	}
+
+	override ExecutionResult execute(ref int ticks)
+	{
+		assert(ticks > 0);
+		if (m_children.length == 0)
+			return ExecutionResult.success;
+		ptrdiff_t i = m_lastIdxMemory - 1;
+		scope(exit) m_lastIdxMemory = max(0, i.to!size_t);
+		bool[] finishedChildren;
+		finishedChildren.length = m_children.length;
+		while (ticks > 0)
+		{
+			i = (i + 1) % m_children.length;
+			if (finishedChildren[i])
+				continue;
+			int currentSlice = min(m_timeSlice, ticks);
+			BehavourTreeNode child = m_children[i];
+			int ticksToSpend = currentSlice;
+			ExecutionResult res = child.execute(ticksToSpend);
+			int spentTicks = currentSlice - ticksToSpend;
+			ticks -= spentTicks;
+			if (res == ExecutionResult.success || res == ExecutionResult.failure)
+				finishedChildren[i] = true;
+			assert(spentTicks > 0, "subtree returned running but did not reduce ticks");
+			if (!canFind(finishedChildren, false))
+				return ExecutionResult.success;
+		}
+		return ExecutionResult.running;
 	}
 }
 

@@ -12,8 +12,8 @@ import dsubs_server.ai.captain;
 
 enum HelmsmanOrderType
 {
-	course,
-	destination
+	course,			/// hold course
+	destination		/// swim to position
 }
 
 enum NavigationSpeed
@@ -22,7 +22,8 @@ enum NavigationSpeed
 	silent,
 	tactical,
 	fast,
-	flank
+	flank,
+	random
 }
 
 struct HelmsmanOrder
@@ -93,6 +94,9 @@ final class AIHelmsman
 					break;
 				case NavigationSpeed.flank:
 					throttle = 1.0f;
+					break;
+				case NavigationSpeed.random:
+					throttle = uniform(0.25f, 0.8f);
 					break;
 			}
 			throttle.clamp(0.0f, 1.0f);
