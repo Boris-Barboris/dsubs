@@ -10,3 +10,16 @@ enum BOT_DIFFICULTY
 	medium,
 	hard
 }
+
+int ticksPerDifficulty(BOT_DIFFICULTY diff)
+{
+	final switch (diff)
+	{
+		case BOT_DIFFICULTY.easy:
+			return 100;
+		case BOT_DIFFICULTY.medium:
+			return 200;
+		case BOT_DIFFICULTY.hard:
+			return 250;
+	}
+}

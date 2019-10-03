@@ -32,7 +32,7 @@ class Captain
 
 	abstract @property string name() const;
 	final @property Submarine submarine() { return m_submarine; }
-	final @property void submarine(Submarine rhs)
+	@property void submarine(Submarine rhs)
 	{
 		if (m_submarine !is rhs)
 			unsetSubmarine(m_submarine);

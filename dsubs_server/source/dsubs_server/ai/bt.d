@@ -67,10 +67,11 @@ abstract class LinearChildrenNode: ControlFlowNode
 	/// Sequence simulator
 	bool memory;
 
-	this(string description, BehavourTreeNode[] children)
+	this(string description, BehavourTreeNode[] children, bool memory = false)
 	{
 		super(description);
 		this.children = children;
+		this.memory = memory;
 	}
 
 	final override void onChildDetached(BehavourTreeNode oldChild)
@@ -137,9 +138,9 @@ abstract class DecoratorNode: ControlFlowNode
 final class SequenceNode: LinearChildrenNode
 {
 
-	this(string description, BehavourTreeNode[] children)
+	this(string description, BehavourTreeNode[] children, bool memory = false)
 	{
-		super(description, children);
+		super(description, children, memory);
 	}
 
 	override ExecutionResult execute(ref int ticks)
@@ -165,9 +166,9 @@ final class SequenceNode: LinearChildrenNode
 
 final class FallbackNode: LinearChildrenNode
 {
-	this(string description, BehavourTreeNode[] children)
+	this(string description, BehavourTreeNode[] children, bool memory = false)
 	{
-		super(description, children);
+		super(description, children, memory);
 	}
 
 	override ExecutionResult execute(ref int ticks)
@@ -271,7 +272,7 @@ final class NopAction: ActionNode
 
 	override ExecutionResult execute(ref int ticks)
 	{
-		assert(ticks >= 0);
+		assert(ticks > 0);
 		return ExecutionResult.success;
 	}
 }
