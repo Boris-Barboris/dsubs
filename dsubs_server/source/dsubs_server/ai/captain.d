@@ -8,6 +8,7 @@ import dsubs_server.vessel;
 import dsubs_server.player;
 import dsubs_server.submarine;
 import dsubs_server.ai.common;
+import dsubs_server.ai.helmsman;
 
 
 
@@ -28,6 +29,7 @@ final class AICrew: Captain
 	private
 	{
 		AICaptain m_captain;
+		AIHelmsman m_helmsman;
 		string m_name;
 		BOT_DIFFICULTY m_difficulty;
 		CrewState m_state;
@@ -41,6 +43,7 @@ final class AICrew: Captain
 		// we need to build the officers according to submarine capabilities and
 		// bot difficulty.
 		m_captain = new AICaptain(this, m_difficulty);
+		m_helmsman = new AIHelmsman(this, m_difficulty);
 	}
 
 	void afterSimulation()
@@ -49,6 +52,8 @@ final class AICrew: Captain
 			return;
 		if (m_captain)
 			m_captain.execute();
+		if (m_helmsman)
+			m_helmsman.execute();
 	}
 }
 
@@ -58,8 +63,9 @@ final class CrewState
 	/// world-space destination.
 	vec2d* destination;
 	Contact[] contacts;
-}
 
+	HelmsmanOrder helmsmanOrder;
+}
 
 enum ContactRelation
 {
@@ -86,7 +92,6 @@ struct Solution
 	vec2d velocity;
 }
 
-
 /// CIC of bot crew tracks contacts
 struct Contact
 {
@@ -99,7 +104,8 @@ struct Contact
 
 bool isCombatCapable(const Submarine sub)
 {
-	return sub.tubeCount > 0;
+	const SubmarineFactory subFac = Globals.entityDb.getSubmarineFactory(sub.prototypeName);
+	return isCombatCapable(subFac);
 }
 
 bool isCombatCapable(const SubmarineFactory subFac)
@@ -138,8 +144,7 @@ final class AICaptain
 	private BehavourTreeNode buildEasyCaptainBt()
 	{
 		BehavourTreeNode[] rootFallbackNodes;
-		SubmarineFactory subFac = Globals.entityDb.getSubmarineFactory(m_crew.submarine.prototypeName);
-		if (subFac.isCombatCapable)
+		if (m_crew.submarine.isCombatCapable)
 		{
 			rootFallbackNodes ~= new SequenceNode("Attack if target visible", [
 				new ConditionNode("Have ammo", null),

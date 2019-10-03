@@ -253,12 +253,50 @@ abstract class ActionNode: BehavourTreeNode
 	protected
 	{
 		/// ticks needed to finish the job.
-		int ticksLeft = 0;
+		int m_ticksLeft;
+	}
+
+	invariant
+	{
+		assert(m_ticksLeft >= 0);
 	}
 
 	this(string description)
 	{
 		super(description);
+	}
+}
+
+
+abstract class FixedCostActionNode: ActionNode
+{
+	protected
+	{
+		int m_ticksCost;
+	}
+
+	this(string description, int cost)
+	{
+		assert(cost >= 0);
+		super(description);
+		m_ticksCost = cost;
+		m_ticksLeft = cost;
+	}
+
+	abstract ExecutionResult onTicksConsumed();
+
+	override ExecutionResult execute(ref int ticks)
+	{
+		assert(ticks > 0);
+		int delta = min(m_ticksCost, ticks, m_ticksLeft);
+		m_ticksLeft -= delta;
+		if (m_ticksLeft == 0)
+		{
+			m_ticksLeft = m_ticksCost;
+			return onTicksConsumed();
+		}
+		else
+			return ExecutionResult.running;
 	}
 }
 
