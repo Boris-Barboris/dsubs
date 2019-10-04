@@ -151,8 +151,6 @@ final class CrewState
 		helmsmanOrder = OrderQueue!HelmsmanOrder(1);
 		captainOrder = OrderQueue!CaptainGoal(1);
 	}
-
-	OrderQueue!CaptainGoal captainOrder;
 	OrderQueue!HelmsmanOrder helmsmanOrder;
 }
 
@@ -214,6 +212,7 @@ final class AICaptain
 		m_difficulty = difficulty;
 		m_ticksPerExecute = ticksPerDifficulty(m_difficulty);
 		m_btRoot = buildEasyCaptainBt();
+		captainOrder = OrderQueue!CaptainGoal(1);
 	}
 
 	private
@@ -223,6 +222,9 @@ final class AICaptain
 		BOT_DIFFICULTY m_difficulty;
 		int m_ticksPerExecute;
 	}
+
+	/// orders are to be put here
+	OrderQueue!CaptainGoal captainOrder;
 
 	void execute()
 	{

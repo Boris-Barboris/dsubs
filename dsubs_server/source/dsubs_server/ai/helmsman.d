@@ -10,10 +10,20 @@ import dsubs_server.ai.captain;
 
 
 
-enum HelmsmanOrderType
+enum WhereToSwimType
 {
 	course,			/// hold course
 	destination		/// swim to position
+}
+
+struct WhereToSwim
+{
+	WhereToSwimType type;
+	union
+	{
+		vec2d destination;
+		double course;
+	}
 }
 
 enum NavigationSpeed
@@ -23,18 +33,7 @@ enum NavigationSpeed
 	tactical,
 	fast,
 	flank,
-	random
-}
-
-struct HelmsmanOrder
-{
-	HelmsmanOrderType type;
-	union
-	{
-		vec2d destinaiton;
-		double course;
-	}
-	NavigationSpeed speed;
+	random	// helmsman is to pick a speed of his choosing
 }
 
 
@@ -57,7 +56,14 @@ final class AIHelmsman
 		BehavourTreeNode m_btRoot;
 		BOT_DIFFICULTY m_difficulty;
 		int m_ticksPerExecute;
+
+		// internal state
+		WhereToSwim m_whereToSwim;
+		NavigationSpeed m_navigationSpeed;
 	}
+
+	OrderQueue!WhereToSwim whereToSwimOrder;
+	OrderQueue!NavigationSpeed navigationSpeedOrder;
 
 	void execute()
 	{
@@ -70,7 +76,6 @@ final class AIHelmsman
 		this()
 		{
 			super("Set throttle according to NavigationSpeed", 400);
-			m_bias = uniform!float(-0.05, 0.05f);
 		}
 
 		private float m_bias;
@@ -84,13 +89,13 @@ final class AIHelmsman
 					throttle = 0.0f;
 					break;
 				case NavigationSpeed.silent:
-					throttle = 0.2f + m_bias;
+					throttle = 0.2f;
 					break;
 				case NavigationSpeed.tactical:
-					throttle = 0.4f + m_bias;
+					throttle = 0.4f;
 					break;
 				case NavigationSpeed.fast:
-					throttle = 0.7f + m_bias;
+					throttle = 0.7f;
 					break;
 				case NavigationSpeed.flank:
 					throttle = 1.0f;
