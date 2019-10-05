@@ -80,9 +80,10 @@ final class AIHelmsman
 
 	private final class ProcessOrder: FixedCostActionNode
 	{
-		this()
+		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Consume last order and move it to active one", 400);
+			super("Consume last order and move it to active one", 400,
+				file, line);
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -127,9 +128,9 @@ final class AIHelmsman
 
 	private final class MaintainCourse: ActionNode
 	{
-		this()
+		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Adjust rudder according to current order");
+			super("Adjust rudder according to current order", file, line);
 		}
 
 		override ExecutionResult execute(ref int ticks)
@@ -155,9 +156,9 @@ final class AIHelmsman
 
 	private final class MaintainThrottle: ActionNode
 	{
-		this()
+		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Adjust throttle according to current order");
+			super("Adjust throttle according to current order", file, line);
 		}
 
 		override ExecutionResult execute(ref int ticks)

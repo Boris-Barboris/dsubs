@@ -1,7 +1,7 @@
 module dsubs_server.ai.bt;
 
 import std.algorithm.comparison: min, max;
-import std.algorithm: canFind;
+import std.algorithm: canFind, minElement;
 
 import std.conv: to;
 
@@ -32,9 +32,9 @@ class BehavourTreeNode
 
 	final @property string description() const { return m_description; }
 
-	this(string description)
+	this(string description, string file, size_t line)
 	{
-		m_description = description;
+		m_description = file ~ ":" ~ line.to!string ~ " " ~ description;
 	}
 
 	/// Propagate ticks and return the execution result.
@@ -44,9 +44,9 @@ class BehavourTreeNode
 
 class ControlFlowNode: BehavourTreeNode
 {
-	this(string description)
+	this(string description, string file, size_t line)
 	{
-		super(description);
+		super(description, file, line);
 	}
 }
 
@@ -62,9 +62,10 @@ abstract class LinearChildrenNode: ControlFlowNode
 	/// Sequence simulator
 	bool memory;
 
-	this(string description, BehavourTreeNode[] children, bool memory = false)
+	this(string description, BehavourTreeNode[] children, bool memory = false,
+		string file = __FILE__, size_t line = __LINE__)
 	{
-		super(description);
+		super(description, file, line);
 		this.children = children;
 		this.memory = memory;
 	}
@@ -84,9 +85,9 @@ abstract class DecoratorNode: ControlFlowNode
 		BehavourTreeNode m_child;
 	}
 
-	this(string description, BehavourTreeNode child)
+	this(string description, BehavourTreeNode child, string file, size_t line)
 	{
-		super(description);
+		super(description, file, line);
 		m_child = child;
 	}
 
@@ -105,9 +106,10 @@ abstract class DecoratorNode: ControlFlowNode
 final class SequenceNode: LinearChildrenNode
 {
 
-	this(string description, BehavourTreeNode[] children, bool memory = false)
+	this(string description, BehavourTreeNode[] children, bool memory = false,
+		string file = __FILE__, size_t line = __LINE__)
 	{
-		super(description, children, memory);
+		super(description, children, memory, file, line);
 	}
 
 	override ExecutionResult execute(ref int ticks)
@@ -133,9 +135,10 @@ final class SequenceNode: LinearChildrenNode
 
 final class FallbackNode: LinearChildrenNode
 {
-	this(string description, BehavourTreeNode[] children, bool memory = false)
+	this(string description, BehavourTreeNode[] children, bool memory = false,
+		string file = __FILE__, size_t line = __LINE__)
 	{
-		super(description, children, memory);
+		super(description, children, memory, file, line);
 	}
 
 	override ExecutionResult execute(ref int ticks)
@@ -164,9 +167,10 @@ final class FallbackNode: LinearChildrenNode
 /// if all children have returned failure.
 final class RoundRobinNode: LinearChildrenNode
 {
-	this(string description, BehavourTreeNode[] children, int timeSlice)
+	this(string description, BehavourTreeNode[] children, int timeSlice,
+		string file = __FILE__, size_t line = __LINE__)
 	{
-		super(description, children, true);
+		super(description, children, true, file, line);
 		m_timeSlice = timeSlice;
 	}
 
@@ -179,25 +183,26 @@ final class RoundRobinNode: LinearChildrenNode
 	{
 		assert(ticks > 0);
 		if (m_children.length == 0)
-			return ExecutionResult.success;
-		ptrdiff_t i = m_lastIdxMemory - 1;
-		scope(exit) m_lastIdxMemory = max(0, i.to!size_t);
+			return ExecutionResult.failure;
+		int i = m_lastIdxMemory.to!int - 1;
+		scope(exit) m_lastIdxMemory = max(0, i);
 		ExecutionResult[] childrenResults;
 		childrenResults.length = m_children.length;
 		while (ticks > 0)
 		{
-			i = (i + 1) % m_children.length;
+			i = (i + 1) % m_children.length.to!int;
 			if (isFinalResult(childrenResults[i]))
 				continue;
 			int currentSlice = min(m_timeSlice, ticks);
 			BehavourTreeNode child = m_children[i];
 			int ticksToSpend = currentSlice;
-			ExecutionResult res = child.execute(ticksToSpend);
+			childrenResults[i] = child.execute(ticksToSpend);
 			int spentTicks = currentSlice - ticksToSpend;
 			ticks -= spentTicks;
 			assert(ticks >= 0);
-			childrenResults[i] = res;
-			assert(spentTicks > 0, "subtree returned running but did not reduce ticks");
+			assert((childrenResults[i] != ExecutionResult.running) || spentTicks > 0,
+				"subtree returned running but did not reduce ticks");
+			// TODO: maybe optimize linear search
 			if (!canFind(childrenResults, ExecutionResult.running))
 			{
 				if (canFind(childrenResults, ExecutionResult.success))
@@ -215,15 +220,18 @@ final class ParallelNode: LinearChildrenNode
 {
 	int successThreshold;
 
-	this(string description, BehavourTreeNode[] children, int successThreshold)
+	this(string description, BehavourTreeNode[] children, int successThreshold = 1,
+		string file = __FILE__, size_t line = __LINE__)
 	{
-		super(description, children);
+		super(description, children, false, file, line);
 		this.successThreshold = successThreshold;
 	}
 
 	override ExecutionResult execute(ref int ticks)
 	{
 		assert(ticks > 0);
+		if (m_children.length == 0)
+			return successThreshold <= 0 ? ExecutionResult.success : ExecutionResult.failure;
 		int[] childTicks;
 		childTicks.length = m_children.length;
 		childTicks[] = ticks;
@@ -234,9 +242,10 @@ final class ParallelNode: LinearChildrenNode
 			ExecutionResult res = child.execute(childTicks[i]);
 			if (res == ExecutionResult.success)
 				successCount++;
-			if (res == ExecutionResult.failure)
+			else if (res == ExecutionResult.failure)
 				failureCount++;
 		}
+		ticks = minElement(childTicks);
 		if (successCount >= successThreshold)
 			return ExecutionResult.success;
 		if (failureCount >= m_children.length - successThreshold + 1)
@@ -250,9 +259,10 @@ final class ConditionNode: BehavourTreeNode
 {
 	bool delegate() predicate;
 
-	this(string description, bool delegate() pred)
+	this(string description, bool delegate() pred,
+		string file = __FILE__, size_t line = __LINE__)
 	{
-		super(description);
+		super(description, file, line);
 		predicate = pred;
 	}
 
@@ -282,9 +292,9 @@ abstract class ActionNode: BehavourTreeNode
 		assert(m_ticksLeft >= 0);
 	}
 
-	this(string description)
+	this(string description, string file, size_t line)
 	{
-		super(description);
+		super(description, file, line);
 	}
 }
 
@@ -296,10 +306,11 @@ abstract class FixedCostActionNode: ActionNode
 		int m_ticksCost;
 	}
 
-	this(string description, int cost)
+	this(string description, int cost,
+		string file = __FILE__, size_t line = __LINE__)
 	{
 		assert(cost >= 0);
-		super(description);
+		super(description, file, line);
 		m_ticksCost = cost;
 		m_ticksLeft = cost;
 	}
@@ -311,10 +322,11 @@ abstract class FixedCostActionNode: ActionNode
 		assert(ticks > 0);
 		int delta = min(m_ticksCost, ticks, m_ticksLeft);
 		m_ticksLeft -= delta;
+		ticks -= delta;
 		if (m_ticksLeft == 0)
 		{
 			m_ticksLeft = m_ticksCost;
-			trace("FixedCostActionNode ", description, " reached fire time");
+			// trace("FixedCostActionNode ", description, " reached fire time");
 			return onTicksConsumed();
 		}
 		else
@@ -325,9 +337,9 @@ abstract class FixedCostActionNode: ActionNode
 
 final class NopAction: ActionNode
 {
-	this()
+	this(string file = __FILE__, size_t line = __LINE__)
 	{
-		super("No-op action");
+		super("No-op action", file, line);
 	}
 
 	override ExecutionResult execute(ref int ticks)

@@ -253,9 +253,9 @@ final class AICaptain
 
 	private final class ProcessNewOrder: FixedCostActionNode
 	{
-		this()
+		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Consume new crew order", 500);
+			super("Consume new crew order", 500, file, line);
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -273,9 +273,10 @@ final class AICaptain
 
 	private final class OrderHelmsmanToSwimToDest: FixedCostActionNode
 	{
-		this()
+		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Give commands to helmsman to arrive at destination", 400);
+			super("Give commands to helmsman to arrive at destination", 400,
+				file, line);
 		}
 
 		override ExecutionResult onTicksConsumed()
