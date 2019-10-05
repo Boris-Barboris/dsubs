@@ -185,7 +185,7 @@ final class RoundRobinNode: LinearChildrenNode
 		if (m_children.length == 0)
 			return ExecutionResult.failure;
 		int i = m_lastIdxMemory.to!int - 1;
-		scope(exit) m_lastIdxMemory = max(0, i);
+		scope(exit) m_lastIdxMemory = (i + 1) % m_children.length.to!int;
 		ExecutionResult[] childrenResults;
 		childrenResults.length = m_children.length;
 		while (ticks > 0)
