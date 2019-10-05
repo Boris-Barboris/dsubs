@@ -17,6 +17,9 @@ import dsubs_sound.activesonar;
 import dsubs_server.tests.common;
 
 
+/*
+
+
 unittest
 {
 	Globals.buildForTests();
@@ -320,3 +323,6 @@ unittest
 	assert(!s1.dead, "self-detonation on flank");
 	assert(!s2.dead, "decoy didn't work");
 }
+
+
+*/

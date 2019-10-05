@@ -11,6 +11,8 @@ enum BOT_DIFFICULTY
 	hard
 }
 
+
+/// Tick budget scaling for AI crew difficulty level.
 int ticksPerDifficulty(BOT_DIFFICULTY diff)
 {
 	final switch (diff)

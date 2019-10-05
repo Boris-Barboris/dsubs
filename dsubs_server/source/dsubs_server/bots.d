@@ -11,10 +11,11 @@ import dsubs_server.common;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.weaponry;
 import dsubs_server.player;
+import dsubs_server.ai.captain;
 
 
 /// Simple bot captain that just swims to his destination.
-final class BotCaptain: Captain
+final class BotCaptain: AICrewTemp
 {
 	override @property string name() const { return "BOT Captain"; }
 
@@ -40,7 +41,7 @@ final class BotCaptain: Captain
 
 	@property bool reachedDestination() const { return m_reachedDest; }
 
-	void afterSimulation()
+	override void afterSimulation()
 	{
 		if (m_submarine is null || m_submarine.dead)
 			return;
@@ -61,32 +62,34 @@ final class BotCollection
 {
 	private
 	{
-		bool[BotCaptain] m_captains;
+		bool[AICrewTemp] m_bots;
 	}
 
-	@property auto captains() { return m_captains.byKey; }
+	@property auto captains() { return m_bots.byKey; }
 
-	@property size_t count() const { return m_captains.length; }
+	@property BotCaptain[] botCaptains() { return cast(BotCaptain[]) m_bots.byKey.array; }
+
+	@property size_t count() const { return m_bots.length; }
 
 	void clean()
 	{
-		m_captains.clear();
+		m_bots.clear();
 	}
 
-	void registerEntity(BotCaptain cpt)
+	void registerEntity(AICrewTemp cpt)
 	{
-		m_captains[cpt] = true;
+		m_bots[cpt] = true;
 	}
 
 	void onAfterSimulation()
 	{
 		// remove captains with dead submarines
-		BotCaptain[] cptToRemove = m_captains.byKey.filter!(cpt =>
+		AICrewTemp[] cptToRemove = m_bots.byKey.filter!(cpt =>
 			cpt.submarine && cpt.submarine.dead).array;
-		foreach (BotCaptain cpt; cptToRemove)
-			m_captains.remove(cpt);
+		foreach (AICrewTemp cpt; cptToRemove)
+			m_bots.remove(cpt);
 		// alive captains need an update
-		foreach (BotCaptain bcpt; Globals.taskPool.parallel(m_captains.keys, 1))
+		foreach (AICrewTemp bcpt; Globals.taskPool.parallel(m_bots.keys, 1))
 			bcpt.afterSimulation();
 	}
 }

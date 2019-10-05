@@ -171,7 +171,7 @@ final class BattleRoyale: Scenario
 				}));
 		}
 		// give new destinations to bots that have arrived
-		foreach (BotCaptain cpt; Globals.bots.captains)
+		foreach (BotCaptain cpt; Globals.bots.botCaptains)
 		{
 			if (cpt.reachedDestination)
 				cpt.destination = getDistantPos(cpt.submarine.transform.wposition);
@@ -336,7 +336,7 @@ final class BattleRoyale: Scenario
 					pcon.sendMessage(cast(immutable) mapBcst);
 				});
 			// give new destinations to bots
-			foreach (BotCaptain cpt; Globals.bots.captains)
+			foreach (BotCaptain cpt; Globals.bots.botCaptains)
 				cpt.destination = getDistantPos(cpt.submarine.transform.wposition);
 			foreach (Animal an; Globals.animals.entities)
 				an.destination = getDistantPos(an.transform.wposition);

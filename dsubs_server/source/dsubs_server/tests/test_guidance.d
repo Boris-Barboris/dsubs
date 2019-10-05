@@ -16,6 +16,8 @@ import dsubs_sound.activesonar;
 import dsubs_server.tests.common;
 
 
+/*
+
 unittest
 {
 	Globals.buildForTests();
@@ -502,3 +504,5 @@ unittest
 	Globals.sim.start();
 	Globals.sim.join();
 }
+
+*/

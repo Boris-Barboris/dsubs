@@ -13,6 +13,8 @@ import dsubs_server.propulsion;
 import dsubs_server.tests.common;
 
 
+/*
+
 unittest
 {
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
@@ -72,3 +74,5 @@ unittest
 	Globals.sim.start();
 	Globals.sim.join();
 }
+
+*/

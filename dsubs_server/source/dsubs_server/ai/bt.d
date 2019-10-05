@@ -3,14 +3,23 @@ module dsubs_server.ai.bt;
 import std.algorithm.comparison: min, max;
 import std.algorithm: canFind;
 
+import std.conv: to;
+
 import dsubs_common.containers.array;
 
+import dsubs_server.common;
 
-enum ExecutionResult
+
+enum ExecutionResult: byte
 {
 	running,
 	success,
 	failure
+}
+
+bool isFinalResult(ExecutionResult res)
+{
+	return res != ExecutionResult.running;
 }
 
 
@@ -18,22 +27,10 @@ class BehavourTreeNode
 {
 	private
 	{
-		ControlFlowNode m_parent;
 		string m_description;
 	}
 
 	final @property string description() const { return m_description; }
-
-	final @property ControlFlowNode parent() const { return m_parent; }
-
-	@property void parent(ControlFlowNode rhs)
-	{
-		if (m_parent && rhs !is m_parent)
-			m_parent.onChildDetached(this);
-		if (rhs)
-			rhs.onChildAttached(this);
-		m_parent = rhs;
-	}
 
 	this(string description)
 	{
@@ -51,9 +48,6 @@ class ControlFlowNode: BehavourTreeNode
 	{
 		super(description);
 	}
-
-	abstract void onChildDetached(BehavourTreeNode oldChild);
-	abstract void onChildAttached(BehavourTreeNode newChild);
 }
 
 
@@ -75,25 +69,10 @@ abstract class LinearChildrenNode: ControlFlowNode
 		this.memory = memory;
 	}
 
-	final override void onChildDetached(BehavourTreeNode oldChild)
-	{
-		m_children.removeFirst(oldChild);
-		m_lastIdxMemory = min(m_lastIdxMemory, m_children.length);
-	}
-
-	final override void onChildAttached(BehavourTreeNode newChild)
-	{
-		m_children ~= newChild;
-	}
-
 	final @property void children(BehavourTreeNode[] newChildrenArray)
 	{
 		m_lastIdxMemory = 0;
-		foreach (child; m_children)
-			child.parent = null;
-		m_children.reserve(newChildrenArray.length);
-		foreach (child; newChildrenArray)
-			child.parent = this;
+		m_children = newChildrenArray;
 	}
 }
 
@@ -108,18 +87,7 @@ abstract class DecoratorNode: ControlFlowNode
 	this(string description, BehavourTreeNode child)
 	{
 		super(description);
-		child.parent = this;
-	}
-
-	final override void onChildDetached(BehavourTreeNode oldChild)
-	{
-		if (m_child is oldChild)
-			m_child = null;
-	}
-
-	final override void onChildAttached(BehavourTreeNode newChild)
-	{
-		m_child = newChild;
+		m_child = child;
 	}
 
 	final @property BehavourTreeNode child()
@@ -129,9 +97,7 @@ abstract class DecoratorNode: ControlFlowNode
 
 	final @property void child(BehavourTreeNode rhs)
 	{
-		if (m_child)
-			m_child.parent = null;
-		rhs.parent = this;
+		m_child = rhs;
 	}
 }
 
@@ -193,9 +159,9 @@ final class FallbackNode: LinearChildrenNode
 }
 
 
-/// Distributes ticks among the children until all children either return
-/// success or failure, or the ticks are exhausted. Always returns
-/// success or running.
+/// Distributes ticks among the children until all children either return final
+/// status (either success or failure), or the ticks are exhausted. Returns failure only
+/// if all children have returned failure.
 final class RoundRobinNode: LinearChildrenNode
 {
 	this(string description, BehavourTreeNode[] children, int timeSlice)
@@ -216,12 +182,12 @@ final class RoundRobinNode: LinearChildrenNode
 			return ExecutionResult.success;
 		ptrdiff_t i = m_lastIdxMemory - 1;
 		scope(exit) m_lastIdxMemory = max(0, i.to!size_t);
-		bool[] finishedChildren;
-		finishedChildren.length = m_children.length;
+		static ExecutionResult[] childrenResults;
+		childrenResults.length = m_children.length;
 		while (ticks > 0)
 		{
 			i = (i + 1) % m_children.length;
-			if (finishedChildren[i])
+			if (isFinalResult(childrenResults[i]))
 				continue;
 			int currentSlice = min(m_timeSlice, ticks);
 			BehavourTreeNode child = m_children[i];
@@ -229,11 +195,16 @@ final class RoundRobinNode: LinearChildrenNode
 			ExecutionResult res = child.execute(ticksToSpend);
 			int spentTicks = currentSlice - ticksToSpend;
 			ticks -= spentTicks;
-			if (res == ExecutionResult.success || res == ExecutionResult.failure)
-				finishedChildren[i] = true;
+			assert(ticks >= 0);
+			childrenResults[i] = res;
 			assert(spentTicks > 0, "subtree returned running but did not reduce ticks");
-			if (!canFind(finishedChildren, false))
-				return ExecutionResult.success;
+			if (!canFind(childrenResults, ExecutionResult.running))
+			{
+				if (canFind(childrenResults, ExecutionResult.success))
+					return ExecutionResult.success;
+				else
+					return ExecutionResult.failure;
+			}
 		}
 		return ExecutionResult.running;
 	}
@@ -253,7 +224,7 @@ final class ParallelNode: LinearChildrenNode
 	override ExecutionResult execute(ref int ticks)
 	{
 		assert(ticks > 0);
-		int[] childTicks;
+		static int[] childTicks;
 		childTicks.length = m_children.length;
 		childTicks[] = ticks;
 		int successCount;
@@ -288,7 +259,9 @@ final class ConditionNode: BehavourTreeNode
 	override ExecutionResult execute(ref int ticks)
 	{
 		assert(ticks > 0);
-		if (predicate())
+		bool res = predicate();
+		trace("ConditionNode ", description, " predicate returned ", res);
+		if (res)
 			return ExecutionResult.success;
 		else
 			return ExecutionResult.failure;
@@ -341,6 +314,7 @@ abstract class FixedCostActionNode: ActionNode
 		if (m_ticksLeft == 0)
 		{
 			m_ticksLeft = m_ticksCost;
+			trace("FixedCostActionNode ", description, " reached fire time");
 			return onTicksConsumed();
 		}
 		else

@@ -1,5 +1,7 @@
 module dsubs_server.ai.helmsman;
 
+import dsubs_common.math.angles;
+
 import dsubs_server.common;
 import dsubs_server.globals;
 import dsubs_server.vessel;
@@ -10,8 +12,9 @@ import dsubs_server.ai.captain;
 
 
 
-enum WhereToSwimType
+enum WhereToSwimType: byte
 {
+	idle,			/// do not alter desired course
 	course,			/// hold course
 	destination		/// swim to position
 }
@@ -26,7 +29,7 @@ struct WhereToSwim
 	}
 }
 
-enum NavigationSpeed
+enum NavigationSpeed: byte
 {
 	stop,
 	silent,
@@ -48,6 +51,9 @@ final class AIHelmsman
 		m_difficulty = difficulty;
 		m_ticksPerExecute = ticksPerDifficulty(m_difficulty);
 		m_btRoot = buildEasyBt();
+
+		whereToSwimOrder = OrderQueue!WhereToSwim(1);
+		navigationSpeedOrder = OrderQueue!NavigationSpeed(1);
 	}
 
 	private
@@ -57,9 +63,10 @@ final class AIHelmsman
 		BOT_DIFFICULTY m_difficulty;
 		int m_ticksPerExecute;
 
-		// internal state
+		// actively implemented orders
 		WhereToSwim m_whereToSwim;
 		NavigationSpeed m_navigationSpeed;
+		float m_desiredThrottle = 0.0f;
 	}
 
 	OrderQueue!WhereToSwim whereToSwimOrder;
@@ -71,59 +78,107 @@ final class AIHelmsman
 		m_btRoot.execute(ticks);
 	}
 
-	final class SetSpeedSimple: FixedCostActionNode
+	private final class ProcessOrder: FixedCostActionNode
 	{
 		this()
 		{
-			super("Set throttle according to NavigationSpeed", 400);
+			super("Consume last order and move it to active one", 400);
 		}
-
-		private float m_bias;
 
 		override ExecutionResult onTicksConsumed()
 		{
-			float throttle;
-			final switch (m_crew.state.helmsmanOrder.speed)
+			if (whereToSwimOrder.hasOrder)
 			{
-				case NavigationSpeed.stop:
-					throttle = 0.0f;
+				trace("whereToSwimOrder order recieved");
+				m_whereToSwim = whereToSwimOrder.popFront();
+				return ExecutionResult.success;
+			}
+			if (navigationSpeedOrder.hasOrder)
+			{
+				trace("navigationSpeedOrder order recieved");
+				m_navigationSpeed = navigationSpeedOrder.popFront();
+				final switch (m_navigationSpeed)
+				{
+					case NavigationSpeed.stop:
+						m_desiredThrottle = 0.0f;
+						break;
+					case NavigationSpeed.silent:
+						m_desiredThrottle = 0.2f;
+						break;
+					case NavigationSpeed.tactical:
+						m_desiredThrottle = 0.4f;
+						break;
+					case NavigationSpeed.fast:
+						m_desiredThrottle = 0.7f;
+						break;
+					case NavigationSpeed.flank:
+						m_desiredThrottle = 1.0f;
+						break;
+					case NavigationSpeed.random:
+						m_desiredThrottle = uniform(0.4f, 0.8f);
+						break;
+				}
+				m_desiredThrottle = m_desiredThrottle.clamp(0.0f, 1.0f);
+				trace("m_desiredThrottle was chosen to ", m_desiredThrottle);
+				return ExecutionResult.success;
+			}
+			return ExecutionResult.failure;
+		}
+	}
+
+	private final class MaintainCourse: ActionNode
+	{
+		this()
+		{
+			super("Adjust rudder according to current order");
+		}
+
+		override ExecutionResult execute(ref int ticks)
+		{
+			assert(ticks > 0);
+			final switch (m_whereToSwim.type)
+			{
+				case WhereToSwimType.idle:
 					break;
-				case NavigationSpeed.silent:
-					throttle = 0.2f;
+				case WhereToSwimType.course:
+					m_crew.submarine.targetCourse = m_whereToSwim.course;
 					break;
-				case NavigationSpeed.tactical:
-					throttle = 0.4f;
-					break;
-				case NavigationSpeed.fast:
-					throttle = 0.7f;
-					break;
-				case NavigationSpeed.flank:
-					throttle = 1.0f;
-					break;
-				case NavigationSpeed.random:
-					throttle = uniform(0.25f, 0.8f);
+				case WhereToSwimType.destination:
+					vec2d delta = m_whereToSwim.destination -
+						m_crew.submarine.transform.wposition;
+					if (delta != vec2d(0, 0))
+						m_crew.submarine.targetCourse = courseAngle(delta);
 					break;
 			}
-			throttle.clamp(0.0f, 1.0f);
-			m_crew.submarine.targetThrottle = throttle;
+			return ExecutionResult.success;
+		}
+	}
+
+	private final class MaintainThrottle: ActionNode
+	{
+		this()
+		{
+			super("Adjust throttle according to current order");
+		}
+
+		override ExecutionResult execute(ref int ticks)
+		{
+			assert(ticks > 0);
+			m_crew.submarine.targetThrottle = m_desiredThrottle;
 			return ExecutionResult.success;
 		}
 	}
 
 	private BehavourTreeNode buildEasyBt()
 	{
-		return new ParallelNode("Helmsman simultaneous rudder and thrust control", [
-			new FallbackNode("Course control", [
-				new SequenceNode("Set rudder course in case of course order", [
-					new ConditionNode("Is it a course order?"),
-					new NopAction("Set rudder course from course order")
-				]),
-				new SequenceNode("Set rudder course in case of destination order", [
-					new ConditionNode("Is it a destination order?"),
-					new NopAction("Set rudder course towards destination")
-				])
+		return new ParallelNode("Helmsman operations", [
+			new SequenceNode("Process captain orders", [
+				new ConditionNode("Is new helmsman order available?",
+					() { return whereToSwimOrder.hasOrder || navigationSpeedOrder.hasOrder; }),
+				new ProcessOrder()
 			]),
-			new SetSpeedSimple()
-		]);
+			new MaintainCourse(),
+			new MaintainThrottle()
+		], 1);
 	}
 }

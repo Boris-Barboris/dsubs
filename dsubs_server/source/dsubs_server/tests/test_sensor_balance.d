@@ -21,6 +21,8 @@ double getSpawnReqMaxSpeed(SpawnReq req)
 	return maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 }
 
+/*
+
 unittest
 {
 	SpawnReq req = SpawnReq("Bot trader", "Civilian three-blade screw");
@@ -38,3 +40,5 @@ unittest
 		15000.0f,
 		17.0f);
 }
+
+*/
