@@ -19,7 +19,7 @@ unittest
 {
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Globals.buildForTests();
-	AICrew crew = new AICrew(BOT_DIFFICULTY.easy);
+	AICrew crew = new AICrew(BOT_DIFFICULTY.hard);
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
 	crew.submarine = s;
 	s.captain = crew;

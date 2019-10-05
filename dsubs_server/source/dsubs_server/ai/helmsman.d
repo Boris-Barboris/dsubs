@@ -95,7 +95,6 @@ final class AIHelmsman
 			}
 			if (navigationSpeedOrder.hasOrder)
 			{
-				trace("navigationSpeedOrder order recieved");
 				m_navigationSpeed = navigationSpeedOrder.popFront();
 				final switch (m_navigationSpeed)
 				{

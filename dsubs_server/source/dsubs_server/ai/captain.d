@@ -247,7 +247,6 @@ final class AICaptain
 
 	void execute()
 	{
-		trace("Executing captain tree");
 		int ticks = m_ticksPerExecute;
 		m_btRoot.execute(ticks);
 	}

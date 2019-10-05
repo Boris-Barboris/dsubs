@@ -182,7 +182,7 @@ final class RoundRobinNode: LinearChildrenNode
 			return ExecutionResult.success;
 		ptrdiff_t i = m_lastIdxMemory - 1;
 		scope(exit) m_lastIdxMemory = max(0, i.to!size_t);
-		static ExecutionResult[] childrenResults;
+		ExecutionResult[] childrenResults;
 		childrenResults.length = m_children.length;
 		while (ticks > 0)
 		{
@@ -224,7 +224,7 @@ final class ParallelNode: LinearChildrenNode
 	override ExecutionResult execute(ref int ticks)
 	{
 		assert(ticks > 0);
-		static int[] childTicks;
+		int[] childTicks;
 		childTicks.length = m_children.length;
 		childTicks[] = ticks;
 		int successCount;
@@ -260,7 +260,7 @@ final class ConditionNode: BehavourTreeNode
 	{
 		assert(ticks > 0);
 		bool res = predicate();
-		trace("ConditionNode ", description, " predicate returned ", res);
+		// trace("ConditionNode ", description, " predicate returned ", res);
 		if (res)
 			return ExecutionResult.success;
 		else
