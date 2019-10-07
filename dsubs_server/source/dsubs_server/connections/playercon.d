@@ -56,7 +56,7 @@ private:
 				decrypt(req.password, &m_backendPrivKeyInfo));
 			if (m_player.submarine)
 			{
-				// we are already spawned
+				info("Player is already spawned");
 				sendMessage(immutable LoginRes(true, "Welcome",
 					Globals.entityDb.commonEntityDbHash, true));
 			}
@@ -85,6 +85,7 @@ private:
 	{
 		Player p = m_player;
 		enforce!AuthException(p, "unauthorized");
+		info("Handling spawn request for ", p.name);
 		immutable(ReconnectStateRes) rres = p.handleSpawnRequest(req);
 		sendMessage(immutable SpawnRes(true));
 		sendMessage(rres);
@@ -95,6 +96,7 @@ private:
 	{
 		Player p = m_player;
 		enforce!AuthException(p, "unauthorized");
+		info("Sending reconnect state to ", p.name);
 		synchronized(Globals.simMut.reader)
 		{
 			sendMessage(p.getReconnectState());
@@ -133,6 +135,7 @@ private:
 	{
 		Player p = m_player;
 		enforceAuthAndSim(p);
+		info(p.name, " requests ping");
 		p.handleEmitPingRequest(req);
 	}
 
@@ -154,6 +157,7 @@ private:
 	{
 		Player p = m_player;
 		enforceAuthAndSim(p);
+		info(p.name, " requests tube launch: ", req);
 		p.handleLaunchTubeReq(req);
 	}
 }
