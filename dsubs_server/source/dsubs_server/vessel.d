@@ -115,18 +115,20 @@ class Vessel
 	/// Ensure that the vessel is dead. Returns true if it was killed first time.
 	bool kill(string cause)
 	{
-		if (!m_dead)
+		synchronized(this)
 		{
-			m_deathTime = Globals.sim.worldTime;
-			m_reapTime = m_deathTime + uniform!("[]", usecs_t, usecs_t)(240, 360) *
-				1000_000;
-			if (m_propulsor)
-				targetThrottle = 0.0f;
-			m_dead = true;
-			m_causeOfDeath = cause;
-			return true;
+			if (!m_dead)
+				m_dead = true;
+			else
+				return false;
 		}
-		return false;
+		m_deathTime = Globals.sim.worldTime;
+		m_reapTime = m_deathTime + uniform!("[]", usecs_t, usecs_t)(240, 360) *
+			1000_000;
+		if (m_propulsor)
+			targetThrottle = 0.0f;
+		m_causeOfDeath = cause;
+		return true;
 	}
 }
 

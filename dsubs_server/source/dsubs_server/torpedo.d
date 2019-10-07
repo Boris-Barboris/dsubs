@@ -429,9 +429,8 @@ final class TorpedoGuidance: IGuidance
 		m_torpedo.m_detonated = true;
 		foreach (v; inKillRadius)
 		{
-			bool isActuallyKilled;
-			synchronized(v)
-				isActuallyKilled = v.kill("Killed by " ~ m_torpedo.prototypeName ~ " torpedo");
+			bool isActuallyKilled = v.kill(
+				"Killed by " ~ m_torpedo.prototypeName ~ " torpedo");
 			if (Globals.database && isActuallyKilled)
 			{
 				void reportFunc()
