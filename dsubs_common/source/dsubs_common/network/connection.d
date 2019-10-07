@@ -121,7 +121,7 @@ class ProtocolConnection(alias Protocol)
 	final void start()
 	{
 		m_writerThread = spawn(cast(shared void delegate()) &writerProc);
-		m_readerThread = new Thread(&readProc, 512 * 1024).start();
+		m_readerThread = new Thread(&readProc).start();
 		m_started = true;
 	}
 
