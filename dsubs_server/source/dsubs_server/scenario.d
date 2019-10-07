@@ -214,13 +214,16 @@ final class BattleRoyale: Scenario
 	{
 		double dist = 0.0;
 		vec2d res;
-		while (dist <= 0.8 * m_nextRadius)
+		int attempts = 32;
+		while (dist <= 0.8 * m_nextRadius && attempts-- > 0)
 		{
 			res = m_nextCenter + rotateVector(
 				vec2d(0, m_nextRadius * (0.65 + 0.3 * uniform01)),
 				uniform(0, 2 * PI));
 			dist = (pos - res).length;
 		}
+		if (attempts <= 0)
+			warning("getDistantPos got into infinite loop");
 		return res;
 	}
 
