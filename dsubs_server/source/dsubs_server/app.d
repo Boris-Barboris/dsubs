@@ -1,6 +1,8 @@
 module dsubs_server.app;
 
 import core.stdc.stdlib;
+import core.thread;
+import core.time: seconds, msecs;
 
 import std.process: environment;
 
@@ -47,6 +49,7 @@ void main(string[] argv)
 		Globals.cons.bindSockets();
 		Globals.sim.start();
 		Globals.cons.startListeners();
+		auto livenessThread = new Thread(&livenessWatchdog).start();
 		Globals.sim.join();		// blocks forever
 	}
 	catch (Throwable e)
@@ -55,4 +58,16 @@ void main(string[] argv)
 		exit(1);
 	}
 	exit(0);
+}
+
+void livenessWatchdog()
+{
+	usecs_t lastWorldTime = Globals.sim.worldTime;
+	while (true)
+	{
+		Thread.sleep(seconds(10));
+		if (Globals.sim.worldTime == lastWorldTime)
+			abort();
+		lastWorldTime = Globals.sim.worldTime;
+	}
 }
