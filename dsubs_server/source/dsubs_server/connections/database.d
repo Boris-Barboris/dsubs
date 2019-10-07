@@ -36,35 +36,24 @@ final class DatabaseService
 	private
 	{
 		string m_mysqlConStr;
-		Connection m_con;
 	}
 
 	private @property Connection connection()
 	{
-		if (m_con)
-			return m_con;
-		m_con = new Connection(m_mysqlConStr);
-		return m_con;
+		return new Connection(m_mysqlConStr);
 	}
 
-	private auto wrapInRetry(DlgT)(DlgT dlg)
+	private auto wrapTsac(DlgT)(DlgT dlg)
 	{
-		synchronized(this)
+		try
 		{
-			try
-			{
-				Connection con = connection;
-				return dlg(con);
-			}
-			catch (Exception ex)
-			{
-				error("Database error: ", ex.toString);
-				if (m_con)
-					m_con.close();
-				m_con = null;
-				Connection con = connection;
-				return dlg(con);
-			}
+			Connection con = connection;
+			scope(exit) con.close();
+			auto res = dlg(con);
+		}
+		catch (Exception ex)
+		{
+			error("Error in wrapTsac: ", ex.toString);
 		}
 	}
 
@@ -78,7 +67,7 @@ final class DatabaseService
 				return null;
 			return new PlayerDb(rs[0][0].get!string, rs[0][1].get!string);
 		}
-		return wrapInRetry(&func);
+		return wrapTsac(&func);
 	}
 
 	void insertPlayer(string login, string password)
@@ -88,7 +77,7 @@ final class DatabaseService
 			con.exec("INSERT INTO players (login_name, login_password) " ~
 				"VALUES(?, ?)", login, password);
 		}
-		wrapInRetry(&func);
+		wrapTsac(&func);
 	}
 
 	private static string captainType(Captain cpt)
@@ -127,6 +116,6 @@ final class DatabaseService
 				weapon.guidance.distanceTraveled
 			);
 		}
-		wrapInRetry(&func);
+		wrapTsac(&func);
 	}
 }

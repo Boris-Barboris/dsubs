@@ -11,17 +11,12 @@ import dsubs_server.submarine;
 import dsubs_server.ai.common;
 import dsubs_server.ai.helmsman;
 
-public import dsubs_server.ai.common: BOT_DIFFICULTY;
 
 
-abstract class AICrewTemp: Captain
-{
-	void afterSimulation();
-}
-
-
-/// Set of officers that operate the submarine.
-final class AICrew: AICrewTemp
+/**
+Set of officers that operate the submarine.
+*/
+final class AICrew: Captain
 {
 	override @property string name() const { return m_name; }
 
@@ -39,33 +34,30 @@ final class AICrew: AICrewTemp
 		string m_name;
 		BOT_DIFFICULTY m_difficulty;
 		CrewState m_state;
-		CrewGoal m_goal;
+		CaptainGoal m_goal;
 	}
 
-	@property CrewGoal goal() { return m_goal; }
+	@property CaptainGoal goal() { return m_goal; }
 
 	// set new goal for a captain of the crew
-	@property void goal(CrewGoal rhs)
+	@property void goal(CaptainGoal rhs)
 	{
 		m_goal = rhs;
-		m_captain.captainOrder.pushBack(rhs);
+		m_state.captainOrder.pushBack(rhs);
 	}
 
 	@property CrewState state() { return m_state; }
 
-	alias submarine = Captain.submarine;
-
 	override @property void submarine(Submarine rhs)
 	{
-		super.submarine = rhs;
+		super(rhs);
 		// we need to build the officers according to submarine capabilities and
 		// bot difficulty.
 		m_captain = new AICaptain(this, m_difficulty);
 		m_helmsman = new AIHelmsman(this, m_difficulty);
-		trace("Building AICrew with ", m_difficulty, " difficulty");
 	}
 
-	override void afterSimulation()
+	void afterSimulation()
 	{
 		if (m_submarine is null || m_submarine.dead)
 			return;
@@ -84,33 +76,27 @@ enum GoalStatus
 	failed
 }
 
-bool isFinalStatus(GoalStatus status)
-{
-	return status != GoalStatus.needAction;
-}
 
-
-/// The highest-order goal the crew can understand
-abstract class CrewGoal
+abstract class CaptainGoal
 {
-	this(AICrew crew)
+	this(AICaptain captain)
 	{
-		m_crew = crew;
+		m_captain = captain;
 	}
 
-	protected AICrew m_crew;
+	protected AICaptain m_captain;
 
-	final @property AICrew crew() { return m_crew; }
+	final @property AICaptain captain() { return m_captain; }
 
 	@property GoalStatus status();
 }
 
 
-final class SwimToDestinationGoal: CrewGoal
+final class SwimToDestinationGoal: CaptainGoal
 {
-	this(AICrew crew, vec2d dest)
+	this(AICaptain captain, vec2d dest)
 	{
-		super(crew);
+		super(captain);
 		m_destination = dest;
 	}
 
@@ -119,7 +105,7 @@ final class SwimToDestinationGoal: CrewGoal
 
 	override @property GoalStatus status()
 	{
-		vec2d subPos = crew.submarine.transform.wposition;
+		vec2d subPos = m_captain.crew.submarine.transform.wposition;
 		double diff = (subPos - m_destination).length;
 		if (diff < 200.0)
 			return GoalStatus.succeeded;
@@ -129,7 +115,7 @@ final class SwimToDestinationGoal: CrewGoal
 }
 
 
-struct OrderQueue(T)
+struct OrderQueue!(T)
 {
 	this(size_t queueSize)
 	{
@@ -138,7 +124,7 @@ struct OrderQueue(T)
 
 	private CircQueue!T m_queue;
 
-	@property bool hasOrder() const
+	@property bool hasOrders() const
 	{
 		return m_queue.length > 0;
 	}
@@ -157,45 +143,44 @@ struct OrderQueue(T)
 }
 
 
-/// Strongly-typed CIC state, blackboard.
+/// Strongly-typed blackboard
 final class CrewState
 {
 }
 
+enum ContactRelation
+{
+	unknown,
+	neutral,
+	enemy
+}
 
-// enum ContactRelation
-// {
-// 	unknown,
-// 	neutral,
-// 	enemy
-// }
+enum ContactClass
+{
+	unknown,
+	weapon,
+	vessel,
+	decoy,
+	environment
+}
 
-// enum ContactClass
-// {
-// 	unknown,
-// 	weapon,
-// 	vessel,
-// 	decoy,
-// 	environment
-// }
+struct Solution
+{
+	bool positionKnown;
+	bool velocityKnown;
+	usecs_t atTime;
+	vec2d position;
+	vec2d velocity;
+}
 
-// struct Solution
-// {
-// 	bool positionKnown;
-// 	bool velocityKnown;
-// 	usecs_t atTime;
-// 	vec2d position;
-// 	vec2d velocity;
-// }
-
-// /// CIC of bot crew tracks contacts
-// struct Contact
-// {
-// 	Vessel vessel;
-// 	ContactRelation relation;
-// 	ContactClass classification;
-// 	Solution solution;
-// }
+/// CIC of bot crew tracks contacts
+struct Contact
+{
+	Vessel vessel;
+	ContactRelation relation;
+	ContactClass classification;
+	Solution solution;
+}
 
 
 bool isCombatCapable(const Submarine sub)
@@ -221,7 +206,7 @@ final class AICaptain
 		m_difficulty = difficulty;
 		m_ticksPerExecute = ticksPerDifficulty(m_difficulty);
 		m_btRoot = buildEasyCaptainBt();
-		captainOrder = OrderQueue!CrewGoal(1);
+		captainOrder = OrderQueue!CaptainGoal(1);
 	}
 
 	private
@@ -230,82 +215,15 @@ final class AICaptain
 		BehavourTreeNode m_btRoot;
 		BOT_DIFFICULTY m_difficulty;
 		int m_ticksPerExecute;
-
-		CrewGoal m_activeGoal;
-		HelmsmanOrderGoal m_helmsmansOrderGoal;
-	}
-
-	private enum HelmsmanOrderGoal: byte
-	{
-		unset,	/// there was no order given to helmsman
-		obsolete,	/// last order, given to helmsman, is not about current captain goal
-		sync	/// helmsman's order is in sync with captain's order
 	}
 
 	/// orders are to be put here
-	OrderQueue!CrewGoal captainOrder;
+	OrderQueue!CaptainGoal captainOrder;
 
 	void execute()
 	{
 		int ticks = m_ticksPerExecute;
 		m_btRoot.execute(ticks);
-	}
-
-	private final class ProcessNewOrder: FixedCostActionNode
-	{
-		this(string file = __FILE__, size_t line = __LINE__)
-		{
-			super("Consume new crew order", 500, file, line);
-		}
-
-		override ExecutionResult onTicksConsumed()
-		{
-			trace("ProcessNewOrder onTicksConsumed");
-			if (!captainOrder.hasOrder)
-				return ExecutionResult.failure;
-			m_activeGoal = captainOrder.popFront();
-			trace("Captain received new goal: ", m_activeGoal.toString);
-			if (m_helmsmansOrderGoal != HelmsmanOrderGoal.unset)
-				m_helmsmansOrderGoal = HelmsmanOrderGoal.obsolete;
-			return ExecutionResult.success;
-		}
-	}
-
-	private final class OrderHelmsmanToSwimToDest: FixedCostActionNode
-	{
-		this(string file = __FILE__, size_t line = __LINE__)
-		{
-			super("Give commands to helmsman to arrive at destination", 400,
-				file, line);
-		}
-
-		override ExecutionResult onTicksConsumed()
-		{
-			SwimToDestinationGoal goal = cast(SwimToDestinationGoal) m_activeGoal;
-			assert(goal);
-			trace("Ordering helmsman to swim to destination");
-			WhereToSwim whereToSwim;
-			whereToSwim.type = WhereToSwimType.destination;
-			whereToSwim.destination = goal.destination;
-			m_crew.m_helmsman.whereToSwimOrder.pushBack(whereToSwim);
-			m_crew.m_helmsman.navigationSpeedOrder.pushBack(NavigationSpeed.random);
-			m_helmsmansOrderGoal = HelmsmanOrderGoal.sync;
-			return ExecutionResult.success;
-		}
-	}
-
-	private BehavourTreeNode orderExecutionTree()
-	{
-		FallbackNode fb = new FallbackNode("for different orders...", [
-			new SequenceNode("For destination order give command to helmsman", [
-				new ConditionNode("Is order a destination order?", () =>
-					cast(SwimToDestinationGoal) m_activeGoal !is null),
-				new ConditionNode("Helmsman order out of sync?", () =>
-					m_helmsmansOrderGoal != HelmsmanOrderGoal.sync),
-				new OrderHelmsmanToSwimToDest()
-			])
-		]);
-		return fb;
 	}
 
 	private BehavourTreeNode buildEasyCaptainBt()
@@ -326,13 +244,13 @@ final class AICaptain
 		// 		]);
 		// }
 		rootFallbackNodes ~= [
-			new SequenceNode("Process new order", [
-				new ConditionNode("New order present", () => captainOrder.hasOrder),
-				new ProcessNewOrder()
+			new SequenceNode("Proceed to destination", [
+				new ConditionNode("Destination defined", null),
+				new NopAction("Swim to destination")
 				]),
-			orderExecutionTree()
+			new NopAction("Idle")
 		];
-		BehavourTreeNode res = new FallbackNode("Easy captain AI", rootFallbackNodes);
+		BehavourTreeNode res = new FallbackNode("Easy captain AI", rootFallbackNodes, true);
 		return res;
 	}
 }

@@ -470,6 +470,14 @@ final class PlayerCollection
 		if (username.length == 0)
 			throw new AuthException("Empty login");
 		scope(success) info("Player ", username, " authorized");
+		if (Globals.database)
+		{
+			PlayerDb* pdb = Globals.database.getPlayerByLogin(username);
+			if (pdb is null)
+				Globals.database.insertPlayer(username, password);
+			else if (pdb.login_password != password)
+				throw new AuthException("invalid login or password");
+		}
 		synchronized(Globals.simMut.reader)
 		{
 			synchronized(this)
@@ -486,16 +494,7 @@ final class PlayerCollection
 				else
 				{
 					// new player
-					Player np;
-					if (Globals.database)
-					{
-						PlayerDb* pdb = Globals.database.getPlayerByLogin(username);
-						if (pdb is null)
-							Globals.database.insertPlayer(username, password);
-						else if (pdb.login_password != password)
-							throw new AuthException("invalid login or password");
-					}
-					np = new Player(con, username, password);
+					Player np = new Player(con, username, password);
 					m_players[username] = np;
 					return np;
 				}
