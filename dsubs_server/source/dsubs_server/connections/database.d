@@ -49,11 +49,12 @@ final class DatabaseService
 		{
 			Connection con = connection;
 			scope(exit) con.close();
-			auto res = dlg(con);
+			return dlg(con);
 		}
 		catch (Exception ex)
 		{
 			error("Error in wrapTsac: ", ex.toString);
+			throw ex;
 		}
 	}
 
