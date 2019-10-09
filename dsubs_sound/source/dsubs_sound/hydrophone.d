@@ -2,6 +2,7 @@ module dsubs_sound.hydrophone;
 
 import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
+import std.algorithm: canFind, map;
 import std.array: array;
 import std.range;
 import std.mathspecial;
@@ -46,6 +47,18 @@ struct HydrophonePrototype
 interface IFlowNoiseMultiplier
 {
 	float getFlowNoiseMult();
+}
+
+
+/// Result of sound source projection on a hydrophone
+struct SourceImprint
+{
+	SoundSource source;
+	IntensityLevel backgroundLevel;
+	IntensityLevel signalLevel;
+	// omni sources have this true if they are heard only by their
+	// omni component.
+	bool directionAvailable;
 }
 
 
@@ -139,11 +152,18 @@ final class Hydrophone
 
 		// when false, no calculations should be performed
 		bool m_active = true;
+		// set to true to never generate Tds for m_listenDir.
+		bool m_muteTds;
 		// world-space direction the player is listening to
 		float m_listenDir = 0.0f;
 		// false when no active antenna has a beam for chosen listen Dir
 		bool m_listenDirValid;
 		bool m_needPrevReset;
+		// bots need to programatically process records of foreign sources.
+		// set this to true in order to
+		bool m_maintainImprints;
+		// Array of sources that were applied to this hydrophone antennaes.
+		SourceImprint[] m_imprints;
 
 		// sound signals that are generated for actively-listening player
 		Tds m_prevTds;
@@ -187,6 +207,16 @@ final class Hydrophone
 		if (!rhs)
 			m_listenDirValid = false;
 	}
+
+	@property bool muteTds() const { return m_muteTds; }
+
+	@property void muteTds(bool rhs) { m_muteTds = rhs; }
+
+	@property bool maintainImprints() const { return m_maintainImprints; }
+
+	@property void maintainImprints(bool rhs) { m_maintainImprints = rhs; }
+
+	@property SourceImprint[] imprints() { return m_imprints; }
 
 	/// set world-space direction the user wants to listen to
 	@property void listenDir(float rhs)
@@ -232,14 +262,12 @@ final class Hydrophone
 		m_listenDirValid = false;
 		foreach (ant; m_ant)
 		{
-			if (m_listenDirValid)
+			if (m_listenDirValid || m_muteTds)
 			{
 				ant.listenCell = false;
 				continue;
 			}
-			double relBearing = clampAnglePi(
-				m_listenDir - m_transform.wrotation - ant.rot);
-			bool belongs = (relBearing <= m_span / 2) && (relBearing >= -m_span / 2);
+			bool belongs = belongsToAntennae(m_listenDir, ant);
 			if (belongs)
 			{
 				m_listenDirValid = true;
@@ -248,6 +276,13 @@ final class Hydrophone
 			else
 				ant.listenCell = false;
 		}
+	}
+
+	private bool belongsToAntennae(double worldBearing, Antennae ant)
+	{
+		double relBearing = clampAnglePi(
+			worldBearing - m_transform.wrotation - ant.rot);
+		return (relBearing <= m_span / 2) && (relBearing >= -m_span / 2);
 	}
 
 	private void startCalculateSeaNoise(CommandQueue q)
@@ -346,6 +381,7 @@ final class Hydrophone
 				m_needPrevReset = false;
 			}
 		}
+		m_imprints.length = 0;
 		startCalculateSeaNoise(q);
 		startCalculateFlowNoise(q);
 		foreach (a; m_ant)
@@ -366,11 +402,14 @@ final class Hydrophone
 		int beamEnd;
 		double relBearing1;
 		double relBearing2;
+		// true when source is between beams
+		bool inside;
 	}
 
 	// precalculated sound source context
 	private struct SourcePrecalc
 	{
+		SoundSource source;
 		vec2d dirEnd;
 		vec2d dirStart;
 		double rangeStart;
@@ -400,6 +439,7 @@ final class Hydrophone
 	private SourcePrecalc precalcForSource(SoundSource s)
 	{
 		SourcePrecalc res;
+		res.source = s;
 		res.dirStart = s.prevPos - m_prevPos;
 		res.dirEnd = s.position - m_transform.wposition;
 		res.rangeStart = max(10.0, res.dirStart.length);
@@ -466,7 +506,37 @@ final class Hydrophone
 		}
 		foreach (i, a; m_ant)
 			a.applyBuiltIntensity(i.to!int, m_sourceQueue.front);
+		if (m_maintainImprints)
+			appendToImprints(m_sourceQueue.front);
 		m_sourceQueue.popFront();
+	}
+
+	private void appendToImprints(ref SourcePrecalc sp)
+	{
+		SourceImprint imprint;
+		imprint.source = sp.source;
+		// we replace noise floor by floor + 0.5 of variance
+		imprint.backgroundLevel = IntensityLevel(
+			0.5f * m_baseNoise + getIsotropicIntens().toDb);
+		float signalIntensity = 0.0f;
+		for (int i = 0; i < sp.components; i++)
+			signalIntensity += sp.bandSum[i].val;
+		if (signalIntensity <= 0.0f)
+			return;
+		signalIntensity /= GLOBAL_SRATE / 2;
+		bool visible = sp.antPrec[].map!(ap => ap.inside).canFind(true);
+		if (visible)
+			imprint.directionAvailable = true;
+		else
+		{
+			float omniMult = sp.omniFactorEnd * m_directivity * m_omniNoiseMult;
+			signalIntensity *= omniMult;
+			imprint.directionAvailable = false;
+		}
+		imprint.signalLevel = Intensity(signalIntensity).toDb();
+		// if signal level is statistically significant
+		if (imprint.signalLevel > imprint.backgroundLevel)
+			m_imprints ~= imprint;
 	}
 
 	private void startSourceCalc(CommandQueue q, SoundSource s, ref SourcePrecalc p)
@@ -576,6 +646,18 @@ final class Hydrophone
 		return res;
 	}
 
+	private Intensity getIsotropicIntens()
+	{
+		assert(!isNaN(m_baseSeaNoise.val));
+		assert(!isNaN(m_baseFlowNoiseStart.val));
+		assert(!isNaN(m_baseFlowNoiseEnd.val));
+		float isoIntens = m_baseSeaNoise +
+			0.5f * (m_baseFlowNoiseStart + m_baseFlowNoiseEnd);
+		// we actually draw average bin intensity
+		isoIntens /= m_listenToCellR * GLOBAL_SRATE / 2;
+		return Intensity(isoIntens);
+	}
+
 	/// Continuous block of hydrophone elements
 	private final class Antennae
 	{
@@ -608,13 +690,7 @@ final class Hydrophone
 		/// apply backround sea noise and flow noises
 		void applyIsotropic()
 		{
-			assert(!isNaN(m_baseSeaNoise.val));
-			assert(!isNaN(m_baseFlowNoiseStart.val));
-			assert(!isNaN(m_baseFlowNoiseEnd.val));
-			float isoIntens = m_baseSeaNoise +
-				0.5f * (m_baseFlowNoiseStart + m_baseFlowNoiseEnd);
-			// we actually draw average bin intensity
-			isoIntens /= m_listenToCellR * GLOBAL_SRATE / 2;
+			float isoIntens = getIsotropicIntens();
 			foreach (ref c; beams)
 				c += isoIntens;
 		}
@@ -700,7 +776,8 @@ final class Hydrophone
 				sectorNormToCell(proj2.left));
 			antPrec.beamEnd = max(antPrec.beamEnd,
 				sectorNormToCell(proj2.right));
-			return antPrec.beamEnd >= antPrec.beamStart;
+			antPrec.inside = antPrec.beamEnd >= antPrec.beamStart;
+			return antPrec.inside;
 		}
 
 		void applyBuiltIntensity(int antIdx, ref SourcePrecalc p)
