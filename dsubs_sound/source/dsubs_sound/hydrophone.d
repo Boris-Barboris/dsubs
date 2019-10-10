@@ -516,6 +516,8 @@ final class Hydrophone
 		SourceImprint imprint;
 		imprint.source = sp.source;
 		// we replace noise floor by floor + 0.5 of variance
+		// m_isotropicReadyEvt is finished at the time of this call
+		// so we can safely call getIsotropicIntens
 		imprint.backgroundLevel = IntensityLevel(
 			0.5f * m_baseNoise + getIsotropicIntens().toDb);
 		float signalIntensity = 0.0f;
@@ -985,11 +987,15 @@ unittest
 		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
 			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
 		prop.postUpdate(freq, spd, 1.0f);
+		h.maintainImprints = true;
 		h.resetAndStartIsotropic(q);
 		assert(h.m_listenDirValid);
 		assert(h.m_ant[0].listenCell >= 0);
 		h.applySoundSource(q, prop);
 		h.flushSourceQueue();
+		assert(h.imprints.length == 1);
+		assert(h.imprints[0].source is prop);
+		assert(h.imprints[0].directionAvailable);
 		h.endIsotropic();
 		h.finalizeListenTds(q);
 		q.s_tds.enqueueRead(q,
