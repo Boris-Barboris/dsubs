@@ -84,64 +84,64 @@ final class FFTPlan(int N = GLOBAL_SRATE)
 }
 
 
-unittest
-{
-	import std.stdio;
-	import std.algorithm: map;
-	import std.range: chain;
-	import core.time: MonoTime;
-	import dsubs_sound.filter;
-	import dsubs_sound.wav;
+// unittest
+// {
+// 	import std.stdio;
+// 	import std.algorithm: map;
+// 	import std.range: chain;
+// 	import core.time: MonoTime;
+// 	import dsubs_sound.filter;
+// 	import dsubs_sound.wav;
 
-	alias float2 = Complex!float;
-	enum int fftSize = GLOBAL_SRATE / 2;
+// 	alias float2 = Complex!float;
+// 	enum int fftSize = GLOBAL_SRATE / 2;
 
-	float2[] noise = new float2[fftSize];
-	float2[] spectrum = new float2[fftSize];
-	for (int i = 0; i < noise.length; i++)
-	{
-		noise[i].re = uniform(-10.0f, 10.0f);
-		noise[i].im = uniform(-10.0f, 10.0f);
-	}
+// 	float2[] noise = new float2[fftSize];
+// 	float2[] spectrum = new float2[fftSize];
+// 	for (int i = 0; i < noise.length; i++)
+// 	{
+// 		noise[i].re = uniform(-10.0f, 10.0f);
+// 		noise[i].im = uniform(-10.0f, 10.0f);
+// 	}
 
-	Fft checker = new Fft(fftSize);
-	float2[] reference = checker.fft!(float)(noise);
+// 	Fft checker = new Fft(fftSize);
+// 	float2[] reference = checker.fft!(float)(noise);
 
-	DsubsSoundOpenclCtx ctx = s_clCtx;
-	CommandQueue mainQueue = ctx.queue(0);
-	auto plan = new FFTPlan!(fftSize)(ctx);
-	Buffer sbuf = Buffer(mainQueue, noise);
-	Buffer sourceCopy = Buffer(ctx, sbuf.size);
-	sbuf.enqueueCopy(mainQueue, sourceCopy, null).release();
-	mainQueue.finish();
+// 	DsubsSoundOpenclCtx ctx = s_clCtx;
+// 	CommandQueue mainQueue = ctx.queue(0);
+// 	auto plan = new FFTPlan!(fftSize)(ctx);
+// 	Buffer sbuf = Buffer(mainQueue, noise);
+// 	Buffer sourceCopy = Buffer(ctx, sbuf.size);
+// 	sbuf.enqueueCopy(mainQueue, sourceCopy, null).release();
+// 	mainQueue.finish();
 
-	int fftCount = 256;
-	auto startAt = MonoTime.currTime();
-	for (int i = 0; i < fftCount; i++)
-	{
-		sourceCopy.enqueueCopy(mainQueue, sbuf, null).release();
-		plan.forward(mainQueue, sbuf);
-	}
-	mainQueue.finish();
-	writeln(fftCount, " ffts took ", MonoTime.currTime - startAt, " on OpenCL");
-	sbuf.fullRead(mainQueue, spectrum.ptr, null);
+// 	int fftCount = 256;
+// 	auto startAt = MonoTime.currTime();
+// 	for (int i = 0; i < fftCount; i++)
+// 	{
+// 		sourceCopy.enqueueCopy(mainQueue, sbuf, null).release();
+// 		plan.forward(mainQueue, sbuf);
+// 	}
+// 	mainQueue.finish();
+// 	writeln(fftCount, " ffts took ", MonoTime.currTime - startAt, " on OpenCL");
+// 	sbuf.fullRead(mainQueue, spectrum.ptr, null);
 
-	for (int i = 0; i < spectrum.length; i++)
-	{
-		scope (failure)	writeln("fft mismatch ", reference[i], " with ", spectrum[i]);
-		assert(fabs(reference[i].re - spectrum[i].re) < 1e-2);
-		assert(fabs(reference[i].im - spectrum[i].im) < 1e-2);
-	}
+// 	for (int i = 0; i < spectrum.length; i++)
+// 	{
+// 		scope (failure)	writeln("fft mismatch ", reference[i], " with ", spectrum[i]);
+// 		assert(fabs(reference[i].re - spectrum[i].re) < 1e-2);
+// 		assert(fabs(reference[i].im - spectrum[i].im) < 1e-2);
+// 	}
 
-	// test ifft
-	plan.inverse(mainQueue, sbuf);
-	float2[] generatedNoise = new float2[noise.length];
-	sbuf.fullRead(mainQueue, generatedNoise.ptr, null);
+// 	// test ifft
+// 	plan.inverse(mainQueue, sbuf);
+// 	float2[] generatedNoise = new float2[noise.length];
+// 	sbuf.fullRead(mainQueue, generatedNoise.ptr, null);
 
-	for (int i = 0; i < generatedNoise.length; i++)
-	{
-		scope (failure)	writeln("ifft mismatch ", noise[i], " with ", generatedNoise[i]);
-		assert(fabs(noise[i].re - generatedNoise[i].re) < 1e-2);
-		assert(fabs(noise[i].im - generatedNoise[i].im) < 1e-2);
-	}
-}
+// 	for (int i = 0; i < generatedNoise.length; i++)
+// 	{
+// 		scope (failure)	writeln("ifft mismatch ", noise[i], " with ", generatedNoise[i]);
+// 		assert(fabs(noise[i].re - generatedNoise[i].re) < 1e-2);
+// 		assert(fabs(noise[i].im - generatedNoise[i].im) < 1e-2);
+// 	}
+// }

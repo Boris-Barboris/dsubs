@@ -163,23 +163,23 @@ version (unittest)
 }
 
 
-unittest
-{
-	import dsubs_sound.wav;
+// unittest
+// {
+// 	import dsubs_sound.wav;
 
-	auto ctx = s_clCtx;
-	CommandQueue q = ctx.queue(0);
-	ISpectrum spec = ISpectrum(q, 1.0f);
-	spec.patch(q, 0.0f, 0, 200);
-	Tds tds = Tds(ctx);
-	spec.toTimeDomain(q, tds);
-	auto tmParams = stdTrochParams();
-	trace("tmParams: ", tmParams);
-	TrochoidModulator tm = TrochoidModulator(&tmParams);
-	tm.updateFundFreq(0.5f, 2.0f);
-	tm.modulate(q, tds);
-	modulateIInterp(q, tds, 0.001f, 1.0f);
-	float[GLOBAL_SRATE] samples;
-	tds.enqueueRead(q, samples[]).waitFor();
-	writeWavFile("opencl_trochmod.wav", samples[], 10.0f);
-}
+// 	auto ctx = s_clCtx;
+// 	CommandQueue q = ctx.queue(0);
+// 	ISpectrum spec = ISpectrum(q, 1.0f);
+// 	spec.patch(q, 0.0f, 0, 200);
+// 	Tds tds = Tds(ctx);
+// 	spec.toTimeDomain(q, tds);
+// 	auto tmParams = stdTrochParams();
+// 	trace("tmParams: ", tmParams);
+// 	TrochoidModulator tm = TrochoidModulator(&tmParams);
+// 	tm.updateFundFreq(0.5f, 2.0f);
+// 	tm.modulate(q, tds);
+// 	modulateIInterp(q, tds, 0.001f, 1.0f);
+// 	float[GLOBAL_SRATE] samples;
+// 	tds.enqueueRead(q, samples[]).waitFor();
+// 	writeWavFile("opencl_trochmod.wav", samples[], 10.0f);
+// }

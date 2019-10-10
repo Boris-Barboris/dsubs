@@ -436,77 +436,77 @@ version (unittest)
 }
 
 
-unittest
-{
-	PropellerSound ps = new PropellerSound(new Transform2D(), stdPropellerProto());
-	ps.preUpdate(2.0f, 0.0f);
-	trace("2Hz propeller normalVel on 0 m/s: ", ps.m_normalVelStart);
-	ps.preUpdate(2.0f, 5.0f);
-	trace("2Hz propeller normalVel on 5 m/s: ", ps.m_normalVelStart);
-	ps.preUpdate(2.0f, 15.0f);
-	trace("2Hz propeller normalVel on 15 m/s: ", ps.m_normalVelStart);
-}
+// unittest
+// {
+// 	PropellerSound ps = new PropellerSound(new Transform2D(), stdPropellerProto());
+// 	ps.preUpdate(2.0f, 0.0f);
+// 	trace("2Hz propeller normalVel on 0 m/s: ", ps.m_normalVelStart);
+// 	ps.preUpdate(2.0f, 5.0f);
+// 	trace("2Hz propeller normalVel on 5 m/s: ", ps.m_normalVelStart);
+// 	ps.preUpdate(2.0f, 15.0f);
+// 	trace("2Hz propeller normalVel on 15 m/s: ", ps.m_normalVelStart);
+// }
 
-unittest
-{
-	DsubsSoundOpenclCtx ctx = s_clCtx;
-	CommandQueue q = ctx.queue(0);
-	ISpectrum spec = ISpectrum(q, 2.0f);
-	float bandSum;
-	Buffer sumBuf = Buffer(ctx, float.sizeof);
-	spec.reduceSum(q, sumBuf);
-	sumBuf.enqueueFullRead(q, &bandSum, null).waitFor();
-	assert(fabs(bandSum - GLOBAL_SRATE) < 1e-3);
-	Tds timeDomain = Tds(q, 0.0f);
-	spec.toTimeDomain(q, timeDomain);
-	float[] signal;
-	signal.length = GLOBAL_SRATE;
-	timeDomain.read(q, signal);
-	float sqr = signal.map!(a => a * a).sum();
-	trace("sum of quared pressure samples of 2-watt intensity spectrum: ", sqr);
-	assert(fabs(sqr - 2.0f) < 1e-3);
-}
+// unittest
+// {
+// 	DsubsSoundOpenclCtx ctx = s_clCtx;
+// 	CommandQueue q = ctx.queue(0);
+// 	ISpectrum spec = ISpectrum(q, 2.0f);
+// 	float bandSum;
+// 	Buffer sumBuf = Buffer(ctx, float.sizeof);
+// 	spec.reduceSum(q, sumBuf);
+// 	sumBuf.enqueueFullRead(q, &bandSum, null).waitFor();
+// 	assert(fabs(bandSum - GLOBAL_SRATE) < 1e-3);
+// 	Tds timeDomain = Tds(q, 0.0f);
+// 	spec.toTimeDomain(q, timeDomain);
+// 	float[] signal;
+// 	signal.length = GLOBAL_SRATE;
+// 	timeDomain.read(q, signal);
+// 	float sqr = signal.map!(a => a * a).sum();
+// 	trace("sum of quared pressure samples of 2-watt intensity spectrum: ", sqr);
+// 	assert(fabs(sqr - 2.0f) < 1e-3);
+// }
 
-unittest
-{
-	DsubsSoundOpenclCtx ctx = s_clCtx;
-	CommandQueue q = ctx.queue(0);
-	ISpectrum spec = ISpectrum(q, GLOBAL_SRATE);
-	float bandSum;
-	Buffer sumBuf = Buffer(ctx, float.sizeof);
-	spec.reduceSum(q, sumBuf);
-	sumBuf.enqueueFullRead(q, &bandSum, null).waitFor();
-	assert(fabs(bandSum - GLOBAL_SRATE * GLOBAL_SRATE / 2) < 1e-3);
-	Tds timeDomain = Tds(q, 0.0f);
-	spec.toTimeDomain(q, timeDomain);
-	float[] signal;
-	signal.length = GLOBAL_SRATE;
-	timeDomain.read(q, signal);
-	float msqr = signal.map!(a => a * a).sum() / GLOBAL_SRATE;
-	trace("mean square of pressure samples of GLOBAL_SRATE ",
-		"intensity spectrum: ", msqr);
-	assert(fabs(msqr - 1.0f) < 1e-3);
-}
+// unittest
+// {
+// 	DsubsSoundOpenclCtx ctx = s_clCtx;
+// 	CommandQueue q = ctx.queue(0);
+// 	ISpectrum spec = ISpectrum(q, GLOBAL_SRATE);
+// 	float bandSum;
+// 	Buffer sumBuf = Buffer(ctx, float.sizeof);
+// 	spec.reduceSum(q, sumBuf);
+// 	sumBuf.enqueueFullRead(q, &bandSum, null).waitFor();
+// 	assert(fabs(bandSum - GLOBAL_SRATE * GLOBAL_SRATE / 2) < 1e-3);
+// 	Tds timeDomain = Tds(q, 0.0f);
+// 	spec.toTimeDomain(q, timeDomain);
+// 	float[] signal;
+// 	signal.length = GLOBAL_SRATE;
+// 	timeDomain.read(q, signal);
+// 	float msqr = signal.map!(a => a * a).sum() / GLOBAL_SRATE;
+// 	trace("mean square of pressure samples of GLOBAL_SRATE ",
+// 		"intensity spectrum: ", msqr);
+// 	assert(fabs(msqr - 1.0f) < 1e-3);
+// }
 
-unittest
-{
-	DsubsSoundOpenclCtx ctx = s_clCtx;
-	CommandQueue q = ctx.queue(0);
-	PropellerSound snd = new PropellerSound(new Transform2D(), stdPropellerProto());
-	snd.preUpdate(1.0f, 10.0f);
-	snd.postUpdate(1.0f, 10.0f, 1.0f);
+// unittest
+// {
+// 	DsubsSoundOpenclCtx ctx = s_clCtx;
+// 	CommandQueue q = ctx.queue(0);
+// 	PropellerSound snd = new PropellerSound(new Transform2D(), stdPropellerProto());
+// 	snd.preUpdate(1.0f, 10.0f);
+// 	snd.postUpdate(1.0f, 10.0f, 1.0f);
 
-	void onTdsReady(Intensity* bandIntensitySumReady, Buffer* bandIntensitySumBuf, Tds* tds)
-	{
-		trace("onTdsReady called");
-		assert(tds is null);
-		float bandSum = -1.0f;
-		bandIntensitySumBuf.enqueueFullRead(q, &bandSum, null).waitFor();
-		trace("bandSum = ", bandSum);
-		assert(bandSum != -1.0f);
-		assert(!isNaN(bandSum));
-	}
+// 	void onTdsReady(Intensity* bandIntensitySumReady, Buffer* bandIntensitySumBuf, Tds* tds)
+// 	{
+// 		trace("onTdsReady called");
+// 		assert(tds is null);
+// 		float bandSum = -1.0f;
+// 		bandIntensitySumBuf.enqueueFullRead(q, &bandSum, null).waitFor();
+// 		trace("bandSum = ", bandSum);
+// 		assert(bandSum != -1.0f);
+// 		assert(!isNaN(bandSum));
+// 	}
 
-	snd.buildSignals(q, vec2d(1000.0, 0), vec2d(1000.0, 0),
-		&onTdsReady, 500, 2048, false, 4.0f);
-}
+// 	snd.buildSignals(q, vec2d(1000.0, 0), vec2d(1000.0, 0),
+// 		&onTdsReady, 500, 2048, false, 4.0f);
+// }

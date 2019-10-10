@@ -10,7 +10,7 @@ import dsubs_common.api.protocols.backend;
 import dsubs_common.math;
 
 import dsubs_sound.activesonar;
-import dsubs_sound.water: seaNoiseIL;
+import dsubs_sound.water: seaNoiseIL, flowNoise;
 import dsubs_sound.hydrophone;
 import dsubs_sound.modulation;
 import dsubs_sound.soundsource;
@@ -263,18 +263,19 @@ Search patterns: straight, snake, spiral.
 			[Chirp(3600, 3600, 0.1f)], 3, 3600, "octaveHp3500");
 		tf.asprot.maxPeakIlevel = tf.asprot.minPeakIlevel = 197.0f;
 		tf.asprot.omniBeamCount = 90;
-		tf.asprot.waterReflectivity = 0.0f;
+		tf.asprot.waterReflectivity = -100.0f;
 		tf.asprot.reflRangeNoise = 100 / 1e4;
 		tf.asprot.perlinCellSize = [23, 11];
-		tf.asprot.flowNoiseGain = -5.0f;
+		tf.asprot.flowNoiseGain = -10.0f;
 		tf.asprot.baseNoise = 1.5f;
 		tf.asprot.pingDirPower = 2.4f;
 		tf.asprot.dissMod = 1.0f;
 		tf.asprot.span = 120.0f;
 		tf.asprot.radialRes = 20;
 		tf.asprot.maxSec = 2;
-		tf.asprot.zeroLevel = dB(seaNoiseIL(3600).val + 75.0f);
-		tf.asprot.endScale = 0.03f;
+		tf.asprot.zeroLevel = flowNoise(3600, mps2kts(20)) +
+			tf.asprot.flowNoiseGain - 10.0f;
+		tf.asprot.endScale = 1.0f / 60.0f;
 		tf.detonationSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/explosion1_8192.wav"),
 			40.0f, 145.0f, 2e-3f);

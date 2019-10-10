@@ -20,7 +20,9 @@ import dsubs_sound.reverb;
 struct ReflectorPrototype
 {
 	vec2f size;				/// x - width, y - length
-	dB[3] reflectivity;		/// negative to conserve energy
+	/// 0 - frontal reflectivity. 1 - side reflectivity.
+	/// 2 - read reflectivity. negative to conserve energy
+	dB[3] reflectivity;
 }
 
 private struct PreparedReflector
@@ -215,17 +217,17 @@ unittest
 	FloatImage reverbImg = FloatImage(ctx, fimg.w, fimg.h);
 
 	PreparedReflector[] reflectors = [
-		PreparedReflector(0.0f, 1000.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(0.0f, 2000.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(-1.0f, 3000.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(-1.5f, 3000.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(-2.0f, 3000.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(-2.5f, 3000.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(-3.14f, 3000.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(3.14f, 3300.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(0.0f, 5000.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(0.0f, 7500.0f, 75.0f, 12.0f, -20.0f),
-		PreparedReflector(0.0f, 10000.0f, 75.0f, 12.0f, -20.0f)
+		PreparedReflector(0.0f, 1000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(0.0f, 2000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-1.0f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-1.5f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-2.0f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-2.5f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(-3.14f, 3000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(3.14f, 3300.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(0.0f, 5000.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(0.0f, 7500.0f, 75.0f, 12.0f, -10.0f),
+		PreparedReflector(0.0f, 10000.0f, 75.0f, 12.0f, -10.0f)
 	];
 	foreach (ref r; reflectors)
 		r.reflectivity = -20.0f;
@@ -295,8 +297,6 @@ unittest
 	float[] res;
 	res.length = fimg.w * fimg.h;
 	fimg.enqueueRead(q, res, [0, 0], [fimg.w, fimg.h]).waitFor();
-	float resMaxEl = res.maxElement;
-	trace("active_sonar max intensity level = ", res.maxElement);
 
 	foreach (float r; res)
 	{
@@ -306,7 +306,12 @@ unittest
 
 	string maxRange = (rangePerRow * fimg.h / 1000).to!int.to!string;
 
-	ubyte[] resBytes = res.map!(s => (min(1.0f, max(0.0f, s / resMaxEl)) *
+	trace("active_sonar after isotropic: ", res[0..8]);
+	trace("Active sonar prototype: ", proto);
+
+	ubyte[] resBytes = res.map!(s => (
+		min(1.0f,
+			max(0.0f, (s - proto.zeroLevel) * proto.endScale)) *
 		ubyte.max).to!ubyte).array;
 	write_image("active_sonar_" ~ maxRange ~ "km.png", fimg.w, fimg.h, resBytes, ColFmt.Y);
 
@@ -395,20 +400,20 @@ struct ActiveSonarPrototype
 	/// base uniform picture noise
 	dB baseNoise = 2.0f;
 	/// antennae directivity gain, used in isotopic sea noise calculation
-	dB directivity = 30.0f;
+	dB directivity = 20.0f;
 	/// water mass reflectivity
-	float waterReflectivity = 5e-4f;
+	dB waterReflectivity = -100.0f;
 	/// main sound dissipation modifier
 	float dissMod = 6.0f;
 	/// gain for flow noise
-	dB flowNoiseGain = 10.0f;
+	dB flowNoiseGain = -5.0f;
 	/// contact bearing error magnitude
 	float reflBearingNoise = 0.025f;
 	/// contact range error magnitude gain per meter of range
 	float reflRangeNoise = 200 / 10000.0f;
 	/// reverb gains gotten from getReverbGains function
 	immutable(float)[] reverbk = getReverbGains(
-		[1.0f, 0.5f, 0.2f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.01f);
+		[1.0f, 0.6f, 0.25f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.005f);
 	/// how fast reverb strength increases with range
 	float reverbGainRangeK = 1 / 8000.0f;
 	/// perlin noise cell sizes (two noise passes are added)
@@ -416,9 +421,9 @@ struct ActiveSonarPrototype
 	/// perlin noise amplitudes (two noise passes are added)
 	dB[2] perlinGain = [7.9f, 4.3f];
 	/// sonar image will be black on this pixel intensity level
-	dB zeroLevel = dB(seaNoiseIL(2200).val + 20.0f);
+	dB zeroLevel = dB(seaNoiseIL(2200).val - 23.0f);
 	/// when converting to ubyte, intensity levels will be scaled by this value
-	float endScale = 1 / 110.0f;
+	float endScale = 1 / 160.0f;
 
 	/// Slice horizontal resolution
 	int getSliceXResol() const
@@ -551,6 +556,7 @@ final class ActiveSonar
 	@property bool hasSliceToSend() const { return m_hasSliceToSend; }
 	/// True when more slices can be generated.
 	@property bool canGenerateSlice() const { return (m_slicesLeft > 0); }
+	/// Sonar-monotonic ping id sequence.
 	@property int pingCounter() const { return m_pingCounter; }
 
 	/// index of current to-send slice: [0 .. slicesInPing)

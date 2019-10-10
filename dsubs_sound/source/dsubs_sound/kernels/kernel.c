@@ -342,14 +342,13 @@ void __kernel sonarIsotropicPass(
 	const uint hidx = x + y * beamCount;
 	uint randState = getRngState(seed, hidx);
 	const float fromEmitter = rangePerRow * (y + 0.5f);
-	const float waterNoise = toLinear(seaNoiseIL(pingFreq) + directivity) *
-		rangePerRow / SOUND_SPD;
+	const float waterNoise = toLinear(seaNoiseIL(pingFreq) - directivity);
 	const float wrdk = wrdks[pingFreq - 1];
 	const float relBearing = calcRelBearing(span, x, beamCount);
 	const dB pingIntens = pingAtRelBearing(pingParams, relBearing);
+	// water itself reflects, like dust in flashlight's beam.
 	float waterRefl = getILatRange2(wrdk, pingIntens, 2 * fromEmitter, dissMod);
-	waterRefl = toLinear(waterRefl) * waterReflectivity *
-		rangePerRow / SOUND_SPD;
+	waterRefl = toLinear(waterRefl + waterReflectivity);
 
 	float reflIntens = read_imagef(source, sampler,
 		(int2)(beamCount - x - 1, rowCount - y - 1)).x;
@@ -413,18 +412,51 @@ float areaUnderNormDistCyclic(float mean, float a, float b, float disp)
 	return 0.5f * (erf(normRight) - erf(normLeft));
 }
 
+// Value of the cell is assumed to be the mean sound intensity that the
+// receiver beam was subject to during one row imprinting. Isotropic constant
+// sound sources apply their intensity with no multipliers but simple directivity,
+// which constitutes sonar's angular resolution and beamforming capabilities.
+// Reflector's sound source however is not constant and is only active when the
+// 'pulse' (we assume that the ping is instant wave front of zero duration)
+// is traversing reflector's body. Reflector is also of non-zero size, which means
+// it can span multiple cells.
+// To calculate reflector's imprint on a cell, we need to know what part of the
+// cell can be assumed a reflector's body. Then we simply multiply that number
+// on the reference reflection on that range and get cell's brightness.
+
 float getEnergyPart(
 	const struct reflector ref,
 	const float2 cellBearings,
 	const float2 cellDepth,
 	float beamAngle)
 {
-	float angDisp = 1.0f * atan(ref.width * 0.5f / ref.range);
-	float angArea = areaUnderNormDistCyclic(ref.relBearing, cellBearings.x,
-		cellBearings.y, angDisp);
-	float radArea = areaUnderNormDist(ref.range, cellDepth.x,
+	// angilar size of the reflector
+	float angSize = 1.0f * atan(ref.width * 0.5f / ref.range);
+	// Ratio of reflection's energy flux to the flux of this cell
+	// if it was made completely out of reflector's material.
+	float reflectorToCellRatio =
+		angSize / beamAngle *
+		ref.depth / (cellDepth.y - cellDepth.x);
+
+	// We assume that reflection intensity is normally distributed
+	// aroud reflector's center. This gives us smooth round imprints.
+	//
+	// If 1.0 is whole reflected energy across whole reflector body,
+	// which part of it is reflected along the 0-max range beam on which
+	// this cell lies.
+	float beamPart = areaUnderNormDistCyclic(ref.relBearing, cellBearings.x,
+		cellBearings.y, angSize);
+	// If 1.0 is whole reflected energy across whole reflector body,
+	// which part of it is reflected along the cellDepth-size ring on which
+	// this cell lies.
+	float ringPart = areaUnderNormDist(ref.range, cellDepth.x,
 		cellDepth.y, ref.depth);
-	return angArea * radArea * angDisp / beamAngle;
+
+	// Now if we multiply reflector's intensity with 'reflectorToCellRatio'
+	// we get the cell's average reflected intensity under ping, as if
+	// reflector was completely inside the cell. Next we just reduce it more
+	// in order ro accout for very big reflectors.
+	return beamPart * ringPart * reflectorToCellRatio;
 }
 
 
@@ -462,6 +494,7 @@ void __kernel sonarReflectorPass(
 		uint randState = getRngState(seed, ri);
 		ref.relBearing += uniform(&randState, -reflParamNoise.x, reflParamNoise.x);
 		ref.range *= (1.0f + uniform(&randState, -reflParamNoise.y, reflParamNoise.y));
+		// 2 * ref.range because reflected signal walks the distance twice
 		dB targetReflect = getILatRange2(wrdk, pingIntens, 2 * ref.range, dissMod);
 		targetReflect += ref.reflectivity;
 		float energyPart = getEnergyPart(ref, cellBearings, cellDepth, beamAngle);
