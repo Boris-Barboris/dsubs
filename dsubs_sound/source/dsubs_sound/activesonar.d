@@ -413,7 +413,7 @@ struct ActiveSonarPrototype
 	float reflRangeNoise = 200 / 10000.0f;
 	/// reverb gains gotten from getReverbGains function
 	immutable(float)[] reverbk = getReverbGains(
-		[1.0f, 0.6f, 0.25f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.005f);
+		[1.0f, 0.6f, 0.25f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.00001f);
 	/// how fast reverb strength increases with range
 	float reverbGainRangeK = 1 / 8000.0f;
 	/// perlin noise cell sizes (two noise passes are added)
