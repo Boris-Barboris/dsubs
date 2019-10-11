@@ -239,6 +239,7 @@ class VesselFactory
 		res.m_rudder = brudder;
 		// reflector
 		res.m_reflector = new Reflector(res.transform, reflprot);
+		res.m_reflector.owner = res;
 		// rudder and propulsor
 		assert(res.m_rudder !is null);
 		if (res.m_propulsor)

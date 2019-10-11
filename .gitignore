@@ -7,6 +7,7 @@
 *.userosscache
 *.sln.docstates
 .directory
+*.prod
 libdsubs_common.a
 librequests.a
 dsubs_client/dsubs_client

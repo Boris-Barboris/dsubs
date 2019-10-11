@@ -80,9 +80,18 @@ final class BasicPropulsor: Propulsor
 		m_throttle = cmove(m_throttle, targetThrottle, rotAcceleration, dt);
 	}
 
+	@property Vessel owner()
+	{
+		if (m_vesselRb)
+			return m_vesselRb.vesselOwner;
+		return null;
+	}
+
 	override void bootstrap(RigidBody vesselRb)
 	{
+		assert(vesselRb);
 		m_vesselRb = vesselRb;
+		m_sound.owner = vesselRb.vesselOwner;	// let's set the owner to vessel
 		m_sound.onPreKinematics += ()
 		{
 			m_sound.preUpdate(m_throttle * shaftRotFreq, m_vesselRb.kinet.progradeSpeed);
@@ -131,6 +140,7 @@ final class PropulsorFactory
 		res.m_mass = mass;
 		res.shaftRotFreq = shaftRotFreq;
 		res.m_sound = new PropellerSound(res.transform, soundPrototype);
+		res.m_sound.owner = res;
 		return res;
 	}
 }

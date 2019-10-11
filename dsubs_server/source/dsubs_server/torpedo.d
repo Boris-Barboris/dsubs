@@ -809,6 +809,7 @@ final class TorpedoFactory: WeaponFactory
 			t.rotation = sensorsMount.rotation;
 			res.transform.addChild(t);
 			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot);
+			res.m_sonar.owner = res;
 			res.m_sonar.onPreKinematics += ()
 			{
 				res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;

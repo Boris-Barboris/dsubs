@@ -145,6 +145,7 @@ final class AnimalFactory
 		res.m_rigidBody.mass = mass;
 		res.m_rigidBody.moi = 1.0f;
 		res.m_reflector = new Reflector(res.m_transform, reflprot);
+		res.m_reflector.owner = res;
 		return res;
 	}
 }

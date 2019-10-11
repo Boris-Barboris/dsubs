@@ -152,6 +152,7 @@ final class SubmarineFactory: VesselFactory
 			if (asprot)
 			{
 				res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot);
+				res.m_sonar.owner = res;
 				res.m_sonar.onPreKinematics += ()
 				{
 					res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;
@@ -180,7 +181,7 @@ final class SubmarineFactory: VesselFactory
 	Submarine build(Captain cpt, Propulsor prop,
 		const(AmmoRoomFullState)[] roomStates, const(TubeSpawnState)[] tubeStates) const
 	{
-		Submarine res = new Submarine(cpt, tmpl.name);
+		Submarine res = new Submarine(null, tmpl.name);
 		res.propulsor = prop;
 		AmmoRoomFullState[int] specifiedRoomStates;
 		foreach (rs; roomStates)
@@ -207,6 +208,10 @@ final class SubmarineFactory: VesselFactory
 				tubeProto, specifiedState ? specifiedState.loadedWeapon : null);
 		}
 		bootstrap(res);
+		// delayed captain assignment in order to have initialized sensors and weapons
+		res.captain = cpt;
+		if (cpt)
+			cpt.submarine = res;
 		return res;
 	}
 }

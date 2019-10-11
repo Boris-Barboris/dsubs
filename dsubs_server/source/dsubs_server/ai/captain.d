@@ -10,10 +10,12 @@ import dsubs_server.player;
 import dsubs_server.submarine;
 import dsubs_server.ai.common;
 import dsubs_server.ai.helmsman;
+import dsubs_server.ai.acoustic;
 
 public import dsubs_server.ai.common: BOT_DIFFICULTY;
 
 
+/// temporary interface in order to not break default BR scenario
 abstract class AICrewTemp: Captain
 {
 	void afterSimulation();
@@ -36,6 +38,7 @@ final class AICrew: AICrewTemp
 	{
 		AICaptain m_captain;
 		AIHelmsman m_helmsman;
+		AIAcoustic m_acoustic;
 		string m_name;
 		BOT_DIFFICULTY m_difficulty;
 		CrewState m_state;
@@ -63,6 +66,11 @@ final class AICrew: AICrewTemp
 		m_captain = new AICaptain(this, m_difficulty);
 		m_helmsman = new AIHelmsman(this, m_difficulty);
 		trace("Building AICrew with ", m_difficulty, " difficulty");
+		if (isCombatCapable(rhs))
+		{
+			m_acoustic = new AIAcoustic(this, m_difficulty);
+			m_acoustic.prepareSensors();
+		}
 	}
 
 	override void afterSimulation()
@@ -73,6 +81,8 @@ final class AICrew: AICrewTemp
 			m_captain.execute();
 		if (m_helmsman)
 			m_helmsman.execute();
+		if (m_acoustic)
+			m_acoustic.execute();
 	}
 }
 
@@ -160,42 +170,53 @@ struct OrderQueue(T)
 /// Strongly-typed CIC state, blackboard.
 final class CrewState
 {
+	Contact[Vessel] contacts;
 }
 
 
-// enum ContactRelation
-// {
-// 	unknown,
-// 	neutral,
-// 	enemy
-// }
+enum ContactRelation
+{
+	unknown,
+	neutral,
+	enemy
+}
 
-// enum ContactClass
-// {
-// 	unknown,
-// 	weapon,
-// 	vessel,
-// 	decoy,
-// 	environment
-// }
+enum ContactClass
+{
+	unknown,
+	weapon,
+	submarine,
+	decoy
+}
 
-// struct Solution
-// {
-// 	bool positionKnown;
-// 	bool velocityKnown;
-// 	usecs_t atTime;
-// 	vec2d position;
-// 	vec2d velocity;
-// }
+struct Solution
+{
+	bool set;
+	usecs_t atTime;
+	bool positionKnown;
+	vec2d position;
+	vec2d velocity = vec2d(0, 0);
+}
 
-// /// CIC of bot crew tracks contacts
-// struct Contact
-// {
-// 	Vessel vessel;
-// 	ContactRelation relation;
-// 	ContactClass classification;
-// 	Solution solution;
-// }
+/// CIC of bot crew tracks contacts
+struct Contact
+{
+	Vessel vessel;
+	usecs_t createdAt;
+	ContactRelation relation;
+	ContactClass classification;
+	Solution solution;
+	// counters that govern solution quality.
+	float passiveSonarPoints = 0.0f;
+	int activeSonarPoints = 0;
+	usecs_t lastRayData;
+	usecs_t lastPositionData;
+
+	float age() const
+	{
+		return (Globals.sim.worldTime - createdAt) / 1000_000;
+	}
+}
 
 
 bool isCombatCapable(const Submarine sub)

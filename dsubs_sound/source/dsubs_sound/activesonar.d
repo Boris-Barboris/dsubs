@@ -56,6 +56,9 @@ final class Reflector
 		m_proto = p;
 	}
 
+	/// Abstract owner
+	Object owner;
+
 	private Transform2D m_transform;
 
 	@property Transform2D transform() { return m_transform; }
@@ -473,6 +476,9 @@ final class ActiveSonar
 		}
 	}
 
+	/// Abstract owner
+	Object owner;
+
 	private
 	{
 		Transform2D m_transform;
@@ -600,8 +606,10 @@ final class ActiveSonar
 		m_pingCounter++;
 		m_pkparams = PingKernelParams(m_curPingIlevel,
 			m_curPingIlevel + m_proto.antiPeakIlevelDiff, m_proto.pingDirPower);
-		return new SonarPing(m_transform.wposition, m_omiWrot,
+		SonarPing res = new SonarPing(m_transform.wposition, m_omiWrot,
 			m_proto.pingParams.effectiveFreq, m_pkparams, m_refPingTds, pingTdsOffset);
+		res.owner = this.owner;		// transitive ownership
+		return res;
 	}
 
 	@property bool pingJustStarted() const { return m_pingJustStarted; }

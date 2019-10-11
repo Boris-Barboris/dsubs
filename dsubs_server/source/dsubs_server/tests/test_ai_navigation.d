@@ -14,15 +14,12 @@ import dsubs_server.ai.captain;
 import dsubs_server.tests.common;
 
 
-
 unittest
 {
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Globals.buildForTests();
 	AICrew crew = new AICrew(BOT_DIFFICULTY.hard);
-	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	crew.submarine = s;
-	s.captain = crew;
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, crew);
 	s.register();
 	SwimToDestinationGoal goal1, goal2;
 	goal1 = new SwimToDestinationGoal(crew, vec2d(-1000, 0));

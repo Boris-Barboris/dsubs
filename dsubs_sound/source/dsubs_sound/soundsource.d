@@ -19,8 +19,11 @@ abstract class SoundSource
 	private
 	{
 		vec2d m_prevPos;
-	 	Transform2D m_transform;
+		Transform2D m_transform;
 	}
+
+	/// Abstract owner
+	Object owner;
 
 	this(Transform2D t)
 	{
