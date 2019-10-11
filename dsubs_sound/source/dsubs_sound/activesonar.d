@@ -34,6 +34,16 @@ private struct PreparedReflector
 	dB reflectivity;
 }
 
+/// Estimate of a reflector's impact on sonar image, that can be used
+/// for AI sensors.
+struct ReflectorImprint
+{
+	Reflector reflector;
+	PreparedReflector preparedReflector;
+	dB noiseLevel;
+	dB signalLevel;
+}
+
 
 /// Rectangular reflector of active sonar impulses
 final class Reflector
@@ -430,6 +440,11 @@ struct ActiveSonarPrototype
 	{
 		return (span / 360.0f * omniBeamCount).to!int;
 	}
+
+	float getBeamAngle() const
+	{
+		return dgr2rad(span / getSliceXResol());
+	}
 }
 
 
@@ -591,12 +606,84 @@ final class ActiveSonar
 
 	@property bool pingJustStarted() const { return m_pingJustStarted; }
 
-	/// Given the range of all active reflectors on the map,
-	/// imprint them on newly-created ping image
-	void drawReflectors(RR)(CommandQueue q, RR reflectors)
+
+	/// CPU-side version of drawReflectors that is very approximate and
+	/// does not actually generate an image. Call either this or
+	/// drawReflectors after startPing. Ping is assumed to be instant,
+	/// no slicing delay is in place. Flow noise and rotaiton is calculated
+	/// for current time.
+	ReflectorImprint[] estimateReflectors(RR)(RR reflectors)
 	{
 		assert(m_pingJustStarted);
 		m_pingJustStarted = false;
+		m_slicesLeft = 0;
+
+		Reflector[] passedReflectors;
+		PreparedReflector[] prepr = prepareReflectors(reflectors, &passedReflectors);
+		ReflectorImprint[] res;
+		const float omniRangePerRow = SOUND_SPD / 2.0f / m_proto.radialRes;
+		const float beamAngle = m_proto.getBeamAngle();
+		float flowNoiseMultExternal = 1.0f;
+		foreach (fnm; flowNoiseMultipliers)
+			flowNoiseMultExternal *= fnm.getFlowNoiseMult();
+		const dB flowNoiseGain = m_proto.flowNoiseGain + toDb(flowNoiseMultExternal);
+		const dB flowNoiseDb = flowNoise(m_proto.pingParams.effectiveFreq, m_ktsEnd).val +
+			flowNoiseGain;
+		assert(!isNaN(flowNoiseDb));
+
+		foreach (i, pr; prepr)
+		{
+			if (fabs(pr.relBearing) >= dgr2rad(m_proto.span))
+				continue;	// outside of sonar span
+			ReflectorImprint imprint;
+			const IntensityLevel pingIntens = pingAtRelBearing(m_pkparams, pr.relBearing);
+			imprint.signalLevel = estimateReflectorSignal(pr, pingIntens,
+				omniRangePerRow, beamAngle);
+			assert(isNormal(imprint.signalLevel));
+			imprint.noiseLevel = estimateNoiseSignal(
+				pr, pingIntens, IntensityLevel(flowNoiseDb));
+			assert(isNormal(imprint.noiseLevel));
+			// skip undetectable reflectors
+			if (imprint.signalLevel <= imprint.noiseLevel)
+				continue;
+			imprint.reflector = passedReflectors[i];
+			imprint.preparedReflector = pr;
+			res ~= imprint;
+		}
+
+		return res;
+	}
+
+	private dB estimateReflectorSignal(const PreparedReflector pr,
+		const IntensityLevel pingIntens, const float omniRangePerRow,
+		const float beamAngle)
+	{
+		dB targetReflect = getILatRange(m_proto.pingParams.effectiveFreq, pingIntens,
+			2.0f * pr.range, m_proto.dissMod);
+		// we only need to compare reflector's size to one pixel, because one pixel
+		// is enough to detect the target.
+		float angularSize = atan(pr.width * 0.5f / pr.range);
+		float reflectLinear = toLinear(targetReflect) *
+			min(1.0f, pr.depth / omniRangePerRow) *
+			min(1.0f, angularSize / beamAngle);
+		return toDb(reflectLinear);
+	}
+
+	private dB estimateNoiseSignal(const PreparedReflector pr,
+		const IntensityLevel pingIntens, const IntensityLevel flowNoise)
+	{
+		float waterNoiseLinear = toLinear(
+			seaNoiseIL(m_proto.pingParams.effectiveFreq) - m_proto.directivity);
+		dB waterRefl = getILatRange(m_proto.pingParams.effectiveFreq, pingIntens,
+			2 * pr.range, m_proto.dissMod);
+		float waterReflLinear = toLinear(waterRefl + m_proto.waterReflectivity);
+		return toDb(waterNoiseLinear + waterReflLinear + flowNoise.toLinear) +
+			m_proto.baseNoise * 0.5f;
+	}
+
+	private PreparedReflector[] prepareReflectors(RR)(RR reflectors,
+		Reflector[]* passed = null)
+	{
 		/// iterate over reflectors and build buffer for opencl
 		PreparedReflector[] prepr;
 		foreach (Reflector r; reflectors)
@@ -612,7 +699,19 @@ final class ActiveSonar
 			pr.relBearing = clampAnglePi(courseAngle(dir) - m_transform.wrotation);
 			r.calcForEmitter(m_transform.wposition, pr);
 			prepr ~= pr;
+			if (passed)
+				*passed ~= r;
 		}
+		return prepr;
+	}
+
+	/// Given the range of all active reflectors on the map,
+	/// imprint them on newly-created ping image
+	void drawReflectors(RR)(CommandQueue q, RR reflectors)
+	{
+		assert(m_pingJustStarted);
+		m_pingJustStarted = false;
+		PreparedReflector[] prepr = prepareReflectors(reflectors);
 		// push reflectors to opencl
 		Buffer reflectBuf = Buffer(q.ctx, PreparedReflector.sizeof * prepr.length);
 		reflectBuf.enqueueFullWrite(q, prepr, null).release();
@@ -742,19 +841,25 @@ unittest
 	CommandQueue q = ctx.queue(0);
 	auto sproto = ActiveSonarPrototype();
 	ActiveSonar s = new ActiveSonar(q, new Transform2D(), sproto);
+	q.finish();
 	s.angVelStart = 0.0f;
 	s.ktsStart = 0.0f;
 	s.angVelEnd = 0.0f;
-	s.ktsEnd = 0.0f;
+	s.ktsEnd = 10.0f;
 	s.onPreKinematics();
 	s.onPostKinematics();
-	Reflector refl = new Reflector(new Transform2D(),
-		ReflectorPrototype(vec2f(50, 50), [-1, -1, -1]));
-	refl.transform.position = vec2d(0, 2000);
+	Reflector refl1 = new Reflector(new Transform2D(),
+		ReflectorPrototype(vec2f(50, 50), [-20, -20, -20]));
+	refl1.transform.position = vec2d(0, 2000);
+	Reflector refl2 = new Reflector(new Transform2D(),
+		ReflectorPrototype(vec2f(50, 50), [-20, -20, -20]));
+	refl2.transform.position = vec2d(0, 10000);
 	s.startPing(sproto.maxPeakIlevel);
-	s.drawReflectors(q, [refl]);
-	s.startSliceGeneration(q);
-	q.finish();
+	ReflectorImprint[] imprints = s.estimateReflectors([refl1, refl2]);
+	trace("Active sonar imprints: ", imprints);
+	assert(imprints.length == 2);
+	assert(imprints[0].reflector is refl1);
+	assert(imprints[1].reflector is refl2);
 }
 
 

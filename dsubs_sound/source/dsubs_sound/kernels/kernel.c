@@ -430,7 +430,7 @@ float getEnergyPart(
 	const float2 cellDepth,
 	float beamAngle)
 {
-	// angilar size of the reflector
+	// angular size of the reflector
 	float angSize = 1.0f * atan(ref.width * 0.5f / ref.range);
 	// Ratio of reflection's energy flux to the flux of this cell
 	// if it was made completely out of reflector's material.
