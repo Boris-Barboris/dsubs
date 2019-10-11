@@ -655,7 +655,10 @@ final class Hydrophone
 		assert(!isNaN(m_baseFlowNoiseEnd.val));
 		float isoIntens = m_baseSeaNoise +
 			0.5f * (m_baseFlowNoiseStart + m_baseFlowNoiseEnd);
-		// we actually draw average bin intensity
+		// we actually draw average bin intensity.
+		// m_listenToCellR scale is done here because we multiply by
+		// in on GPU in order to get Tds signal of desired
+		// magnitude for listen beam, which is of width different from cell.
 		isoIntens /= m_listenToCellR * GLOBAL_SRATE / 2;
 		return Intensity(isoIntens);
 	}
