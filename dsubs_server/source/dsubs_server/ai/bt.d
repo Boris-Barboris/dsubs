@@ -315,11 +315,21 @@ abstract class FixedCostActionNode: ActionNode
 		m_ticksLeft = cost;
 	}
 
+	@property bool shouldBeRunning()
+	{
+		return true;
+	}
+
 	abstract ExecutionResult onTicksConsumed();
 
 	override ExecutionResult execute(ref int ticks)
 	{
 		assert(ticks > 0);
+		if (!shouldBeRunning)
+		{
+			m_ticksLeft = m_ticksCost;
+			return ExecutionResult.failure;
+		}
 		int delta = min(m_ticksCost, ticks, m_ticksLeft);
 		m_ticksLeft -= delta;
 		ticks -= delta;

@@ -1,5 +1,8 @@
 module dsubs_server.ai.captain;
 
+import std.algorithm;
+import std.array: array;
+
 import dsubs_common.containers.circqueue;
 
 import dsubs_server.common;
@@ -259,7 +262,8 @@ final class AICaptain
 	private enum HelmsmanOrderGoal: byte
 	{
 		unset,	/// there was no order given to helmsman
-		obsolete,	/// last order, given to helmsman, is not about current captain goal
+		desync,	/// last order, given to helmsman, is not about current captain goal,
+				/// or is simply obsolete
 		sync	/// helmsman's order is in sync with captain's order
 	}
 
@@ -279,6 +283,11 @@ final class AICaptain
 			super("Consume new crew order", 500, file, line);
 		}
 
+		override @property bool shouldBeRunning()
+		{
+			return captainOrder.hasOrder;
+		}
+
 		override ExecutionResult onTicksConsumed()
 		{
 			trace("ProcessNewOrder onTicksConsumed");
@@ -287,7 +296,7 @@ final class AICaptain
 			m_activeGoal = captainOrder.popFront();
 			trace("Captain received new goal: ", m_activeGoal.toString);
 			if (m_helmsmansOrderGoal != HelmsmanOrderGoal.unset)
-				m_helmsmansOrderGoal = HelmsmanOrderGoal.obsolete;
+				m_helmsmansOrderGoal = HelmsmanOrderGoal.desync;
 			return ExecutionResult.success;
 		}
 	}
@@ -298,6 +307,12 @@ final class AICaptain
 		{
 			super("Give commands to helmsman to arrive at destination", 400,
 				file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			return cast(SwimToDestinationGoal) m_activeGoal !is null &&
+				m_helmsmansOrderGoal != HelmsmanOrderGoal.sync;
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -318,13 +333,78 @@ final class AICaptain
 	private BehavourTreeNode orderExecutionTree()
 	{
 		FallbackNode fb = new FallbackNode("for different orders...", [
-			new SequenceNode("For destination order give command to helmsman", [
-				new ConditionNode("Is order a destination order?", () =>
-					cast(SwimToDestinationGoal) m_activeGoal !is null),
-				new ConditionNode("Helmsman order out of sync?", () =>
-					m_helmsmansOrderGoal != HelmsmanOrderGoal.sync),
-				new OrderHelmsmanToSwimToDest()
-			])
+			new OrderHelmsmanToSwimToDest()
+		]);
+		return fb;
+	}
+
+	private
+	{
+		// target, chosen as main
+		Vessel m_mainTarget;
+		CombatNavigationState m_combatNavState;
+		usecs_t m_lastFire;
+
+		enum CombatNavigationState: ubyte
+		{
+			none,
+			approachMainTarget,
+			tacticalFloat
+		}
+	}
+
+	private final class ChooseClosestEnemyContact: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Choose the closest enemy submarine with known " ~
+				"position as main target", 300, file, line);
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			static struct VesselAndRange
+			{
+				Vessel v;
+				double range;
+			}
+
+			vec2d curPos = m_crew.submarine.transform.wposition;
+			VesselAndRange[] enemyVessels = m_crew.state.contacts.byValue.filter!(
+				c =>
+					c.relation == ContactRelation.enemy &&
+					c.classification == ContactClass.submarine &&
+					c.solution.positionKnown).
+				map!(c => VesselAndRange(
+					c.vessel, (c.solution.position - curPos).length)).array;
+			if (enemyVessels.length == 0)
+				return ExecutionResult.failure;
+			enemyVessels.sort!((a, b) => a.range < b.range);
+			m_mainTarget = enemyVessels[0].v;
+			trace("Choosing closest target ", enemyVessels[0], " as main");
+			return ExecutionResult.success;
+		}
+	}
+
+	private BehavourTreeNode easyAttackTargetTree()
+	{
+		FallbackNode fb = new FallbackNode("simple attack pattern", [
+			new SequenceNode("sequence of actions for known target", [
+				new ConditionNode("if we have main target", () => m_mainTarget !is null),
+				new FallbackNode("when we have main target", [
+					new NopAction("drop target if it's dead or too old"),
+					new SequenceNode("Shoot torpedo", [
+						new NopAction("Swim closer to target if needed"),
+						new NopAction("Maintain tactical speed and point nose " ~
+							"onto the target"),
+						new ConditionNode("Haven't fired in the last 60 seconds", () =>
+							Globals.sim.worldTime - m_lastFire > 60_000_000L),
+						new NopAction("Ensure we have a loaded tube"),
+						new NopAction("Fire the tube onto the main target's solution")
+					])
+				])
+			]),
+			new ChooseClosestEnemyContact()
 		]);
 		return fb;
 	}
@@ -332,25 +412,12 @@ final class AICaptain
 	private BehavourTreeNode buildEasyCaptainBt()
 	{
 		BehavourTreeNode[] rootFallbackNodes;
-		// if (m_crew.submarine.isCombatCapable)
-		// {
-		// 	rootFallbackNodes ~= new SequenceNode("Attack if target visible", [
-		// 		new ConditionNode("Have ammo", null),
-		// 		new ConditionNode("Any target visible and solution ready", null),
-		// 		new FallbackNode("Approach and attack closest target", [
-		// 				new SequenceNode("Approach target if needed", [
-		// 					new ConditionNode("Closest target too far"),
-		// 					new NopAction("Approach closest target")
-		// 				]),
-		// 				new NopAction("Attack closest target")
-		// 			]),
-		// 		]);
-		// }
 		rootFallbackNodes ~= [
-			new SequenceNode("Process new order", [
-				new ConditionNode("New order present", () => captainOrder.hasOrder),
-				new ProcessNewOrder()
-				]),
+			new ProcessNewOrder(),
+			new ParallelNode("Dedicate time to both TMA and attacking the target", [
+				new NopAction("update solutions"),
+				easyAttackTargetTree(),
+			]),
 			orderExecutionTree()
 		];
 		BehavourTreeNode res = new FallbackNode("Easy captain AI", rootFallbackNodes);

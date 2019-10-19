@@ -86,6 +86,11 @@ final class AIHelmsman
 				file, line);
 		}
 
+		override @property bool shouldBeRunning()
+		{
+			return whereToSwimOrder.hasOrder || navigationSpeedOrder.hasOrder;
+		}
+
 		override ExecutionResult onTicksConsumed()
 		{
 			if (whereToSwimOrder.hasOrder)
@@ -172,11 +177,7 @@ final class AIHelmsman
 	private BehavourTreeNode buildEasyBt()
 	{
 		return new ParallelNode("Helmsman operations", [
-			new SequenceNode("Process captain orders", [
-				new ConditionNode("Is new helmsman order available?",
-					() { return whereToSwimOrder.hasOrder || navigationSpeedOrder.hasOrder; }),
-				new ProcessOrder()
-			]),
+			new ProcessOrder(),
 			new MaintainCourse(),
 			new MaintainThrottle()
 		], 1);
