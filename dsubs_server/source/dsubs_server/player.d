@@ -15,11 +15,42 @@ import dsubs_server.connections.playercon: PlayerConnection;
 import dsubs_server.connections.database;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.weaponry;
+import dsubs_server.ai.captain: ContactRelation;
 
 
 class AuthException: Exception
 {
 	mixin ExceptionConstructors;
+}
+
+
+final class SideOfConflict
+{
+	private
+	{
+		string m_name;
+		bool m_neutral;
+	}
+
+	this(string name, bool neutral = false)
+	{
+		m_name = name;
+		m_neutral = neutral;
+	}
+
+	@property string name() const { return m_name; }
+	@property bool neutral() const { return m_neutral; }
+
+	ContactRelation relateTo(SideOfConflict otherSide) const
+	{
+		if (otherSide is null)
+			return ContactRelation.unknown;
+		if (otherSide is this)
+			return ContactRelation.ally;
+		if (otherSide.neutral)
+			return ContactRelation.neutral;
+		return ContactRelation.enemy;
+	}
 }
 
 
@@ -29,6 +60,11 @@ class Captain
 	{
 		Submarine m_submarine;
 	}
+
+	private SideOfConflict m_side;
+
+	final @property const(SideOfConflict) side() const { return m_side; }
+	@property void side(SideOfConflict rhs) { m_side = rhs; }
 
 	abstract @property string name() const;
 	final @property Submarine submarine() { return m_submarine; }
@@ -84,6 +120,7 @@ final class Player: Captain
 		m_username = uname;
 		m_password = pw;
 		m_connection = con;
+		side = new SideOfConflict("Side of player " ~ uname, false);
 		con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
 		con.player = this;
 		atomicOp!"+="(s_playerCount, 1);

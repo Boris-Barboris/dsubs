@@ -180,6 +180,7 @@ final class CrewState
 enum ContactRelation
 {
 	unknown,
+	ally,
 	neutral,
 	enemy
 }
@@ -206,7 +207,7 @@ struct Contact
 {
 	Vessel vessel;
 	usecs_t createdAt;
-	ContactRelation relation;
+	ContactRelation relation;		// implies that captains do not switch sides
 	ContactClass classification;
 	Solution solution;
 	// counters that govern solution quality.

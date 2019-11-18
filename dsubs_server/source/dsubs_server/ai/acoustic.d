@@ -207,7 +207,13 @@ final class AIAcoustic
 					else if (cast(StaticDecoy) v)
 						cclass = ContactClass.decoy;
 					else if (cast(Submarine) v)
+					{
 						cclass = ContactClass.submarine;
+						// set relation
+						Submarine ctcSub = cast(Submarine) v;
+						if (ctcSub.captain)
+							ctc.relation = m_crew.side.relateTo(ctcSub.captain.side);
+					}
 					trace(si, " classified as ", cclass);
 					ctc.classification = cclass;
 				}
