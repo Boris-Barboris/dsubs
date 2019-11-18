@@ -354,6 +354,27 @@ final class AICaptain
 		}
 	}
 
+	private final class UpdateSolutions: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Perform TMA for all important contacts", 3000, file, line);
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			// loop over all contacts and update their solutions
+			foreach (vesselCtcPair; m_crew.state.contacts.byKeyValue)
+			{
+				Contact ctc = vesselCtcPair.value;
+				if (ctc.vessel.dead || ctc.vessel.captain is null)
+					continue;
+				
+			}
+			return ExecutionResult.success;
+		}
+	}
+
 	private final class ChooseClosestEnemyContact: FixedCostActionNode
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
