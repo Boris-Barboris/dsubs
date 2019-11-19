@@ -160,9 +160,9 @@ final class AIAcoustic
 			foreach (ref SourceImprint si; m_lastImprints)
 			{
 				Vessel v = cast(Vessel) si.source.owner;
-				if (v && (v !in m_crew.state.contacts))
+				if (v && (v !in m_crew.state.contacts) && !v.dead && v !is m_crew.submarine)
 				{
-					// vessel-owned sound source
+					// not-dead foreign vessel-owned sound source
 					m_imprintToReport = si;
 					m_running = true;
 					trace("Adding new source imprint ", si);

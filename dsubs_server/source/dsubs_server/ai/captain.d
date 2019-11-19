@@ -210,15 +210,16 @@ struct Contact
 	ContactRelation relation;		// implies that captains do not switch sides
 	ContactClass classification;
 	Solution solution;
-	// counters that govern solution quality.
-	float passiveSonarPoints = 0.0f;
-	int activeSonarPoints = 0;
 	usecs_t lastRayData;
 	usecs_t lastPositionData;
+	// Counters that abstract away contact and TMA quality.
+	float passiveSonarPoints = 0.0f;
+	float activeSonarPoints = 0.0f;
 
+	/// Age in seconds
 	float age() const
 	{
-		return (Globals.sim.worldTime - createdAt) / 1000_000;
+		return (Globals.sim.worldTime - createdAt) / 1000_000L;
 	}
 }
 
@@ -364,14 +365,26 @@ final class AICaptain
 		override ExecutionResult onTicksConsumed()
 		{
 			// loop over all contacts and update their solutions
+			Vessel[] contactsToRemove;
 			foreach (vesselCtcPair; m_crew.state.contacts.byKeyValue)
 			{
 				Contact ctc = vesselCtcPair.value;
-				if (ctc.vessel.dead || ctc.vessel.captain is null)
+				if (ctc.vessel.dead)
+				{
+					// we should drop dead contacts
+					contactsToRemove ~= ctc.vessel;
 					continue;
-				
+				}
+				updateContactSolution(ctc);
 			}
+			foreach (Vessel v; contactsToRemove)
+				m_crew.state.contacts.remove(v);
 			return ExecutionResult.success;
+		}
+
+		private updateContactSolution(ref Contact ctc)
+		{
+
 		}
 	}
 
@@ -437,7 +450,7 @@ final class AICaptain
 		rootFallbackNodes ~= [
 			new ProcessNewOrder(),
 			new ParallelNode("Dedicate time to both TMA and attacking the target", [
-				new NopAction("update solutions"),
+				new UpdateSolutions(),
 				easyAttackTargetTree(),
 			]),
 			orderExecutionTree()
