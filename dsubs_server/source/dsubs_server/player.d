@@ -41,7 +41,7 @@ final class SideOfConflict
 	@property string name() const { return m_name; }
 	@property bool neutral() const { return m_neutral; }
 
-	ContactRelation relateTo(SideOfConflict otherSide) const
+	ContactRelation relateTo(const SideOfConflict otherSide) const
 	{
 		if (otherSide is null)
 			return ContactRelation.unknown;

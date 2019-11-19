@@ -120,18 +120,18 @@ final class AIAcoustic
 			Vessel v = cast(Vessel) m_imprintToReport.source.owner;
 			assert(v);
 			CrewState state = m_crew.state;
-			Contact* existingContact = v in state.contacts;
+			Contact** existingContact = v in state.contacts;
 			if (existingContact)
 				applyToContact(*existingContact);
 			else
 			{
-				Contact newCtc = Contact(v);
+				Contact* newCtc = new Contact(v);
 				applyToContact(newCtc);
 				state.contacts[v] = newCtc;
 			}
 		}
 
-		private void applyToContact(ref Contact ctc)
+		private void applyToContact(Contact* ctc)
 		{
 			ctc.createdAt = Globals.sim.worldTime;
 			if (m_imprintToReport.directionAvailable)
@@ -192,9 +192,9 @@ final class AIAcoustic
 				Vessel v = cast(Vessel) si.source.owner;
 				if (v is null)
 					continue;
-				Contact* ctc = v in m_crew.state.contacts;
-				if (ctc is null)
+				if (v !in m_crew.state.contacts)
 					continue;
+				Contact* ctc = m_crew.state.contacts[v];
 				if (!si.directionAvailable)
 					continue;
 				ctc.lastHydrophoneData = Globals.sim.worldTime;
@@ -217,7 +217,7 @@ final class AIAcoustic
 							ctc.relation = m_crew.side.relateTo(ctcSub.captain.side);
 					}
 					trace(si, " classified as ", cclass, ", after ",
-						Globals.sim.worldTime - ctc.createdAt / 1000_000L, " seconds");
+						(Globals.sim.worldTime - ctc.createdAt) / 1000_000L, " seconds");
 					ctc.classification = cclass;
 				}
 			}

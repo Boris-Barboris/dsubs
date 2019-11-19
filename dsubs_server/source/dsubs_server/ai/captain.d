@@ -4,6 +4,7 @@ import std.algorithm;
 import std.array: array;
 
 import dsubs_common.containers.circqueue;
+import dsubs_common.math.angles;
 
 import dsubs_server.common;
 import dsubs_server.globals;
@@ -173,7 +174,7 @@ struct OrderQueue(T)
 /// Strongly-typed CIC state, blackboard.
 final class CrewState
 {
-	Contact[Vessel] contacts;
+	Contact*[Vessel] contacts;
 }
 
 
@@ -375,8 +376,8 @@ final class AICaptain
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			// 40 seconds for solutions update for an easy bot
-			super("Perform TMA for all important contacts", 4000, file, line);
+			// 30 seconds for solutions update for an easy bot
+			super("Perform TMA for all important contacts", 3000, file, line);
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -385,13 +386,16 @@ final class AICaptain
 			Vessel[] contactsToRemove;
 			foreach (vesselCtcPair; m_crew.state.contacts.byKeyValue)
 			{
-				Contact ctc = vesselCtcPair.value;
+				Contact* ctc = vesselCtcPair.value;
 				if (ctc.vessel.dead)
 				{
 					// we should drop dead contacts
 					contactsToRemove ~= ctc.vessel;
 					continue;
 				}
+				// do not update solutions too often
+				if (Globals.sim.worldTime - ctc.solution.atTime < SOLUTION_CONST_PERIOD)
+					continue;
 				updateContactSolution(ctc);
 			}
 			foreach (Vessel v; contactsToRemove)
@@ -402,14 +406,20 @@ final class AICaptain
 		/// How quickly the contact score drops with passive sonar data age.
 		enum float PASSIVE_DECAY_SQR_K = 0.05f;
 		/// How quickly the contact score drops with active sonar data age.
-		enum float ACTIVE_DECAY_SQR_K = 0.05f;
+		enum float ACTIVE_DECAY_SQR_K = 0.01f;
+		/// score penalty for unclassified contact
+		enum float UNCLASSIFIED_MULT = 0.05f;
 		/// Min score at wich we start to estimate contact position just from
 		/// ray data samples.
 		enum float POSITION_ESTIMATE_MIN_SCORE = 100.0f;
-		/// minimum pause between soluiton updates.
-		enum usecs_t SOLUTION_MIN_STABILITY = 10_000_000L;
+		/// minimum pause between solution updates.
+		enum usecs_t SOLUTION_CONST_PERIOD = 10_000_000L;
+		/// gain for balancing positional error
+		enum float POS_ERROR_SCORE_RATIO = 5.0f;
+		/// gain for balancing velocity error
+		enum float VEL_ERROR_SCORE_RATIO = 5.0f;
 
-		private updateContactSolution(ref Contact ctc)
+		private void updateContactSolution(Contact* ctc)
 		{
 			// first we need to cap points in order to prevent overflow
 			ctc.passiveSonarPoints = min(ctc.passiveSonarPoints, 1e5f);
@@ -417,20 +427,41 @@ final class AICaptain
 			// next we estimate universal contact score that we use to
 			// comare with contacts and set position/direction error.
 			float score = 0.0f;
-			// is there a positional data in the list of data samples?
+			// is there any positional data in the list of data samples?
 			bool hardPosData = false;
 			if (ctc.lastHydrophoneData)
 			{
-				score += ctc.solution.passiveSonarPoints /
-					PASSIVE_DECAY_SQR_K * pow(ctc.hydrophoneDataAge, 2);
+				score += ctc.passiveSonarPoints /
+					PASSIVE_DECAY_SQR_K / pow(ctc.hydrophoneDataAge, 2);
 			}
 			if (ctc.lastActiveSonarData)
 			{
 				hardPosData = true;
-				score += ctc.solution.activeSonarPoints /
-					ACTIVE_DECAY_SQR_K * pow(ctc.activeSonarDataAge, 2);
+				score += ctc.activeSonarPoints /
+					ACTIVE_DECAY_SQR_K / pow(ctc.activeSonarDataAge, 2);
 			}
-
+			if (ctc.classification == ContactClass.unknown)
+				score *= UNCLASSIFIED_MULT;
+			trace("score: ", score);
+			if (hardPosData || score >= POSITION_ESTIMATE_MIN_SCORE)
+			{
+				// we have enough data to estimate position and speed
+				vec2d posDiff = ctc.vessel.transform.wposition -
+					m_crew.submarine.transform.wposition;
+				double posError = posDiff.length * POS_ERROR_SCORE_RATIO / sqrt(score);
+				double trueVel = ctc.vessel.rigidBody.kinet.velLength;
+				double velError = trueVel * VEL_ERROR_SCORE_RATIO / sqrt(score);
+				trace("Assigning position-rich solution to contact with score ", score,
+					", posError ", posError, ", velError ", velError,
+					" at age ", ctc.age(), " seconds");
+				ctc.solution.positionKnown = true;
+				ctc.solution.position = ctc.vessel.transform.wposition +
+					posError * courseVector(uniform(0, 2 * PI));
+				ctc.solution.velocity = trueVel +
+					velError * courseVector(uniform(0, 2 * PI));
+				ctc.solution.atTime = Globals.sim.worldTime;
+				ctc.solution.set = true;
+			}
 		}
 	}
 
@@ -492,16 +523,16 @@ final class AICaptain
 
 	private BehavourTreeNode buildEasyCaptainBt()
 	{
-		BehavourTreeNode[] rootFallbackNodes;
-		rootFallbackNodes ~= [
+		BehavourTreeNode[] rootParallelNodes;
+		rootParallelNodes ~= [
 			new ProcessNewOrder(),
-			new ParallelNode("Dedicate time to both TMA and attacking the target", [
-				new UpdateSolutions(),
-				easyAttackTargetTree(),
-			]),
+			// new ParallelNode("Dedicate time to both TMA and attacking the target", [,
+			// 	//easyAttackTargetTree(),
+			// ]),
 			orderExecutionTree()
 		];
-		BehavourTreeNode res = new FallbackNode("Easy captain AI", rootFallbackNodes);
+		rootParallelNodes ~= new UpdateSolutions();
+		BehavourTreeNode res = new ParallelNode("Easy captain AI", rootParallelNodes);
 		return res;
 	}
 }

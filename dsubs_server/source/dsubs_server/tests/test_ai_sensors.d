@@ -29,7 +29,7 @@ unittest
 	swimmer.transform.position = vec2d(-3000, 1000);
 	swimmer.register();
 	SwimToDestinationGoal goal1;
-	goal1 = new SwimToDestinationGoal(swimmerCrew, vec2d(-3000, 0));
+	goal1 = new SwimToDestinationGoal(swimmerCrew, vec2d(-3000, -1000));
 	swimmerCrew.goal = goal1;
 	Globals.bots.registerEntity(swimmerCrew);
 	Globals.bots.registerEntity(listenerCrew);
@@ -38,18 +38,17 @@ unittest
 			Globals.sim.stop();
 		if (Globals.sim.worldTime > 30_000_000)
 		{
-			auto ctc = swimmer in listenerCrew.state.contacts;
-			assert(ctc);
+			auto ctc = listenerCrew.state.contacts[swimmer];
 			trace(*ctc);
 		}
 		if (Globals.sim.worldTime > 90_000_000)
 		{
-			Contact* ctc = swimmer in listenerCrew.state.contacts;
+			Contact* ctc = listenerCrew.state.contacts[swimmer];
 			assert(ctc.classification == ContactClass.submarine);
 			assert(ctc.passiveSonarPoints >= 0.0f);
 		}
 	};
-	Globals.sim.worldTimeLimit = 100 * cast(ulong)1e6;
+	Globals.sim.worldTimeLimit = 150 * cast(ulong)1e6;
 	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();

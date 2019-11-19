@@ -18,7 +18,7 @@ unittest
 {
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Globals.buildForTests();
-	AICrew crew = new AICrew(BOT_DIFFICULTY.hard);
+	AICrew crew = new AICrew(BOT_DIFFICULTY.medium);
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, crew);
 	s.register();
 	SwimToDestinationGoal goal1, goal2;
