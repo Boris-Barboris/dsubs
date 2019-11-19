@@ -133,6 +133,19 @@ final class SequenceNode: LinearChildrenNode
 }
 
 
+/// Returns true if the local ticks counter has reached zero.
+bool consumeLocalTicks(int consume, ref int ticksLeftLocal, ref int ticksLeftGlobal)
+{
+	assert(ticksLeftLocal >= 0);
+	assert(ticksLeftGlobal >= 0);
+	assert(consume >= 0);
+	int delta = min(consume, ticksLeftLocal, ticksLeftGlobal);
+	ticksLeftLocal -= delta;
+	ticksLeftGlobal -= delta;
+	return ticksLeftLocal == 0;
+}
+
+
 final class FallbackNode: LinearChildrenNode
 {
 	this(string description, BehavourTreeNode[] children, bool memory = false,
@@ -330,10 +343,7 @@ abstract class FixedCostActionNode: ActionNode
 			m_ticksLeft = m_ticksCost;
 			return ExecutionResult.failure;
 		}
-		int delta = min(m_ticksCost, ticks, m_ticksLeft);
-		m_ticksLeft -= delta;
-		ticks -= delta;
-		if (m_ticksLeft == 0)
+		if (consumeLocalTicks(m_ticksCost, m_ticksLeft, ticks))
 		{
 			m_ticksLeft = m_ticksCost;
 			// trace("FixedCostActionNode ", description, " reached fire time");

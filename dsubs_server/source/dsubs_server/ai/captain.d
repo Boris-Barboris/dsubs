@@ -200,6 +200,12 @@ struct Solution
 	bool positionKnown;
 	vec2d position;
 	vec2d velocity = vec2d(0, 0);
+
+	vec2d extrapolatedPos(usecs_t timePoint)
+	{
+		assert(positionKnown);
+		return position + velocity * (timePoint - atTime) / 1e6f;
+	}
 }
 
 /// CIC of bot crew tracks contacts
@@ -210,16 +216,26 @@ struct Contact
 	ContactRelation relation;		// implies that captains do not switch sides
 	ContactClass classification;
 	Solution solution;
-	usecs_t lastRayData;
-	usecs_t lastPositionData;
+	usecs_t lastHydrophoneData;
+	usecs_t lastActiveSonarData;
 	// Counters that abstract away contact and TMA quality.
 	float passiveSonarPoints = 0.0f;
 	float activeSonarPoints = 0.0f;
 
 	/// Age in seconds
-	float age() const
+	@property float age() const
 	{
 		return (Globals.sim.worldTime - createdAt) / 1000_000L;
+	}
+
+	@property float hydrophoneDataAge() const
+	{
+		return (Globals.sim.worldTime - lastHydrophoneData) / 1000_000L;
+	}
+
+	@property float activeSonarDataAge() const
+	{
+		return (Globals.sim.worldTime - lastActiveSonarData) / 1000_000L;
 	}
 }
 
@@ -359,7 +375,8 @@ final class AICaptain
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Perform TMA for all important contacts", 3000, file, line);
+			// 40 seconds for solutions update for an easy bot
+			super("Perform TMA for all important contacts", 4000, file, line);
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -382,8 +399,37 @@ final class AICaptain
 			return ExecutionResult.success;
 		}
 
+		/// How quickly the contact score drops with passive sonar data age.
+		enum float PASSIVE_DECAY_SQR_K = 0.05f;
+		/// How quickly the contact score drops with active sonar data age.
+		enum float ACTIVE_DECAY_SQR_K = 0.05f;
+		/// Min score at wich we start to estimate contact position just from
+		/// ray data samples.
+		enum float POSITION_ESTIMATE_MIN_SCORE = 100.0f;
+		/// minimum pause between soluiton updates.
+		enum usecs_t SOLUTION_MIN_STABILITY = 10_000_000L;
+
 		private updateContactSolution(ref Contact ctc)
 		{
+			// first we need to cap points in order to prevent overflow
+			ctc.passiveSonarPoints = min(ctc.passiveSonarPoints, 1e5f);
+			ctc.activeSonarPoints = min(ctc.activeSonarPoints, 1e5f);
+			// next we estimate universal contact score that we use to
+			// comare with contacts and set position/direction error.
+			float score = 0.0f;
+			// is there a positional data in the list of data samples?
+			bool hardPosData = false;
+			if (ctc.lastHydrophoneData)
+			{
+				score += ctc.solution.passiveSonarPoints /
+					PASSIVE_DECAY_SQR_K * pow(ctc.hydrophoneDataAge, 2);
+			}
+			if (ctc.lastActiveSonarData)
+			{
+				hardPosData = true;
+				score += ctc.solution.activeSonarPoints /
+					ACTIVE_DECAY_SQR_K * pow(ctc.activeSonarDataAge, 2);
+			}
 
 		}
 	}

@@ -14,6 +14,7 @@ import dsubs_server.player;
 import dsubs_server.submarine;
 import dsubs_server.torpedo;
 import dsubs_server.ai.common;
+import dsubs_server.ai.bt;
 import dsubs_server.ai.captain;
 
 
@@ -63,7 +64,7 @@ final class AIAcoustic
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Receive data from hydrophones", file, line);
+			super("Receive hydrophones imprints", file, line);
 			final switch (m_difficulty)
 			{
 				case (BOT_DIFFICULTY.easy):
@@ -88,7 +89,9 @@ final class AIAcoustic
 			{
 				// trace("Acoustic sees: ", h.imprints);
 				m_lastImprints ~= h.imprints.filter!(imp =>
-					imp.source.owner && (imp.source.owner !is m_crew.submarine) &&
+					imp.source.owner &&
+					cast(Vessel) imp.source.owner &&			// we are only interested in vessel sounds
+					(imp.source.owner !is m_crew.submarine) &&	// and not self-noise
 					imp.signalLevel.val - imp.backgroundLevel.val >= m_detectionMargin).array;
 			}
 			// trace("Acoustic filter accepts: ", m_lastImprints);
@@ -115,10 +118,11 @@ final class AIAcoustic
 		private void pushImprintToCIC()
 		{
 			Vessel v = cast(Vessel) m_imprintToReport.source.owner;
+			assert(v);
 			CrewState state = m_crew.state;
-			Contact* ctc = v in state.contacts;
-			if (ctc)
-				applyToContact(*ctc);
+			Contact* existingContact = v in state.contacts;
+			if (existingContact)
+				applyToContact(*existingContact);
 			else
 			{
 				Contact newCtc = Contact(v);
@@ -132,7 +136,7 @@ final class AIAcoustic
 			ctc.createdAt = Globals.sim.worldTime;
 			if (m_imprintToReport.directionAvailable)
 			{
-				ctc.lastRayData = Globals.sim.worldTime;
+				ctc.lastHydrophoneData = Globals.sim.worldTime;
 				ctc.passiveSonarPoints += m_imprintToReport.signalLevel.val -
 					m_imprintToReport.backgroundLevel.val;
 			}
@@ -140,10 +144,7 @@ final class AIAcoustic
 
 		private ExecutionResult onRunning(ref int ticks)
 		{
-			int delta = min(m_ticksCost, ticks, m_ticksLeft);
-			m_ticksLeft -= delta;
-			ticks -= delta;
-			if (m_ticksLeft == 0)
+			if (consumeLocalTicks(m_ticksCost, m_ticksLeft, ticks))
 			{
 				pushImprintToCIC();
 				m_running = false;
@@ -160,12 +161,13 @@ final class AIAcoustic
 			foreach (ref SourceImprint si; m_lastImprints)
 			{
 				Vessel v = cast(Vessel) si.source.owner;
-				if (v && (v !in m_crew.state.contacts) && !v.dead && v !is m_crew.submarine)
+				assert(v);
+				if (v && (v !in m_crew.state.contacts) && !v.dead)
 				{
-					// not-dead foreign vessel-owned sound source
+					// not-dead unregistered in contacts not dead vessel sound source
 					m_imprintToReport = si;
 					m_running = true;
-					trace("Adding new source imprint ", si);
+					trace("Queuing new contact for the source imprint ", si);
 					return onRunning(ticks);
 				}
 			}
@@ -184,7 +186,7 @@ final class AIAcoustic
 
 		override ExecutionResult onTicksConsumed()
 		{
-			// we go through all imprints and provide ray data to CIC
+			// we go through all imprints and provide ray data to CIC (crew state)
 			foreach (ref SourceImprint si; m_lastImprints)
 			{
 				Vessel v = cast(Vessel) si.source.owner;
@@ -195,7 +197,7 @@ final class AIAcoustic
 					continue;
 				if (!si.directionAvailable)
 					continue;
-				ctc.lastRayData = Globals.sim.worldTime;
+				ctc.lastHydrophoneData = Globals.sim.worldTime;
 				ctc.passiveSonarPoints += si.signalLevel.val -
 					si.backgroundLevel.val;
 				if (ctc.classification == ContactClass.unknown &&
@@ -209,12 +211,13 @@ final class AIAcoustic
 					else if (cast(Submarine) v)
 					{
 						cclass = ContactClass.submarine;
-						// set relation
+						// relation is only relevant for submarines.
 						Submarine ctcSub = cast(Submarine) v;
 						if (ctcSub.captain)
 							ctc.relation = m_crew.side.relateTo(ctcSub.captain.side);
 					}
-					trace(si, " classified as ", cclass);
+					trace(si, " classified as ", cclass, ", after ",
+						Globals.sim.worldTime - ctc.createdAt / 1000_000L, " seconds");
 					ctc.classification = cclass;
 				}
 			}
