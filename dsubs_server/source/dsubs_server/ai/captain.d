@@ -217,8 +217,48 @@ struct Contact
 	ContactRelation relation;		// implies that captains do not switch sides
 	ContactClass classification;
 	Solution solution;
-	usecs_t lastHydrophoneData;
-	usecs_t lastActiveSonarData;
+
+	private
+	{
+		usecs_t m_lastHydrophoneData;
+		usecs_t m_lastActiveSonarData;
+	}
+
+	@property usecs_t lastHydrophoneData() const { return m_lastHydrophoneData; }
+
+	@property void lastHydrophoneData(usecs_t rhs)
+	{
+		m_lastHydrophoneData = max(m_lastHydrophoneData, rhs);
+		if (rhs > lastData)
+		{
+			lastData = rhs;
+			updateTrueParams();
+		}
+	}
+
+	@property usecs_t lastActiveSonarData() const { return m_lastActiveSonarData; }
+
+	@property void lastActiveSonarData(usecs_t rhs)
+	{
+		m_lastActiveSonarData = max(m_lastActiveSonarData, rhs);
+		if (rhs > lastData)
+		{
+			lastData = rhs;
+			updateTrueParams();
+		}
+	}
+
+	private void updateTrueParams()
+	{
+		lastDataTruePosition = vessel.transform.wposition;
+		lastDataTrueVelocity = vessel.rigidBody.kinet.vel;
+	}
+
+	usecs_t lastData;
+	// true vessel's position and velocity at the time the last sample was recorded
+	vec2d lastDataTruePosition;
+	vec2d lastDataTrueVelocity;
+
 	// Counters that abstract away contact and TMA quality.
 	float passiveSonarPoints = 0.0f;
 	float activeSonarPoints = 0.0f;
@@ -229,14 +269,23 @@ struct Contact
 		return (Globals.sim.worldTime - createdAt) / 1000_000L;
 	}
 
+	/// Solution age in seconds
+	@property float solutionAge() const
+	{
+		assert(solution.set);
+		return (solution.atTime - createdAt) / 1000_000L;
+	}
+
+	// 1.0f + is to prevent division by zero
+
 	@property float hydrophoneDataAge() const
 	{
-		return (Globals.sim.worldTime - lastHydrophoneData) / 1000_000L;
+		return 1.0f + (Globals.sim.worldTime - m_lastHydrophoneData) / 1000_000L;
 	}
 
 	@property float activeSonarDataAge() const
 	{
-		return (Globals.sim.worldTime - lastActiveSonarData) / 1000_000L;
+		return 1.0f + (Globals.sim.worldTime - m_lastActiveSonarData) / 1000_000L;
 	}
 }
 
@@ -357,19 +406,21 @@ final class AICaptain
 		return fb;
 	}
 
+	enum CombatNavigationState
+	{
+		none,
+		// rapid approach
+		approachMainTarget,
+		// slow drift while keeping the target head-on
+		tacticalFloat
+	}
+
 	private
 	{
 		// target, chosen as main
 		Vessel m_mainTarget;
 		CombatNavigationState m_combatNavState;
 		usecs_t m_lastFire;
-
-		enum CombatNavigationState: ubyte
-		{
-			none,
-			approachMainTarget,
-			tacticalFloat
-		}
 	}
 
 	private final class UpdateSolutions: FixedCostActionNode
@@ -396,6 +447,9 @@ final class AICaptain
 				// do not update solutions too often
 				if (Globals.sim.worldTime - ctc.solution.atTime < SOLUTION_CONST_PERIOD)
 					continue;
+				// do not update solution if no new data has arrived
+				if (ctc.solution.atTime >= ctc.lastData)
+					continue;
 				updateContactSolution(ctc);
 			}
 			foreach (Vessel v; contactsToRemove)
@@ -406,16 +460,16 @@ final class AICaptain
 		/// How quickly the contact score drops with passive sonar data age.
 		enum float PASSIVE_DECAY_SQR_K = 0.05f;
 		/// How quickly the contact score drops with active sonar data age.
-		enum float ACTIVE_DECAY_SQR_K = 0.01f;
+		enum float ACTIVE_DECAY_SQR_K = 0.005f;
 		/// score penalty for unclassified contact
 		enum float UNCLASSIFIED_MULT = 0.05f;
 		/// Min score at wich we start to estimate contact position just from
 		/// ray data samples.
 		enum float POSITION_ESTIMATE_MIN_SCORE = 100.0f;
-		/// minimum pause between solution updates.
+		/// minimum interval between solution updates.
 		enum usecs_t SOLUTION_CONST_PERIOD = 10_000_000L;
 		/// gain for balancing positional error
-		enum float POS_ERROR_SCORE_RATIO = 5.0f;
+		enum float POS_ERROR_SCORE_RATIO = 3.0f;
 		/// gain for balancing velocity error
 		enum float VEL_ERROR_SCORE_RATIO = 5.0f;
 
@@ -442,24 +496,25 @@ final class AICaptain
 			}
 			if (ctc.classification == ContactClass.unknown)
 				score *= UNCLASSIFIED_MULT;
-			trace("score: ", score);
+			assert(isNormal(score));
+			// trace("score: ", score);
 			if (hardPosData || score >= POSITION_ESTIMATE_MIN_SCORE)
 			{
 				// we have enough data to estimate position and speed
-				vec2d posDiff = ctc.vessel.transform.wposition -
+				vec2d posDiff = ctc.lastDataTruePosition -
 					m_crew.submarine.transform.wposition;
-				double posError = posDiff.length * POS_ERROR_SCORE_RATIO / sqrt(score);
-				double trueVel = ctc.vessel.rigidBody.kinet.velLength;
-				double velError = trueVel * VEL_ERROR_SCORE_RATIO / sqrt(score);
+				double maxPosError = posDiff.length * POS_ERROR_SCORE_RATIO / sqrt(score);
+				vec2d trueVel = ctc.lastDataTrueVelocity;
+				double maxVelError = trueVel.length * VEL_ERROR_SCORE_RATIO / sqrt(score);
 				trace("Assigning position-rich solution to contact with score ", score,
-					", posError ", posError, ", velError ", velError,
+					", maxPosError ", maxPosError, ", maxVelError ", maxVelError,
 					" at age ", ctc.age(), " seconds");
 				ctc.solution.positionKnown = true;
-				ctc.solution.position = ctc.vessel.transform.wposition +
-					posError * courseVector(uniform(0, 2 * PI));
+				ctc.solution.position = ctc.lastDataTruePosition +
+					uniform(0.0f, maxPosError) * courseVector(uniform(0, 2 * PI));
 				ctc.solution.velocity = trueVel +
-					velError * courseVector(uniform(0, 2 * PI));
-				ctc.solution.atTime = Globals.sim.worldTime;
+					uniform(0.0f, maxVelError) * courseVector(uniform(0, 2 * PI));
+				ctc.solution.atTime = ctc.lastData;
 				ctc.solution.set = true;
 			}
 		}
@@ -470,7 +525,7 @@ final class AICaptain
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
 			super("Choose the closest enemy submarine with known " ~
-				"position as main target", 300, file, line);
+				"position as the new main target", 300, file, line);
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -493,8 +548,32 @@ final class AICaptain
 				return ExecutionResult.failure;
 			enemyVessels.sort!((a, b) => a.range < b.range);
 			m_mainTarget = enemyVessels[0].v;
-			trace("Choosing closest target ", enemyVessels[0], " as main");
+			trace("Choosing closest target ", enemyVessels[0].v, " as main");
 			return ExecutionResult.success;
+		}
+	}
+
+	private final class DropStaleMainTarget: ActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Drop dead or very old main target", file, line);
+		}
+
+		enum float MAX_SOLUTION_AGE_SEC = 240.0f;
+
+		override ExecutionResult execute(ref int ticks)
+		{
+			if (m_mainTarget is null)
+				return ExecutionResult.failure;
+			Contact* ctc = m_crew.state.contacts[m_mainTarget];
+			if (m_mainTarget.dead || ctc.solutionAge > MAX_SOLUTION_AGE_SEC)
+			{
+				m_crew.state.contacts.remove(m_mainTarget);
+				m_mainTarget = null;
+				return ExecutionResult.success;
+			}
+			return ExecutionResult.failure;
 		}
 	}
 
@@ -504,13 +583,13 @@ final class AICaptain
 			new SequenceNode("sequence of actions for known target", [
 				new ConditionNode("if we have main target", () => m_mainTarget !is null),
 				new FallbackNode("when we have main target", [
-					new NopAction("drop target if it's dead or too old"),
-					new SequenceNode("Shoot torpedo", [
+					new DropStaleMainTarget(),
+					new SequenceNode("Simple attack sequence", [
 						new NopAction("Swim closer to target if needed"),
 						new NopAction("Maintain tactical speed and point nose " ~
 							"onto the target"),
-						new ConditionNode("Haven't fired in the last 60 seconds", () =>
-							Globals.sim.worldTime - m_lastFire > 60_000_000L),
+						new ConditionNode("Haven't fired in the last 90 seconds", () =>
+							Globals.sim.worldTime - m_lastFire > 90_000_000L),
 						new NopAction("Ensure we have a loaded tube"),
 						new NopAction("Fire the tube onto the main target's solution")
 					])
@@ -523,15 +602,16 @@ final class AICaptain
 
 	private BehavourTreeNode buildEasyCaptainBt()
 	{
-		BehavourTreeNode[] rootParallelNodes;
-		rootParallelNodes ~= [
-			new ProcessNewOrder(),
-			// new ParallelNode("Dedicate time to both TMA and attacking the target", [,
-			// 	//easyAttackTargetTree(),
-			// ]),
-			orderExecutionTree()
+		bool combatShip = isCombatCapable(m_crew.submarine);
+		BehavourTreeNode[] rootParallelNodes = [
+			new FallbackNode("static priorities", [
+				new ProcessNewOrder(),
+				combatShip ? easyAttackTargetTree() : null,
+				orderExecutionTree()
+			]),
+			combatShip ? new UpdateSolutions() : null
 		];
-		rootParallelNodes ~= new UpdateSolutions();
+		rootParallelNodes = rootParallelNodes.filter!(a => a !is null).array;
 		BehavourTreeNode res = new ParallelNode("Easy captain AI", rootParallelNodes);
 		return res;
 	}

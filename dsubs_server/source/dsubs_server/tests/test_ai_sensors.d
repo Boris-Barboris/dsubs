@@ -39,7 +39,7 @@ unittest
 		if (Globals.sim.worldTime > 30_000_000)
 		{
 			auto ctc = listenerCrew.state.contacts[swimmer];
-			trace(*ctc);
+			// trace(*ctc);
 		}
 		if (Globals.sim.worldTime > 90_000_000)
 		{

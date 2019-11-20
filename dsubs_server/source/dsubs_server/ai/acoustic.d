@@ -205,7 +205,12 @@ final class AIAcoustic
 				{
 					ContactClass cclass;
 					if (cast(Torpedo) v)
+					{
 						cclass = ContactClass.weapon;
+						Torpedo torp = cast(Torpedo) v;
+						if (torp.shooterCaptain)
+							ctc.relation = m_crew.side.relateTo(torp.shooterCaptain.side);
+					}
 					else if (cast(StaticDecoy) v)
 						cclass = ContactClass.decoy;
 					else if (cast(Submarine) v)
@@ -216,8 +221,9 @@ final class AIAcoustic
 						if (ctcSub.captain)
 							ctc.relation = m_crew.side.relateTo(ctcSub.captain.side);
 					}
-					trace(si, " classified as ", cclass, ", after ",
-						(Globals.sim.worldTime - ctc.createdAt) / 1000_000L, " seconds");
+					trace(si, " classified as ", cclass, ", relation ", ctc.relation,
+						" after ", (Globals.sim.worldTime - ctc.createdAt) / 1000_000L,
+						" seconds");
 					ctc.classification = cclass;
 				}
 			}
