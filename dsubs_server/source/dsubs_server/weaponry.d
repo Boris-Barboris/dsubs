@@ -199,6 +199,7 @@ final class Tube: IFlowNoiseMultiplier
 	@property inout(AmmoRoom) room() inout { return m_room; }
 	@property TubeState state() const { return m_state; }
 	@property TubeState desiredState() const { return m_desiredState; }
+	@property TubeType type() const { return m_proto.tmpl.type; }
 	@property string loadedWeapon() const { return m_loadedWeapon; }
 	@property string desiredWeapon() const { return m_desiredWeapon; }
 	@property TubeOperationResult lastSimUpdateResult() const

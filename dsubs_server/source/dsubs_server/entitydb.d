@@ -42,7 +42,7 @@ final class EntityDb
 		PropulsorFactory[string] m_propulsors;
 		/// global map of all existing submarine factories
 		SubmarineFactory[string] m_submarines;
-		/// global map of all existing torpedo factories
+		/// global map of all existing torpedo/decoy factories
 		WeaponFactory[string] m_weapons;
 		/// global map of all existing animal factories
 		AnimalFactory[string] m_animals;

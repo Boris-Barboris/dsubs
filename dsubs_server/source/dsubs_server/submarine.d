@@ -51,11 +51,12 @@ final class Submarine: Vessel
 		return m_tubes[id];
 	}
 
-	auto tubeRange() inout { return m_tubes.byValue; }
+	auto tubeRange() { return m_tubes.byValue; }
+	auto tubeRange() const { return m_tubes.byValue; }
 
 	size_t tubeCount() const { return m_tubes.length; }
 
-	AmmoRoom getAmmoRoom(int id)
+	inout(AmmoRoom) getAmmoRoom(int id) inout
 	{
 		enforce(id in m_rooms);
 		return m_rooms[id];

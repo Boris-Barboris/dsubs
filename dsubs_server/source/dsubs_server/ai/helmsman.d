@@ -82,7 +82,7 @@ final class AIHelmsman
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Consume last order and move it to active one", 400,
+			super("Consume last order and move it to active one", 400, false,
 				file, line);
 		}
 
@@ -111,7 +111,7 @@ final class AIHelmsman
 						m_desiredThrottle = 0.2f;
 						break;
 					case NavigationSpeed.tactical:
-						m_desiredThrottle = 0.4f;
+						m_desiredThrottle = 0.45f;
 						break;
 					case NavigationSpeed.fast:
 						m_desiredThrottle = 0.7f;

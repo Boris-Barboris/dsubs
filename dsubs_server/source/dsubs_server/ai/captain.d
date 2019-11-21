@@ -1,14 +1,16 @@
 module dsubs_server.ai.captain;
 
-import std.algorithm;
+import std.algorithm: any, filter, map, sort;
 import std.array: array;
 
 import dsubs_common.containers.circqueue;
 import dsubs_common.math.angles;
+import dsubs_common.api.entities;
 
 import dsubs_server.common;
 import dsubs_server.globals;
 import dsubs_server.weaponry;
+import dsubs_server.torpedo;
 import dsubs_server.vessel;
 import dsubs_server.player;
 import dsubs_server.submarine;
@@ -202,10 +204,16 @@ struct Solution
 	vec2d position;
 	vec2d velocity = vec2d(0, 0);
 
-	vec2d extrapolatedPos(usecs_t timePoint)
+	vec2d extrapolatedPos(usecs_t timePoint) const
 	{
 		assert(positionKnown);
 		return position + velocity * (timePoint - atTime) / 1e6f;
+	}
+
+	@property vec2d currentPos() const
+	{
+		assert(positionKnown);
+		return position + velocity * (Globals.sim.worldTime - atTime) / 1e6f;
 	}
 }
 
@@ -273,7 +281,7 @@ struct Contact
 	@property float solutionAge() const
 	{
 		assert(solution.set);
-		return (solution.atTime - createdAt) / 1000_000L;
+		return (Globals.sim.worldTime - solution.atTime) / 1000_000L;
 	}
 
 	// 1.0f + is to prevent division by zero
@@ -301,6 +309,28 @@ bool isCombatCapable(const SubmarineFactory subFac)
 	return subFac.tubeProtos.length > 0;
 }
 
+double effectiveFiringRange(const Submarine sub)
+{
+	// FIXME
+	return 6000.0;
+}
+
+/// Returns true if the weapon is a torpedo.
+bool isTorpedoName(string weaponName)
+{
+	return (cast(TorpedoFactory) Globals.entityDb.getWeaponFactory(weaponName)) !is null;
+}
+
+/// Returns true if the is at least one torpedo in ammo racks or in the tubes
+bool haveTorpedoes(const Submarine sub)
+{
+	if (sub.getAmmoRoom(0).weaponCount > 0)
+		return true;
+	if (sub.tubeRange.any!(t => t.loadedWeapon && isTorpedoName(t.loadedWeapon)))
+		return true;
+	return false;
+}
+
 
 /**
 Tactical commander that issues general orders to other bridge officers.
@@ -325,6 +355,21 @@ final class AICaptain
 
 		CrewGoal m_activeGoal;
 		HelmsmanOrderGoal m_helmsmansOrderGoal;
+		usecs_t m_lastOrderToHelmsman;
+	}
+
+	private @property bool helmsmanOrderOnCooldown()
+	{
+		return (Globals.sim.worldTime - m_lastOrderToHelmsman) < 20_000_000L;
+	}
+
+	private void giveOrdersToHelmsman(WhereToSwim whereToSwim, NavigationSpeed navSpeed,
+		HelmsmanOrderGoal goal)
+	{
+		m_crew.m_helmsman.whereToSwimOrder.pushBack(whereToSwim);
+		m_crew.m_helmsman.navigationSpeedOrder.pushBack(navSpeed);
+		m_helmsmansOrderGoal = goal;
+		m_lastOrderToHelmsman = Globals.sim.worldTime;
 	}
 
 	private enum HelmsmanOrderGoal: byte
@@ -348,7 +393,7 @@ final class AICaptain
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Consume new crew order", 500, file, line);
+			super("Consume new crew order", 500, false, file, line);
 		}
 
 		override @property bool shouldBeRunning()
@@ -374,7 +419,7 @@ final class AICaptain
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
 			super("Give commands to helmsman to arrive at destination", 400,
-				file, line);
+				false, file, line);
 		}
 
 		override @property bool shouldBeRunning()
@@ -391,9 +436,8 @@ final class AICaptain
 			WhereToSwim whereToSwim;
 			whereToSwim.type = WhereToSwimType.destination;
 			whereToSwim.destination = goal.destination;
-			m_crew.m_helmsman.whereToSwimOrder.pushBack(whereToSwim);
-			m_crew.m_helmsman.navigationSpeedOrder.pushBack(NavigationSpeed.random);
-			m_helmsmansOrderGoal = HelmsmanOrderGoal.sync;
+			giveOrdersToHelmsman(whereToSwim, NavigationSpeed.random,
+				HelmsmanOrderGoal.sync);
 			return ExecutionResult.success;
 		}
 	}
@@ -423,12 +467,17 @@ final class AICaptain
 		usecs_t m_lastFire;
 	}
 
+	@property Contact* mainContact()
+	{
+		return m_crew.state.contacts[m_mainTarget];
+	}
+
 	private final class UpdateSolutions: FixedCostActionNode
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
 			// 30 seconds for solutions update for an easy bot
-			super("Perform TMA for all important contacts", 3000, file, line);
+			super("Perform TMA for all important contacts", 3000, false, file, line);
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -525,7 +574,16 @@ final class AICaptain
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
 			super("Choose the closest enemy submarine with known " ~
-				"position as the new main target", 300, file, line);
+				"position as the new main target", 300, false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			return m_crew.state.contacts.byValue.any!(
+				c =>
+					c.relation == ContactRelation.enemy &&
+					c.classification == ContactClass.submarine &&
+					c.solution.positionKnown);
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -543,7 +601,7 @@ final class AICaptain
 					c.classification == ContactClass.submarine &&
 					c.solution.positionKnown).
 				map!(c => VesselAndRange(
-					c.vessel, (c.solution.position - curPos).length)).array;
+					c.vessel, (c.solution.currentPos - curPos).length)).array;
 			if (enemyVessels.length == 0)
 				return ExecutionResult.failure;
 			enemyVessels.sort!((a, b) => a.range < b.range);
@@ -560,7 +618,8 @@ final class AICaptain
 			super("Drop dead or very old main target", file, line);
 		}
 
-		enum float MAX_SOLUTION_AGE_SEC = 240.0f;
+		/// For this many seconds we will keep the contact alive
+		enum float MAX_SOLUTION_AGE_SEC = 600.0f;
 
 		override ExecutionResult execute(ref int ticks)
 		{
@@ -577,6 +636,126 @@ final class AICaptain
 		}
 	}
 
+	private final class EnsureTorpedoesLoading: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Initiate torpedoes loading into free tubes", 300, true, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			auto tubes = m_crew.submarine.tubeRange;
+			return tubes.any!(t => t.state == TubeState.dry && t.loadedWeapon == null);
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			foreach (Tube tube; m_crew.submarine.tubeRange)
+			{
+				if (tube.state == TubeState.dry &&
+					tube.type == TubeType.standard &&
+					tube.loadedWeapon == null)
+				{
+					trace("AI captain requesting tube load for tube ", tube.id);
+					TubeOperationResult res = tube.processLoadRequest("Minoga");
+					assert(res.tubeChanged);
+				}
+			}
+			return ExecutionResult.success;
+		}
+	}
+
+	private final class SwimCloserToMainTarget: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Approach main target until the distance is right", 500,
+				true, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			double firingRange = effectiveFiringRange(m_crew.submarine);
+			double currentRange = (m_crew.submarine.transform.wposition -
+				mainContact.solution.currentPos).length;
+			return currentRange > firingRange;
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			if (!helmsmanOrderOnCooldown)
+			{
+				trace("Giving order to approach main target's solution");
+				WhereToSwim whereToSwim;
+				whereToSwim.type = WhereToSwimType.destination;
+				whereToSwim.destination = mainContact.solution.currentPos;
+				giveOrdersToHelmsman(whereToSwim, NavigationSpeed.tactical,
+					HelmsmanOrderGoal.desync);
+			}
+			else
+				trace("helmsman message queue on cooldown");
+			return ExecutionResult.running;
+		}
+	}
+
+	private final class FireOneTorpedo: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Open the tube and fire onto the main target", 1000,
+				false, file, line);
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			auto tubes = m_crew.submarine.tubeRange;
+			Tube chosenTube;
+			foreach (Tube tube; tubes)
+			{
+				if (tube.state != TubeState.unloading &&
+					tube.state != TubeState.loading &&
+					tube.type == TubeType.standard &&
+					tube.loadedWeapon != null)
+				{
+					// we have found the tube that can be opened
+					chosenTube = tube;
+					if (tube.state != TubeState.open)
+					{
+						tube.processStateRequest(TubeState.open);
+						return ExecutionResult.running;
+					}
+					break;
+				}
+			}
+			if (chosenTube is null)
+				return ExecutionResult.running;
+			WeaponParamValue[] wpValues = getFiringParameters(chosenTube, "Minoga");
+			trace("AI launching Minoga torp with parameters ", wpValues);
+			TubeOperationResult res = chosenTube.processLaunchRequest("Minoga", wpValues);
+			assert(res.tubeChanged);
+			m_lastFire = Globals.sim.worldTime;
+			return ExecutionResult.success;
+		}
+
+		private WeaponParamValue[] getFiringParameters(Tube tube, string weapon)
+		{
+			assert(weapon == "Minoga");
+			vec2d posDiff = mainContact.solution.currentPos -
+				tube.transform.wposition;
+			WeaponFactory factory = Globals.entityDb.getWeaponFactory(weapon);
+			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.marchCourse);
+			courseParam.course = courseAngle(posDiff);
+			WeaponParamValue activationRangeParam = WeaponParamValue(
+				WeaponParamType.activationRange);
+			activationRangeParam.range = clamp(0.5 * posDiff.length,
+				factory.activationRange.min, factory.activationRange.max);
+			WeaponParamValue search = WeaponParamValue(WeaponParamType.searchPattern);
+			search.searchPattern = WeaponSearchPattern.snake;
+			return [courseParam, activationRangeParam, search];
+		}
+	}
+
 	private BehavourTreeNode easyAttackTargetTree()
 	{
 		FallbackNode fb = new FallbackNode("simple attack pattern", [
@@ -585,14 +764,13 @@ final class AICaptain
 				new FallbackNode("when we have main target", [
 					new DropStaleMainTarget(),
 					new SequenceNode("Simple attack sequence", [
-						new NopAction("Swim closer to target if needed"),
-						new NopAction("Maintain tactical speed and point nose " ~
-							"onto the target"),
+						new EnsureTorpedoesLoading(),
+						new SwimCloserToMainTarget(),
 						new ConditionNode("Haven't fired in the last 90 seconds", () =>
 							Globals.sim.worldTime - m_lastFire > 90_000_000L),
-						new NopAction("Ensure we have a loaded tube"),
-						new NopAction("Fire the tube onto the main target's solution")
-					])
+						new FireOneTorpedo()
+					]),
+					new NopAction()	// return success
 				])
 			]),
 			new ChooseClosestEnemyContact()

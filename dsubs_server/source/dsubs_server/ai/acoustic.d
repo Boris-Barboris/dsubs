@@ -179,7 +179,7 @@ final class AIAcoustic
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Track contacts and classify them", 1000, file, line);
+			super("Track contacts and classify them", 1000, false, file, line);
 		}
 
 		enum float CLASSIFICATION_MARGIN = 100.0f;

@@ -317,16 +317,21 @@ abstract class FixedCostActionNode: ActionNode
 	protected
 	{
 		int m_ticksCost;
+		bool m_invertShouldBeRunning;
 	}
 
-	this(string description, int cost,
+	this(string description, int cost, bool invertShouldBeRunning = false,
 		string file = __FILE__, size_t line = __LINE__)
 	{
 		assert(cost >= 0);
 		super(description, file, line);
 		m_ticksCost = cost;
 		m_ticksLeft = cost;
+		m_invertShouldBeRunning = invertShouldBeRunning;
 	}
+
+	@property bool invertShouldBeRunning() const { return m_invertShouldBeRunning; }
+	@property void invertShouldBeRunning(bool rhs) { m_invertShouldBeRunning = rhs; }
 
 	@property bool shouldBeRunning()
 	{
@@ -341,6 +346,8 @@ abstract class FixedCostActionNode: ActionNode
 		if (!shouldBeRunning)
 		{
 			m_ticksLeft = m_ticksCost;
+			if (m_invertShouldBeRunning)
+				return ExecutionResult.success;
 			return ExecutionResult.failure;
 		}
 		if (consumeLocalTicks(m_ticksCost, m_ticksLeft, ticks))
