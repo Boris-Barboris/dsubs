@@ -67,8 +67,6 @@ final class BotCollection
 
 	@property auto captains() { return m_bots.byKey; }
 
-	@property BotCaptain[] botCaptains() { return cast(BotCaptain[]) m_bots.byKey.array; }
-
 	@property size_t count() const { return m_bots.length; }
 
 	void clean()

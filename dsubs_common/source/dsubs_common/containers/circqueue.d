@@ -2,7 +2,7 @@ module dsubs_common.containers.circqueue;
 
 
 /// Fixed-capacity circular buffer
-struct CircQueue(T)
+struct CircQueue(T, bool canOverwrite = false)
 {
 	private
 	{
@@ -39,7 +39,8 @@ struct CircQueue(T)
 	/// returns reference to the inserted value
 	ref T pushBack(T val)
 	{
-		assert(len < capacity);
+		static if (!canOverwrite)
+			assert(len < capacity);
 		size_t backIdx = (ifront + len) % capacity;
 		arr[backIdx] = val;
 		len++;

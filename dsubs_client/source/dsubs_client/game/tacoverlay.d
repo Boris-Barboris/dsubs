@@ -1029,6 +1029,9 @@ final class TacticalContactElement: OverlayElementWithHover
 					m_solution.time = cd.time;
 					m_lastRayTrackerBearing = cd.data.ray.bearing;
 					m_lastRayTrackerOrigin = cd.data.ray.origin;
+					assert(!isNaN(m_lastRayTrackerBearing));
+					assert(!isNaN(m_lastRayTrackerOrigin.x));
+					assert(!isNaN(m_lastRayTrackerOrigin.y));
 					m_solution.pos = m_lastRayTrackerOrigin +
 						courseVector(m_lastRayTrackerBearing) * RAY_LENGTH;
 					m_drawRayTracker = true;
@@ -1063,6 +1066,8 @@ final class TacticalContactElement: OverlayElementWithHover
 		}
 		vec2d worldPos = m_solution.pos;
 		vec2d screenPos = owner.world2screenPos(worldPos);
+		assert(!isNaN(screenPos.x));
+		assert(!isNaN(screenPos.y));
 		vec2f screenPosF = cast(vec2f) screenPos;
 		position = center2lu(screenPos);
 		m_mainShape.center = screenPosF;

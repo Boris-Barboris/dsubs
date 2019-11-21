@@ -1,6 +1,6 @@
 module dsubs_server.scenario;
 
-import std.algorithm: min, max;
+import std.algorithm: min, max, count, filter;
 import std.random: uniform, uniform01;
 import std.container.rbtree;
 import std.datetime.systime;
@@ -15,8 +15,10 @@ import dsubs_server.animal;
 import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.connections.playercon: PlayerConnection;
-import dsubs_server.player: Player;
+import dsubs_server.player;
 import dsubs_server.bots;
+import dsubs_server.ai.captain;
+import dsubs_server.ai.common;
 
 
 struct DelayedEvent
@@ -88,7 +90,9 @@ final class BattleRoyale: Scenario
 		usecs_t m_nextTransitionTime;
 		bool m_inTransition;
 		CallbackDelayer m_delayer;
-		int m_botSpawnRequests;
+		int m_civBotSpawnRequests;
+		int m_easyBotSpawnRequests;
+		SideOfConflict m_botSide;
 
 		struct ReloadCircle
 		{
@@ -104,7 +108,8 @@ final class BattleRoyale: Scenario
 		enum int DECOYS_TO_RELOAD = 6;
 		enum usecs_t SPAWN_DELAY_BASE = cast(usecs_t) 1 * 60 * 1000_000;
 		enum usecs_t STABLE_TIME = cast(usecs_t) 60 * 60 * 1000_000;
-		enum int ACTIVE_BOTS = 3;
+		enum int ACTIVE_CIVILIAN_BOTS = 3;
+		enum int ACTIVE_EASY_BOTS = 1;
 	}
 
 	this()
@@ -118,6 +123,7 @@ final class BattleRoyale: Scenario
 		m_nextRadius = m_currentRadius;
 		//m_nextTransitionTime = Globals.sim.worldTime + 120_000_000;
 		m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
+		m_botSide = new SideOfConflict("bots");
 	}
 
 	override void onBeforeSimulation()
@@ -145,19 +151,23 @@ final class BattleRoyale: Scenario
 		}
 		// spawn bots if necessary
 		m_delayer.runCallbacks();
-		int botsToSpawn = ACTIVE_BOTS - m_botSpawnRequests - Globals.bots.count.to!int;
+		// trader bots
+		int botsToSpawn = ACTIVE_CIVILIAN_BOTS - m_civBotSpawnRequests -
+			Globals.bots.captains.filter!(b => b.submarine.prototypeName == "Bot trader").
+			count.to!int;
 		while (botsToSpawn-- > 0)
 		{
 			info("Scheduling new bot spawn");
 			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
-			m_botSpawnRequests++;
+			m_civBotSpawnRequests++;
 			m_delayer.put(DelayedEvent(Globals.sim.worldTime + delay,
 				{
 					info("Spawning new trader bot");
-					m_botSpawnRequests--;
-					BotCaptain cpt = new BotCaptain();
+					m_civBotSpawnRequests--;
+					AICrew crew = new AICrew(BOT_DIFFICULTY.easy);
+					crew.side = m_botSide;
 					SpawnReq req = SpawnReq("Bot trader", "Civilian three-blade screw");
-					Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, cpt);
+					Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, crew);
 					vec2d spawnPos;
 					double spawnRot;
 					getRandomSpawn(spawnPos, spawnRot);
@@ -165,16 +175,49 @@ final class BattleRoyale: Scenario
 					botSub.transform.rotation = spawnRot;
 					foreach (h; botSub.hydrophones)
 						h.active = false;
-					Globals.bots.registerEntity(cpt);
-					cpt.destination = getDistantPos(spawnPos);
+					Globals.bots.registerEntity(crew);
+					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
+					botSub.register();
+				}));
+		}
+		// easy combat bots
+		botsToSpawn = ACTIVE_EASY_BOTS - m_easyBotSpawnRequests -
+			Globals.bots.captains.filter!(b => b.submarine.prototypeName == "Stork").
+			count.to!int;
+		while (botsToSpawn-- > 0)
+		{
+			info("Scheduling new easy combat bot spawn");
+			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
+			m_easyBotSpawnRequests++;
+			m_delayer.put(DelayedEvent(Globals.sim.worldTime + delay,
+				{
+					info("Spawning new easy combat bot");
+					m_easyBotSpawnRequests--;
+					AICrew crew = new AICrew(BOT_DIFFICULTY.easy);
+					crew.side = m_botSide;
+					SpawnReq req = SpawnReq("Stork", "Seven-blade screw",
+						[AmmoRoomFullState(0, [WeaponCount("Minoga", 15)])]);
+					Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, crew);
+					vec2d spawnPos;
+					double spawnRot;
+					getRandomSpawn(spawnPos, spawnRot);
+					botSub.transform.position = spawnPos;
+					botSub.transform.rotation = spawnRot;
+					Globals.bots.registerEntity(crew);
+					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
 					botSub.register();
 				}));
 		}
 		// give new destinations to bots that have arrived
-		foreach (BotCaptain cpt; Globals.bots.botCaptains)
+		foreach (AICrewTemp crewTemp; Globals.bots.captains)
 		{
-			if (cpt.reachedDestination)
-				cpt.destination = getDistantPos(cpt.submarine.transform.wposition);
+			AICrew crew = cast(AICrew) crewTemp;
+			assert(crew);
+			if (crew.goal is null || crew.goal.status == GoalStatus.succeeded)
+			{
+				crew.goal = new SwimToDestinationGoal(crew,
+					getDistantPos(getDistantPos(crew.submarine.transform.wposition)));
+			}
 		}
 		// spawn animals if necessary
 		int whalesToSpawn = 1 - Globals.animals.entities.length.to!int;
@@ -339,8 +382,13 @@ final class BattleRoyale: Scenario
 					pcon.sendMessage(cast(immutable) mapBcst);
 				});
 			// give new destinations to bots
-			foreach (BotCaptain cpt; Globals.bots.botCaptains)
-				cpt.destination = getDistantPos(cpt.submarine.transform.wposition);
+			foreach (AICrewTemp crwTemp; Globals.bots.captains)
+			{
+				AICrew crew = cast(AICrew) crwTemp;
+				assert(crew);
+				crew.goal = new SwimToDestinationGoal(crew,
+					getDistantPos(getDistantPos(crew.submarine.transform.wposition)));
+			}
 			foreach (Animal an; Globals.animals.entities)
 				an.destination = getDistantPos(an.transform.wposition);
 		}

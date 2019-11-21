@@ -68,10 +68,10 @@ final class AIAcoustic
 			final switch (m_difficulty)
 			{
 				case (BOT_DIFFICULTY.easy):
-					m_detectionMargin = 10.0f;
+					m_detectionMargin = 4.0f;
 					break;
 				case (BOT_DIFFICULTY.medium):
-					m_detectionMargin = 5.0f;
+					m_detectionMargin = 2.0f;
 					break;
 				case (BOT_DIFFICULTY.hard):
 					m_detectionMargin = 0.0f;

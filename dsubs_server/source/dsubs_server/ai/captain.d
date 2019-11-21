@@ -149,10 +149,10 @@ struct OrderQueue(T)
 {
 	this(size_t queueSize)
 	{
-		m_queue = CircQueue!T(queueSize);
+		m_queue = CircQueue!(T, true)(queueSize);
 	}
 
-	private CircQueue!T m_queue;
+	private CircQueue!(T, true) m_queue;
 
 	@property bool hasOrder() const
 	{
@@ -436,8 +436,9 @@ final class AICaptain
 			WhereToSwim whereToSwim;
 			whereToSwim.type = WhereToSwimType.destination;
 			whereToSwim.destination = goal.destination;
-			giveOrdersToHelmsman(whereToSwim, NavigationSpeed.random,
-				HelmsmanOrderGoal.sync);
+			NavigationSpeed speed = isCombatCapable(m_crew.submarine) ?
+				NavigationSpeed.tactical : NavigationSpeed.random;
+			giveOrdersToHelmsman(whereToSwim, speed, HelmsmanOrderGoal.sync);
 			return ExecutionResult.success;
 		}
 	}
@@ -529,6 +530,9 @@ final class AICaptain
 				// do not update solution if no new data has arrived
 				if (ctc.solution.atTime >= ctc.lastData)
 					continue;
+				// do not update solution for friends
+				if (ctc.relation == ContactRelation.ally)
+					continue;
 				updateContactSolution(ctc);
 			}
 			foreach (Vessel v; contactsToRemove)
@@ -585,9 +589,9 @@ final class AICaptain
 				double maxPosError = posDiff.length * POS_ERROR_SCORE_RATIO / sqrt(score);
 				vec2d trueVel = ctc.lastDataTrueVelocity;
 				double maxVelError = trueVel.length * VEL_ERROR_SCORE_RATIO / sqrt(score);
-				trace("Assigning position-rich solution to contact with score ", score,
-					", maxPosError ", maxPosError, ", maxVelError ", maxVelError,
-					" at age ", ctc.age(), " seconds");
+				// trace("Assigning position-rich solution to contact with score ", score,
+				// 	", maxPosError ", maxPosError, ", maxVelError ", maxVelError,
+				// 	" at age ", ctc.age(), " seconds");
 				ctc.solution.positionKnown = true;
 				ctc.solution.position = ctc.lastDataTruePosition +
 					uniform(0.0f, maxPosError) * courseVector(uniform(0, 2 * PI));
@@ -712,14 +716,15 @@ final class AICaptain
 			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal == HelmsmanOrderGoal.desync)
 				return ExecutionResult.success;
 			double firingRange = effectiveFiringRange(m_crew.submarine);
-			vec2d posDiff = m_crew.submarine.transform.wposition -
-				mainContact.solution.currentPos;
+			vec2d posDiff = mainContact.solution.currentPos -
+				m_crew.submarine.transform.wposition;
 			double currentRange = posDiff.length;
 			bool needToSwimFast;
-			// turn our nose if needed
+			// speed up to turn our nose
 			if (dgr2rad(60.0) < angleDist(
 				courseAngle(posDiff), m_crew.submarine.transform.wrotation).fabs)
 				needToSwimFast = true;
+			// speed up to approach
 			if (currentRange > firingRange)
 				needToSwimFast = true;
 			// trace("Giving order to approach main target's solution");
@@ -820,19 +825,24 @@ final class AICaptain
 		return node;
 	}
 
+	private static BehavourTreeNode[] removeNulls(BehavourTreeNode[] nodes)
+	{
+		return nodes.filter!(a => a !is null).array;
+	}
+
 	private BehavourTreeNode buildEasyCaptainBt()
 	{
 		bool combatShip = isCombatCapable(m_crew.submarine);
 		BehavourTreeNode[] rootParallelNodes = [
-			new FallbackNode("static priorities", [
+			new FallbackNode("static priorities", removeNulls([
 				new ProcessNewOrder(),
 				combatShip ? easyAttackTargetTree() : null,
 				orderExecutionTree()
-			]),
+			])),
 			combatShip ? new UpdateSolutions() : null
 		];
-		rootParallelNodes = rootParallelNodes.filter!(a => a !is null).array;
-		BehavourTreeNode res = new ParallelNode("Easy captain AI", rootParallelNodes);
+		BehavourTreeNode res = new ParallelNode("Easy captain AI",
+			removeNulls(rootParallelNodes));
 		return res;
 	}
 }

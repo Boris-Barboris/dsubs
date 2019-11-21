@@ -63,7 +63,7 @@ class Captain
 
 	private SideOfConflict m_side;
 
-	final @property const(SideOfConflict) side() const { return m_side; }
+	final @property SideOfConflict side() { return m_side; }
 	@property void side(SideOfConflict rhs) { m_side = rhs; }
 
 	abstract @property string name() const;
