@@ -57,3 +57,56 @@ void writeSonarImage(string testGroup, string testName, string entityName,
 	string fileName = entityName ~ "_sonar" ~ imageIndex.to!string ~ ".png";
 	write_image(dirName ~ "/" ~ fileName, w, h, rawBytes, ColFmt.Y);
 }
+
+
+/// Writes csv files for all vessels
+struct AllVesselCvsWriter
+{
+	private bool initialized;
+	string testGroup, testName;
+	File*[Vessel] vesselFileMap;
+	int[string] vesselIndeces;
+
+	this(string testGroup, string testName)
+	{
+		this.testGroup = testGroup;
+		this.testName = testName;
+	}
+
+	~this()
+	{
+		if (initialized)
+		{
+			foreach (File* file; vesselFileMap.byValue)
+				file.detach();
+		}
+	}
+
+	void initialize()
+	{
+		initialized = true;
+		Globals.sim.onSimulationPassStart += &callback;
+	}
+
+	void callback(usecs_t worldTime)
+	{
+		foreach (Vessel v; Globals.vessels.entities)
+		{
+			if (v.dead)
+				continue;
+			File* file;
+			if (v !in vesselFileMap)
+			{
+				int index = vesselIndeces.get(v.prototypeName, 0);
+				index++;
+				vesselIndeces[v.prototypeName] = index;
+				file = writeRbodyCsvHeader(testGroup, testName,
+					v.prototypeName() ~ index.to!string);
+				vesselFileMap[v] = file;
+			}
+			else
+				file = vesselFileMap[v];
+			writeRbodyCsvRow(file, worldTime, v.rigidBody);
+		}
+	}
+}

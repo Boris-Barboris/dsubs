@@ -360,7 +360,7 @@ final class AICaptain
 
 	private @property bool helmsmanOrderOnCooldown()
 	{
-		return (Globals.sim.worldTime - m_lastOrderToHelmsman) < 20_000_000L;
+		return (Globals.sim.worldTime - m_lastOrderToHelmsman) < 15_000_000L;
 	}
 
 	private void giveOrdersToHelmsman(WhereToSwim whereToSwim, NavigationSpeed navSpeed,
@@ -442,10 +442,35 @@ final class AICaptain
 		}
 	}
 
+	private final class IdleState: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Give commands to helmsman to idle", 400,
+				false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			return m_activeGoal is null && m_helmsmansOrderGoal != HelmsmanOrderGoal.sync;
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			trace("Ordering helmsman to idle");
+			WhereToSwim whereToSwim;
+			whereToSwim.type = WhereToSwimType.idle;
+			giveOrdersToHelmsman(whereToSwim, NavigationSpeed.stop,
+				HelmsmanOrderGoal.sync);
+			return ExecutionResult.success;
+		}
+	}
+
 	private BehavourTreeNode orderExecutionTree()
 	{
 		FallbackNode fb = new FallbackNode("for different orders...", [
-			new OrderHelmsmanToSwimToDest()
+			new OrderHelmsmanToSwimToDest(),
+			new IdleState()
 		]);
 		return fb;
 	}
@@ -470,6 +495,11 @@ final class AICaptain
 	@property Contact* mainContact()
 	{
 		return m_crew.state.contacts[m_mainTarget];
+	}
+
+	double rangeFromContact(Contact* ctc)
+	{
+		return (ctc.solution.currentPos - m_crew.submarine.transform.wposition).length;
 	}
 
 	private final class UpdateSolutions: FixedCostActionNode
@@ -518,9 +548,9 @@ final class AICaptain
 		/// minimum interval between solution updates.
 		enum usecs_t SOLUTION_CONST_PERIOD = 10_000_000L;
 		/// gain for balancing positional error
-		enum float POS_ERROR_SCORE_RATIO = 3.0f;
+		enum float POS_ERROR_SCORE_RATIO = 4.0f;
 		/// gain for balancing velocity error
-		enum float VEL_ERROR_SCORE_RATIO = 5.0f;
+		enum float VEL_ERROR_SCORE_RATIO = 6.0f;
 
 		private void updateContactSolution(Contact* ctc)
 		{
@@ -677,33 +707,30 @@ final class AICaptain
 				true, file, line);
 		}
 
-		override @property bool shouldBeRunning()
+		override ExecutionResult onTicksConsumed()
 		{
+			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal == HelmsmanOrderGoal.desync)
+				return ExecutionResult.success;
 			double firingRange = effectiveFiringRange(m_crew.submarine);
 			vec2d posDiff = m_crew.submarine.transform.wposition -
 				mainContact.solution.currentPos;
 			double currentRange = posDiff.length;
+			bool needToSwimFast;
 			// turn our nose if needed
-			if (dgr2rad(80.0) < angleDist(
-				courseAngle(posDiff), m_crew.submarine.transform.wrotation))
-				return true;
-			return currentRange > firingRange;
-		}
-
-		override ExecutionResult onTicksConsumed()
-		{
-			if (!helmsmanOrderOnCooldown)
-			{
-				trace("Giving order to approach main target's solution");
-				WhereToSwim whereToSwim;
-				whereToSwim.type = WhereToSwimType.destination;
-				whereToSwim.destination = mainContact.solution.currentPos;
-				giveOrdersToHelmsman(whereToSwim, NavigationSpeed.tactical,
-					HelmsmanOrderGoal.desync);
-			}
-			else
-				trace("helmsman message queue on cooldown");
-			return ExecutionResult.running;
+			if (dgr2rad(60.0) < angleDist(
+				courseAngle(posDiff), m_crew.submarine.transform.wrotation).fabs)
+				needToSwimFast = true;
+			if (currentRange > firingRange)
+				needToSwimFast = true;
+			// trace("Giving order to approach main target's solution");
+			WhereToSwim whereToSwim;
+			whereToSwim.type = WhereToSwimType.destination;
+			whereToSwim.destination = mainContact.solution.currentPos;
+			NavigationSpeed speed = needToSwimFast ?
+				NavigationSpeed.tactical : NavigationSpeed.silent;
+			giveOrdersToHelmsman(whereToSwim, speed, HelmsmanOrderGoal.desync);
+			// 	trace("helmsman message queue on cooldown");
+			return ExecutionResult.success;
 		}
 	}
 
@@ -776,14 +803,18 @@ final class AICaptain
 			]),
 			new FallbackNode("when we have main target", [
 				new DropStaleMainTarget(),
-				new SequenceNode("Simple attack sequence", [
-					new EnsureTorpedoesLoading(),
+				new ParallelNode("Parallel navigation and fire control", [
 					new SwimCloserToMainTarget(),
-					new ConditionNode("Haven't fired in the last 90 seconds", () =>
-						Globals.sim.worldTime - m_lastFire > 90_000_000L),
-					new FireOneTorpedo()
-				]),
-				new NopAction()	// return success
+					new SequenceNode("Shoot while in range", [
+						new EnsureTorpedoesLoading(),
+						new ConditionNode("Close enough", () =>
+							rangeFromContact(mainContact) <=
+								effectiveFiringRange(m_crew.submarine)),
+						new ConditionNode("Haven't fired in the last 90 seconds", () =>
+							Globals.sim.worldTime - m_lastFire > 90_000_000L),
+						new FireOneTorpedo()
+					]),
+				], 0)
 			])
 		]);
 		return node;

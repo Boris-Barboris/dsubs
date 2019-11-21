@@ -95,7 +95,7 @@ final class AIHelmsman
 		{
 			if (whereToSwimOrder.hasOrder)
 			{
-				trace("whereToSwimOrder order recieved");
+				// trace("whereToSwimOrder order received");
 				m_whereToSwim = whereToSwimOrder.popFront();
 				return ExecutionResult.success;
 			}
@@ -124,7 +124,7 @@ final class AIHelmsman
 						break;
 				}
 				m_desiredThrottle = m_desiredThrottle.clamp(0.0f, 1.0f);
-				trace("m_desiredThrottle was chosen to ", m_desiredThrottle);
+				// trace("m_desiredThrottle was chosen to ", m_desiredThrottle);
 				return ExecutionResult.success;
 			}
 			return ExecutionResult.failure;
@@ -151,6 +151,12 @@ final class AIHelmsman
 				case WhereToSwimType.destination:
 					vec2d delta = m_whereToSwim.destination -
 						m_crew.submarine.transform.wposition;
+					if (delta.length < 100.0)
+					{
+						trace("Helmsman decides that the destination was reached");
+						m_whereToSwim.type = WhereToSwimType.idle;
+						m_desiredThrottle = 0.0f;
+					}
 					if (delta != vec2d(0, 0))
 						m_crew.submarine.targetCourse = courseAngle(delta);
 					break;
