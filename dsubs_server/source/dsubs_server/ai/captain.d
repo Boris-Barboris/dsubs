@@ -646,7 +646,10 @@ final class AICaptain
 		override @property bool shouldBeRunning()
 		{
 			auto tubes = m_crew.submarine.tubeRange;
-			return tubes.any!(t => t.state == TubeState.dry && t.loadedWeapon == null);
+			return tubes.any!(t =>
+				t.state == TubeState.dry &&
+				t.type == TubeType.standard &&
+				t.loadedWeapon == null);
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -677,8 +680,13 @@ final class AICaptain
 		override @property bool shouldBeRunning()
 		{
 			double firingRange = effectiveFiringRange(m_crew.submarine);
-			double currentRange = (m_crew.submarine.transform.wposition -
-				mainContact.solution.currentPos).length;
+			vec2d posDiff = m_crew.submarine.transform.wposition -
+				mainContact.solution.currentPos;
+			double currentRange = posDiff.length;
+			// turn our nose if needed
+			if (dgr2rad(80.0) < angleDist(
+				courseAngle(posDiff), m_crew.submarine.transform.wrotation))
+				return true;
 			return currentRange > firingRange;
 		}
 
@@ -758,24 +766,27 @@ final class AICaptain
 
 	private BehavourTreeNode easyAttackTargetTree()
 	{
-		FallbackNode fb = new FallbackNode("simple attack pattern", [
-			new SequenceNode("sequence of actions for known target", [
-				new ConditionNode("if we have main target", () => m_mainTarget !is null),
-				new FallbackNode("when we have main target", [
-					new DropStaleMainTarget(),
-					new SequenceNode("Simple attack sequence", [
-						new EnsureTorpedoesLoading(),
-						new SwimCloserToMainTarget(),
-						new ConditionNode("Haven't fired in the last 90 seconds", () =>
-							Globals.sim.worldTime - m_lastFire > 90_000_000L),
-						new FireOneTorpedo()
-					]),
-					new NopAction()	// return success
-				])
+		SequenceNode node = new SequenceNode("sequence of actions for combat-capable", [
+			new ConditionNode("if we have ammo",
+				() => m_crew.submarine.haveTorpedoes),
+			new FallbackNode("use or find main target", [
+				new ConditionNode("do we have main target?",
+					() => m_mainTarget !is null),
+				new ChooseClosestEnemyContact()
 			]),
-			new ChooseClosestEnemyContact()
+			new FallbackNode("when we have main target", [
+				new DropStaleMainTarget(),
+				new SequenceNode("Simple attack sequence", [
+					new EnsureTorpedoesLoading(),
+					new SwimCloserToMainTarget(),
+					new ConditionNode("Haven't fired in the last 90 seconds", () =>
+						Globals.sim.worldTime - m_lastFire > 90_000_000L),
+					new FireOneTorpedo()
+				]),
+				new NopAction()	// return success
+			])
 		]);
-		return fb;
+		return node;
 	}
 
 	private BehavourTreeNode buildEasyCaptainBt()

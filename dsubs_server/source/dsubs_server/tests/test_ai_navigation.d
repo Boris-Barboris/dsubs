@@ -13,6 +13,7 @@ import dsubs_server.ai.captain;
 
 import dsubs_server.tests.common;
 
+/*
 
 unittest
 {
@@ -41,3 +42,4 @@ unittest
 	assert(crew.goal.status == GoalStatus.succeeded);
 	assert(goal2 is crew.goal);
 }
+*/
