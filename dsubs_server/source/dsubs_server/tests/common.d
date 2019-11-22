@@ -82,8 +82,14 @@ struct AllVesselCvsWriter
 		}
 	}
 
+	/// WARNING: this cleans the directory
 	void initialize()
 	{
+		try
+		{
+			rmdirRecurse("test_data/" ~ testGroup);
+		}
+		catch(Exception) {}
 		initialized = true;
 		Globals.sim.onSimulationPassStart += &callback;
 	}
