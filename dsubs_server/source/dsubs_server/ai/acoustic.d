@@ -5,6 +5,7 @@ import std.array: array;
 
 import dsubs_common.math.angles;
 
+import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
 
 import dsubs_server.common;
@@ -115,38 +116,41 @@ final class AIAcoustic
 			bool m_running;
 		}
 
-		private void pushImprintToCIC()
+		private void pushImprintToCIC(bool isPing)
 		{
 			Vessel v = cast(Vessel) m_imprintToReport.source.owner;
 			assert(v);
 			CrewState state = m_crew.state;
 			Contact** existingContact = v in state.contacts;
 			if (existingContact)
-				applyToContact(*existingContact);
+				applyToContact(*existingContact, isPing);
 			else
 			{
 				Contact* newCtc = new Contact(v);
-				applyToContact(newCtc);
+				trace("Queuing new contact for the source imprint ", m_imprintToReport);
+				applyToContact(newCtc, isPing);
 				state.contacts[v] = newCtc;
 			}
 		}
 
-		private void applyToContact(Contact* ctc)
+		private void applyToContact(Contact* ctc, bool isPing)
 		{
 			ctc.createdAt = Globals.sim.worldTime;
-			if (m_imprintToReport.directionAvailable)
+			if (m_imprintToReport.directionAvailable || isPing)
 			{
 				ctc.lastHydrophoneData = Globals.sim.worldTime;
-				ctc.passiveSonarPoints += m_imprintToReport.signalLevel.val -
-					m_imprintToReport.backgroundLevel.val;
+				// we boost sonar ping points
+				ctc.passiveSonarPoints += max(
+					m_imprintToReport.signalLevel.val - m_imprintToReport.backgroundLevel.val,
+					isPing ? ClassifyAndTrack.CLASSIFICATION_MARGIN : 0.0f);
 			}
 		}
 
-		private ExecutionResult onRunning(ref int ticks)
+		private ExecutionResult onRunning(ref int ticks, bool isPing)
 		{
-			if (consumeLocalTicks(m_ticksCost, m_ticksLeft, ticks))
+			if (isPing || consumeLocalTicks(m_ticksCost, m_ticksLeft, ticks))
 			{
-				pushImprintToCIC();
+				pushImprintToCIC(isPing);
 				m_running = false;
 				m_ticksLeft = m_ticksCost;
 				return ExecutionResult.success;
@@ -157,18 +161,18 @@ final class AIAcoustic
 		override ExecutionResult execute(ref int ticks)
 		{
 			if (m_running)
-				return onRunning(ticks);
+				return onRunning(ticks, false);
 			foreach (ref SourceImprint si; m_lastImprints)
 			{
 				Vessel v = cast(Vessel) si.source.owner;
 				assert(v);
-				if (v && (v !in m_crew.state.contacts) && !v.dead)
+				bool isPing = (cast(SonarPing) si.source) !is null;
+				if (v && (v !in m_crew.state.contacts || isPing) && !v.dead)
 				{
 					// not-dead unregistered in contacts not dead vessel sound source
 					m_imprintToReport = si;
 					m_running = true;
-					trace("Queuing new contact for the source imprint ", si);
-					return onRunning(ticks);
+					return onRunning(ticks, isPing);
 				}
 			}
 			return ExecutionResult.success;
@@ -195,11 +199,13 @@ final class AIAcoustic
 				if (v !in m_crew.state.contacts)
 					continue;
 				Contact* ctc = m_crew.state.contacts[v];
-				if (!si.directionAvailable)
+				bool isPing = (cast(SonarPing) si.source !is null);
+				if (!si.directionAvailable && !isPing)
 					continue;
 				ctc.lastHydrophoneData = Globals.sim.worldTime;
-				ctc.passiveSonarPoints += si.signalLevel.val -
-					si.backgroundLevel.val;
+				ctc.passiveSonarPoints += max(
+					si.signalLevel.val - si.backgroundLevel.val,
+					isPing ? CLASSIFICATION_MARGIN : 0.0f);
 				if (ctc.classification == ContactClass.unknown &&
 					ctc.passiveSonarPoints > CLASSIFICATION_MARGIN)
 				{

@@ -18,7 +18,7 @@ fileRegex = re.compile('.*_([\w\.0-9]+).csv')
 from itertools import cycle
 cycol = cycle('bgrcmk')
 
-fig, ax = plt.subplots(1, 2)
+fig, ax = plt.subplots(1, 2, gridspec_kw={'width_ratios': [2, 1]})
 ax[0].set_aspect('equal')
 i = 0
 for entityDataFile in files:

@@ -35,10 +35,10 @@ unittest
 	boat1.register();
 	boat2.transform.position = vec2d(-2000, 1000);
 	boat2.register();
-	boat3.transform.position = vec2d(-5000, 1000);
+	boat3.transform.position = vec2d(0.0, 4000);
 	boat3.register();
 	boat2Crew.goal = new SwimToDestinationGoal(boat2Crew, vec2d(-2500, -1000));
-	boat3Crew.goal = new SwimToDestinationGoal(boat3Crew, vec2d(0, 1500));
+	boat3Crew.goal = new SwimToDestinationGoal(boat3Crew, vec2d(-2000, 1000));
 	Globals.bots.registerEntity(boat2Crew);
 	Globals.bots.registerEntity(boat1Crew);
 	Globals.bots.registerEntity(boat3Crew);

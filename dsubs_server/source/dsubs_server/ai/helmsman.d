@@ -101,29 +101,33 @@ final class AIHelmsman
 			}
 			if (navigationSpeedOrder.hasOrder)
 			{
-				m_navigationSpeed = navigationSpeedOrder.popFront();
-				final switch (m_navigationSpeed)
+				NavigationSpeed newNavSpeed = navigationSpeedOrder.popFront();
+				if (newNavSpeed != m_navigationSpeed)
 				{
-					case NavigationSpeed.stop:
-						m_desiredThrottle = 0.0f;
-						break;
-					case NavigationSpeed.silent:
-						m_desiredThrottle = 0.2f + uniform(-0.1f, 0.04f);
-						break;
-					case NavigationSpeed.tactical:
-						m_desiredThrottle = 0.4f + uniform(-0.1f, 0.1f);
-						break;
-					case NavigationSpeed.fast:
-						m_desiredThrottle = 0.7f + uniform(-0.05f, 0.1f);
-						break;
-					case NavigationSpeed.flank:
-						m_desiredThrottle = 1.0f;
-						break;
-					case NavigationSpeed.random:
-						m_desiredThrottle = uniform(0.35f, 0.8f);
-						break;
+					m_navigationSpeed = newNavSpeed;
+					final switch (m_navigationSpeed)
+					{
+						case NavigationSpeed.stop:
+							m_desiredThrottle = 0.0f;
+							break;
+						case NavigationSpeed.silent:
+							m_desiredThrottle = 0.2f + uniform(-0.1f, 0.04f);
+							break;
+						case NavigationSpeed.tactical:
+							m_desiredThrottle = 0.4f + uniform(-0.1f, 0.1f);
+							break;
+						case NavigationSpeed.fast:
+							m_desiredThrottle = 0.7f + uniform(-0.05f, 0.1f);
+							break;
+						case NavigationSpeed.flank:
+							m_desiredThrottle = 1.0f;
+							break;
+						case NavigationSpeed.random:
+							m_desiredThrottle = uniform(0.35f, 0.8f);
+							break;
+					}
+					m_desiredThrottle = m_desiredThrottle.clamp(0.0f, 1.0f);
 				}
-				m_desiredThrottle = m_desiredThrottle.clamp(0.0f, 1.0f);
 				// trace("m_desiredThrottle was chosen to ", m_desiredThrottle);
 				return ExecutionResult.success;
 			}
