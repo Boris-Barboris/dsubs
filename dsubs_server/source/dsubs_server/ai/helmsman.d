@@ -108,19 +108,19 @@ final class AIHelmsman
 						m_desiredThrottle = 0.0f;
 						break;
 					case NavigationSpeed.silent:
-						m_desiredThrottle = 0.2f;
+						m_desiredThrottle = 0.2f + uniform(-0.1f, 0.04f);
 						break;
 					case NavigationSpeed.tactical:
-						m_desiredThrottle = 0.45f;
+						m_desiredThrottle = 0.4f + uniform(-0.1f, 0.1f);
 						break;
 					case NavigationSpeed.fast:
-						m_desiredThrottle = 0.7f;
+						m_desiredThrottle = 0.7f + uniform(-0.05f, 0.1f);
 						break;
 					case NavigationSpeed.flank:
 						m_desiredThrottle = 1.0f;
 						break;
 					case NavigationSpeed.random:
-						m_desiredThrottle = uniform(0.4f, 0.8f);
+						m_desiredThrottle = uniform(0.35f, 0.8f);
 						break;
 				}
 				m_desiredThrottle = m_desiredThrottle.clamp(0.0f, 1.0f);
