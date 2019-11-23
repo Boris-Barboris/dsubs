@@ -185,7 +185,7 @@ final class AIAcoustic
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Track contacts and classify them", 1000, false, file, line);
+			super("Track contacts and classify them", 600, false, file, line);
 		}
 
 		enum float CLASSIFICATION_MARGIN = 100.0f;
@@ -214,8 +214,7 @@ final class AIAcoustic
 					ctc.relation = ownSide.relateTo(ctcSub.captain.side);
 			}
 			trace(si, " classified as ", cclass, ", relation ", ctc.relation,
-				" after ", (Globals.sim.worldTime - ctc.createdAt) / 1000_000L,
-				" seconds");
+				" after ", ctc.age, " seconds");
 			ctc.classification = cclass;
 		}
 

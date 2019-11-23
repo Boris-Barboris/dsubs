@@ -591,8 +591,9 @@ final class AICaptain
 				double maxVelError = trueVel.length * VEL_ERROR_SCORE_RATIO / sqrt(score);
 				if (!ctc.solution.positionKnown)
 				{
-					trace("Assigning position-rich solution to contact with score ", score,
-						", maxPosError ", maxPosError, ", maxVelError ", maxVelError,
+					trace("Assigning first position-rich solution to contact ", *ctc,
+						" with score ",
+						score, ", maxPosError ", maxPosError, ", maxVelError ", maxVelError,
 						" at age ", ctc.age(), " seconds");
 				}
 				ctc.solution.positionKnown = true;
