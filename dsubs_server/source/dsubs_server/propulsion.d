@@ -220,6 +220,15 @@ double maxSpeed(const HydroForceModel hfm, const BasicPropulsor bp)
 	return vmax;
 }
 
+double maxSpeed(float Cd0, float Cd1, float posThrustK)
+{
+	double maxT = posThrustK;
+	double D = pow(Cd0, 2) + 4 * Cd1 * maxT;
+	double vmax = (-Cd0 + sqrt(D)) / (2 * Cd1);
+	assert(!isNaN(vmax));
+	return vmax;
+}
+
 /// Given constructed vessel, return the throttle, required to hold specified
 /// speed.
 float throttleForSpeed(Vessel v, float speed)
@@ -229,4 +238,11 @@ float throttleForSpeed(Vessel v, float speed)
 	double maxT = v.rigidBody.hydroModel.Cd0 * speed +
 		speed * speed * v.rigidBody.hydroModel.Cd1;
 	return clamp(sqrt(maxT / bp.posThrustK), -1.0f, 1.0f);
+}
+
+float throttleForSpeed(float Cd0, float Cd1, float posThrustK, float speed)
+{
+	speed = fabs(speed);
+	double maxT = Cd0 * speed + speed * speed * Cd1;
+	return clamp(sqrt(maxT / posThrustK), -1.0f, 1.0f);
 }

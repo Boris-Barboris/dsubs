@@ -307,6 +307,7 @@ Search patterns: straight, snake, spiral.
 		// vec2f dims = getHullDims(tf.tmpl.hullModel);
 		tf.hullLength = 5.2f;
 		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.2f), [-20.0f, -20.0f, -15.0f]);
+		tf.updateTemplateFuelData();
 		m_weapons["Minoga"] = tf;
 
 		pdescs.length = 0;

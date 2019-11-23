@@ -1558,9 +1558,16 @@ final class WeaponProjectionTrace: OverlayElement
 			m_shortestToSolutionShape.render(wnd);
 	}
 
+	private static float fuelSpent(float throttle, float fuelExponent)
+	{
+		return pow(throttle, fuelExponent);
+	}
+
 	private void generateShapes()
 	{
-		float rangeLimit = m_tube.activationRangeLimits.max;
+		float fuel = m_tube.currentWeaponTemplate.fuel;
+		float fuelExponent = m_tube.currentWeaponTemplate.fuelExponent;
+		float fullThrottleSpd = m_tube.currentWeaponTemplate.fullThrottleSpd;
 		float turningRadius = m_tube.currentWeaponTemplate.turningRadius;
 		Transform2D trans = new Transform2D();
 		trans.position = m_tube.transform.wposition;
@@ -1587,13 +1594,16 @@ final class WeaponProjectionTrace: OverlayElement
 		bool activated = false;
 		// integrate
 		size_t shapeIdx = 0;
-		while (travelled < rangeLimit)
+		while (fuel > 0.0f)
 		{
 			if (shapeIdx >= m_shapes.length)
 				m_shapes ~= ctcOverlayCache.weaponProjectionLine;
 			LineShape shape = m_shapes[shapeIdx];
 			vec2d point1 = trans.wposition;
 			vec2d point2;
+			// consume fuel
+			fuel -= INTEGRATION_STEP * fuelSpent(speed / fullThrottleSpd, fuelExponent);
+			assert(!isNaN(fuel));
 			// find point2
 			float desiredCourse = course;
 			if (activated)

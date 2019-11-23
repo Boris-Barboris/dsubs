@@ -681,6 +681,7 @@ abstract class WeaponFactory: VesselFactory
 	}
 
 	RolledF fuel;
+	float fuelEffExponent = 2.0f;
 
 	// inlined weapon parameter descriptions
 	MinMax marchSpeedRange;
@@ -756,7 +757,6 @@ final class TorpedoFactory: WeaponFactory
 	HydrophonePrototype* hprot;
 	ActiveSonarPrototype* asprot;
 	MountPoint sensorsMount;
-	float fuelEffExponent = 2.0f;
 	// snake
 	float snakeArm = 300.0f;
 	float snakeArmInitial;
@@ -773,6 +773,15 @@ final class TorpedoFactory: WeaponFactory
 	{
 		super(t);
 		propFactory = pf;
+	}
+
+	void updateTemplateFuelData()
+	{
+		WeaponTemplate* mutTemplate = cast(WeaponTemplate*) &this.tmpl;
+		mutTemplate.fuel = fuel.mean;
+		mutTemplate.fuelExponent = fuelEffExponent;
+		mutTemplate.fullThrottleSpd = maxSpeed(
+			Cd0.mean, Cd1.mean, propFactory.posThrustK.mean);
 	}
 
 	private void bootstrap(Torpedo res) const

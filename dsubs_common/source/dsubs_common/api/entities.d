@@ -195,6 +195,19 @@ struct WeaponTemplate
 
 	/// Detailed descriptions of launch parameters, if applicable.
 	WeaponParamDesc[] paramDescs;
+
+	/// Abstract fuel counter that the client should reduce while integrating
+	/// the predicted trajectory.
+	float fuel = 0.0f;
+
+	/// Maximum speed that is achieved by setting propulsor's throttle to 1.0f;
+	/// Used in fuel calculations.
+	float fullThrottleSpd = 0.0f;
+
+	// Torpedo fuel is depleted each second by the formula:
+	// float fuelSpent = pow(m_torpedo.propulsor.throttle.fabs, m_fuelExponent);
+	// m_fuelLeft -= fuelSpent;
+	float fuelExponent = 0.0f;
 }
 
 struct WeaponSet
