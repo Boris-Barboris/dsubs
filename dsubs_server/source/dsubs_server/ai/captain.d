@@ -589,9 +589,12 @@ final class AICaptain
 				double maxPosError = posDiff.length * POS_ERROR_SCORE_RATIO / sqrt(score);
 				vec2d trueVel = ctc.lastDataTrueVelocity;
 				double maxVelError = trueVel.length * VEL_ERROR_SCORE_RATIO / sqrt(score);
-				// trace("Assigning position-rich solution to contact with score ", score,
-				// 	", maxPosError ", maxPosError, ", maxVelError ", maxVelError,
-				// 	" at age ", ctc.age(), " seconds");
+				if (!ctc.solution.positionKnown)
+				{
+					trace("Assigning position-rich solution to contact with score ", score,
+						", maxPosError ", maxPosError, ", maxVelError ", maxVelError,
+						" at age ", ctc.age(), " seconds");
+				}
 				ctc.solution.positionKnown = true;
 				ctc.solution.position = ctc.lastDataTruePosition +
 					uniform(0.0f, maxPosError) * courseVector(uniform(0, 2 * PI));
