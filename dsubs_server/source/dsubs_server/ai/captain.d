@@ -212,8 +212,7 @@ struct Solution
 
 	@property vec2d currentPos() const
 	{
-		assert(positionKnown);
-		return position + velocity * (Globals.sim.worldTime - atTime) / 1e6f;
+		return extrapolatedPos(Globals.sim.worldTime);
 	}
 }
 
@@ -342,7 +341,18 @@ final class AICaptain
 		m_crew = crew;
 		m_difficulty = difficulty;
 		m_ticksPerExecute = ticksPerDifficulty(m_difficulty);
-		m_btRoot = buildEasyCaptainBt();
+		final switch (m_difficulty)
+		{
+			case (BOT_DIFFICULTY.easy):
+				m_btRoot = buildEasyCaptainBt();
+				break;
+			case (BOT_DIFFICULTY.medium):
+				m_btRoot = buildMediumCaptainBt();
+				break;
+			case (BOT_DIFFICULTY.hard):
+				m_btRoot = buildMediumCaptainBt();
+				break;
+		}
 		captainOrder = OrderQueue!CrewGoal(1);
 	}
 
@@ -374,10 +384,12 @@ final class AICaptain
 
 	private enum HelmsmanOrderGoal: byte
 	{
-		unset,	/// there was no order given to helmsman
-		desync,	/// last order, given to helmsman, is not about current captain goal,
-				/// or is simply obsolete
-		sync	/// helmsman's order is in sync with captain's order
+		unset,		/// there was no order given to helmsman
+		attack,		/// last order, given to helmsman, is not about current captain goal,
+					/// but about attack.
+		defense,	/// evasion order.
+		sync,		/// helmsman's order is in sync with captain's order
+		desync		/// helmsman's order is for some previous captain order
 	}
 
 	/// orders are to be put here
@@ -408,7 +420,7 @@ final class AICaptain
 				return ExecutionResult.failure;
 			m_activeGoal = captainOrder.popFront();
 			trace("Captain received new goal: ", m_activeGoal.toString);
-			if (m_helmsmansOrderGoal != HelmsmanOrderGoal.unset)
+			if (m_helmsmansOrderGoal == HelmsmanOrderGoal.sync)
 				m_helmsmansOrderGoal = HelmsmanOrderGoal.desync;
 			return ExecutionResult.success;
 		}
@@ -476,26 +488,24 @@ final class AICaptain
 		return fb;
 	}
 
-	enum CombatNavigationState
-	{
-		none,
-		// rapid approach
-		approachMainTarget,
-		// slow drift while keeping the target head-on
-		tacticalFloat
-	}
-
 	private
 	{
 		// target, chosen as main
 		Vessel m_mainTarget;
-		CombatNavigationState m_combatNavState;
+		// torpedo we are currently dodging
+		Vessel m_mainDanger;
 		usecs_t m_lastFire;
+		usecs_t m_lastDecoyFire;
 	}
 
 	@property Contact* mainContact()
 	{
 		return m_crew.state.contacts[m_mainTarget];
+	}
+
+	@property Contact* mainDanger()
+	{
+		return m_crew.state.contacts[m_mainDanger];
 	}
 
 	double rangeFromContact(Contact* ctc)
@@ -522,6 +532,10 @@ final class AICaptain
 				{
 					// we should drop dead contacts
 					contactsToRemove ~= ctc.vessel;
+					if (m_mainDanger is ctc.vessel)
+						m_mainDanger = null;
+					if (m_mainTarget is ctc.vessel)
+						m_mainTarget = null;
 					continue;
 				}
 				// do not update solutions too often
@@ -644,7 +658,128 @@ final class AICaptain
 				return ExecutionResult.failure;
 			enemyVessels.sort!((a, b) => a.range < b.range);
 			m_mainTarget = enemyVessels[0].v;
-			trace("Choosing closest target ", enemyVessels[0].v, " as main");
+			trace("Choosing closest target ", m_mainTarget, " as main");
+			return ExecutionResult.success;
+		}
+	}
+
+	private final class EvadeMainDangerIfNeeded: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("If there is main danger, evade it", 600, false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			invertShouldBeRunning = m_mainDanger !is null;
+			return invertShouldBeRunning &&
+				(!helmsmanOrderOnCooldown ||
+					m_helmsmansOrderGoal != HelmsmanOrderGoal.defense);
+		}
+
+		private vec2d getEvasionDirection()
+		{
+			Solution torpSol = mainDanger.solution;
+			vec2d relPos = torpSol.currentPos - m_crew.submarine.transform.wposition;
+			// we do not account for our speed here
+			vec2d evadeVector = vec2d(torpSol.velocity.y, -torpSol.velocity.x);
+			if (dot(evadeVector, relPos) >= 0.0)
+				evadeVector = -evadeVector;
+			return evadeVector;
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			double evasionCourse = courseAngle(getEvasionDirection());
+			WhereToSwim wts;
+			wts.type = WhereToSwimType.course;
+			wts.course = evasionCourse;
+			giveOrdersToHelmsman(wts, NavigationSpeed.flank, HelmsmanOrderGoal.defense);
+			return ExecutionResult.success;
+		}
+	}
+
+	private final class ChooseMostDangerousTorp: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Choose the most dangerous enemy torpedo with known " ~
+				"position as the new main danger", 600, false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			return m_mainDanger !is null ||
+			m_crew.state.contacts.byValue.any!(
+				c =>
+					c.relation == ContactRelation.enemy &&
+					c.classification == ContactClass.weapon &&
+					c.solution.positionKnown &&
+					c.solutionAge < MAX_SOLUTION_AGE);
+		}
+
+		enum double MIN_MISS_WORRY = 1200.0;
+		enum float MAX_SOLUTION_AGE = 120.0f;
+
+		private double getDanger(Solution torpSol)
+		{
+			assert(torpSol.set);
+			assert(torpSol.positionKnown);
+			vec2d relVel = torpSol.velocity - m_crew.submarine.rigidBody.kinet.vel;
+			vec2d relPos = torpSol.currentPos - m_crew.submarine.transform.wposition;
+			// if torp swims perfectly on us, relVel is parallel to -relPos.
+			if (dot(relVel.normalized, relPos.normalized) >= 0.0)
+				return 0.0;
+			double angle = angleBetween(relVel, relPos);
+			double totalMiss = relPos.length * sin(angle).fabs;
+			if (totalMiss > MIN_MISS_WORRY)
+				return 0.0;
+			assert(!isNaN(totalMiss));
+			totalMiss = max(1.0, totalMiss);
+			// 1e3 just for scale
+			return 1e3 / totalMiss / max(1.0, relPos.length);
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			static struct VesselAndDanger
+			{
+				Vessel v;
+				double danger;
+			}
+
+			vec2d curPos = m_crew.submarine.transform.wposition;
+			VesselAndDanger[] dangers = m_crew.state.contacts.byValue.filter!(
+				c =>
+					c.relation == ContactRelation.enemy &&
+					c.classification == ContactClass.weapon &&
+					c.solution.positionKnown &&
+					c.solutionAge < MAX_SOLUTION_AGE).
+				map!(c => VesselAndDanger(
+					c.vessel, getDanger(c.solution))).array;
+			if (dangers.length == 0)
+			{
+				m_mainDanger = null;
+				return ExecutionResult.failure;
+			}
+			dangers.sort!((a, b) => a.danger < b.danger);
+			if (dangers[$-1].danger == 0.0)
+			{
+				m_mainDanger = null;
+				return ExecutionResult.failure;
+			}
+			if (m_mainDanger != dangers[$-1].v)
+			{
+				m_mainDanger = dangers[$-1].v;
+				trace("Choosing ", m_mainDanger, " as main danger");
+			}
+			else if (m_mainDanger && mainDanger.solutionAge > MAX_SOLUTION_AGE)
+			{
+				m_mainDanger = null;
+				trace("AI resets main danger because of solution age");
+				return ExecutionResult.failure;
+			}
 			return ExecutionResult.success;
 		}
 	}
@@ -678,7 +813,7 @@ final class AICaptain
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Initiate torpedoes loading into free tubes", 300, true, file, line);
+			super("Initiate torpedoes loading into free tubes", 400, true, file, line);
 		}
 
 		override @property bool shouldBeRunning()
@@ -707,17 +842,93 @@ final class AICaptain
 		}
 	}
 
+	private final class EnsureDecoysLoading: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Initiate decoy loading into free tubes", 400, false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			// FIXME: room number.
+			AmmoRoom room = m_crew.submarine.getAmmoRoom(1);
+			if (room.getWeaponCount("Decoy(active)") == 0)
+				return false;
+			auto tubes = m_crew.submarine.tubeRange;
+			return tubes.any!(t =>
+				t.state == TubeState.dry &&
+				t.type == TubeType.decoy &&
+				t.loadedWeapon == null);
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			foreach (Tube tube; m_crew.submarine.tubeRange)
+			{
+				if (tube.state == TubeState.dry &&
+					tube.type == TubeType.decoy &&
+					tube.loadedWeapon == null)
+				{
+					trace("AI captain requesting decoy tube load for tube ", tube.id);
+					TubeOperationResult res = tube.processLoadRequest("Decoy(active)");
+					assert(res.tubeChanged);
+				}
+			}
+			return ExecutionResult.success;
+		}
+	}
+
+	private final class EnsureDecoyTubesOpening: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Loaded decoy tubes must be opened", 400, false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			auto tubes = m_crew.submarine.tubeRange;
+			return tubes.any!(t =>
+				t.desiredState != TubeState.open &&
+				t.state == TubeState.dry &&
+				t.type == TubeType.decoy &&
+				t.loadedWeapon == "Decoy(active)");
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			foreach (Tube tube; m_crew.submarine.tubeRange)
+			{
+				if (tube.desiredState != TubeState.open &&
+					tube.state == TubeState.dry &&
+					tube.type == TubeType.decoy &&
+					tube.loadedWeapon != null)
+				{
+					trace("AI captain requesting decoy tube open for tube ", tube.id);
+					tube.processStateRequest(TubeState.open);
+				}
+			}
+			return ExecutionResult.success;
+		}
+	}
+
 	private final class SwimCloserToMainTarget: FixedCostActionNode
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
 			super("Approach main target until the distance is right", 500,
-				true, file, line);
+				false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			return m_mainTarget !is null;
 		}
 
 		override ExecutionResult onTicksConsumed()
 		{
-			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal == HelmsmanOrderGoal.desync)
+			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal != HelmsmanOrderGoal.attack)
 				return ExecutionResult.success;
 			double firingRange = effectiveFiringRange(m_crew.submarine);
 			vec2d posDiff = mainContact.solution.currentPos -
@@ -737,8 +948,50 @@ final class AICaptain
 			whereToSwim.destination = mainContact.solution.currentPos;
 			NavigationSpeed speed = needToSwimFast ?
 				NavigationSpeed.tactical : NavigationSpeed.silent;
-			giveOrdersToHelmsman(whereToSwim, speed, HelmsmanOrderGoal.desync);
+			giveOrdersToHelmsman(whereToSwim, speed, HelmsmanOrderGoal.attack);
 			// 	trace("helmsman message queue on cooldown");
+			return ExecutionResult.success;
+		}
+	}
+
+	private final class FireOneDecoy: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Choose open decoy tube and fire it", 500,
+				false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			auto tubes = m_crew.submarine.tubeRange;
+			return tubes.any!(t =>
+				t.state == TubeState.open &&
+				t.type == TubeType.decoy &&
+				t.loadedWeapon == "Decoy(active)");
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			auto tubes = m_crew.submarine.tubeRange;
+			Tube chosenTube;
+			foreach (Tube tube; tubes)
+			{
+				if (tube.state == TubeState.open &&
+					tube.type == TubeType.decoy &&
+					tube.loadedWeapon == "Decoy(active)")
+				{
+					// we have found the tube that can be launched
+					chosenTube = tube;
+					break;
+				}
+			}
+			if (chosenTube is null)
+				return ExecutionResult.failure;
+			trace("AI launching active decoy");
+			TubeOperationResult res = chosenTube.processLaunchRequest("Decoy(active)", null);
+			assert(res.tubeChanged);
+			m_lastDecoyFire = Globals.sim.worldTime;
 			return ExecutionResult.success;
 		}
 	}
@@ -800,9 +1053,9 @@ final class AICaptain
 		}
 	}
 
-	private BehavourTreeNode easyAttackTargetTree()
+	private BehavourTreeNode easyCombatTree()
 	{
-		SequenceNode node = new SequenceNode("sequence of actions for combat-capable", [
+		BehavourTreeNode node = new SequenceNode("Simply attack if if possible", [
 			new ConditionNode("if we have ammo",
 				() => m_crew.submarine.haveTorpedoes),
 			new FallbackNode("use or find main target", [
@@ -829,6 +1082,53 @@ final class AICaptain
 		return node;
 	}
 
+	private BehavourTreeNode mediumCombatTree()
+	{
+		BehavourTreeNode node = new RoundRobinNode(
+			"Medium captain decouples navigation from firing",
+			[
+				new ChooseMostDangerousTorp(),
+				new EnsureDecoysLoading(),
+				new EnsureDecoyTubesOpening(),
+				new FallbackNode("use or find main target", [
+					new ConditionNode("do we have main target?",
+						() => m_mainTarget !is null),
+					new ChooseClosestEnemyContact()
+				]),
+				new SequenceNode("Fire decoys when there is danger", [
+					new ConditionNode("There is main danger", () =>
+						m_mainDanger !is null),
+					new ConditionNode("Haven't fired in the last 90 seconds", () =>
+						Globals.sim.worldTime - m_lastDecoyFire > 90_000_000L),
+					new FireOneDecoy()
+				]),
+				new SequenceNode("General attack sequence", [
+					new FallbackNode("we either move offensively or defensively", [
+						new EvadeMainDangerIfNeeded(),
+						new SwimCloserToMainTarget()
+					]),
+					new ConditionNode("if we have ammo",
+						() => m_crew.submarine.haveTorpedoes),
+					new FallbackNode("when we have main target", [
+						new DropStaleMainTarget(),
+						new EnsureTorpedoesLoading(),
+						new ConditionNode("Close enough", () =>
+							rangeFromContact(mainContact) <=
+								effectiveFiringRange(m_crew.submarine)),
+						new ConditionNode("Haven't fired in the last 90 seconds", () =>
+							Globals.sim.worldTime - m_lastFire > 90_000_000L),
+						new FireOneTorpedo()
+					])
+				])
+		], 200);
+		BehavourTreeNode wrapper = new SequenceNode(
+			"return Seccess only when no main target", [
+				node,
+				new ConditionNode(null, () => m_mainTarget is null && m_mainDanger is null)
+			]);
+		return wrapper;
+	}
+
 	private static BehavourTreeNode[] removeNulls(BehavourTreeNode[] nodes)
 	{
 		return nodes.filter!(a => a !is null).array;
@@ -840,12 +1140,28 @@ final class AICaptain
 		BehavourTreeNode[] rootParallelNodes = [
 			new FallbackNode("static priorities", removeNulls([
 				new ProcessNewOrder(),
-				combatShip ? easyAttackTargetTree() : null,
+				combatShip ? easyCombatTree() : null,
 				orderExecutionTree()
 			])),
 			combatShip ? new UpdateSolutions() : null
 		];
 		BehavourTreeNode res = new ParallelNode("Easy captain AI",
+			removeNulls(rootParallelNodes));
+		return res;
+	}
+
+	private BehavourTreeNode buildMediumCaptainBt()
+	{
+		bool combatShip = isCombatCapable(m_crew.submarine);
+		BehavourTreeNode[] rootParallelNodes = [
+			new FallbackNode("static priorities", removeNulls([
+				new ProcessNewOrder(),
+				combatShip ? mediumCombatTree() : null,
+				orderExecutionTree()
+			])),
+			combatShip ? new UpdateSolutions() : null
+		];
+		BehavourTreeNode res = new ParallelNode("Medium captain AI",
 			removeNulls(rootParallelNodes));
 		return res;
 	}

@@ -21,13 +21,15 @@ unittest
 {
 	info("ai_easy_duel_test");
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw",
-			[AmmoRoomFullState(0, [WeaponCount("Minoga", 8)])]);
+			[AmmoRoomFullState(0, [WeaponCount("Minoga", 8)]),
+			AmmoRoomFullState(1, [WeaponCount("Decoy(active)", 15)])],
+			[TubeSpawnState(2, "Decoy(active)"), TubeSpawnState(3, "Decoy(active)")]);
 	Globals.buildForTests();
 	AICrew boat1Crew = new AICrew(BOT_DIFFICULTY.easy);
 	boat1Crew.side = new SideOfConflict("boat1 side");
 	AICrew boat2Crew = new AICrew(BOT_DIFFICULTY.easy);
 	boat2Crew.side = new SideOfConflict("boat2 side");
-	AICrew boat3Crew = new AICrew(BOT_DIFFICULTY.easy);
+	AICrew boat3Crew = new AICrew(BOT_DIFFICULTY.medium);
 	boat3Crew.side = boat2Crew.side;
 	Submarine boat1 = Globals.entityDb.buildSubFromLoadout(req, boat1Crew);
 	Submarine boat2 = Globals.entityDb.buildSubFromLoadout(req, boat2Crew);

@@ -13,7 +13,7 @@ filePattern = "test_data/" + testName + "*.csv"
 print(filePattern)
 files = glob.glob(filePattern)
 print(files)
-fileRegex = re.compile('.*_([\w\.0-9]+).csv')
+fileRegex = re.compile('.*_([\w\.0-9\(\)]+).csv')
 
 from itertools import cycle
 cycol = cycle('bgrcmk')
