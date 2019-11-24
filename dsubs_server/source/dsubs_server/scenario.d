@@ -1,6 +1,7 @@
 module dsubs_server.scenario;
 
-import std.algorithm: min, max, count, filter;
+import std.algorithm;
+import std.array: array;
 import std.random: uniform, uniform01;
 import std.container.rbtree;
 import std.datetime.systime;
@@ -91,7 +92,6 @@ final class BattleRoyale: Scenario
 		bool m_inTransition;
 		CallbackDelayer m_delayer;
 		int m_civBotSpawnRequests;
-		int m_easyBotSpawnRequests;
 		SideOfConflict m_botSide;
 
 		struct ReloadCircle
@@ -109,7 +109,10 @@ final class BattleRoyale: Scenario
 		enum usecs_t SPAWN_DELAY_BASE = cast(usecs_t) 1 * 60 * 1000_000;
 		enum usecs_t STABLE_TIME = cast(usecs_t) 60 * 60 * 1000_000;
 		enum int ACTIVE_CIVILIAN_BOTS = 3;
-		enum int ACTIVE_EASY_BOTS = 1;
+
+		bool[Submarine] m_civilianBots;
+		bool[Submarine] m_easyBots;
+		bool[Submarine] m_mediumBots;
 	}
 
 	this()
@@ -155,11 +158,9 @@ final class BattleRoyale: Scenario
 		int botsToSpawn = ACTIVE_CIVILIAN_BOTS - m_civBotSpawnRequests -
 			Globals.bots.captains.filter!(b => b.submarine.prototypeName == "Bot trader").
 			count.to!int;
-		while (botsToSpawn-- > 0)
+
+		void delayCivilianBotSpawn(usecs_t delay)
 		{
-			info("Scheduling new bot spawn");
-			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
-			m_civBotSpawnRequests++;
 			m_delayer.put(DelayedEvent(Globals.sim.worldTime + delay,
 				{
 					info("Spawning new trader bot");
@@ -173,6 +174,7 @@ final class BattleRoyale: Scenario
 					getRandomSpawn(spawnPos, spawnRot);
 					botSub.transform.position = spawnPos;
 					botSub.transform.rotation = spawnRot;
+					m_civilianBots[botSub] = true;
 					foreach (h; botSub.hydrophones)
 						h.active = false;
 					Globals.bots.registerEntity(crew);
@@ -180,19 +182,21 @@ final class BattleRoyale: Scenario
 					botSub.register();
 				}));
 		}
-		// easy combat bots
-		botsToSpawn = ACTIVE_EASY_BOTS - m_easyBotSpawnRequests -
-			Globals.bots.captains.filter!(b => b.submarine.prototypeName == "Stork").
-			count.to!int;
+
 		while (botsToSpawn-- > 0)
 		{
-			info("Scheduling new easy combat bot spawn");
+			info("Scheduling new bot spawn");
 			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
-			m_easyBotSpawnRequests++;
+			m_civBotSpawnRequests++;
+			delayCivilianBotSpawn(delay);
+		}
+
+		// for each dead civilian bot spawn easy bot
+		void delayEasyBotSpawn(usecs_t delay)
+		{
 			m_delayer.put(DelayedEvent(Globals.sim.worldTime + delay,
 				{
 					info("Spawning new easy combat bot");
-					m_easyBotSpawnRequests--;
 					AICrew crew = new AICrew(BOT_DIFFICULTY.easy);
 					crew.side = m_botSide;
 					SpawnReq req = SpawnReq("Stork", "Seven-blade screw",
@@ -204,10 +208,69 @@ final class BattleRoyale: Scenario
 					botSub.transform.position = spawnPos;
 					botSub.transform.rotation = spawnRot;
 					Globals.bots.registerEntity(crew);
+					m_easyBots[botSub] = true;
 					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
 					botSub.register();
 				}));
 		}
+
+		// easy combat bots
+		int deadBotTraders = m_civilianBots.byKey.filter!(s => s.dead &&
+			s.prototypeName == "Bot trader").count.to!int;
+		while (deadBotTraders-- > 0)
+		{
+			info("Scheduling new easy combat bot spawn");
+			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
+			delayEasyBotSpawn(delay);
+		}
+
+		// for each dead easy bot spawn medium bot
+		void delayMediumBotSpawn(usecs_t delay)
+		{
+			m_delayer.put(DelayedEvent(Globals.sim.worldTime + delay,
+				{
+					info("Spawning new medium combat bot");
+					AICrew crew = new AICrew(BOT_DIFFICULTY.medium);
+					crew.side = m_botSide;
+					SpawnReq req = SpawnReq("Stork", "Seven-blade screw",
+						[AmmoRoomFullState(0, [WeaponCount("Minoga", 8)]),
+						AmmoRoomFullState(1, [WeaponCount("Decoy(active)", 15)])],
+						[TubeSpawnState(2, "Decoy(active)"),
+						TubeSpawnState(3, "Decoy(active)")]);
+					Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, crew);
+					vec2d spawnPos;
+					double spawnRot;
+					getRandomSpawn(spawnPos, spawnRot);
+					botSub.transform.position = spawnPos;
+					botSub.transform.rotation = spawnRot;
+					Globals.bots.registerEntity(crew);
+					m_mediumBots[botSub] = true;
+					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
+					botSub.register();
+				}));
+		}
+
+		// medium combat bots
+		int deadEasyBots = m_easyBots.byKey.filter!(s => s.dead).count.to!int;
+		while (deadEasyBots-- > 0)
+		{
+			info("Scheduling new medium combat bot spawn");
+			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
+			delayMediumBotSpawn(delay);
+		}
+
+		// remove dead submarines from collections
+		void clearDeadSubs(ref bool[Submarine] collection)
+		{
+			Submarine[] deadSubs = collection.byKey.filter!(s => s.dead).array;
+			foreach (Submarine sub; deadSubs)
+				collection.remove(sub);
+		}
+
+		clearDeadSubs(m_civilianBots);
+		clearDeadSubs(m_easyBots);
+		clearDeadSubs(m_mediumBots);
+
 		// give new destinations to bots that have arrived
 		foreach (AICrewTemp crewTemp; Globals.bots.captains)
 		{

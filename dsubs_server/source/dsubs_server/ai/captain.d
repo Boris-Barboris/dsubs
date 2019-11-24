@@ -53,6 +53,8 @@ final class AICrew: AICrewTemp
 		CrewGoal m_goal;
 	}
 
+	@property BOT_DIFFICULTY difficulty() const { return m_difficulty; }
+
 	@property CrewGoal goal() { return m_goal; }
 
 	// set new goal for a captain of the crew
@@ -451,7 +453,7 @@ final class AICaptain
 		{
 			SwimToDestinationGoal goal = cast(SwimToDestinationGoal) m_activeGoal;
 			assert(goal);
-			trace("Ordering helmsman to swim to destination");
+			// trace("Ordering helmsman to swim to destination");
 			WhereToSwim whereToSwim;
 			whereToSwim.type = WhereToSwimType.destination;
 			whereToSwim.destination = goal.destination;
@@ -727,8 +729,8 @@ final class AICaptain
 					c.solutionAge < MAX_SOLUTION_AGE);
 		}
 
-		enum double MIN_MISS_WORRY = 1200.0;
-		enum float MAX_SOLUTION_AGE = 120.0f;
+		enum double MIN_MISS_WORRY = 1500.0;
+		enum float MAX_SOLUTION_AGE = 180.0f;
 
 		private double getDanger(Solution torpSol)
 		{

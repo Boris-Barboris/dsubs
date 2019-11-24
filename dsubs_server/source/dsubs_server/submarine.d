@@ -35,6 +35,14 @@ final class Submarine: Vessel
 	/// result of captain's cast to Player class
 	@property Player player() { return cast(Player) m_captain; }
 
+	override string toString()
+	{
+		return "Submarine (proto: " ~ prototypeName ~
+			(m_captain ? ", captain: " ~ m_captain.toString() : "") ~
+			(player ? ", player: " ~ player.name : "") ~
+			")";
+	}
+
 	/// creates transform and rigid body
 	this(Captain captain, string prototypeName)
 	{
