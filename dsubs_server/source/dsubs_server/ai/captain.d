@@ -7,6 +7,8 @@ import dsubs_common.containers.circqueue;
 import dsubs_common.math.angles;
 import dsubs_common.api.entities;
 
+import dsubs_sound.activesonar;
+
 import dsubs_server.common;
 import dsubs_server.globals;
 import dsubs_server.weaponry;
@@ -308,6 +310,11 @@ bool isCombatCapable(const SubmarineFactory subFac)
 	return subFac.tubeProtos.length > 0;
 }
 
+bool hasActiveSonar(Submarine sub)
+{
+	return sub.sonar !is null;
+}
+
 double effectiveFiringRange(const Submarine sub)
 {
 	// FIXME
@@ -496,6 +503,7 @@ final class AICaptain
 		Vessel m_mainDanger;
 		usecs_t m_lastFire;
 		usecs_t m_lastDecoyFire;
+		usecs_t m_lastPing;
 	}
 
 	@property Contact* mainContact()
@@ -811,9 +819,9 @@ final class AICaptain
 
 	private final class EnsureTorpedoesLoading: FixedCostActionNode
 	{
-		this(string file = __FILE__, size_t line = __LINE__)
+		this(bool invert, string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Initiate torpedoes loading into free tubes", 400, true, file, line);
+			super("Initiate torpedoes loading into free tubes", 400, invert, file, line);
 		}
 
 		override @property bool shouldBeRunning()
@@ -954,12 +962,78 @@ final class AICaptain
 		}
 	}
 
-	private final class FireOneDecoy: FixedCostActionNode
+	private final class RequestPing: FixedCostActionNode
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Choose open decoy tube and fire it", 500,
-				false, file, line);
+			super("Emit one max-power sonar ping", 1000, false, file, line);
+			final switch (m_difficulty)
+			{
+				case (BOT_DIFFICULTY.easy):
+					m_detectionMargin = 8.0f;
+					break;
+				case (BOT_DIFFICULTY.medium):
+					m_detectionMargin = 5.0f;
+					break;
+				case (BOT_DIFFICULTY.hard):
+					m_detectionMargin = 3.0f;
+					break;
+			}
+		}
+
+		private float m_detectionMargin = 0.0f;
+
+		enum float CLASSIFICATION_MARGIN = 100.0f;
+
+		override @property bool shouldBeRunning()
+		{
+			return hasActiveSonar(m_crew.submarine);
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			m_lastPing = Globals.sim.worldTime;
+			ActiveSonar sonar = m_crew.submarine.sonar;
+			float maxIlevel = sonar.proto.maxPeakIlevel;
+			SonarPing ping = sonar.startPing(maxIlevel);
+			Globals.acous.registerSource(ping);
+			ReflectorImprint[] imprints = sonar.estimateReflectors(Globals.acous.reflectors);
+			// ping returned imprints
+			trace("AI ping resulted in imprints: ", imprints);
+			// we go through all imprints and provide position data to CIC (crew state)
+			foreach (ReflectorImprint ri; imprints)
+			{
+				Vessel v = cast(Vessel) ri.reflector.owner;
+				if (v is null)
+					continue;
+				if (ri.signalLevel - ri.noiseLevel < m_detectionMargin)
+					continue;
+				if (v !in m_crew.state.contacts)
+				{
+					Contact* newCtc = new Contact(v);
+					trace("Adding new contact for reflector imprint ", ri);
+					m_crew.state.contacts[v] = newCtc;
+				}
+				Contact* ctc = m_crew.state.contacts[v];
+				ctc.lastActiveSonarData = Globals.sim.worldTime;
+				ctc.activeSonarPoints += ri.signalLevel - ri.noiseLevel;
+				if (ctc.classification == ContactClass.unknown &&
+					ctc.activeSonarPoints > CLASSIFICATION_MARGIN)
+				{
+					AIAcoustic.classifyAndRelate(ctc, v, m_crew.side);
+				}
+			}
+			return ExecutionResult.success;
+		}
+	}
+
+	private final class FireOneDecoy: FixedCostActionNode
+	{
+		this(string description = "Choose open decoy tube and fire it",
+			int cost = 500,
+			string file = __FILE__, size_t line = __LINE__)
+		{
+			super(description, cost, false, file, line);
 		}
 
 		override @property bool shouldBeRunning()
@@ -996,12 +1070,17 @@ final class AICaptain
 		}
 	}
 
-	private final class FireOneTorpedo: FixedCostActionNode
+	private class FireOneTorpedo: FixedCostActionNode
 	{
-		this(string file = __FILE__, size_t line = __LINE__)
+		this(string description = "Open the tube and fire onto the main target",
+			int cost = 1000, string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Open the tube and fire onto the main target", 1000,
-				false, file, line);
+			super(description, cost, false, file, line);
+		}
+
+		protected vec2d getTargetContactPos()
+		{
+			return mainContact().solution.currentPos;
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -1027,7 +1106,8 @@ final class AICaptain
 			}
 			if (chosenTube is null)
 				return ExecutionResult.running;
-			WeaponParamValue[] wpValues = getFiringParameters(chosenTube, "Minoga");
+			WeaponParamValue[] wpValues = getFiringParameters(
+				getTargetContactPos(), chosenTube, "Minoga");
 			trace("AI launching Minoga torp with parameters ", wpValues);
 			TubeOperationResult res = chosenTube.processLaunchRequest("Minoga", wpValues);
 			assert(res.tubeChanged);
@@ -1035,11 +1115,10 @@ final class AICaptain
 			return ExecutionResult.success;
 		}
 
-		private WeaponParamValue[] getFiringParameters(Tube tube, string weapon)
+		private WeaponParamValue[] getFiringParameters(vec2d tgtPos, Tube tube, string weapon)
 		{
 			assert(weapon == "Minoga");
-			vec2d posDiff = mainContact.solution.currentPos -
-				tube.transform.wposition;
+			vec2d posDiff = tgtPos - tube.transform.wposition;
 			WeaponFactory factory = Globals.entityDb.getWeaponFactory(weapon);
 			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.marchCourse);
 			courseParam.course = courseAngle(posDiff);
@@ -1049,7 +1128,25 @@ final class AICaptain
 				factory.activationRange.min, factory.activationRange.max);
 			WeaponParamValue search = WeaponParamValue(WeaponParamType.searchPattern);
 			search.searchPattern = WeaponSearchPattern.snake;
-			return [courseParam, activationRangeParam, search];
+			WeaponParamValue speed = WeaponParamValue(WeaponParamType.activeSpeed);
+			speed.speed = uniform(factory.activeSpeedRange.min, factory.activeSpeedRange.max);
+			return [courseParam, activationRangeParam, search, speed];
+		}
+	}
+
+	private final class FireOneTorpedoOnDanger: FireOneTorpedo
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Open the tube and fire onto the main danger", 1000,
+				file, line);
+		}
+
+		protected override vec2d getTargetContactPos()
+		{
+			// fire at the point of danger's origin
+			return mainDanger().solution.extrapolatedPos(Globals.sim.worldTime -
+				mainDanger.age.to!usecs_t * 1_000_000L);
 		}
 	}
 
@@ -1068,7 +1165,7 @@ final class AICaptain
 				new ParallelNode("Parallel navigation and fire control", [
 					new SwimCloserToMainTarget(),
 					new SequenceNode("Shoot while in range", [
-						new EnsureTorpedoesLoading(),
+						new EnsureTorpedoesLoading(true),
 						new ConditionNode("Close enough", () =>
 							rangeFromContact(mainContact) <=
 								effectiveFiringRange(m_crew.submarine)),
@@ -1088,6 +1185,7 @@ final class AICaptain
 			"Medium captain decouples navigation from firing",
 			[
 				new ChooseMostDangerousTorp(),
+				new EnsureTorpedoesLoading(false),
 				new EnsureDecoysLoading(),
 				new EnsureDecoyTubesOpening(),
 				new FallbackNode("use or find main target", [
@@ -1102,6 +1200,20 @@ final class AICaptain
 						Globals.sim.worldTime - m_lastDecoyFire > 90_000_000L),
 					new FireOneDecoy()
 				]),
+				new SequenceNode("Fire torpedo snapshot towards the main danger", [
+					new ConditionNode("There is main danger", () =>
+						m_mainDanger !is null),
+					new ConditionNode("Haven't fired in the last 90 seconds", () =>
+						Globals.sim.worldTime - m_lastFire > 90_000_000L),
+					new FireOneTorpedoOnDanger()
+				]),
+				new SequenceNode("Rare active ping when in combat", [
+					new ConditionNode("There is danger", () =>
+						m_mainDanger !is null),
+					new ConditionNode("Ping not more than once in 3 minutes", () =>
+						Globals.sim.worldTime - m_lastPing > 180_000_000L),
+					new RequestPing()
+				]),
 				new SequenceNode("General attack sequence", [
 					new FallbackNode("we either move offensively or defensively", [
 						new EvadeMainDangerIfNeeded(),
@@ -1109,9 +1221,9 @@ final class AICaptain
 					]),
 					new ConditionNode("if we have ammo",
 						() => m_crew.submarine.haveTorpedoes),
+					new ConditionNode("We have main target", () => m_mainTarget !is null),
 					new FallbackNode("when we have main target", [
 						new DropStaleMainTarget(),
-						new EnsureTorpedoesLoading(),
 						new ConditionNode("Close enough", () =>
 							rangeFromContact(mainContact) <=
 								effectiveFiringRange(m_crew.submarine)),

@@ -127,7 +127,7 @@ final class AIAcoustic
 			else
 			{
 				Contact* newCtc = new Contact(v);
-				trace("Queuing new contact for the source imprint ", m_imprintToReport);
+				trace("Adding new contact for the source imprint ", m_imprintToReport);
 				applyToContact(newCtc, v, isPing);
 				state.contacts[v] = newCtc;
 			}
@@ -144,7 +144,7 @@ final class AIAcoustic
 					m_imprintToReport.signalLevel.val - m_imprintToReport.backgroundLevel.val,
 					isPing ? ClassifyAndTrack.CLASSIFICATION_MARGIN : 0.0f);
 				if (isPing)
-					ClassifyAndTrack.classifyAndRelate(ctc, v, m_crew.side, m_imprintToReport);
+					classifyAndRelate(ctc, v, m_crew.side);
 			}
 		}
 
@@ -181,6 +181,33 @@ final class AIAcoustic
 		}
 	}
 
+	static void classifyAndRelate(Contact* ctc, Vessel v, SideOfConflict ownSide)
+	{
+		if (ctc.classification != ContactClass.unknown)
+			return;
+		ContactClass cclass;
+		if (cast(Torpedo) v)
+		{
+			cclass = ContactClass.weapon;
+			Torpedo torp = cast(Torpedo) v;
+			if (torp.shooterCaptain)
+				ctc.relation = ownSide.relateTo(torp.shooterCaptain.side);
+		}
+		else if (cast(StaticDecoy) v)
+			cclass = ContactClass.decoy;
+		else if (cast(Submarine) v)
+		{
+			cclass = ContactClass.submarine;
+			// relation is only relevant for submarines.
+			Submarine ctcSub = cast(Submarine) v;
+			if (ctcSub.captain)
+				ctc.relation = ownSide.relateTo(ctcSub.captain.side);
+		}
+		trace("Classified as ", cclass, ", relation ", ctc.relation,
+			" after ", ctc.age, " seconds");
+		ctc.classification = cclass;
+	}
+
 	private final class ClassifyAndTrack: FixedCostActionNode
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
@@ -189,34 +216,6 @@ final class AIAcoustic
 		}
 
 		enum float CLASSIFICATION_MARGIN = 100.0f;
-
-		static void classifyAndRelate(Contact* ctc, Vessel v, SideOfConflict ownSide,
-			SourceImprint si)
-		{
-			if (ctc.classification != ContactClass.unknown)
-				return;
-			ContactClass cclass;
-			if (cast(Torpedo) v)
-			{
-				cclass = ContactClass.weapon;
-				Torpedo torp = cast(Torpedo) v;
-				if (torp.shooterCaptain)
-					ctc.relation = ownSide.relateTo(torp.shooterCaptain.side);
-			}
-			else if (cast(StaticDecoy) v)
-				cclass = ContactClass.decoy;
-			else if (cast(Submarine) v)
-			{
-				cclass = ContactClass.submarine;
-				// relation is only relevant for submarines.
-				Submarine ctcSub = cast(Submarine) v;
-				if (ctcSub.captain)
-					ctc.relation = ownSide.relateTo(ctcSub.captain.side);
-			}
-			trace(si, " classified as ", cclass, ", relation ", ctc.relation,
-				" after ", ctc.age, " seconds");
-			ctc.classification = cclass;
-		}
 
 		override ExecutionResult onTicksConsumed()
 		{
@@ -239,7 +238,7 @@ final class AIAcoustic
 				if (ctc.classification == ContactClass.unknown &&
 					ctc.passiveSonarPoints > CLASSIFICATION_MARGIN)
 				{
-					classifyAndRelate(ctc, v, m_crew.side, si);
+					classifyAndRelate(ctc, v, m_crew.side);
 				}
 			}
 			return ExecutionResult.success;

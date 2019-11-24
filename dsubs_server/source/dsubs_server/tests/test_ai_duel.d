@@ -46,7 +46,7 @@ unittest
 	Globals.bots.registerEntity(boat3Crew);
 	AllVesselCvsWriter writer = AllVesselCvsWriter("ai_duel", "easy_duel");
 	writer.initialize();
-	Globals.sim.worldTimeLimit = 600 * cast(ulong)1e6;
+	Globals.sim.worldTimeLimit = 700 * cast(ulong)1e6;
 	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();
