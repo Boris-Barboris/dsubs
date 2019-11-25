@@ -495,7 +495,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		int m_vertPos;
 		TrackerOverlay m_trackerOverlay;
 		/// Circular buffer to contain history of ray origins
-		CircQueue!vec2d m_originQueue;
+		CircQueue!(vec2d, true) m_originQueue;
 	}
 
 	@property TrackerOverlay trackerOverlay() { return m_trackerOverlay; }
@@ -508,7 +508,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		params.headerHeight = params.compassHeight + m_dirHeaderHeight;
 		params.height = 60 * 5;		// 5 minutes
 		params.camViewPortHeight = params.height;
-		m_originQueue = CircQueue!vec2d(params.height.to!size_t);
+		m_originQueue = CircQueue!(vec2d, true)(params.height.to!size_t);
 		blackLevel = 0.1f;
 		m_pyperworldy = 1.0f;		// 1 pixel = 1 second
 		super(params, new WaterfallOverlay());
@@ -569,8 +569,6 @@ final class Waterfall: PanoramicDisplay!ushort
 	void handleSubKinematicRes(CICSubKinematicRes res)
 	{
 		// update m_originQueue
-		if (m_originQueue.length == m_originQueue.capacity)
-			m_originQueue.popFront();
 		m_originQueue.pushBack(res.snap.position +
 			rotateVector(m_ht.mount.mountCenter, res.snap.rotation));
 	}
