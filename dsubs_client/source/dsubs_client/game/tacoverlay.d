@@ -421,7 +421,6 @@ final class TacticalOverlay: Overlay
 		TacticalContactElement m_selectedContact;
 		ContactDataOverlayElement[int] m_selectedContactData;
 		OverlayElement[] m_scenarioElements;
-		Label m_mergeHint;
 		HoveredContactDescription m_hoverDesc;
 
 		enum int HOVER_DESC_YSHIFT = 28;
@@ -431,15 +430,6 @@ final class TacticalOverlay: Overlay
 	{
 		m_camCtrl = camCtrl;
 		mouseTransparent = false;
-		m_mergeHint = new Label();
-		m_mergeHint.fontSize = 25;
-		m_mergeHint.fontColor = sfColor(255, 255, 255, 50);
-		m_mergeHint.htextAlign = HTextAlign.CENTER;
-		m_mergeHint.vtextAlign = VTextAlign.CENTER;
-		m_mergeHint.content = "Click on the contact to merge into";
-		m_mergeHint.mouseTransparent = true;
-		m_mergeHint.size = cast(vec2i) vec2f(
-			m_mergeHint.contentWidth(), m_mergeHint.contentHeight() + 10);
 		// mouse and keyboard handlers
 		onMouseDown += &processMouseDown;
 		onMouseUp += &processMouseUp;
@@ -452,7 +442,6 @@ final class TacticalOverlay: Overlay
 	override void updatePosition()
 	{
 		super.updatePosition();
-		m_mergeHint.position = position + (size - m_mergeHint.size) / 2;
 		m_hoverDesc.mainDiv.position = position + vec2i(size.x, HOVER_DESC_YSHIFT) -
 			vec2i(m_hoverDesc.mainDiv.size.x, 0);
 	}
@@ -460,7 +449,6 @@ final class TacticalOverlay: Overlay
 	override void updateSize()
 	{
 		super.updateSize();
-		m_mergeHint.position = position + (size - m_mergeHint.size) / 2;
 		m_hoverDesc.mainDiv.position = position + vec2i(size.x, HOVER_DESC_YSHIFT) -
 			vec2i(m_hoverDesc.mainDiv.size.x, 0);
 	}
@@ -486,7 +474,7 @@ final class TacticalOverlay: Overlay
 		if (btn == sfMouseLeft)
 		{
 			selectedContact = null;
-			g_inMerge = false;
+			inMerge = false;
 		}
 		if (btn == sfMouseRight)
 		{
@@ -682,7 +670,7 @@ final class TacticalOverlay: Overlay
 			if (!el.hidden)
 				el.onHide();
 		}
-		g_inMerge = false;
+		inMerge = false;
 	}
 
 	override void draw(Window wnd, long usecsDelta)
@@ -698,8 +686,6 @@ final class TacticalOverlay: Overlay
 				el.draw(wnd, usecsDelta);
 			}
 		}
-		if (g_inMerge)
-			m_mergeHint.draw(wnd, usecsDelta);
 		if (m_hoverDesc.followedContact)
 		{
 			m_hoverDesc.update();
@@ -842,6 +828,17 @@ private __gshared
 {
 	bool g_inMerge;
 	ContactId g_mergeSourceId;
+
+	@property bool inMerge() { return g_inMerge; }
+
+	@property void inMerge(bool rhs)
+	{
+		if (g_inMerge && !rhs)
+			Game.simState.gui.hideMainHint();
+		else if (!g_inMerge && rhs)
+			Game.simState.gui.showMainHint("Click on the contact to merge into");
+		g_inMerge = rhs;
+	}
 }
 
 
@@ -1267,7 +1264,7 @@ final class TacticalContactElement: OverlayElementWithHover
 					if (g_mergeSourceId != m_contact.id)
 						Game.ciccon.sendMessage(immutable CICContactMergeReq(
 							g_mergeSourceId, m_contact.id));
-					g_inMerge = false;
+					inMerge = false;
 				}
 				else
 					tacowner.selectedContact = this;
@@ -1279,7 +1276,7 @@ final class TacticalContactElement: OverlayElementWithHover
 			// add merge to button
 			Button mbtn = builder(new Button()).fontSize(15).content("merge").build();
 			mbtn.onClick += {
-				g_inMerge = true;
+				inMerge = true;
 				g_mergeSourceId = m_contact.id;
 			};
 			buttons ~= mbtn;
@@ -1349,7 +1346,7 @@ final class TacticalContactElement: OverlayElementWithHover
 	override void drop()
 	{
 		if (g_inMerge && m_contact.id == g_mergeSourceId)
-			g_inMerge = false;
+			inMerge = false;
 		super.drop();
 	}
 

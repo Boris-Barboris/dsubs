@@ -135,6 +135,8 @@ final class SimulationGUI
 	private
 	{
 		Label curCourse, curSpeed;
+		Label m_mainHintLabel;
+		Panel m_mainHintPanel;
 		TextField tgtCourseField, tgtThrottleField;
 		TextBox chatMessageBox;
 		WaterfallGui m_passiveGui;
@@ -142,6 +144,20 @@ final class SimulationGUI
 		Div m_topLevelDiv;
 		float m_oldSonarGain = 1.0f;
 		TubeUI[int] tubeUis;
+	}
+
+	void showMainHint(string labelContent)
+	{
+		m_mainHintLabel.content = labelContent;
+		if (m_mainHintPanel.added)
+			return;
+		Game.guiManager.addPanel(m_mainHintPanel);
+	}
+
+	void hideMainHint()
+	{
+		if (m_mainHintPanel.added)
+			Game.guiManager.removePanel(m_mainHintPanel);
 	}
 
 	@property Waterfall waterfall() { return m_passiveGui.wf; }
@@ -244,6 +260,12 @@ final class SimulationGUI
 			content(format("%.1f", 100.0f * playerSub.targetThrottle)).
 			symbolFilter(&numericSymbFilter).fontSize(BTN_FONT - 2).build;
 
+		m_mainHintLabel = builder(new Label()).
+			fontSize(25).fontColor(sfColor(255, 255, 255, 50)).
+			htextAlign(HTextAlign.CENTER).vtextAlign(VTextAlign.CENTER).
+			content("SOME HINT").mouseTransparent(true).build();
+		m_mainHintPanel = new Panel(m_mainHintLabel);
+
 		void trySendTgtCourse()
 		{
 			try
@@ -294,12 +316,26 @@ final class SimulationGUI
 		{
 			if (evt.code == sfKeyReturn)
 				trySendTgtCourse();
+			else
+				showMainHint("Press ENTER to apply");
 		};
 
 		tgtThrottleField.onKeyPressed += (evt)
 		{
 			if (evt.code == sfKeyReturn)
 				trySendTgtThrottle();
+			else
+				showMainHint("Press ENTER to apply");
+		};
+
+		tgtCourseField.onKbFocusLoss += ()
+		{
+			hideMainHint();
+		};
+
+		tgtThrottleField.onKbFocusLoss += ()
+		{
+			hideMainHint();
 		};
 
 		Game.hotkeyManager.setHotkey(Hotkey(sfKeyC), ()
