@@ -577,11 +577,10 @@ final class Waterfall: PanoramicDisplay!ushort
 	{
 		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : m_height + 0.5f;
 		drawRow(data, row, m_ht.fov, subWrot + m_ht.antRots[antIdx]);
-		completeRow();
 	}
 
 	// draw black line to zero out the next row we will render into
-	private void completeRow()
+	void completeRow()
 	{
 		sfRenderTexture_display(m_renderTexture);
 		m_vertPos++;

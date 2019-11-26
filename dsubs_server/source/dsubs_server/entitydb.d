@@ -404,8 +404,8 @@ Armament:
   2x bow torpedo tubes.
   2x broadside decoy launchers.
 Hydrophones:
-  Bow: passive spherical array, 210 deg FoV
-Active sonar:
+  Bow: spherical array, 230 deg FoV
+Active sonars:
   Bow: 2200Hz mid-freq pulse, 210 deg FoV`,
 				[
 					ConvexPolygon(xSymmetry([
@@ -465,7 +465,7 @@ Active sonar:
 					HydrophoneTemplate(
 						"bow", HydrophoneType.standard,
 						MountPoint(vec2f(0.0f, 31.0f)),
-						dgr2rad(210), [0.0f]
+						dgr2rad(230), [0.0f]
 					)
 				],
 				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
@@ -490,13 +490,123 @@ Active sonar:
 		// trace("dims: ", dims);
 		sp.hullLength = dims.y;
 		sp.hprots = [
-			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(210),
-			210, 2 / 90.0f, 3.0f)
+			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(230),
+			230, 2 / 90.0f, 3.0f)
 		];
 		sp.asprot = asp;
 		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-26.0f, -23.0f, -15.0f]);
 		sp.playable = true;
 		m_submarines[sp.tmpl.name] = sp;
+
+
+		// Stork with bow arrays
+		sp = new SubmarineFactory(
+			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
+				"Stork (broadside)",
+`Experimetal "Stork" modification with hull-mounted passive sonar arrays.
+
+Length: 70m
+Displacement: 1600t
+Top speed:
+	Seven-blade screw: 16.8m/s
+Armament:
+  2x bow torpedo tubes.
+  2x broadside decoy launchers.
+Hydrophones:
+  Hull: 2 linear arrays, 120 deg FoV each.
+Active sonars:
+  Bow: 2200Hz mid-freq pulse, 210 deg FoV`,
+  				[
+					ConvexPolygon(xSymmetry([
+							0.0, 35.0,
+							-1.5, 34.8,
+							-2.8, 34,
+							-3.5, 33.0,
+							-4, 32.2,
+							-4.7, 30.0,
+							-5.0, 28.0,
+							-5.0, -18.0,
+							-4.5, -23.0,
+							-3.0, -28.0,
+							-2.0, -31.0,
+							0.0, -35.0
+						]), RgbaColor(70, 70, 70), 0.4f, RgbaColor(100, 100, 100)),
+					ConvexPolygon(xSymmetry([
+							0.0, 15.0,
+							-1.0, 14.7,
+							-1.7, 14.0,
+							-2.0, 13.0,
+							-2.0, 4.0,
+							-1.7, 2.0,
+							-1.0, 0.5,
+							0.0, -1.0
+						]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50)),
+					// bow tubes
+					ConvexPolygon([
+							vec2f(-5.3, 28.0),
+							vec2f(-5.3, 24.0),
+							vec2f(-5.0, 24.3),
+							vec2f(-5.0, 27.7),
+						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+					ConvexPolygon([
+							vec2f(5.0, 27.7),
+							vec2f(5.0, 24.3),
+							vec2f(5.3, 24.0),
+							vec2f(5.3, 28.0)
+						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+					// broadside decoy launchers
+					ConvexPolygon([
+							vec2f(-5.10, -20.0),
+							vec2f(-4.90, -22.0),
+							vec2f(-4.60, -21.9),
+							vec2f(-4.80, -20.1),
+						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+					ConvexPolygon([
+							vec2f(4.80, -20.1),
+							vec2f(4.60, -21.9),
+							vec2f(4.90, -22.0),
+							vec2f(5.10, -20.0)
+						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+				],
+				[MountPoint(vec2f(0.0, -34.0f))],
+				1,
+				[
+					HydrophoneTemplate(
+						"hull", HydrophoneType.standard,
+						MountPoint(vec2f(0.0f, 0.0f)),
+						dgr2rad(120), [dgr2rad(90.0f), -dgr2rad(90.0f)]
+					)
+				],
+				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
+					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
+					asp.getSliceXResol(), asp.radialRes, asp.maxSec),
+				["Seven-blade screw"],
+				roomProtos.byValue.map!(p => p.toTemplate()).array,
+				tubeProtos.byValue.map!(p => p.tmpl).array
+			));
+		sp.roomProtos = roomProtos;
+		sp.tubeProtos = tubeProtos;
+		sp.mass = RolledF(1700.0f, 10.0f);
+		sp.Cd0 = RolledF(40.0, 1.0f);
+		sp.Cd1 = RolledF(6.5, 0.042f);
+		sp.Cda = 0.8;
+		sp.Cl = RolledF(35.0, 0.4f);
+		sp.Cr0 = RolledF(5e4, 100);
+		sp.Cr1 = RolledF(0.5e6, 1e2);
+		sp.Cm = RolledF(500.0f, 6.0f);
+		sp.equilDrift = dgr2rad(20);
+		dims = getHullDims(sp.tmpl.hullModel);
+		// trace("dims: ", dims);
+		sp.hullLength = dims.y;
+		sp.hprots = [
+			HydrophonePrototype([dgr2rad(90.0f), -dgr2rad(90.0f)], 250, GLOBAL_SRATE / 2, dgr2rad(120),
+			120, 2 / 90.0f, 3.0f)
+		];
+		sp.asprot = asp;
+		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-26.0f, -23.0f, -15.0f]);
+		sp.playable = true;
+		m_submarines[sp.tmpl.name] = sp;
+
 
 		// civilian (bot) trader
 		sp = new SubmarineFactory(

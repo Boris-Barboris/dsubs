@@ -23,6 +23,7 @@ import dsubs_client.game.states.mainmenu;
 import dsubs_client.game.states.simulation;
 import dsubs_client.game.cic.server;
 import dsubs_client.gui;
+import dsubs_client.input.router: IInputReceiver;
 import dsubs_client.input.hotkeymanager;
 
 
@@ -134,10 +135,10 @@ final class LoadoutState: GameState
 		{
 			Button btn = builder(new Button()).
 				content(allowedWeapon).fontSize(TUBE_CONTENT_FONT).build;
-			btn.onClick += {
-				tubeLoadouts[tubeId] = allowedWeapon;
-				tubeContentBtn.content = allowedWeapon;
-			};
+			btn.onClick += ((string aw) => {
+				tubeLoadouts[tubeId] = aw;
+				tubeContentBtn.content = aw;
+			}) (allowedWeapon);
 			contextButtons ~= btn;
 		}
 		return contextMenu(Game.guiManager, contextButtons, Game.window.size,
@@ -182,17 +183,17 @@ final class LoadoutState: GameState
 					fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
 					htextAlign(HTextAlign.LEFT).build();
 				divElements ~= propSelector;
-				propSelector.onClick += ()
+				propSelector.onClick += ((string pn) => ()
 					{
-						curSelectedPropulsor = propName;
+						curSelectedPropulsor = pn;
 						if (curSelectedSub)
-							curSelectedSub.setPropulsor(Game.entityManager, propName);
-					};
-				propSelector.onMouseEnter += (o)
+							curSelectedSub.setPropulsor(Game.entityManager, pn);
+					})(propName);
+				propSelector.onMouseEnter += ((string pn) => (IInputReceiver o)
 					{
 						hullDescriptionBox.content =
-							Game.entityManager.propTemplates[propName].description;
-					};
+							Game.entityManager.propTemplates[pn].description;
+					})(propName);
 			}
 			divElements ~= filler(15);
 
@@ -287,12 +288,14 @@ final class LoadoutState: GameState
 				fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
 				htextAlign(HTextAlign.LEFT).build();
 			hullButtons ~= hullSelector;
-			hullSelector.onClick += { selectHull(hullname); };
-			hullSelector.onMouseEnter += (o)
+			hullSelector.onClick += ((string hn) => { selectHull(hn); })(hullname);
+			auto capture = (string hn) =>
+				(IInputReceiver obj)
 				{
 					hullDescriptionBox.content =
-						Game.entityManager.submarineTemplates[hullname].description;
+						Game.entityManager.submarineTemplates[hn].description;
 				};
+			hullSelector.onMouseEnter += capture(hullname);
 			if (i == 0)
 			{
 				assert(curSelectedSub is null);
