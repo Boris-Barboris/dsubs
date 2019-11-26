@@ -4,6 +4,7 @@ import std.conv: to;
 import std.exception: enforce;
 import std.traits;
 import std.meta;
+import std.utf: validate;
 import std.math: isNaN, isInfinity;
 
 import dsubs_common.api.utils;
@@ -190,6 +191,10 @@ void demarshalArray(ArrayT)(ref ArrayT arr, ref const(ubyte)[] from, int maxLen 
 					throw new ProtocolException("Infinity poisoning");
 			}
 			from = from[ArrayElementSize!ArrayT .. $];
+		}
+		static if (isSomeString!ArrayT)
+		{
+			validate(arr);
 		}
 	}
 	else static if (is(ArrayElementT!ArrayT == struct))
