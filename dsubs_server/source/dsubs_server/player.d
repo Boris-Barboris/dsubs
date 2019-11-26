@@ -2,6 +2,7 @@ module dsubs_server.player;
 
 import std.algorithm.iteration;
 import std.array: array;
+import std.string: strip;
 
 import core.atomic;
 
@@ -504,6 +505,7 @@ final class PlayerCollection
 	Player authorizeConnection(PlayerConnection con, string username, string password)
 	{
 		assert(con);
+		username = strip(username);
 		if (username.length == 0)
 			throw new AuthException("Empty login");
 		scope(success) info("Player ", username, " authorized");
