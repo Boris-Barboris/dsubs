@@ -34,7 +34,7 @@ struct CallbackDelayer
 {
 	private DelayedEventCollection m_events;
 
-	void clear()
+	void initialize()
 	{
 		m_events = new DelayedEventCollection();
 	}
@@ -109,6 +109,8 @@ final class BattleRoyale: Scenario
 		enum usecs_t SPAWN_DELAY_BASE = cast(usecs_t) 1 * 60 * 1000_000;
 		enum usecs_t STABLE_TIME = cast(usecs_t) 60 * 60 * 1000_000;
 		enum int ACTIVE_CIVILIAN_BOTS = 3;
+		enum int MAX_ACTIVE_EASY_BOTS = 3;
+		enum int MAX_ACTIVE_MEDIUM_BOTS = 4;
 
 		bool[Submarine] m_civilianBots;
 		bool[Submarine] m_easyBots;
@@ -117,7 +119,7 @@ final class BattleRoyale: Scenario
 
 	this()
 	{
-		m_delayer.clear();
+		m_delayer.initialize();
 		m_currentRadius = DEFAULT_RADIUS;
 		m_currentCenter = vec2d(
 			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)),
@@ -185,7 +187,7 @@ final class BattleRoyale: Scenario
 
 		while (botsToSpawn-- > 0)
 		{
-			info("Scheduling new bot spawn");
+			info("Scheduling new civilian bot spawn");
 			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
 			m_civBotSpawnRequests++;
 			delayCivilianBotSpawn(delay);
@@ -217,7 +219,9 @@ final class BattleRoyale: Scenario
 		// easy combat bots
 		int deadBotTraders = m_civilianBots.byKey.filter!(s => s.dead &&
 			s.prototypeName == "Bot trader").count.to!int;
-		while (deadBotTraders-- > 0)
+		int aliveEasyBots = m_easyBots.byKey.filter!(s => !s.dead).count.to!int;
+		int easyBotsToSpawn = min(deadBotTraders, MAX_ACTIVE_EASY_BOTS - aliveEasyBots);
+		while (easyBotsToSpawn-- > 0)
 		{
 			info("Scheduling new easy combat bot spawn");
 			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
@@ -252,7 +256,9 @@ final class BattleRoyale: Scenario
 
 		// medium combat bots
 		int deadEasyBots = m_easyBots.byKey.filter!(s => s.dead).count.to!int;
-		while (deadEasyBots-- > 0)
+		int aliveMediumBots = m_mediumBots.byKey.filter!(s => !s.dead).count.to!int;
+		int mediumBotsToSpawn = min(deadEasyBots, MAX_ACTIVE_MEDIUM_BOTS - aliveMediumBots);
+		while (mediumBotsToSpawn-- > 0)
 		{
 			info("Scheduling new medium combat bot spawn");
 			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
