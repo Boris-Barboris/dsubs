@@ -139,7 +139,7 @@ final class Simulator
 				{
 					Globals.auxTaskPool.put(
 						task(&Globals.metrics.writeMetrics,
-							profiler.getTotalUsecs, Player.getPlayersOnline()));
+							profiler, Player.getPlayersOnline()));
 				}
 				auto now = MonoTime.currTime();
 				// GC.enable();

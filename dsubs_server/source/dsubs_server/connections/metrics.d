@@ -1,8 +1,11 @@
 module dsubs_server.connections.metrics;
 
+import std.array: Appender, appender;
+
 import requests;
 
 import dsubs_server.common;
+import dsubs_common.proftimer;
 
 
 final class MetricsService
@@ -16,12 +19,19 @@ final class MetricsService
 		m_influxUrl = influxUrl;
 	}
 
-	void writeMetrics(long usecsSimStep, int connectedPlayers)
+	void writeMetrics(ProfTimer simTimer, int connectedPlayers)
 	{
 		try
 		{
+			auto strBuf = appender!string();
+			strBuf ~= "total_usecs=" ~ simTimer.getTotalUsecs.to!string;
+			foreach (const ProfTimer.Interval interval; simTimer.readySubIntervals)
+			{
+				strBuf ~= "," ~ interval.name ~ "=" ~
+					(interval.end - interval.start).total!"usecs".to!string;
+			}
 			postContent(m_influxUrl,
-				"simulator_stats total_usecs=" ~ usecsSimStep.to!string ~ "\n" ~
+				"simulator_stats " ~ strBuf.data ~ "\n" ~
 				"player_stats connected_players=" ~ connectedPlayers.to!string);
 		}
 		catch (Exception ex)

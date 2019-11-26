@@ -11,7 +11,7 @@ final class ProfTimer
 {
 	alias TimeT = typeof(MonoTime.currTime());
 
-	private struct Interval
+	struct Interval
 	{
 		string name;
 		TimeT start;
@@ -22,14 +22,14 @@ final class ProfTimer
 	{
 		Interval total;
 		Interval[] subStack;
-		Interval[] readySubIntervals;
+		Interval[] m_readySubIntervals;
 		int lastUnclosed = -1;
 	}
 
 	void start()
 	{
 		total.start = MonoTime.currTime();
-		readySubIntervals.length = 0;
+		m_readySubIntervals.length = 0;
 	}
 
 	void start(string name)
@@ -42,7 +42,7 @@ final class ProfTimer
 	{
 		assert (subStack.length > 0);
 		subStack[$-1].end = MonoTime.currTime();
-		readySubIntervals ~= subStack[$-1];
+		m_readySubIntervals ~= subStack[$-1];
 		subStack.length--;
 	}
 
@@ -54,12 +54,17 @@ final class ProfTimer
 
 	void printResult()
 	{
-		foreach (pair; readySubIntervals)
+		foreach (pair; m_readySubIntervals)
 		{
 			trace("ProfTimer: ", pair.name, " ",
 				(pair.end - pair.start).total!"usecs", "usecs");
 		}
 		trace("ProfTimer total: ", (total.end - total.start).total!"usecs", "usecs");
+	}
+
+	const(Interval)[] readySubIntervals() const
+	{
+		return m_readySubIntervals;
 	}
 
 	auto getTotalUsecs() const
