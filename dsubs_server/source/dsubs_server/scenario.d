@@ -112,6 +112,11 @@ final class BattleRoyale: Scenario
 		enum int MAX_ACTIVE_EASY_BOTS = 3;
 		enum int MAX_ACTIVE_MEDIUM_BOTS = 4;
 
+		/// we despawn combat bots after this time of zero active
+		/// players.
+		enum usecs_t DESPAWN_COMBAT_BOTS = cast(usecs_t) 60 * 60 * 1000_000;
+		usecs_t m_lastSeenPlayer;
+
 		bool[Submarine] m_civilianBots;
 		bool[Submarine] m_easyBots;
 		bool[Submarine] m_mediumBots;
@@ -276,6 +281,28 @@ final class BattleRoyale: Scenario
 		clearDeadSubs(m_civilianBots);
 		clearDeadSubs(m_easyBots);
 		clearDeadSubs(m_mediumBots);
+
+		// Despawn bots when players are long gone. Saves electricity and resets
+		// difficulty.
+		if (Player.getPlayersOnline)
+			m_lastSeenPlayer = Globals.sim.worldTime;
+		else if (Globals.sim.worldTime - m_lastSeenPlayer > DESPAWN_COMBAT_BOTS)
+		{
+			// we don't run this code every frame, so we update m_lastSeenPlayer
+			m_lastSeenPlayer = Globals.sim.worldTime;
+			Submarine[] subsToKill;
+			foreach (Submarine sub; m_easyBots.byKey)
+				subsToKill ~= sub;
+			foreach (Submarine sub; m_mediumBots.byKey)
+				subsToKill ~= sub;
+			foreach (Submarine sub; subsToKill)
+			{
+				trace("Killing bot because of player inactivily: ", sub);
+				sub.kill("No players");
+			}
+			m_easyBots.clear();
+			m_mediumBots.clear();
+		}
 
 		// give new destinations to bots that have arrived
 		foreach (AICrewTemp crewTemp; Globals.bots.captains)
