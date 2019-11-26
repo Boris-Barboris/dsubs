@@ -24,11 +24,15 @@ final class MetricsService
 		try
 		{
 			auto strBuf = appender!string();
-			strBuf ~= "total_usecs=" ~ simTimer.getTotalUsecs.to!string;
+			// strBuf ~= "total_usecs=" ~ simTimer.getTotalUsecs.to!string;
+			bool first = true;
 			foreach (const ProfTimer.Interval interval; simTimer.readySubIntervals)
 			{
-				strBuf ~= "," ~ interval.name ~ "=" ~
+				if (!first)
+					strBuf ~= ",";
+				strBuf ~= interval.name ~ "=" ~
 					(interval.end - interval.start).total!"usecs".to!string;
+				first = false;
 			}
 			postContent(m_influxUrl,
 				"simulator_stats " ~ strBuf.data ~ "\n" ~
