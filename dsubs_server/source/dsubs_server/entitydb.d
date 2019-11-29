@@ -133,7 +133,8 @@ private:
 					vec2f(1.1f, 0.6f),
 					vec2f(0.6f, -0.6f),
 					vec2f(4.2f, -0.9f)
-				], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40))
+				], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40)),
+				2.19f
 			));
 		bp.posThrustK = RolledF(2500.0f, 20.0f);
 		bp.negThrustK = RolledF(1000.0f, 10.0f);
@@ -166,7 +167,8 @@ private:
 					vec2f(0.5f, 0.4f),
 					vec2f(0.36f, -0.4f),
 					vec2f(2.2f, -0.7f)
-				], RgbaColor(67, 67, 67), 0.15f, RgbaColor(40, 40, 40))
+				], RgbaColor(67, 67, 67), 0.15f, RgbaColor(40, 40, 40)),
+				4.11f
 			));
 		bp.posThrustK = RolledF(2400.0f, 20.0f);
 		bp.negThrustK = RolledF(1100.0f, 10.0f);
@@ -174,9 +176,9 @@ private:
 		bp.shaftRotFreq = 4.11f;
 		bp.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/std_propeller.png", 1.0f, 80, 140),
+				"../dsubs_sound/lima_propeller.png", 1.0f, 80, 140),
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/std_propeller_cav.png", 1.0f, 60, 140),
+				"../dsubs_sound/lima_propeller_cav.png", 1.0f, 60, 140),
 			cast(immutable) new TrochoidModulatorParams([
 				Harmonic(1.0f, 0.30f),
 				Harmonic(2.0f, 0.05f),
@@ -533,7 +535,64 @@ Active sonars:
 		m_submarines[sp.tmpl.name] = sp;
 
 
-		// Stork with bow arrays
+		// Lima
+		roomProtos = roomProtos.dup;
+		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 14,
+			TubeType.standard, ["Minoga": true]);
+		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 24,
+			TubeType.decoy, ["Decoy(active)": true]);
+		bowProtoTemplate = TubePrototype(TubeTemplate(0,
+			MountPoint(vec2f(-1.0, 25.1), 0.0),
+			0, TubeType.standard, false),
+			cast(usecs_t)60 * 1000_000,
+			cast(usecs_t)STORK_FLOOD_SECS * 1000_000,
+			cast(usecs_t)STORK_OPEN_SECS * 1000_000,
+			cast(usecs_t)STORK_FIRING_SECS * 1000_000);
+		bowProtoTemplate.openFlowNoiseMult = 1.0f;
+		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
+			4.0f, 80.0f);
+		bowProtoTemplate.openSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
+			4.0f, 80.0f);
+		bowProtoTemplate.firingSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
+			4.0f, 95.0f);
+		tubeProtos.clear();
+		tubeProtos[0] = bowProtoTemplate;
+		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(1.0, 25.1), 0.0);
+		bowProtoTemplate.tmpl.id = 1;
+		tubeProtos[1] = bowProtoTemplate;
+		decoyTubePrototype = TubePrototype(TubeTemplate(2,
+			MountPoint(vec2f(-2.1, -21.0f), dgr2rad(100)),
+			1, TubeType.decoy, true),
+			cast(usecs_t)45e6, cast(usecs_t)5e6, cast(usecs_t)6e6, cast(usecs_t)3e6);
+		decoyTubePrototype.floodSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hissing2_5sec_8192.wav"),
+			4.0f, 75.0f);
+		decoyTubePrototype.openSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
+			4.0f, 75.0f);
+		decoyTubePrototype.firingSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
+			4.0f, 90.0f);
+		tubeProtos[2] = decoyTubePrototype;
+		decoyTubePrototype.tmpl.mount = MountPoint(vec2f(2.1, -21.0f), -dgr2rad(100));
+		decoyTubePrototype.tmpl.id = 3;
+		tubeProtos[3] = decoyTubePrototype;
+		asp = new ActiveSonarPrototype();
+		asp.pingParams = PingParameters(
+			[Chirp(2400, 2400, 0.2f), Chirp(2100, 2100, 0.5f)],
+			3, 2200, "octaveBp1900_2500");
+		asp.maxSec = 18;
+		asp.maxPeakIlevel = 215.0f;
+		asp.minPeakIlevel = 190.0f;
+		asp.baseNoise = 2.4f;
+		asp.directivity = 17.0f;
+		asp.flowNoiseGain = -6.0f;
+		asp.reflBearingNoise = 0.029f;
+		asp.zeroLevel = dB(seaNoiseIL(2200).val - 23.0f);
+		asp.endScale = 1 / 180.0f;
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Lima",
@@ -690,8 +749,8 @@ Active sonars:
 		// trace("dims: ", dims);
 		sp.hullLength = dims.y;
 		sp.hprots = [
-			HydrophonePrototype([dgr2rad(90.0f), -dgr2rad(90.0f)], 250, GLOBAL_SRATE / 2, dgr2rad(120),
-			120, 2 / 90.0f, 3.0f)
+			HydrophonePrototype([dgr2rad(90.0f), -dgr2rad(90.0f)], 200, GLOBAL_SRATE / 2, dgr2rad(120),
+			100, 2.5 / 90.0f, 3.4f)
 		];
 		sp.asprot = asp;
 		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-22.0f, -19.0f, -11.0f]);

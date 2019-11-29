@@ -45,6 +45,12 @@ struct PropulsorTemplate
 
 	/// 1 screw blade for screws, whole pump for pumps
 	ConvexPolygon model;
+
+	/// Revolutions per second on 100% thrust.
+	float flankRps = 0.0f;
+
+	/// Normalized acceleration of shaft angular velocity
+	float throttleSpd = 0.2f;
 }
 
 struct MountPoint

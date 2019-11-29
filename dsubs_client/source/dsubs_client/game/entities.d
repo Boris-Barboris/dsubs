@@ -55,13 +55,17 @@ final class ScrewPropulsor: Propulsor
 		ubyte m_bladeCount;
 		float m_rotorAngle = 0.0;
 		float m_angVel = 0.0;
+		float m_flankRps;
+		float m_throttleSpd;
 		Transform m_rotTransform;
 	}
 
-	this(EntityManager man, string propName, ubyte bladeCount)
+	this(EntityManager man, string propName, ubyte bladeCount, float flankRps, float throttleSpd)
 	{
 		super(man, propName);
 		m_bladeCount = bladeCount;
+		m_flankRps = flankRps;
+		m_throttleSpd = throttleSpd;
 		m_rotTransform = new Transform();
 		transform.addChild(m_rotTransform);
 
@@ -86,8 +90,8 @@ final class ScrewPropulsor: Propulsor
 
 	override void update(CameraContext camCtx, long usecsDelta)
 	{
-		m_angVel = cmove(m_angVel, 2 * targetThrottle * 2 * PI,
-			2 * 0.2 * 2 * PI, usecsDelta / 1e6);
+		m_angVel = cmove(m_angVel, m_flankRps * targetThrottle * 2 * PI,
+			m_flankRps * m_throttleSpd * 2 * PI, usecsDelta / 1e6);
 		double delta = m_angVel * 1e-6 * usecsDelta;
 		m_rotorAngle += delta;
 		m_rotorAngle = clampAngle(m_rotorAngle);
@@ -146,7 +150,8 @@ private Propulsor createPropulsor(EntityManager man, string propName)
 {
 	auto tmpl = man.m_propTemplates[propName];
 	if (tmpl.type == PropulsorType.screw)
-		return new ScrewPropulsor(man, propName, tmpl.bladeCount);
+		return new ScrewPropulsor(man, propName, tmpl.bladeCount, tmpl.flankRps,
+			tmpl.throttleSpd);
 	else
 		return new PumpPropulsor(man, propName);
 }

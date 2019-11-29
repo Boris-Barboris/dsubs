@@ -690,6 +690,7 @@ final class DsubsSoundOpenclCtx
 			m_queues[i] = new CommandQueue(this, m_prog);
 		trace("OpenCL kernels loaded, preparing filters");
 		m_filters["octaveHp250"] = new FIRFilter(queue(0), octaveHp250);
+		m_filters["octaveHp200"] = new FIRFilter(queue(0), octaveHp200);
 		m_filters["octaveBp1900_2500"] = new FIRFilter(queue(0), octaveBp1900_2500);
 		m_filters["octaveHp3500"] = new FIRFilter(queue(0), octaveHp3500);
 		waterFilter = loadWaterFilterFromFile(m_queues[0],
