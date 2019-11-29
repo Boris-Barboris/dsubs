@@ -3,6 +3,7 @@ module dsubs_server.entitydb;
 import std.array: array;
 import std.algorithm: map, any, filter;
 import std.digest.sha;
+import std.range: retro;
 import std.exception;
 
 import dsubs_common.api;
@@ -153,6 +154,39 @@ private:
 		);
 		bp.playable = true;
 		m_propulsors["Seven-blade screw"] = bp;
+
+		// Five-blade Lima screw
+		bp = new PropulsorFactory(
+			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
+				"Five-blade Lima screw",
+				"High RPM and low cavitation speed, optimized for flank performance.\n\nMass: 30t",
+				PropulsorType.screw,
+				5,
+				ConvexPolygon([
+					vec2f(0.5f, 0.4f),
+					vec2f(0.36f, -0.4f),
+					vec2f(2.2f, -0.7f)
+				], RgbaColor(67, 67, 67), 0.15f, RgbaColor(40, 40, 40))
+			));
+		bp.posThrustK = RolledF(2400.0f, 20.0f);
+		bp.negThrustK = RolledF(1100.0f, 10.0f);
+		bp.mass = 30.0f;
+		bp.shaftRotFreq = 4.11f;
+		bp.soundPrototype = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/std_propeller.png", 1.0f, 80, 140),
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/std_propeller_cav.png", 1.0f, 60, 140),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.30f),
+				Harmonic(2.0f, 0.05f),
+				Harmonic(3.0f, 0.005f),
+				Harmonic(5.0f, 0.76f)],
+				0.5, 0.7, -0.4),
+			2.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
+		);
+		bp.playable = true;
+		m_propulsors["Five-blade Lima screw"] = bp;
 
 		// three-blade civilian screw
 		bp = new PropulsorFactory(
@@ -502,74 +536,129 @@ Active sonars:
 		// Stork with bow arrays
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
-				"Stork (broadside)",
-`Experimetal "Stork" modification with hull-mounted passive sonar arrays.
+				"Lima",
+`Extremely fast light attack submarine. It's bow is too narrow to
+hold reasonably sensitive hydrophone array, so it's main ears are hull-mounted
+linear arrays.
 
-Length: 70m
-Displacement: 1600t
+Length: 60m
+Displacement: 700t
 Top speed:
-	Seven-blade screw: 16.8m/s
+  Five-blade Lima screw: 21.0m/s
 Armament:
   2x bow torpedo tubes.
   2x broadside decoy launchers.
 Hydrophones:
   Hull: 2 linear arrays, 120 deg FoV each.
 Active sonars:
-  Bow: 2200Hz mid-freq pulse, 210 deg FoV`,
+  Bow: 2400Hz mid-freq pulse, 210 deg FoV`,
   				[
+					// bow planes
+					ConvexPolygon([
+							vec2f(-2.88, 20.74),
+							vec2f(-5.08, 20.74),
+							vec2f(-5.08, 19.45),
+							vec2f(-2.89, 19.40)
+						], RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
+					ConvexPolygon([
+							vec2f(-2.88, 20.74),
+							vec2f(-5.08, 20.74),
+							vec2f(-5.08, 19.45),
+							vec2f(-2.89, 19.40)
+						].xreflect, RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
+					// tail planes
+					ConvexPolygon([
+							vec2f(-1.17, -26.37),
+							vec2f(-5.23, -27.64),
+							vec2f(-5.23, -29.45),
+							vec2f(-0.60, -29.48)
+						], RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
+					ConvexPolygon([
+							vec2f(-1.17, -26.37),
+							vec2f(-5.23, -27.64),
+							vec2f(-5.23, -29.45),
+							vec2f(-0.60, -29.48)
+						].xreflect, RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
+					// main shape
 					ConvexPolygon(xSymmetry([
-							0.0, 35.0,
-							-1.5, 34.8,
-							-2.8, 34,
-							-3.5, 33.0,
-							-4, 32.2,
-							-4.7, 30.0,
-							-5.0, 28.0,
-							-5.0, -18.0,
-							-4.5, -23.0,
-							-3.0, -28.0,
-							-2.0, -31.0,
-							0.0, -35.0
+							0.0, 26.33,
+							-0.72, 26.25,
+							-1.47, 25.66,
+							-2.19, 24.66,
+							-2.68, 23.18,
+							-2.92, 22.10,
+							-3.12, 20.03,
+							-3.33, 16.83,
+							-3.39, 13.60,
+							-3.44, 8.70,
+							-3.52, 0.84,
+							-3.41, -3.65,
+							-3.23, -8.65,
+							-2.75, -15.40,
+							-1.77, -23.35,
+							0.0, -33.44
 						]), RgbaColor(70, 70, 70), 0.4f, RgbaColor(100, 100, 100)),
+					// sail foundation
 					ConvexPolygon(xSymmetry([
-							0.0, 15.0,
-							-1.0, 14.7,
-							-1.7, 14.0,
-							-2.0, 13.0,
-							-2.0, 4.0,
-							-1.7, 2.0,
-							-1.0, 0.5,
-							0.0, -1.0
+							0.0, 11.28,
+							-0.60, 10.96,
+							-1.42, 9.59,
+							-1.94, 7.15,
+							-1.72, 3.76,
+							-1.16, 0.71,
+							0.0, -2.70
 						]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50)),
+					// sail roof
+					ConvexPolygon(xSymmetry([
+							0.0, 10.42,
+							-0.21, 10.19,
+							-0.79, 9.23,
+							-1.06, 7.38,
+							-0.85, 3.97,
+							-0.48, 1.61,
+							0.0, 0.11
+						]), RgbaColor(70, 70, 70), 0.2f, RgbaColor(50, 50, 50)),
 					// bow tubes
 					ConvexPolygon([
-							vec2f(-5.3, 28.0),
-							vec2f(-5.3, 24.0),
-							vec2f(-5.0, 24.3),
-							vec2f(-5.0, 27.7),
+							vec2f(-0.85, 25.53),
+							vec2f(-1.01, 25.52),
+							vec2f(-1.18, 25.39),
+							vec2f(-1.26, 25.11),
+							vec2f(-1.24, 24.81),
+							vec2f(-1.09, 24.45),
+							vec2f(-0.87, 24.69),
+							vec2f(-0.69, 25.00),
+							vec2f(-0.66, 25.25),
+							vec2f(-0.70, 25.44)
 						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
 					ConvexPolygon([
-							vec2f(5.0, 27.7),
-							vec2f(5.0, 24.3),
-							vec2f(5.3, 24.0),
-							vec2f(5.3, 28.0)
-						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+							vec2f(-0.85, 25.53),
+							vec2f(-1.01, 25.52),
+							vec2f(-1.18, 25.39),
+							vec2f(-1.26, 25.11),
+							vec2f(-1.24, 24.81),
+							vec2f(-1.09, 24.45),
+							vec2f(-0.87, 24.69),
+							vec2f(-0.69, 25.00),
+							vec2f(-0.66, 25.25),
+							vec2f(-0.70, 25.44)
+						].xreflect, RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
 					// broadside decoy launchers
 					ConvexPolygon([
-							vec2f(-5.10, -20.0),
-							vec2f(-4.90, -22.0),
-							vec2f(-4.60, -21.9),
-							vec2f(-4.80, -20.1),
+							vec2f(-2.50, -20.0),
+							vec2f(-2.30, -22.0),
+							vec2f(-2.05, -21.9),
+							vec2f(-2.25, -20.1),
 						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
 					ConvexPolygon([
-							vec2f(4.80, -20.1),
-							vec2f(4.60, -21.9),
-							vec2f(4.90, -22.0),
-							vec2f(5.10, -20.0)
-						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+							vec2f(-2.50, -20.0),
+							vec2f(-2.30, -22.0),
+							vec2f(-2.05, -21.9),
+							vec2f(-2.25, -20.1),
+						].xreflect, RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
 				],
 				[MountPoint(vec2f(0.0, -34.0f))],
-				1,
+				5,
 				[
 					HydrophoneTemplate(
 						"hull", HydrophoneType.standard,
@@ -580,20 +669,22 @@ Active sonars:
 				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
 					asp.getSliceXResol(), asp.radialRes, asp.maxSec),
-				["Seven-blade screw"],
+				["Five-blade Lima screw"],
 				roomProtos.byValue.map!(p => p.toTemplate()).array,
 				tubeProtos.byValue.map!(p => p.tmpl).array
 			));
 		sp.roomProtos = roomProtos;
 		sp.tubeProtos = tubeProtos;
-		sp.mass = RolledF(1700.0f, 10.0f);
-		sp.Cd0 = RolledF(40.0, 1.0f);
-		sp.Cd1 = RolledF(6.5, 0.042f);
+		sp.rudderKp = 8.0f;
+		sp.rudderKd = -8.0f;
+		sp.mass = RolledF(700.0f, 4.0f);
+		sp.Cd0 = RolledF(20.0, 0.1f);
+		sp.Cd1 = RolledF(4.5, 0.042f);
 		sp.Cda = 0.8;
-		sp.Cl = RolledF(35.0, 0.4f);
+		sp.Cl = RolledF(25.0, 0.1f);
 		sp.Cr0 = RolledF(5e4, 100);
 		sp.Cr1 = RolledF(0.5e6, 1e2);
-		sp.Cm = RolledF(500.0f, 6.0f);
+		sp.Cm = RolledF(300.0f, 2.0f);
 		sp.equilDrift = dgr2rad(20);
 		dims = getHullDims(sp.tmpl.hullModel);
 		// trace("dims: ", dims);
@@ -603,7 +694,7 @@ Active sonars:
 			120, 2 / 90.0f, 3.0f)
 		];
 		sp.asprot = asp;
-		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-26.0f, -23.0f, -15.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-22.0f, -19.0f, -11.0f]);
 		sp.playable = true;
 		m_submarines[sp.tmpl.name] = sp;
 
@@ -669,23 +760,24 @@ private:
 
 /// build axially-symmetric mesh from it's half. 'coords' array should be in form
 /// [ x1, y1, x2, y2 ... ]
-vec2f[] xSymmetry(const float[] coords)
+vec2f[] xSymmetry(const float[] coords, bool firstAsMirrorX = false)
 {
 	assert(coords.length >= 4);
 	assert(coords.length % 2 == 0);
 	int len = coords.length.to!int / 2;
 	vec2f[] res;
+	float xPivot = firstAsMirrorX ? coords[0] : 0.0f;
 	for (int i = 0; i < len; i++)
 		res ~= vec2f(coords[i*2], coords[i*2 + 1]);
 	for (int i = len - 2; i > 0; i--)
-		res ~= vec2f(-coords[i*2], coords[i*2 + 1]);
+		res ~= vec2f(xPivot - coords[i*2], coords[i*2 + 1]);
 	return res;
 }
 
 /// assume that coords describe a complete shape and reflect it
 vec2f[] xreflect(const vec2f[] coords)
 {
-	return coords.map!(c => vec2f(-c.x, c.y)).array;
+	return coords.retro.map!(c => vec2f(-c.x, c.y)).array;
 }
 
 vec2f getHullDims(const ConvexPolygon[] pols)
