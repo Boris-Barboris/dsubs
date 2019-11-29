@@ -80,6 +80,28 @@ int intUnixTime()
 }
 
 
+SpawnReq randomCombatSub()
+{
+	__gshared SpawnReq[] variations;
+	if (variations is null)
+	{
+		variations = [
+			SpawnReq("Stork", "Seven-blade screw",
+						[AmmoRoomFullState(0, [WeaponCount("Minoga", 14)]),
+						AmmoRoomFullState(1, [WeaponCount("Decoy(active)", 25)])],
+						[TubeSpawnState(2, "Decoy(active)"),
+						TubeSpawnState(3, "Decoy(active)")]),
+			SpawnReq("Lima", "Five-blade Lima screw",
+						[AmmoRoomFullState(0, [WeaponCount("Minoga", 12)]),
+						AmmoRoomFullState(1, [WeaponCount("Decoy(active)", 15)])],
+						[TubeSpawnState(2, "Decoy(active)"),
+						TubeSpawnState(3, "Decoy(active)")]),
+		];
+	}
+	return variations[uniform(0, variations.length)];
+}
+
+
 final class BattleRoyale: Scenario
 {
 	private
@@ -206,8 +228,7 @@ final class BattleRoyale: Scenario
 					info("Spawning new easy combat bot");
 					AICrew crew = new AICrew(BOT_DIFFICULTY.easy);
 					crew.side = m_botSide;
-					SpawnReq req = SpawnReq("Stork", "Seven-blade screw",
-						[AmmoRoomFullState(0, [WeaponCount("Minoga", 15)])]);
+					SpawnReq req = randomCombatSub();
 					Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, crew);
 					vec2d spawnPos;
 					double spawnRot;
@@ -241,11 +262,7 @@ final class BattleRoyale: Scenario
 					info("Spawning new medium combat bot");
 					AICrew crew = new AICrew(BOT_DIFFICULTY.medium);
 					crew.side = m_botSide;
-					SpawnReq req = SpawnReq("Stork", "Seven-blade screw",
-						[AmmoRoomFullState(0, [WeaponCount("Minoga", 8)]),
-						AmmoRoomFullState(1, [WeaponCount("Decoy(active)", 15)])],
-						[TubeSpawnState(2, "Decoy(active)"),
-						TubeSpawnState(3, "Decoy(active)")]);
+					SpawnReq req = randomCombatSub();
 					Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, crew);
 					vec2d spawnPos;
 					double spawnRot;

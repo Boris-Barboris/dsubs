@@ -502,7 +502,7 @@ final class AICaptain
 		// target, chosen as main
 		Vessel m_mainTarget;
 		// torpedo we are currently dodging
-		Vessel m_mainDanger;
+		Torpedo m_mainDanger;
 		usecs_t m_lastFire;
 		usecs_t m_lastDecoyFire;
 		usecs_t m_lastPing;
@@ -723,7 +723,6 @@ final class AICaptain
 			return m_mainDanger !is null ||
 			m_crew.state.contacts.byValue.any!(
 				c =>
-					c.relation == ContactRelation.enemy &&
 					c.classification == ContactClass.weapon &&
 					c.solution.positionKnown &&
 					c.solutionAge < MAX_SOLUTION_AGE);
@@ -762,7 +761,6 @@ final class AICaptain
 			vec2d curPos = m_crew.submarine.transform.wposition;
 			VesselAndDanger[] dangers = m_crew.state.contacts.byValue.filter!(
 				c =>
-					c.relation == ContactRelation.enemy &&
 					c.classification == ContactClass.weapon &&
 					c.solution.positionKnown &&
 					c.solutionAge < MAX_SOLUTION_AGE).
@@ -781,7 +779,8 @@ final class AICaptain
 			}
 			if (m_mainDanger != dangers[$-1].v)
 			{
-				m_mainDanger = dangers[$-1].v;
+				m_mainDanger = cast(Torpedo) dangers[$-1].v;
+				assert(m_mainDanger !is null);
 				trace("Choosing ", m_mainDanger, " as main danger");
 			}
 			else if (m_mainDanger && mainDanger.solutionAge > MAX_SOLUTION_AGE)
@@ -1203,8 +1202,8 @@ final class AICaptain
 					new FireOneDecoy()
 				]),
 				new SequenceNode("Fire torpedo snapshot towards the main danger", [
-					new ConditionNode("There is main danger", () =>
-						m_mainDanger !is null),
+					new ConditionNode("There is an enemy main danger", () =>
+						m_mainDanger !is null && mainDanger.relation == ContactRelation.enemy),
 					new ConditionNode("Haven't fired in the last 90 seconds", () =>
 						Globals.sim.worldTime - m_lastFire > 90_000_000L),
 					new FireOneTorpedoOnDanger()

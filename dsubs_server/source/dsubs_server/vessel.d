@@ -124,7 +124,7 @@ class Vessel
 		}
 		m_deathTime = Globals.sim.worldTime;
 		m_reapTime = m_deathTime + uniform!("[]", usecs_t, usecs_t)(240, 360) *
-			1000_000;
+			1000_000L;
 		if (m_propulsor)
 			targetThrottle = 0.0f;
 		m_causeOfDeath = cause;

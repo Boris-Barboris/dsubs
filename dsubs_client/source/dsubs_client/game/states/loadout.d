@@ -281,7 +281,7 @@ final class LoadoutState: GameState
 		hullDescriptionBox.fontSize = 16;
 
 		// scrollist of available hulls
-		GuiElement[] hullButtons;
+		Button[] hullButtons;
 		foreach (i, hullname; availableHulls)
 		{
 			Button hullSelector = builder(new Button()).content(hullname).
@@ -289,6 +289,11 @@ final class LoadoutState: GameState
 				htextAlign(HTextAlign.LEFT).build();
 			hullButtons ~= hullSelector;
 			hullSelector.onClick += ((string hn) => { selectHull(hn); })(hullname);
+			hullSelector.onClick += ((Button selectedBtn) => {
+					selectedBtn.fontColor = COLORS.textFieldCursor;
+					hullButtons.filter!(b => b !is selectedBtn).
+						each!(b => b.fontColor = COLORS.defaultFont);
+				})(hullSelector);
 			auto capture = (string hn) =>
 				(IInputReceiver obj)
 				{
@@ -307,7 +312,8 @@ final class LoadoutState: GameState
 			}
 		}
 
-		Div hullDiv = builder(vDiv(hullButtons)).layoutType(LayoutType.CONTENT).
+		Div hullDiv = builder(vDiv(cast(GuiElement[]) hullButtons)).
+			layoutType(LayoutType.CONTENT).
 			size(vec2i(200, BTN_SIZE * availableHulls.length.to!int +
 							availableHulls.length.to!int)).build;
 		ScrollBar hullsScrollbar = new ScrollBar(hullDiv);

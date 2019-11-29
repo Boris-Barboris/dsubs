@@ -437,7 +437,7 @@ Displacement: 1600t
 Top speed:
 	Seven-blade screw: 16.8m/s
 Armament:
-  2x bow torpedo tubes.
+  2x bow torpedo tubes (90 sec reload).
   2x broadside decoy launchers.
 Hydrophones:
   Bow: spherical array, 230 deg FoV
@@ -558,7 +558,7 @@ Active sonars:
 		bowProtoTemplate.firingSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
 			4.0f, 95.0f);
-		tubeProtos.clear();
+		tubeProtos = tubeProtos.dup();
 		tubeProtos[0] = bowProtoTemplate;
 		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(1.0, 25.1), 0.0);
 		bowProtoTemplate.tmpl.id = 1;
@@ -605,7 +605,7 @@ Displacement: 700t
 Top speed:
   Five-blade Lima screw: 21.0m/s
 Armament:
-  2x bow torpedo tubes.
+  2x bow torpedo tubes (60 sec reload).
   2x broadside decoy launchers.
 Hydrophones:
   Hull: 2 linear arrays, 120 deg FoV each.
@@ -750,7 +750,7 @@ Active sonars:
 		sp.hullLength = dims.y;
 		sp.hprots = [
 			HydrophonePrototype([dgr2rad(90.0f), -dgr2rad(90.0f)], 200, GLOBAL_SRATE / 2, dgr2rad(120),
-			100, 2.5 / 90.0f, 3.4f)
+			100, 1.5 / 90.0f, 3.4f)
 		];
 		sp.asprot = asp;
 		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-22.0f, -19.0f, -11.0f]);
