@@ -10,7 +10,7 @@ curl -L https://github.com/Boris-Barboris/SFML/archive/master.zip --output sfml.
 unzip sfml.zip
 cd SFML-master
 
-# build static SFML libs
+# build shared SFML libs
 mkdir build && cd build
 cmake \
       -DCMAKE_INSTALL_PREFIX=/usr \
