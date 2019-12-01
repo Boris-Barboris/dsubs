@@ -98,7 +98,7 @@ SpawnReq randomCombatSub()
 						TubeSpawnState(3, "Decoy(active)")]),
 		];
 	}
-	return variations[uniform(0, variations.length)];
+	return variations[0];
 }
 
 
