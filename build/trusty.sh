@@ -8,18 +8,26 @@ set -eux
 # build sfml:
 
 # Install sfml build dependencies:
-apt install git unzip ssh rsync binutils gcc g++ cmake make libx11-dev x11-xserver-utils xorg-dev libglu1-mesa-dev freeglut3-dev libudev-dev libjpeg-dev libopenal-dev libflac-dev libvorbis-dev
+apt install git unzip ssh rsync binutils gcc g++ cmake make libx11-dev x11-xserver-utils xorg-dev libglu1-mesa-dev freeglut3-dev libudev-dev libjpeg-dev libopenal-dev libflac-dev libvorbis-dev libpulse-dev
 
 #to install newer cmake and gcc, required for openal build:
 add-apt-repository ppa:george-edison55/cmake-3.x
-# add-apt-repository ppa:jonathonf/gcc-7.1
-add-apt-repository ppa:jonathonf/gcc-6.2
+add-apt-repository ppa:jonathonf/gcc-7.1
+# add-apt-repository ppa:jonathonf/gcc-6.2
 apt-get update
 apt install cmake
-# apt-get install gcc-7 g++-7 c++-7
-apt-get install gcc-6 g++-6 c++-6
-# update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7 --slave /usr/bin/c++ c++ /usr/bin/g++-7
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 70 --slave /usr/bin/g++ g++ /usr/bin/g++-6 --slave /usr/bin/c++ c++ /usr/bin/g++-6
+apt-get install gcc-7 g++-7 c++-7
+# apt-get install gcc-6 g++-6 c++-6
+echo "
+###### Ubuntu Main Repos
+deb http://ru.archive.ubuntu.com/ubuntu/ xenial main
+
+###### Ubuntu Update Repos
+deb http://ru.archive.ubuntu.com/ubuntu/ xenial-security main " >> /etc/apt/sources.list
+apt-get update
+apt-get install binutils
+update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7 --slave /usr/bin/c++ c++ /usr/bin/g++-7
+#update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 70 --slave /usr/bin/g++ g++ /usr/bin/g++-6 --slave /usr/bin/c++ c++ /usr/bin/g++-6
 
 # Download SFML fork source and extract it:
 curl -L https://github.com/Boris-Barboris/SFML/archive/master.zip --output sfml.zip -s
@@ -36,7 +44,7 @@ cmake \
       -DJPEG_INCLUDE_DIR=/usr/include \
       -DBUILD_SHARED_LIBS=1 \
     ..
-make
+make -j 8
 make install
 
 # Download CSFML fork source and extract it:
@@ -51,17 +59,22 @@ cmake \
       -DCSFML_LINK_SFML_STATICALLY=0 \
       -DCMAKE_MODULE_PATH='~/SFML-master/cmake/Modules' \
     ..
-make
+make -j 8
 
 
 # build openal
 cd ~
-git clone git@github.com:Boris-Barboris/openal-soft.git
-cd openal-soft
-git checkout mix_gain_limit
+curl -L https://github.com/Boris-Barboris/openal-soft/archive/mix_gain_limit.zip \
+    --output openal-soft.zip -s
+unzip openal-soft.zip
+cd openal-soft-mix_gain_limit
 cd build
-cmake ..
-make
+cmake \
+    -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold \
+    -DALSOFT_STATIC_STDCXX=true \
+    -DALSOFT_REQUIRE_PULSEAUDIO=true \
+    ..
+make -j 8
 
 
 # install dmd compiler
@@ -69,7 +82,7 @@ mkdir -p ~/dlang && wget https://dlang.org/install.sh -O ~/dlang/install.sh && b
 source ~/dlang/dmd-2.085.0/activate
 
 # clone dsubs
-git clone --resursive git@github.com:Boris-Barboris/dsubs.git
+git clone --recursive git@github.com:Boris-Barboris/dsubs.git
 cd dsubs/dsubs_client
 dub build -b debug -c prod
 
@@ -85,8 +98,7 @@ rsync -lv CSFML-master/build/lib/*graphics* dsubs_libs/
 rsync -lv CSFML-master/build/lib/*system* dsubs_libs/
 rsync -lv CSFML-master/build/lib/*window* dsubs_libs/
 rsync -lv CSFML-master/build/lib/*window* dsubs_libs/
-rsync -lv openal-soft/build/libopenal.so* dsubs_libs/
-cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 dsubs_libs/
+rsync -lv openal-soft-mix_gain_limit/build/libopenal.so* dsubs_libs/
 rsync -lrv dsubs/dsubs_client/fonts ./
 cp dsubs/dsubs_client/dsubs_client dsubs_client
 cp dsubs/dsubs_client/alsoft.ini alsoft.ini
@@ -94,7 +106,7 @@ echo '#!/bin/bash
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:dsubs_libs/"
 ./dsubs_client' > run_client.sh
 chmod +x run_client.sh
-echo "dsubs_libs compiled by gcc/g++ 6.5.
+echo "dsubs_libs contain sfml fork and openal-soft, compiled by gcc/g++ 7.4.0 against glibc 2.19.
 Requires your distro analog of libx11-dev, optional xclip dependency to make clipboard work.
-Run by invoking run_client.sh" > readme.txt
-tar -zcvf dsubs-linux-amd64.tar.gz dsubs_libs fonts dsubs_client alsoft.ini run_client.sh readme.txt
+Run by invoking run_client.sh" > readme_linux.txt
+tar -zcvf dsubs-linux-trusty-amd64.tar.gz dsubs_libs fonts dsubs_client alsoft.ini run_client.sh readme_linux.txt
