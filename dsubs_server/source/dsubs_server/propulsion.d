@@ -44,6 +44,16 @@ abstract class Propulsor: IForce
 	void register();
 	/// call to unregister from component managers and dispose of resources
 	void shutdown();
+
+	ForceSnapshot save()
+	{
+		return ForceSnapshot(m_throttle);
+	}
+
+	void rollback(ForceSnapshot snap)
+	{
+		m_throttle = snap.state;
+	}
 }
 
 /// simple propulsor with linear thrust law
@@ -153,6 +163,16 @@ abstract class Rudder: IForce
 
 	/// target course, world-space
 	float targetCourse = 0.0f;
+
+	ForceSnapshot save()
+	{
+		return ForceSnapshot(m_rudderPos);
+	}
+
+	void rollback(ForceSnapshot snap)
+	{
+		m_rudderPos = snap.state;
+	}
 }
 
 /// PD-controlled rudder with direct mode

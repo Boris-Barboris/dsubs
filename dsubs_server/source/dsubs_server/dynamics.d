@@ -63,6 +63,34 @@ struct Kinematics
 	double angVel = 0.0;
 	double rotation = 0.0;
 
+	Kinematics opBinary(string op)(Kinematics rhs)
+		if (op == "+")
+	{
+		Kinematics res = this;
+		res.pos = pos + rhs.pos;
+		res.vel = vel + rhs.vel;
+		res.angVel = angVel + rhs.angVel;
+		res.rotation = rotation + rhs.rotation;
+		return res;
+	}
+
+	Kinematics opBinary(string op)(double rhs)
+		if (op == "*")
+	{
+		Kinematics res = this;
+		res.pos = pos * rhs;
+		res.vel = vel * rhs;
+		res.angVel = angVel * rhs;
+		res.rotation = rotation * rhs;
+		return res;
+	}
+
+	Kinematics opBinaryRight(string op)(double rhs)
+		if (op == "*")
+	{
+		return this.opBinary!op(rhs);
+	}
+
 	// cache for popular stuff
 	double AoA;		/// drift angle
 	double velLength;
@@ -109,19 +137,31 @@ struct Kinematics
 }
 
 
-/// Some external source of force and torque, that can act on RigidBody
+/// RK-like methods require to evaluate forces on different times between
+/// integration snaps. ForceSnapshot allows integrator to reset the internal state of
+/// the force to the point of 0.0 time.
+struct ForceSnapshot
+{
+	float state;
+}
+
+
+/// Some external source of force and torque, that can act on RigidBody.
+/// Force is assumed to be stateful and keeps track of time.
 interface IForce
 {
-	/// get this force vector at the time 't' since the beginning of this
-	/// physics update.
+	/// get translational force component.
 	vec2d getForce(const RigidBody b, const ref Kinematics c);
 
-	/// get this force resulting torque at the time 't' since the beginning of this
-	/// physics update.
+	/// get this force resulting torque.
 	double getTorque(const RigidBody b, const ref Kinematics c);
 
-	/// if there is some timing logic inside IForce, move forward in time on dt.
+	/// if there is some timing logic inside IForce, move forward in time.
 	void propagateInTime(float dt);
+
+	ForceSnapshot save();
+
+	void rollback(ForceSnapshot snap);
 }
 
 
@@ -134,6 +174,7 @@ final class RigidBody: PhysicalEntity
 	HydroForceModel hydroModel;
 	Vessel vesselOwner;	/// may be null
 
+	// TODO: maybe tree needs double precision as well.
 	private QuadTree!(RigidBody).LeafNode* spacialTreeNode;
 
 	IForce[] forces;
@@ -160,20 +201,34 @@ final class RigidBody: PhysicalEntity
 			vec2f(100, 100));
 	}
 
-	/// physics update step, Eulers method
+	/// physics update step, RK2
 	override void integrate(float dt)
 	{
-		Kinematics nextKinet = kinet;
+		Kinematics kinet1 = kinet;
 		vec2d linAcc1 = linAcc(kinet);
 		double rotAcc1 = rotAcc(kinet);
-		nextKinet.pos += dt * kinet.vel;
-		nextKinet.rotation = kinet.rotation + dt * kinet.angVel;
-		//trace("linAcc: ", linAcc1);
-		nextKinet.vel += dt * linAcc1;
-		nextKinet.angVel += dt * rotAcc1;
+		kinet1.pos += dt * kinet.vel;
+		kinet1.rotation += dt * kinet.angVel;
+		kinet1.vel += dt * linAcc1;
+		kinet1.angVel += dt * rotAcc1;
+
 		foreach (force; forces)
-			force.propagateInTime(dt);
-		kinet = nextKinet;
+			force.propagateInTime(dt * 0.5f);
+
+		Kinematics kinetMiddle = 0.5 * (kinet + kinet1);
+		kinetMiddle.updateCache();
+		Kinematics kinet2 = kinet;
+		vec2d linAcc2 = linAcc(kinetMiddle);
+		double rotAcc2 = rotAcc(kinetMiddle);
+		kinet2.pos += dt * kinetMiddle.vel;
+		kinet2.rotation += dt * kinetMiddle.angVel;
+		kinet2.vel += dt * linAcc2;
+		kinet2.angVel += dt * rotAcc2;
+
+		foreach (force; forces)
+			force.propagateInTime(dt * 0.5f);
+
+		kinet = kinet2;
 		kinet.updateCache();
 		// update transform
 		transform.position = kinet.pos;
@@ -272,11 +327,14 @@ final class PhysicalEnv
 		long stepCount = lrint(fwd / maxDt);
 		assert(stepCount > 0);
 		float dt = fwd / stepCount;
-		for (int i = 0; i < stepCount; i++)
+		foreach (i, ref PhysicalEntity entity; Globals.taskPool.parallel(m_entities, 4))
 		{
-			foreach (i, ref entity; Globals.taskPool.parallel(m_entities, 8))
+			for (int j = 0; j < stepCount; j++)
+			{
 				entity.integrate(dt);
+			}
 		}
+		// quadtree is not thread-safe
 		foreach (entity; m_entities)
 		{
 			RigidBody rb = cast(RigidBody) entity;
