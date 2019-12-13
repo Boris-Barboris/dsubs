@@ -728,8 +728,8 @@ final class AICaptain
 					c.solutionAge < MAX_SOLUTION_AGE);
 		}
 
-		enum double MIN_MISS_WORRY = 1500.0;
-		enum float MAX_SOLUTION_AGE = 180.0f;
+		enum double MIN_MISS_WORRY = 1100.0;
+		enum float MAX_SOLUTION_AGE = 90.0f;
 
 		private double getDanger(Solution torpSol)
 		{
@@ -1125,13 +1125,18 @@ final class AICaptain
 			courseParam.course = courseAngle(posDiff);
 			WeaponParamValue activationRangeParam = WeaponParamValue(
 				WeaponParamType.activationRange);
-			activationRangeParam.range = clamp(0.5 * posDiff.length,
+			activationRangeParam.range = clamp(activationRangeGain * posDiff.length,
 				factory.activationRange.min, factory.activationRange.max);
 			WeaponParamValue search = WeaponParamValue(WeaponParamType.searchPattern);
 			search.searchPattern = WeaponSearchPattern.snake;
 			WeaponParamValue speed = WeaponParamValue(WeaponParamType.activeSpeed);
 			speed.speed = uniform(factory.activeSpeedRange.min, factory.activeSpeedRange.max);
 			return [courseParam, activationRangeParam, search, speed];
+		}
+
+		protected @property float activationRangeGain()
+		{
+			return 0.5f;
 		}
 	}
 
@@ -1148,6 +1153,11 @@ final class AICaptain
 			// fire at the point of danger's origin
 			return mainDanger().solution.extrapolatedPos(Globals.sim.worldTime -
 				mainDanger.age.to!usecs_t * 1_000_000L);
+		}
+
+		protected override @property float activationRangeGain()
+		{
+			return 1.0f;
 		}
 	}
 

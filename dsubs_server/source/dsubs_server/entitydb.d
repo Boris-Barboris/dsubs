@@ -530,7 +530,7 @@ Active sonars:
 			230, 2 / 90.0f, 3.0f)
 		];
 		sp.asprot = asp;
-		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-26.0f, -23.0f, -15.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-25.0f, -23.0f, -15.0f]);
 		sp.playable = true;
 		m_submarines[sp.tmpl.name] = sp;
 
@@ -753,7 +753,7 @@ Active sonars:
 			100, 1.5 / 90.0f, 3.4f)
 		];
 		sp.asprot = asp;
-		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-22.0f, -19.0f, -11.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-21.0f, -19.0f, -11.0f]);
 		sp.playable = true;
 		m_submarines[sp.tmpl.name] = sp;
 
