@@ -517,6 +517,7 @@ final class CommandQueue
 		mk_addTo = new Kernel(prog, "addTo");
 		mk_toShortPcb = new Kernel(prog, "toShortPcb");
 		mk_sumBuf = new Kernel(prog, "sumBuf");
+		mk_reduceSum = new Kernel(prog, "reduceSum");
 		mk_sumSquaredBuf = new Kernel(prog, "sumSquaredBuf");
 		mk_generateSeaNoise = new Kernel(prog, "generateSeaNoise");
 		mk_generateFlowNoise = new Kernel(prog, "generateFlowNoise");
@@ -566,6 +567,7 @@ final class CommandQueue
 		Kernel mk_addTo;
 		Kernel mk_toShortPcb;
 		Kernel mk_sumBuf;
+		Kernel mk_reduceSum;
 		Kernel mk_sumSquaredBuf;
 		Kernel mk_generateSeaNoise;
 		Kernel mk_generateFlowNoise;

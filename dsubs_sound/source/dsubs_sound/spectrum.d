@@ -281,12 +281,20 @@ struct EnergySpectrum(SpectrumType stype)
 	{
 		assert(startFreq >= 1);
 		assert(endFreq <= MAX_FREQ);
-		Kernel k = q.mk_sumBuf;
+		size_t offset = startFreq.to!uint - 1;
+		size_t globalSize = endFreq.to!size_t - offset;
+		// globalSize must be divisible by workgroup size
+		if (globalSize % 64)
+			globalSize = globalSize + 64 - (globalSize % 64);
+		assert(globalSize % 64 == 0);
+		size_t groupCount = globalSize / 64;
+		Kernel k = q.mk_reduceSum;
+		Buffer tempGlobal = Buffer(q.ctx, float.sizeof * groupCount);
 		k.setArg(0, buf.mem);
-		k.setArg(1, dest.mem);
-		k.setArg(2, startFreq.to!uint - 1);
+		k.setArg(1, tempGlobal.mem);
+		k.setArg(2, dest.mem);
 		k.setArg(3, endFreq.to!uint);
-		k.task(q, null);
+		k.enqueue(q, 1, [offset], [globalSize], [64], null);
 	}
 
 	void addTo(CommandQueue q, ref EnergySpectrum!(stype) dest,

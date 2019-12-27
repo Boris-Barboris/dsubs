@@ -172,6 +172,53 @@ void __kernel sumBuf(
 	*dest = res;
 }
 
+// https://github.com/ekondis/cl2-reduce-bench/blob/master/reduction_kernels.cl
+void __kernel reduceSum(
+	__global const float* what,
+	__global float* tempGlobal,
+	__global float *result,
+	uint end)
+{
+	__local volatile float localBuffer[64];
+	const uint id = get_global_id(0);
+
+	if (id >= end)
+		return;
+
+	const uint lid = get_local_id(0);
+	const uint group_size = get_local_size(0);
+	const uint group_id = get_group_id(0);
+	const uint numgroups = get_num_groups(0);
+
+	// initialize shared memory contents
+	float res = what[id];
+	localBuffer[lid] = res;
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	// local memory reduction
+	int i = group_size / 2;
+	for (; i > 0; i >>= 1)
+	{
+		if (lid < i)
+		{
+			res = res + localBuffer[lid + i];
+			localBuffer[lid] = res;
+		}
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+	// assign local result to global buffer
+	if (lid == 0)
+		tempGlobal[group_id] = res;
+	barrier(CLK_GLOBAL_MEM_FENCE);
+	// reduce in global memory
+	if (lid == 0 && group_id == 0)
+	{
+		for (i = 1; i < numgroups; i++)
+			res += tempGlobal[i];
+		*result = res;
+	}
+}
+
 // reduse sum of squared samples and multiply on constant
 void __kernel sumSquaredBuf(
 	__global const float* what,
