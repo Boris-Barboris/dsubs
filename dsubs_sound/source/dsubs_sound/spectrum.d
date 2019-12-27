@@ -80,13 +80,20 @@ struct Tds
 	void reduceSumSquared(CommandQueue q, ref Buffer dest, float multiplier,
 		uint startIndex, uint endIndex)
 	{
-		Kernel k = q.mk_sumSquaredBuf;
-		k.setArg(0, mem);
-		k.setArg(1, dest.mem);
-		k.setArg(2, multiplier);
-		k.setArg(3, startIndex);
+		size_t globalSize = endIndex - startIndex;
+		// globalSize must be divisible by workgroup size
+		if (globalSize % 64)
+			globalSize = globalSize + 64 - (globalSize % 64);
+		assert(globalSize % 64 == 0);
+		size_t groupCount = globalSize / 64;
+		Kernel k = q.mk_reduceSumSquared;
+		Buffer tempGlobal = Buffer(q.ctx, float.sizeof * groupCount);
+		k.setArg(0, buf.mem);
+		k.setArg(1, tempGlobal.mem);
+		k.setArg(2, dest.mem);
+		k.setArg(3, multiplier);
 		k.setArg(4, endIndex);
-		k.task(q, null);
+		k.enqueue(q, 1, [startIndex.to!size_t], [globalSize], [64], null);
 	}
 }
 

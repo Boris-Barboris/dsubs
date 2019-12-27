@@ -75,6 +75,9 @@ final class Simulator
 				// GC.disable();
 				synchronized (Globals.simMut.writer)
 				{
+					// some user actions enqueue buffer commands on first queue,
+					// we need to wait for their completion.
+					Globals.sctx.queue(0).finish();
 					profiler.start();
 					profiler.start("onSimulationPassStart");
 					onSimulationPassStart(m_worldTime);
