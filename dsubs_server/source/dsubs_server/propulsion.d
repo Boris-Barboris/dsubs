@@ -149,7 +149,8 @@ final class PropulsorFactory
 		res.m_prototypeName = tmpl.name;
 		res.m_mass = mass;
 		res.shaftRotFreq = shaftRotFreq;
-		res.m_sound = new PropellerSound(res.transform, soundPrototype);
+		res.m_sound = new PropellerSound(
+			Globals.sctx.queue(0), res.transform, soundPrototype);
 		res.m_sound.owner = res;
 		return res;
 	}

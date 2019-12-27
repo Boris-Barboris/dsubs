@@ -104,13 +104,16 @@ struct PropellerSoundPrototype
 
 final class PropellerSound: SoundSource
 {
-	this(Transform2D t, const PropellerSoundPrototype p)
+	this(CommandQueue q, Transform2D t, const PropellerSoundPrototype p)
 	{
 		super(t);
 		m_baseBBSpectrum = p.baseBBSpectrum;
 		m_baseCavSpectrum = p.baseCavSpectrum;
 		//m_am = templ.am;
-		m_tm = TrochoidModulator(p.tmParams);
+		synchronized(q)
+		{
+			m_tm = TrochoidModulator(q, p.tmParams);
+		}
 		m_tm.randomizePhase();
 		m_bladeRadius = p.bladeRadius;
 		m_bladeAoA = p.bladeAoA;

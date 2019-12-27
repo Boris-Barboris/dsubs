@@ -88,12 +88,14 @@ struct TrochoidModulator
 		float startFundFreq = 0.0f;
 		float endFundFreq = 0.0f;
 		immutable(TrochoidModulatorParams)* params;
+		Buffer harmonicsBuf;
 	}
 
-	this(immutable(TrochoidModulatorParams)* p, float startPhase = 0.0f)
+	this(CommandQueue q, immutable(TrochoidModulatorParams)* p, float startPhase = 0.0f)
 	{
 		this.params = p;
 		this.startPhase = startPhase;
+		harmonicsBuf = Buffer(q, params.harmonics);
 	}
 
 	void modulate(CommandQueue q, ref Tds tds)
@@ -102,10 +104,9 @@ struct TrochoidModulator
 		assert(!isNaN(endFundFreq));
 		assert(!isNaN(startPhase));
 		assert(!isNaN(params.energyIntegral));
-		Buffer harmBuf = Buffer(q, params.harmonics);
 		Kernel k = q.mk_modulateTrochoid;
 		k.setArg(0, tds.mem);
-		k.setArg(1, harmBuf.mem);
+		k.setArg(1, harmonicsBuf.mem);
 		k.setArg(2, params.harmonics.length.to!int);
 		k.setArg(3, params.A);
 		k.setArg(4, params.B);

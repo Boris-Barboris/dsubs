@@ -855,7 +855,7 @@ void hydrophoneVsPropellerBalancingPlot(CommandQueue q,
 	import std.algorithm;
 
 	Transform2D propTrans = new Transform2D();
-	PropellerSound prop = new PropellerSound(propTrans, pp);
+	PropellerSound prop = new PropellerSound(q, propTrans, pp);
 	float[] propSpeeds = iota(minPropSpeed, maxPropSpeed + 0.1f,
 		(maxPropSpeed - minPropSpeed) / 9).array;
 	float[] relBearings = iota(0, propSpeeds.length).map!(
