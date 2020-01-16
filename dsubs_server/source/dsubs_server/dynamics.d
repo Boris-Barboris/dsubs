@@ -137,6 +137,48 @@ struct Kinematics
 }
 
 
+/// Point on the wire that has mass. Drag force is applied to it.
+/// Wire is always bound to some fixed point by it's end.
+struct WirePoint
+{
+	float mass = 0.0f;
+	/// velocity in global reference frame.
+	vec2f velocity = vec2f(0.0f, 0.0f);
+	/// relative position of this point to wire's previous point. Points are indexed from the mount
+	/// to tail.
+	vec2f relPos = vec2f(0.0f, 0.0f);
+}
+
+
+/// Wire is extendable/retractable.
+struct AttachedWire
+{
+	WirePoint[] points;
+	/// Attachment point on the rigid body.
+	Transform2D attachPoint;
+	/// Body that owns the attachPoint.
+	RigidBody rigidBody;
+	/// Total length of the wire on full extention.
+	int maxLength;
+	/// Maximum distance between two points.
+	private float segmentLength = 0.0f;
+	/// Equals to maximum number of wire points that are dangling behind
+	/// the attachment point. maxSegmentCount * segmentLength is effectively
+	/// the maximum extension length of the wire.
+	private int maxSegmentCount;
+	/// The length of first segment. All other segments are fully extended to their 'segmentLength'.
+	float firstSegmentLength = 0.0f;
+	/// Captains declare the desired total length of the wire and the winch obeys.
+	float desiredLength = 0.0f;
+
+	// point hydrodynamics drag gains.
+	float pointCD0 = 0.0f;
+	float pointCD1 = 0.0f;
+	// point mass
+	float pointMass = 0.0f;
+}
+
+
 /// RK-like methods require to evaluate forces on different times between
 /// integration snaps. ForceSnapshot allows integrator to reset the internal state of
 /// the force to the point of 0.0 time.
@@ -192,6 +234,18 @@ final class RigidBody: PhysicalEntity
 		kinet.rotation = transform.wrotation;
 		kinet.updateCache();
 		//trace(kinet);
+	}
+
+	/// Return global velocity of the point that is fixed on rigid body's surface and is represented by child
+	/// transform.
+	vec2d fixedPointVelocity(Transform2D atTransform)
+	{
+		vec2d deltaPos = atTransform.wposition - transform.wposition;
+		vec3d deltaPos3d = vec3d(deltaPos.x, deltaPos.y, 0.0);
+		vec3d angVel3d = vec3d(0.0, 0.0, kinet.angVel);
+		vec3d linearVel3d = cross(angVel3d, deltaPos3d);
+		vec2d planarVel = vec2d(linearVel3d.x, linearVel3d.y);
+		return planarVel + kinet.vel;
 	}
 
 	private void updateSpacialTreeNode()

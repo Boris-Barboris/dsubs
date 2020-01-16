@@ -308,7 +308,7 @@ final class Tube: IFlowNoiseMultiplier
 		Weapon w = wf.build(m_sub, weaponParams);
 		w.transform.position = m_transform.wposition;
 		w.transform.rotation = m_transform.wrotation;
-		w.rigidBody.kinet.vel = m_sub.rigidBody.kinet.vel +
+		w.rigidBody.kinet.vel = m_sub.rigidBody.fixedPointVelocity(m_transform) +
 			m_pushSpeed * m_transform.wforward;
 		w.rigidBody.kinet.angVel = m_sub.rigidBody.kinet.angVel;
 		w.register();
