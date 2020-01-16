@@ -141,25 +141,26 @@ struct Kinematics
 /// Wire is always bound to some fixed point by it's end.
 struct WirePoint
 {
-	float mass = 0.0f;
 	/// velocity in global reference frame.
-	vec2f velocity = vec2f(0.0f, 0.0f);
-	/// relative position of this point to wire's previous point. Points are indexed from the mount
-	/// to tail.
-	vec2f relPos = vec2f(0.0f, 0.0f);
+	vec2d vel = vec2f(0.0f, 0.0f);
+	/// position in global reference frame.
+	vec2d pos = vec2f(0.0f, 0.0f);
 }
 
+private enum float PREFERRED_SEGMENT_LENGTH = 10.0f;
+private enum float WINCH_RETRACT_SPD_FACTOR = 0.8f;
 
-/// Wire is extendable/retractable.
+/// Extendable/retractable wire that is attached to rigid body.
 struct AttachedWire
 {
+	/// Head of the array is the tail of the wire. Tail is the first point after the attachment.
 	WirePoint[] points;
 	/// Attachment point on the rigid body.
-	Transform2D attachPoint;
-	/// Body that owns the attachPoint.
+	Transform2D attachTransform;
+	/// Body that owns the attachTransform.
 	RigidBody rigidBody;
 	/// Total length of the wire on full extention.
-	int maxLength;
+	float maxLength = 0.0f;
 	/// Maximum distance between two points.
 	private float segmentLength = 0.0f;
 	/// Equals to maximum number of wire points that are dangling behind
@@ -168,14 +169,51 @@ struct AttachedWire
 	private int maxSegmentCount;
 	/// The length of first segment. All other segments are fully extended to their 'segmentLength'.
 	float firstSegmentLength = 0.0f;
+	private float currentTotalLength = 0.0f;
 	/// Captains declare the desired total length of the wire and the winch obeys.
 	float desiredLength = 0.0f;
+	float winchSpeed = 0.0f;
 
 	// point hydrodynamics drag gains.
 	float pointCD0 = 0.0f;
 	float pointCD1 = 0.0f;
 	// point mass
 	float pointMass = 0.0f;
+
+	/// Update length characteristics and point count as if 'dt' seconds have passed.
+	void updateTotalLength(float dt)
+	{
+		int currentSegments = points.length.to!int;
+		double activeWinchSpeed = winchSpeed;
+		if (desiredLength > currentTotalLength)
+		{
+			double rbSpeed = rigidBody.kinet.velLength;
+			activeWinchSpeed = min(activeWinchSpeed, WINCH_RETRACT_SPD_FACTOR * rbSpeed);
+		}
+		currentTotalLength = cmove(currentTotalLength, desiredLength, activeWinchSpeed, dt);
+		int nextSegments = ceil(currentTotalLength / segmentLength).lrint;
+		firstSegmentLength = currentTotalLength - (nextSegments - 1) * segmentLength;
+		// now we resize points array if needed
+		points.length = nextSegments;
+		if (nextSegments > currentSegments)
+		{
+			// new points are to be spawned. We synchronize them with attachment point.
+			vec2d attachPos = attachTransform.wposition;
+			vec2d attachVel = rigidBody.fixedPointVelocity(attachTransform);
+			for (size_t i = nextSegments; i > currentSegments; i--)
+			{
+				points[i-1].pos = attachPos;
+				points[i-1].vel = attachVel;
+			}
+		}
+	}
+}
+
+/// simulation update for the wire, must be ran after rigid body update.
+/// Position Based Dynamics Matthias Müller et al.
+private void updateWirePos(ref AttachedWire wire, float dt)
+{
+
 }
 
 
