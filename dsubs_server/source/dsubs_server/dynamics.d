@@ -148,7 +148,7 @@ struct WirePoint
 }
 
 private enum float PREFERRED_SEGMENT_LENGTH = 10.0f;
-private enum float WINCH_RETRACT_SPD_FACTOR = 0.8f;
+private enum float WINCH_RETRACT_SPD_FACTOR = 0.9f;
 
 /// Extendable/retractable wire that is attached to rigid body.
 struct AttachedWire
@@ -207,13 +207,42 @@ struct AttachedWire
 			}
 		}
 	}
-}
 
-/// simulation update for the wire, must be ran after rigid body update.
-/// Position Based Dynamics Matthias Müller et al.
-private void updateWirePos(ref AttachedWire wire, float dt)
-{
+	/// simulation step for the wire, must be ran after rigid body update.
+	/// Position Based Dynamics Matthias Müller et al.
+	void simulate(float dt)
+	{
+		// first step is to update velocities
+		foreach (ref WirePoint point; points)
+		{
+			float velSqr = point.vel.squaredLength;
+			// the only external force that is acting on the points is water drag
+			if (velSqr > 0.0f)
+			{
+				float velMagn = sqrt(velSqr);
+				float dragMagn = pointCD0 * velMagn + pointCD1 * velSqr;
+				float deltaVel = dt * dragMagn / pointMass;
+				assert(isNormal(deltaVel));
+				// assert that the system is not too stiff for us.
+				assert(deltaVel < velMagn);
+				point.vel -= dt * dragMagn / pointMass * point.vel.normalized;
+			}
+		}
+		// we now give a first estimation of new point positions
+		vec2d[] newPositions;
+		newPositions.length = points.length;
+		for (size_t i = 0; i < newPositions.length; i++)
+			newPositions[i] = points[i].pos + points[i].vel * dt;
 
+		// The only constraint that must be respected for such a wire is segment length
+		// constraint:
+		//	len(point2.pos - point1.pos) <= segmentLength, equals
+		//	segmentLength - len(point2.pos - point1.pos) >= 0
+		// In order to remove non-linearity and sqrt:
+		//	segmentLength^2 - (dy^2 + dx^2) >= 0
+		// For each wire point there is exactly one constraint, restricting it's distance from
+		// the prevous one. Point with index 0 is constrained to wire's attachment point.
+	}
 }
 
 
