@@ -159,8 +159,19 @@ struct AttachedWire
 	Transform2D attachTransform;
 	/// Body that owns the attachTransform.
 	RigidBody rigidBody;
+
 	/// Total length of the wire on full extention.
-	float maxLength = 0.0f;
+	private float m_maxLength = 0.0f;
+
+	@property float maxLength() const { return m_maxLength; }
+
+	void @property maxLength(float rhs)
+	{
+		m_maxLength = rhs;
+		maxSegmentCount = ceil(m_maxLength / PREFERRED_SEGMENT_LENGTH).lrint;
+		segmentLength = m_maxLength / maxSegmentCount;
+	}
+
 	/// Maximum distance between two points.
 	private float segmentLength = 0.0f;
 	/// Equals to maximum number of wire points that are dangling behind
@@ -242,6 +253,10 @@ struct AttachedWire
 		//	segmentLength^2 - (dy^2 + dx^2) >= 0
 		// For each wire point there is exactly one constraint, restricting it's distance from
 		// the prevous one. Point with index 0 is constrained to wire's attachment point.
+		// 4 variables: x1, x2, y1, y2 in each but one constraint, and
+		// edge attachment constraint:
+		// firstSegmentLength^2 - (dy^2 + dx^2) >= 0 with 2 variables.
+
 	}
 }
 
