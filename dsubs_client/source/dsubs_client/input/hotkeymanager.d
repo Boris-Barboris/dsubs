@@ -78,9 +78,9 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReceiver
 		return m_hotkeys.remove(hk);
 	}
 
-	bool clearHoldkeys()
+	void clearHoldkeys()
 	{
-		return m_holdkeys.length = 0;
+		m_holdkeys.length = 0;
 	}
 
 	/// return true if hotkey was overwritten, false otherwise, throws

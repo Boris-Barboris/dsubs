@@ -3,6 +3,10 @@ module dsubs_server.dynamics;
 import std.algorithm;
 import std.array;
 
+import mir.ndslice.slice: sliced;
+import mir.ndslice.topology: canonical;
+import mir.lapack: gesv, lapackint;
+
 import dsubs_common.containers.array;
 import dsubs_common.math;
 import dsubs_common.containers.quadtree;
@@ -165,10 +169,10 @@ struct AttachedWire
 
 	@property float maxLength() const { return m_maxLength; }
 
-	void @property maxLength(float rhs)
+	@property void maxLength(float rhs)
 	{
 		m_maxLength = rhs;
-		maxSegmentCount = ceil(m_maxLength / PREFERRED_SEGMENT_LENGTH).lrint;
+		maxSegmentCount = ceil(m_maxLength / PREFERRED_SEGMENT_LENGTH).lrint.to!int;
 		segmentLength = m_maxLength / maxSegmentCount;
 	}
 
@@ -202,7 +206,7 @@ struct AttachedWire
 			activeWinchSpeed = min(activeWinchSpeed, WINCH_RETRACT_SPD_FACTOR * rbSpeed);
 		}
 		currentTotalLength = cmove(currentTotalLength, desiredLength, activeWinchSpeed, dt);
-		int nextSegments = ceil(currentTotalLength / segmentLength).lrint;
+		int nextSegments = ceil(currentTotalLength / segmentLength).lrint.to!int;
 		firstSegmentLength = currentTotalLength - (nextSegments - 1) * segmentLength;
 		// now we resize points array if needed
 		points.length = nextSegments;

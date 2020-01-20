@@ -8,6 +8,7 @@ import std.parallelism: task;
 
 import core.bitop: popcnt;
 
+import dsubs_common.containers.array;
 import dsubs_common.api.constants;
 import dsubs_common.api.entities;
 import dsubs_common.math;
@@ -303,7 +304,7 @@ final class TorpedoGuidance: IGuidance
 				RigidBody[] inSearchRadius = Globals.phys.findRigidBodiesInCirlce(
 					m_torpedo.transform.wposition.to!vec2f,
 					m_detonationSearchRadius);
-				inSearchRadius.removeFirstUnstable(m_torpedo.rigidBody);
+				removeFirstUnstable(inSearchRadius, m_torpedo.rigidBody);
 				if (inSearchRadius.length > 0)
 				{
 					if (detonateIfNeeded(inSearchRadius))
@@ -647,7 +648,7 @@ final class WeaponCollection
 	{
 		synchronized(this)
 		{
-			m_entities.removeFirstUnstable(e);
+			removeFirstUnstable(m_entities, e);
 		}
 	}
 

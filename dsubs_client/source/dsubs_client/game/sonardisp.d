@@ -281,7 +281,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 			{
 				SonarDispContactDataElement sdel = cast(SonarDispContactDataElement) el;
 				if (sdel !is null)
-					sdel.processNewPing(pingSourcePosition);
+					sdel.processNewPing(this.outer.pingSourcePosition);
 			}
 		}
 
@@ -291,7 +291,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 			return position +
 				vec2d(
 					bearingToPixel(world.x),
-					rangeToPixel(world.y)
+					this.outer.rangeToPixel(world.y)
 				);
 		}
 
@@ -300,13 +300,13 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 			vec2d local = screen - position;
 			return vec2d(
 				pixelToBearing(local.x),
-				pixelToRange(local.y)
+				this.outer.pixelToRange(local.y)
 			);
 		}
 
 		private void processMouseUp(int x, int y, sfMouseButton btn)
 		{
-			if (btn == sfMouseRight && !m_panned && m_curPingId >= 0)
+			if (btn == sfMouseRight && !m_panned && this.outer.m_curPingId >= 0)
 				spawnContextMenu(x, y);
 		}
 
@@ -315,8 +315,8 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 			int xlocal = x - position.x;
 			int ylocal = y - position.y;
 			float bearing = pixelToBearing(xlocal);
-			float range = pixelToRange(ylocal);
-			vec2d pos = m_pingStartSnap.position + courseVector(bearing) * range;
+			float range = this.outer.pixelToRange(ylocal);
+			vec2d pos = this.outer.m_pingStartSnap.position + courseVector(bearing) * range;
 			PositionData contactPos = PositionData(pos);
 			ContactDataUnion cdu = { position: contactPos };
 			CICCreateContactFromDataReq req = CICCreateContactFromDataReq(
@@ -324,7 +324,7 @@ final class SonarDisplay: PanoramicDisplay!ubyte
 				ContactData(
 					-1,
 					ContactId(),
-					m_pingStartSnap.atTime,
+					this.outer.m_pingStartSnap.atTime,
 					DataSource(DataSourceType.ActiveSonar, 0),
 					DataType.Position,
 					cdu

@@ -618,7 +618,7 @@ final class Waterfall: PanoramicDisplay!ushort
 			return position +
 				vec2d(
 					bearingToPixel(world.x),
-					delayToPixel(world.y)
+					this.outer.delayToPixel(world.y)
 				);
 		}
 
@@ -627,7 +627,7 @@ final class Waterfall: PanoramicDisplay!ushort
 			vec2d local = screen - position;
 			return vec2d(
 				pixelToBearing(local.x),
-				pixelToDelay(local.y)
+				this.outer.pixelToDelay(local.y)
 			);
 		}
 
@@ -635,8 +635,8 @@ final class Waterfall: PanoramicDisplay!ushort
 		{
 			if (btn == sfMouseLeft)
 			{
-				updateDirectorElement(x - position.x);
-				Game.ciccon.sendMessage(immutable CICListenDirReq(0, m_listenDir));
+				this.outer.updateDirectorElement(x - position.x);
+				Game.ciccon.sendMessage(immutable CICListenDirReq(0, this.outer.m_listenDir));
 			}
 			if (btn == sfMouseRight && !m_panned)
 				spawnContextMenu(x, y);
@@ -647,11 +647,11 @@ final class Waterfall: PanoramicDisplay!ushort
 			int xlocal = x - position.x;
 			int ylocal = y - position.y;
 			float bearing = pixelToBearing(xlocal);
-			float delay = pixelToDelay(ylocal);
+			float delay = this.outer.pixelToDelay(ylocal);
 			size_t delayIdx = delay.to!size_t;
-			if (delayIdx < m_originQueue.length)
+			if (delayIdx < this.outer.m_originQueue.length)
 			{
-				vec2d rayOrigin = m_originQueue.fromBack(delayIdx);
+				vec2d rayOrigin = this.outer.m_originQueue.fromBack(delayIdx);
 				RayData rayData = RayData(rayOrigin, bearing);
 				ContactDataUnion cdu = { ray: rayData };
 				CICCreateContactFromDataReq req = CICCreateContactFromDataReq(
@@ -660,7 +660,7 @@ final class Waterfall: PanoramicDisplay!ushort
 						-1,
 						ContactId(),
 						Game.simState.lastServerTime - delayIdx,
-						DataSource(DataSourceType.Hydrophone, m_hydrophoneIdx),
+						DataSource(DataSourceType.Hydrophone, this.outer.m_hydrophoneIdx),
 						DataType.Ray,
 						cdu));
 				Button[] buttons = [
