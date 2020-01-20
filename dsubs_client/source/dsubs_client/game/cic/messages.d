@@ -21,7 +21,7 @@ struct CICLoginRes
 {
 	__gshared const int g_marshIdx;
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
-	int apiVersion = 1;
+	int apiVersion = 2;
 }
 
 /// CIC client sends this to receive entity DB
@@ -59,6 +59,7 @@ struct CICSubKinematicRes
 {
 	__gshared const int g_marshIdx;
 	KinematicSnapshot snap;
+	WireSnapshot[] wireSnaps;
 }
 
 struct CICSubAcousticRes

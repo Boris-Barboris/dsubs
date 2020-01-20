@@ -15,6 +15,7 @@ import dsubs_server.common;
 import dsubs_server.connections.playercon: PlayerConnection;
 import dsubs_server.connections.database;
 import dsubs_server.submarine: Submarine;
+import dsubs_server.dynamics: AttachedWire, RigidBody, WirePoint;
 import dsubs_server.weaponry;
 import dsubs_server.ai.captain: ContactRelation;
 
@@ -210,7 +211,8 @@ final class Player: Captain
 		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
 		ReconnectStateRes recState = ReconnectStateRes(
 			s.spawnId, s.prototypeName, s.propulsor.prototypeName,
-			genSubSnapshot(), s.targetCourse + coordRot, s.targetThrottle,
+			genSubSnapshot(), genSubWireSnapshots(),
+			s.targetCourse + coordRot, s.targetThrottle,
 			s.hydrophones.map!(
 				h => float(h.listenDir + coordRot)).array,
 			s.tubeRange.map!(t => t.fullState).array,
@@ -382,6 +384,28 @@ final class Player: Captain
 				angVel);
 	}
 
+	private WireSnapshot[] genSubWireSnapshots()
+	{
+		assert(m_submarine);
+		Submarine s = m_submarine;
+		WireSnapshot[] res;
+		for (size_t i = 0; i < s.rigidBody.wires.length; i++)
+		{
+			AttachedWire* wire = s.rigidBody.wires[i];
+			WireSnapshot wireSnap;
+			wireSnap.atTime = Globals.sim.worldTime + timeShift;
+			wireSnap.points.length = wire.points.length;
+			foreach (j, point; wire.points)
+			{
+				wireSnap.points[j].position = posToClientSpace(point.pos);
+				wireSnap.points[j].velocity = dirToClientSpace(point.vel);
+			}
+			wireSnap.attachPosition = posToClientSpace(wire.attachTransform.wposition);
+			res ~= wireSnap;
+		}
+		return res;
+	}
+
 	vec2d posToClientSpace(vec2d pos) const
 	{
 		return rotateVector(pos - coordShift, coordRot);
@@ -421,7 +445,8 @@ final class Player: Captain
 				con.sendMessage(immutable DeathRes(s.causeOfDeath, ""));
 				return;
 			}
-			con.sendMessage(immutable SubKinematicRes(genSubSnapshot()));
+			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(),
+				genSubWireSnapshots()));
 			immutable(HydrophoneData)[] hdata;
 			foreach (i, const h; s.hydrophones)
 			{

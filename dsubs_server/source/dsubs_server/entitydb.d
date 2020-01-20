@@ -509,7 +509,8 @@ Active sonars:
 					asp.getSliceXResol(), asp.radialRes, asp.maxSec),
 				["Seven-blade screw"],
 				roomProtos.byValue.map!(p => p.toTemplate()).array,
-				tubeProtos.byValue.map!(p => p.tmpl).array
+				tubeProtos.byValue.map!(p => p.tmpl).array,
+				[MountPoint(vec2f(4.6f, -23.0f))]
 			));
 		sp.roomProtos = roomProtos;
 		sp.tubeProtos = tubeProtos;

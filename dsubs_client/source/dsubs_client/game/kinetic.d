@@ -1,6 +1,6 @@
 module dsubs_client.game.kinetic;
 
-import std.algorithm: min;
+import std.algorithm: min, max;
 import std.conv: to;
 import std.experimental.logger;
 
@@ -112,6 +112,158 @@ struct KinematicTrace
 			t * (records[i2].velocity - records[i1].velocity);
 		curState.angVel = records[i1].angVel +
 			t * (records[i2].angVel - records[i1].angVel);
+	}
+
+}
+
+
+/// Return global velocity of the point that is fixed on rigid body's surface and is represented by child transform.
+vec2d fixedPointVelocity(KinematicSnapshot kinet, Transform2D atTransform)
+{
+	vec2d deltaPos = atTransform.position;
+	vec3d deltaPos3d = vec3d(deltaPos.x, deltaPos.y, 0.0);
+	vec3d angVel3d = vec3d(0.0, 0.0, kinet.angVel);
+	vec3d linearVel3d = cross(angVel3d, deltaPos3d);
+	vec2d planarVel = vec2d(linearVel3d.x, linearVel3d.y);
+	return planarVel + kinet.velocity;
+}
+
+
+/// Trace of attached wire kinematics that is updated periodically from the server
+/// and is being interpolated on the client for smooth rendering purposes.
+struct WireTrace
+{
+	private
+	{
+		immutable int maxLen = 3;
+
+		// most recent snapshots received
+		WireSnapshot[maxLen] records;
+		// number of actual snapshots in trace, from 0 to 3
+		int len = 0;
+		// index of the oldest snapshot in the trace
+		int oldest = 0;
+		// client-side interpolated state
+		WireSnapshot curState;
+		usecs_t curTime;
+	}
+
+	KinematicTrace* attachTrace;
+	Transform2D attachTransform;
+
+	static WireSnapshot deepCopy(const WireSnapshot rhs)
+	{
+		return WireSnapshot(rhs.atTime, rhs.attachPosition, rhs.points.dup);
+	}
+
+	@property bool canInterpolate() const { return len > 0; }
+
+	/// Append new snapshot to the trace. If the internal buffer overflows,
+	/// current state jumps forward.
+	void appendSnapshot(const WireSnapshot snapshot)
+	{
+		if (len == maxLen)
+		{
+			int newOldest = (oldest + 1) % maxLen;
+			if (curTime < records[newOldest].atTime)
+			{
+				// current interpolated state is behind the snapshot
+				// wich will be the new oldest one
+				curState = deepCopy(records[newOldest]);
+				curTime = curState.atTime;
+			}
+			records[oldest] = *cast(WireSnapshot*) &snapshot;
+			oldest = newOldest;
+		}
+		else
+		{
+			if (len == 0)
+			{
+				curTime = snapshot.atTime;
+				curState = deepCopy(snapshot);
+			}
+			records[(oldest + len) % maxLen] = *cast(WireSnapshot*) &snapshot;
+			len++;
+		}
+	}
+
+	/// result of an interpolation
+	@property const(WireSnapshot) result() const
+	{
+		assert(canInterpolate);
+		return curState;
+	}
+
+	/// the most recent snapshot received
+	@property const(WireSnapshot) mostRecent() const
+	{
+		assert(canInterpolate);
+		return records[(oldest + len - 1) % maxLen];
+	}
+
+	/// move time forward by 'usecs' microsecods and recalculate state
+	void moveForward(usecs_t fwd)
+	{
+		if (len < 2)	// one snapshot is not enough
+			return;
+		curTime = min(curTime + fwd, mostRecent.atTime);
+		// now we just need to find, between which points does the
+		// curTime lie
+		for (int curSecond = 1; curSecond < len; curSecond++)
+		{
+			int i2 = (oldest + curSecond) % maxLen;
+			if (curTime <= records[i2].atTime)
+			{
+				updateResult((oldest + curSecond - 1) % maxLen, i2);
+				break;
+			}
+			assert(curSecond != maxLen - 1, "Impossible, should be unreachable");
+		}
+		curState.atTime = curTime;
+	}
+
+	private void updateResult(int i1, int i2)
+	{
+		assert(attachTrace);
+		assert(attachTransform);
+
+		double dt = (records[i2].atTime - records[i1].atTime) / 1e6;
+		double t = (curTime - records[i1].atTime) / 1e6 / dt;
+
+		curState.points.length = max(
+			records[i1].points.length, records[i2].points.length);
+
+		for (size_t j = 0; j < curState.points.length; j++)
+		{
+			vec2d i1pos, i2pos, i1vel, i2vel;
+			if (j < records[i1].points.length)
+			{
+				i1pos = records[i1].points[j].position;
+				i1vel = records[i1].points[j].velocity;
+			}
+			else
+			{
+				// more points in i2 than in i1, extention.
+				// we take attachment trace and transform
+				i1pos = records[i1].attachPosition;
+				i1vel = vec2d(0, 0);
+			}
+			if (j < records[i2].points.length)
+			{
+				i2pos = records[i2].points[j].position;
+				i2vel = records[i2].points[j].velocity;
+			}
+			else
+			{
+				// more points in i1 than in i2, contraction.
+				// we take attachment trace and transform
+				i2pos = records[i2].attachPosition;
+				i2vel = fixedPointVelocity(attachTrace.result, attachTransform);
+			}
+			curState.points[j].position = chspline(i1pos, i2pos, i1vel, i2vel, t, dt);
+			// simple linear interpolation for velocities
+			curState.points[j].velocity = i1vel + t * (i2vel - i1vel);
+		}
 	}
 
 }

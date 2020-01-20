@@ -9,6 +9,7 @@ import dsubs_sound.hydrophone;
 import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.weaponry;
+import dsubs_server.dynamics: AttachedWire;
 import dsubs_server.propulsion: Propulsor;
 import dsubs_server.player: Player, Captain;
 
@@ -184,6 +185,18 @@ final class SubmarineFactory: VesselFactory
 				h.flowNoiseMultipliers ~= tube;
 			if (res.m_sonar)
 				res.m_sonar.flowNoiseMultipliers ~= tube;
+		}
+		// wires
+		foreach (const MountPoint wireMount; tmpl.wireMounts)
+		{
+			AttachedWire* wire = new AttachedWire();
+			wire.attachTransform = new Transform2D();
+			wire.attachTransform.position = wireMount.mountCenter.to!vec2d;
+			res.transform.addChild(wire.attachTransform);
+			wire.rigidBody = res.rigidBody;
+			wire.maxLength = 500.0f;
+			wire.desiredLength = 500.0f;
+			res.rigidBody.wires ~= wire;
 		}
 	}
 

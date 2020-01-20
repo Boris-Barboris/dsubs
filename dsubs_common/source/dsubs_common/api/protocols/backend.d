@@ -21,7 +21,7 @@ struct ServerStatusRes
 {
 	__gshared const int g_marshIdx;
 	int playersOnline;
-	int apiVersion = 4;
+	int apiVersion = 5;
 }
 
 /** This message requests authorization from the server.
@@ -111,6 +111,7 @@ struct ReconnectStateRes
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
 	KinematicSnapshot subSnap;
+	WireSnapshot[] wireSnaps;
 	float targetCourse;
 	float targetThrottle;
 	float[] listenDirs;
@@ -133,6 +134,7 @@ struct SubKinematicRes
 {
 	__gshared const int g_marshIdx;
 	KinematicSnapshot snap;
+	WireSnapshot[] wireSnaps;
 }
 
 /// Sent by client in order to update desired throttle on his submarine

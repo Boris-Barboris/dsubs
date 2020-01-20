@@ -92,6 +92,9 @@ struct SubmarineTemplate
 
 	/// Both torpedo and decoy tubes.
 	TubeTemplate[] tubes;
+
+	/// Wire mounts
+	MountPoint[] wireMounts;
 }
 
 /// Weapons need to be configured before launch. This is a set of available parameters.
@@ -438,4 +441,18 @@ struct ChatMessage
 {
 	int sentOnUtc;		// unix timestamp
 	string message;
+}
+
+struct WirePointSnapshot
+{
+	vec2d position;
+	vec2d velocity;
+}
+
+struct WireSnapshot
+{
+	usecs_t atTime;
+	/// world position of the attachment point
+	vec2d attachPosition;
+	WirePointSnapshot[] points;
 }

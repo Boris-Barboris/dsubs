@@ -3,8 +3,9 @@ module dsubs_server.dynamics;
 import std.algorithm;
 import std.array;
 
-import mir.ndslice: magic, repeat, as, slice;
-import lubeck: mtimes;
+// "lflags": ["/home/boris/src/dsubs/dsubs_server/libopenblas"],
+// import mir.ndslice: magic, repeat, as, slice;
+// import lubeck: mtimes;
 
 import dsubs_common.containers.array;
 import dsubs_common.math;
@@ -150,8 +151,8 @@ struct WirePoint
 	vec2d pos = vec2f(0.0f, 0.0f);
 }
 
-private enum float PREFERRED_SEGMENT_LENGTH = 10.0f;
-private enum float WINCH_RETRACT_SPD_FACTOR = 0.9f;
+private enum float PREFERRED_SEGMENT_LENGTH = 15.0f;
+private enum float WINCH_EXTEND_SPD_FACTOR = 0.9f;
 
 /// Extendable/retractable wire that is attached to rigid body.
 struct AttachedWire
@@ -186,56 +187,57 @@ struct AttachedWire
 	private float currentTotalLength = 0.0f;
 	/// Captains declare the desired total length of the wire and the winch obeys.
 	float desiredLength = 0.0f;
-	float winchSpeed = 0.0f;
+	float winchSpeed = 5.0f;
 
 	// point hydrodynamics drag gains.
-	float pointCD0 = 0.0f;
-	float pointCD1 = 0.0f;
+	float pointCD0 = 1e-2f;
+	float pointCD1 = 1e-2f;
 	// point mass
-	float pointMass = 0.0f;
+	float pointMass = 0.1f;
 
 	/// Update length characteristics and point count as if 'dt' seconds have passed.
 	void updateTotalLength(float dt)
 	{
-		int currentSegments = points.length.to!int;
-		double activeWinchSpeed = winchSpeed;
+		size_t currentSegments = points.length;
+		float activeWinchSpeed = winchSpeed;
 		if (desiredLength > currentTotalLength)
 		{
+			// we limit unwinding speed for slow-moving sub.
 			double rbSpeed = rigidBody.kinet.velLength;
-			activeWinchSpeed = min(activeWinchSpeed, WINCH_RETRACT_SPD_FACTOR * rbSpeed);
+			activeWinchSpeed = min(activeWinchSpeed, WINCH_EXTEND_SPD_FACTOR * rbSpeed);
 		}
 		currentTotalLength = cmove(currentTotalLength, desiredLength, activeWinchSpeed, dt);
-		int nextSegments = ceil(currentTotalLength / segmentLength).lrint.to!int;
+		size_t nextSegments = ceil(currentTotalLength / segmentLength).lrint.to!size_t;
 		firstSegmentLength = currentTotalLength - (nextSegments - 1) * segmentLength;
 		// now we resize points array if needed
 		points.length = nextSegments;
 		if (nextSegments > currentSegments)
 		{
-			// new points are to be spawned. We synchronize them with attachment point.
+			// new points are to be spawned. We place them on the attachment point.
 			vec2d attachPos = attachTransform.wposition;
-			vec2d attachVel = rigidBody.fixedPointVelocity(attachTransform);
-			for (size_t i = nextSegments; i > currentSegments; i--)
+			vec2d attachVel = vec2d(0, 0); //rigidBody.fixedPointVelocity(attachTransform);
+			for (size_t i = currentSegments; i < nextSegments; i++)
 			{
-				points[i-1].pos = attachPos;
-				points[i-1].vel = attachVel;
+				points[i].pos = attachPos;
+				points[i].vel = attachVel;
 			}
 		}
 	}
 
 	/// simulation step for the wire, must be ran after rigid body update.
-	/// Position Based Dynamics Matthias Müller et al.
 	void simulate(float dt)
 	{
+		assert(isNormal(pointMass));
 		// first step is to update velocities
 		foreach (ref WirePoint point; points)
 		{
-			float velSqr = point.vel.squaredLength;
+			double velSqr = point.vel.squaredLength;
 			// the only external force that is acting on the points is water drag
 			if (velSqr > 0.0f)
 			{
-				float velMagn = sqrt(velSqr);
-				float dragMagn = pointCD0 * velMagn + pointCD1 * velSqr;
-				float deltaVel = dt * dragMagn / pointMass;
+				double velMagn = sqrt(velSqr);
+				double dragMagn = pointCD0 * velMagn + pointCD1 * velSqr;
+				double deltaVel = dt * dragMagn / pointMass;
 				assert(isNormal(deltaVel));
 				// assert that the system is not too stiff for us.
 				assert(deltaVel < velMagn);
@@ -248,25 +250,41 @@ struct AttachedWire
 		for (size_t i = 0; i < newPositions.length; i++)
 			newPositions[i] = points[i].pos + points[i].vel * dt;
 
-		// The only constraint that must be respected for such a wire is segment length
-		// constraint:
-		//	len(point2.pos - point1.pos) <= segmentLength, equals
-		//	segmentLength - len(point2.pos - point1.pos) >= 0
-		// In order to remove non-linearity and sqrt:
-		//	segmentLength^2 - (dy^2 + dx^2) >= 0
-		// For each wire point there is exactly one constraint, restricting it's distance from
-		// the prevous one. Point with index 0 is constrained to wire's attachment point.
-		// 4 variables: x1, x2, y1, y2 in each but one constraint, and
-		// edge attachment constraint:
-		// firstSegmentLength^2 - (dy^2 + dx^2) >= 0 with 2 variables.
-		auto n = 5;
-		// Magic Square
-		auto matrix = n.magic.as!double.slice;
-		// [1 1 1 1 1]
-		auto vec = 1.repeat(n).as!double.slice;
-		// Uses CBLAS for multiplication
-		matrix.mtimes(vec);
-		matrix.mtimes(matrix);
+		// simple constraint projection loop that moves new positions by the straigt line
+		// to the allowed position.
+		for (size_t i = newPositions.length; i > 0; i--)
+		{
+			size_t j = i - 1;
+			vec2d fixedPos;
+			double distanceLimit;
+			if (i == newPositions.length)
+			{
+				// first point directly attached by one segment to rigid body.
+				fixedPos = attachTransform.wposition;
+				distanceLimit = firstSegmentLength;
+			}
+			else
+			{
+				fixedPos = newPositions[j + 1];
+				distanceLimit = segmentLength;
+			}
+			assert(!isNaN(distanceLimit));
+			double distance = (fixedPos - newPositions[j]).length;
+			if (distance > distanceLimit)
+			{
+				// project
+				vec2d delta = (distance - distanceLimit) *
+					(fixedPos - newPositions[j]).normalized;
+				newPositions[j] = newPositions[j] + delta;
+			}
+		}
+
+		// update points
+		foreach (i, ref point; points)
+		{
+			point.vel = (newPositions[i] - point.pos) / dt;
+			point.pos = newPositions[i];
+		}
 	}
 }
 
@@ -307,6 +325,8 @@ final class RigidBody: PhysicalEntity
 	double mass;
 	HydroForceModel hydroModel;
 	Vessel vesselOwner;	/// may be null
+
+	AttachedWire*[] wires;
 
 	// TODO: maybe tree needs double precision as well.
 	private QuadTree!(RigidBody).LeafNode* spacialTreeNode;
@@ -350,6 +370,9 @@ final class RigidBody: PhysicalEntity
 	/// physics update step, RK2
 	override void integrate(float dt)
 	{
+		foreach (AttachedWire* wire; wires)
+			wire.updateTotalLength(dt);
+
 		Kinematics kinet1 = kinet;
 		vec2d linAcc1 = linAcc(kinet);
 		double rotAcc1 = rotAcc(kinet);
@@ -379,6 +402,9 @@ final class RigidBody: PhysicalEntity
 		// update transform
 		transform.position = kinet.pos;
 		transform.rotation = kinet.rotation;
+
+		foreach (AttachedWire* wire; wires)
+			wire.simulate(dt);
 	}
 
 	private vec2d linAcc(const ref Kinematics c)

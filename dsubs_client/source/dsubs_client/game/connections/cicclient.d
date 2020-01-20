@@ -153,6 +153,7 @@ private:
 		{
 			Game.simState.updateLastServerTime(res.snap.atTime);
 			Game.simState.playerSub.updateKinematics(res.snap);
+			Game.simState.playerSub.updateWireKinematics(res.wireSnaps);
 			Game.simState.gui.handleSubKinematicRes(res);
 		}
 	}

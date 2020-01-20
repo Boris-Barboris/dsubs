@@ -17,7 +17,6 @@
 		"requests": "std",
 		"lubeck": "openblas"
 	},
-	"lflags": ["/home/boris/src/dsubs/dsubs_server/libopenblas"],
 	"dflags": [
 		"-J /home/boris/src/dsubs/dsubs_sound/source/dsubs_sound/kernels"
 	],

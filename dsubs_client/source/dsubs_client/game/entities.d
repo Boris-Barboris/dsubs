@@ -394,6 +394,65 @@ final class Tube
 }
 
 
+final class AttachedWire
+{
+	private
+	{
+		/// attachment transform
+		Transform2D m_trans;
+		int m_index;
+		Submarine m_sub;
+		WireTrace m_trace;
+		__gshared LineShape g_lineShape;
+	}
+
+	this(Submarine sub, int index, MountPoint mount)
+	{
+		m_sub = sub;
+		m_index = index;
+		m_trans = new Transform2D();
+		sub.transform.addChild(m_trans);
+		m_trans.position = mount.mountCenter.to!vec2d;
+		m_trace.attachTransform = m_trans;
+		m_trace.attachTrace = &m_sub.trace;
+		if (g_lineShape is null)
+			g_lineShape = new LineShape(vec2d(0, 0), vec2d(0, 0), sfWhite, 1.0f);
+	}
+
+	void appendSnapshot(const WireSnapshot snap)
+	{
+		m_trace.appendSnapshot(snap);
+	}
+
+	@property Transform2D attachTransform() { return m_trans; }
+
+	@property Submarine submarine() { return m_sub; }
+
+	void update(usecs_t delta)
+	{
+		if (m_trace.canInterpolate)
+			m_trace.moveForward(delta);
+	}
+
+	void render(Window wnd)
+	{
+		if (!m_trace.canInterpolate || m_trace.result.points.length == 0)
+			return;
+		for (size_t i = 0; i < m_trace.result.points.length; i++)
+		{
+			vec2d pos1, pos2;
+			pos1 = m_trace.result.points[i].position;
+			if (i < m_trace.result.points.length - 1)
+				pos2 = m_trace.result.points[i + 1].position;
+			else
+				pos2 = m_trans.wposition;
+			g_lineShape.setPoints(pos1, pos2);
+			g_lineShape.render(wnd);
+		}
+	}
+}
+
+
 final class Submarine: WorldRenderable
 {
 	mixin Readonly!(const(SubmarineTemplate*), "tmpl");
@@ -401,6 +460,7 @@ final class Submarine: WorldRenderable
 	private Propulsor[] m_propulsors;
 	private ConvexShape[] m_shapes;
 	private KinematicTrace trace;
+	private AttachedWire[] m_wires;
 
 	private AmmoRoom[int] m_ammoRooms;
 	private Tube[int] m_tubes;
@@ -432,11 +492,21 @@ final class Submarine: WorldRenderable
 		foreach (const TubeTemplate tt; m_tmpl.tubes)
 			m_tubes[tt.id] = new Tube(this.transform,
 				tt.mount, m_ammoRooms[tt.roomId], tt.id, tt.type);
+		// build wires
+		foreach (i, wireMount; m_tmpl.wireMounts)
+			m_wires ~= new AttachedWire(this, i.to!int, wireMount);
 	}
 
 	void updateKinematics(ref const KinematicSnapshot snap)
 	{
 		trace.appendSnapshot(snap);
+	}
+
+	void updateWireKinematics(const WireSnapshot[] wireSnaps)
+	{
+		assert(wireSnaps.length == m_wires.length);
+		foreach (i, wire; m_wires)
+			wire.appendSnapshot(wireSnaps[i]);
 	}
 
 	/// returns true if the snapshot was written to res
@@ -472,6 +542,8 @@ final class Submarine: WorldRenderable
 		}
 		foreach (prop; m_propulsors)
 			prop.update(camCtx, usecsDelta);
+		foreach (wire; m_wires)
+			wire.update(usecsDelta);
 	}
 
 	override void render(Window wnd)
@@ -480,6 +552,8 @@ final class Submarine: WorldRenderable
 			prop.renderBack(wnd);
 		for (int i = 0; i < m_tmpl.elevatedHullShapeIdx; i++)
 			m_shapes[i].render(wnd, transform.world);
+		foreach (wire; m_wires)
+			wire.render(wnd);
 		foreach (prop; m_propulsors)
 			prop.renderFront(wnd);
 		for (int i = m_tmpl.elevatedHullShapeIdx; i < m_shapes.length; i++)
