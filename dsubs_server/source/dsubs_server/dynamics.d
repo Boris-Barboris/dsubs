@@ -3,9 +3,8 @@ module dsubs_server.dynamics;
 import std.algorithm;
 import std.array;
 
-import mir.ndslice.slice: sliced;
-import mir.ndslice.topology: canonical;
-import mir.lapack: gesv, lapackint;
+import mir.ndslice: magic, repeat, as, slice;
+import lubeck: mtimes;
 
 import dsubs_common.containers.array;
 import dsubs_common.math;
@@ -260,7 +259,14 @@ struct AttachedWire
 		// 4 variables: x1, x2, y1, y2 in each but one constraint, and
 		// edge attachment constraint:
 		// firstSegmentLength^2 - (dy^2 + dx^2) >= 0 with 2 variables.
-
+		auto n = 5;
+		// Magic Square
+		auto matrix = n.magic.as!double.slice;
+		// [1 1 1 1 1]
+		auto vec = 1.repeat(n).as!double.slice;
+		// Uses CBLAS for multiplication
+		matrix.mtimes(vec);
+		matrix.mtimes(matrix);
 	}
 }
 

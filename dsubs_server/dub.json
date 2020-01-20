@@ -7,7 +7,7 @@
 	],
 	"dependencies": {
 		"gfm:math": "~>6.2.7",
-		"mir-lapack": "~>1.2.1",
+		"lubeck": "~>1.1.7",
 		"mysql-native": { "path": "../mysql-native" },
 		"dsubs_common": { "path": "../dsubs_common" },
 		"dsubs_sound": { "path": "../dsubs_sound" },
@@ -15,8 +15,9 @@
 	},
 	"subConfigurations": {
 		"requests": "std",
-		"mir-lapack": "openblas"
+		"lubeck": "openblas"
 	},
+	"lflags": ["/home/boris/src/dsubs/dsubs_server/libopenblas"],
 	"dflags": [
 		"-J /home/boris/src/dsubs/dsubs_sound/source/dsubs_sound/kernels"
 	],
@@ -24,5 +25,5 @@
 		"requireBoundsCheck"
 	],
 	"description": "dsubs server",
-	"copyright": "Copyright (C) 2017-2019, Alexander Baranin"
+	"copyright": "Copyright (C) 2017-2020, Alexander Baranin"
 }
