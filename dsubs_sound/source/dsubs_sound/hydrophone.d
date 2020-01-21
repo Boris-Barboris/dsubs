@@ -41,6 +41,8 @@ struct HydrophonePrototype
 	float listenSpan = dgr2rad(3);
 	/// water dissipation modifier
 	float dissMod = 4.0f;
+	/// coaxial towed array can only focus on the cone, so it's contacts are mirrored.
+	bool mirrored = false;
 }
 
 
@@ -78,9 +80,14 @@ final class Hydrophone
 		m_dissMod = p.dissMod;
 		m_span = p.antennaeSpan;
 		m_listenSpan = p.listenSpan;
+		m_mirrored = p.mirrored;
+		if (m_mirrored)
+			assert(p.antennaeRots.length == 1,
+				"mirrored hydrophone cannot have more than 1 antennae");
 		m_bearingErrNoise = p.bearingErrNoise;
 		m_flowNoiseMult = p.flowNoiseMult;
 		m_omniNoiseMult = p.omniNoiseMult;
+		// FIXME: math is not ready for omnidirectional hydrophones
 		assert(m_span > 0.0f && m_span < 2 * PI - MAX_HALO);
 		assert(p.beamCount > 0);
 		m_beamAngle = m_span / p.beamCount;
@@ -127,6 +134,7 @@ final class Hydrophone
 		float m_omniNoiseMult;
 		float m_dissMod;
 		dB m_baseNoise;
+		bool m_mirrored;
 
 		/// speed in knots at the start of integration
 		float m_ktsStart = 0.0f;
@@ -190,6 +198,8 @@ final class Hydrophone
 		m_prevPos = m_transform.wposition;
 		m_prevRot = m_transform.wrotation;
 	}
+
+	@property bool mirrored() const { return m_mirrored; }
 
 	@property Transform2D transform() { return m_transform; }
 
@@ -552,6 +562,15 @@ final class Hydrophone
 			float right = m_listenDir - m_listenSpan / 2;
 			integr = integrateBetweenBeams(left, right,
 				p.worldBearingStart, p.worldBearingEnd, p.haloBound * SOUND_HALO_GAIN);
+			if (m_mirrored)
+			{
+				double leftMirrored = right + 2.0 * (m_prevRot - right);
+				double rightMirrored = left + 2.0 * (m_prevRot - left);
+				PowerIntegr integrMirror = integrateBetweenBeams(leftMirrored, rightMirrored,
+					p.worldBearingStart, p.worldBearingEnd, p.haloBound * SOUND_HALO_GAIN);
+				if (integrMirror.totalPart > integr.totalPart)
+					integr = integrMirror;
+			}
 		}
 		if (needTds && integr.totalPart == 0.0f && p.omniFactorStart == 0.0f &&
 			p.omniFactorEnd == 0.0f)
@@ -760,7 +779,8 @@ final class Hydrophone
 			if (sectIsec1.count == 0 && sectIsec2.count == 0)
 				return false;
 
-			// FIXME: we don't handle the case when the target passes begind the tail
+			// FIXME: we don't handle the case when the target passes behind the blind
+			// spot.
 
 			// now we operate on raw non-intersected projections
 			SectorProjection proj1 = projectSectors(
@@ -811,7 +831,12 @@ final class Hydrophone
 					antPrec.relBearing1, antPrec.relBearing2, p.haloBound).totalPart;
 				assert(!isNaN(powerPart));
 				if (powerPart > omniMult)
-					beams[beamId] += bandSum * (1.0f - omniMult) * powerPart;
+				{
+					float addedIntensity = bandSum * (1.0f - omniMult) * powerPart;
+					beams[beamId] += addedIntensity;
+					if (m_mirrored)
+						beams[$ - beamId - 1] += addedIntensity;
+				}
 			}
 		}
 	}
