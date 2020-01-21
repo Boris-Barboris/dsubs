@@ -92,9 +92,6 @@ struct SubmarineTemplate
 
 	/// Both torpedo and decoy tubes.
 	TubeTemplate[] tubes;
-
-	/// Wire mounts
-	MountPoint[] wireMounts;
 }
 
 /// Weapons need to be configured before launch. This is a set of available parameters.
@@ -335,11 +332,10 @@ struct KinematicSnapshot
 
 enum HydrophoneType: byte
 {
-	/// both broadband and narrowband data available, operator
-	/// can listen to raw signal in one direction.
-	standard,
-	/// Only broadband data is present, no raw signal is streamed
-	broadbandonly
+	/// Hydrophone is hard-mounted to the hull.
+	fixed,
+	/// Hydrophone is towed.
+	towed
 }
 
 struct HydrophoneTemplate
@@ -347,6 +343,7 @@ struct HydrophoneTemplate
 	/// short name to diplay in selectors
 	string name;
 	HydrophoneType type;
+	/// Focal point for fixed hydrophone, wire mount for towed array
 	MountPoint mount;
 	/// field of view of a single antennae, radians
 	float fov = 0.0f;
@@ -400,6 +397,10 @@ struct HydrophoneData
 {
 	int hydrophoneIdx;	// index of the sub's hydrophone
 	AntennaeData[] antennaes;
+	/// world position of the hydrophone's focus
+	vec2d focusPosition;
+	/// world rotation
+	double rotation;
 }
 
 /// hydrophone time-domain sound signal
