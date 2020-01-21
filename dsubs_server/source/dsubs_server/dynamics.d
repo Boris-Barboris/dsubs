@@ -151,75 +151,115 @@ struct WirePoint
 	vec2d pos = vec2f(0.0f, 0.0f);
 }
 
-private enum float PREFERRED_SEGMENT_LENGTH = 15.0f;
+private enum float PREFERRED_SEGMENT_LENGTH = 20.0f;
 private enum float WINCH_EXTEND_SPD_FACTOR = 0.9f;
 
-/// Extendable/retractable wire that is attached to rigid body.
-struct AttachedWire
-{
-	/// Head of the array is the tail of the wire. Tail is the first point after the attachment.
-	WirePoint[] points;
-	/// Attachment point on the rigid body.
-	Transform2D attachTransform;
-	/// Body that owns the attachTransform.
-	RigidBody rigidBody;
 
-	/// Total length of the wire on full extention.
-	private float m_maxLength = 0.0f;
+struct AttachedWirePrototype
+{
+	float maxLength;
+	float winchSpeed = 5.0f;
+	float pointCD0 = 1e-2f;
+	float pointCD1 = 1e-2f;
+	float pointMass = 0.1f;
+}
+
+/// Extendable/retractable wire that is attached to rigid body.
+final class AttachedWire: IForce
+{
+	private
+	{
+		/// Head of the array is the tail of the wire. Tail is the first point after the attachment.
+		WirePoint[] m_points;
+		/// Attachment point on the rigid body.
+		Transform2D m_attachTransform;
+		/// Body that owns the m_attachTransform.
+		RigidBody m_rigidBody;
+		/// Total length of the wire on full extention.
+		float m_maxLength = 0.0f;
+
+		/// Maximum distance between two m_points.
+		float m_segmentLength = 0.0f;
+		/// Equals to maximum number of wire m_points that are dangling behind
+		/// the attachment point. m_maxSegmentCount * m_segmentLength is effectively
+		/// the maximum extension length of the wire.
+		int m_maxSegmentCount;
+		/// The length of first segment. All other segments are fully extended to their 'm_segmentLength'.
+		float m_firstSegmentLength = 0.0f;
+		float m_currentTotalLength = 0.0f;
+		/// Captains declare the desired total length of the wire and the winch obeys.
+		float m_desiredLength = 0.0f;
+		float m_winchSpeed;
+
+		// point hydrodynamics drag gains.
+		float m_pointCD0;
+		float m_pointCD1;
+		// point mass
+		float m_pointMass;
+
+		/// force that the wire is applying to attachment point.
+		vec2d m_lastAttachForce = vec2d(0, 0);
+	}
+
+	this(Transform2D transform, RigidBody rigidBody, AttachedWirePrototype proto)
+	{
+		m_attachTransform = transform;
+		m_rigidBody = rigidBody;
+		maxLength = proto.maxLength;
+		m_winchSpeed = proto.winchSpeed;
+		m_pointCD0 = proto.pointCD0;
+		m_pointCD1 = proto.pointCD1;
+		m_pointMass = proto.pointMass;
+	}
+
+	@property Transform2D attachTransform() { return m_attachTransform; }
+
+	@property const(WirePoint)[] points() const { return m_points; }
 
 	@property float maxLength() const { return m_maxLength; }
 
 	@property void maxLength(float rhs)
 	{
+		assert(isNormal(rhs));
 		m_maxLength = rhs;
-		maxSegmentCount = ceil(m_maxLength / PREFERRED_SEGMENT_LENGTH).lrint.to!int;
-		segmentLength = m_maxLength / maxSegmentCount;
+		m_maxSegmentCount = ceil(m_maxLength / PREFERRED_SEGMENT_LENGTH).lrint.to!int;
+		m_segmentLength = m_maxLength / m_maxSegmentCount;
 	}
 
-	/// Maximum distance between two points.
-	private float segmentLength = 0.0f;
-	/// Equals to maximum number of wire points that are dangling behind
-	/// the attachment point. maxSegmentCount * segmentLength is effectively
-	/// the maximum extension length of the wire.
-	private int maxSegmentCount;
-	/// The length of first segment. All other segments are fully extended to their 'segmentLength'.
-	float firstSegmentLength = 0.0f;
-	private float currentTotalLength = 0.0f;
-	/// Captains declare the desired total length of the wire and the winch obeys.
-	float desiredLength = 0.0f;
-	float winchSpeed = 5.0f;
+	@property float desiredLength() const { return m_desiredLength; }
 
-	// point hydrodynamics drag gains.
-	float pointCD0 = 1e-2f;
-	float pointCD1 = 1e-2f;
-	// point mass
-	float pointMass = 0.1f;
+	@property void desiredLength(float rhs)
+	{
+		enforce(!isNaN(rhs) && !isInfinity(rhs), "nan or infinity");
+		enforce(rhs >= 0.0f && rhs <= m_maxLength, "desiredLength out of bounds");
+		m_desiredLength = rhs;
+	}
 
 	/// Update length characteristics and point count as if 'dt' seconds have passed.
 	void updateTotalLength(float dt)
 	{
-		size_t currentSegments = points.length;
-		float activeWinchSpeed = winchSpeed;
-		if (desiredLength > currentTotalLength)
+		size_t currentSegments = m_points.length;
+		float activeWinchSpeed = m_winchSpeed;
+		if (m_desiredLength > m_currentTotalLength)
 		{
 			// we limit unwinding speed for slow-moving sub.
-			double rbSpeed = rigidBody.kinet.velLength;
+			double rbSpeed = m_rigidBody.kinet.velLength;
 			activeWinchSpeed = min(activeWinchSpeed, WINCH_EXTEND_SPD_FACTOR * rbSpeed);
 		}
-		currentTotalLength = cmove(currentTotalLength, desiredLength, activeWinchSpeed, dt);
-		size_t nextSegments = ceil(currentTotalLength / segmentLength).lrint.to!size_t;
-		firstSegmentLength = currentTotalLength - (nextSegments - 1) * segmentLength;
-		// now we resize points array if needed
-		points.length = nextSegments;
+		m_currentTotalLength = cmove(m_currentTotalLength, m_desiredLength, activeWinchSpeed, dt);
+		size_t nextSegments = ceil(m_currentTotalLength / m_segmentLength).lrint.to!size_t;
+		m_firstSegmentLength = m_currentTotalLength - (nextSegments - 1) * m_segmentLength;
+		// now we resize m_points array if needed
+		m_points.length = nextSegments;
 		if (nextSegments > currentSegments)
 		{
-			// new points are to be spawned. We place them on the attachment point.
-			vec2d attachPos = attachTransform.wposition;
+			// new m_points are to be spawned. We place them on the attachment point.
+			vec2d attachPos = m_attachTransform.wposition;
 			vec2d attachVel = vec2d(0, 0); //rigidBody.fixedPointVelocity(attachTransform);
 			for (size_t i = currentSegments; i < nextSegments; i++)
 			{
-				points[i].pos = attachPos;
-				points[i].vel = attachVel;
+				m_points[i].pos = attachPos;
+				m_points[i].vel = attachVel;
 			}
 		}
 	}
@@ -227,28 +267,28 @@ struct AttachedWire
 	/// simulation step for the wire, must be ran after rigid body update.
 	void simulate(float dt)
 	{
-		assert(isNormal(pointMass));
+		assert(isNormal(m_pointMass));
 		// first step is to update velocities
-		foreach (ref WirePoint point; points)
+		foreach (ref WirePoint point; m_points)
 		{
 			double velSqr = point.vel.squaredLength;
-			// the only external force that is acting on the points is water drag
+			// the only external force that is acting on the m_points is water drag
 			if (velSqr > 0.0f)
 			{
 				double velMagn = sqrt(velSqr);
-				double dragMagn = pointCD0 * velMagn + pointCD1 * velSqr;
-				double deltaVel = dt * dragMagn / pointMass;
+				double dragMagn = m_pointCD0 * velMagn + m_pointCD1 * velSqr;
+				double deltaVel = dt * dragMagn / m_pointMass;
 				assert(isNormal(deltaVel));
 				// assert that the system is not too stiff for us.
 				assert(deltaVel < velMagn);
-				point.vel -= dt * dragMagn / pointMass * point.vel.normalized;
+				point.vel -= dt * dragMagn / m_pointMass * point.vel.normalized;
 			}
 		}
 		// we now give a first estimation of new point positions
 		vec2d[] newPositions;
-		newPositions.length = points.length;
+		newPositions.length = m_points.length;
 		for (size_t i = 0; i < newPositions.length; i++)
-			newPositions[i] = points[i].pos + points[i].vel * dt;
+			newPositions[i] = m_points[i].pos + m_points[i].vel * dt;
 
 		// simple constraint projection loop that moves new positions by the straigt line
 		// to the allowed position.
@@ -260,13 +300,13 @@ struct AttachedWire
 			if (i == newPositions.length)
 			{
 				// first point directly attached by one segment to rigid body.
-				fixedPos = attachTransform.wposition;
-				distanceLimit = firstSegmentLength;
+				fixedPos = m_attachTransform.wposition;
+				distanceLimit = m_firstSegmentLength;
 			}
 			else
 			{
 				fixedPos = newPositions[j + 1];
-				distanceLimit = segmentLength;
+				distanceLimit = m_segmentLength;
 			}
 			assert(!isNaN(distanceLimit));
 			double distance = (fixedPos - newPositions[j]).length;
@@ -279,13 +319,41 @@ struct AttachedWire
 			}
 		}
 
-		// update points
-		foreach (i, ref point; points)
+		// update m_points and calculate attach force
+		m_lastAttachForce = vec2d(0, 0);
+		double attachForceMagn = 0.0;
+		foreach (i, ref point; m_points)
 		{
+			vec2d estimatedVel = point.vel;
 			point.vel = (newPositions[i] - point.pos) / dt;
+			vec2d deltaVel = point.vel - estimatedVel;
+			// deltaVel.length / dt is acceleration, F = ma
+			attachForceMagn += deltaVel.length / dt * m_pointMass ;
+			// deltaVel is the velocity change that was caused by rigid body's pull.
 			point.pos = newPositions[i];
+			if (i == m_points.length - 1)
+				m_lastAttachForce = -attachForceMagn * deltaVel.normalized;
 		}
 	}
+
+	// IForce stuff
+	vec2d getForce(const RigidBody b, const ref Kinematics c)
+	{
+		return m_lastAttachForce;
+	}
+
+	/// get this force resulting torque.
+	double getTorque(const RigidBody b, const ref Kinematics c)
+	{
+		return b.getForcesTorque(m_lastAttachForce, m_attachTransform);
+	}
+
+	/// if there is some timing logic inside IForce, move forward in time.
+	void propagateInTime(float dt) {}
+
+	ForceSnapshot save() { return ForceSnapshot(0.0); }
+
+	void rollback(ForceSnapshot snap) {}
 }
 
 
@@ -302,10 +370,12 @@ struct ForceSnapshot
 /// Force is assumed to be stateful and keeps track of time.
 interface IForce
 {
-	/// get translational force component.
+	/// get total force.
 	vec2d getForce(const RigidBody b, const ref Kinematics c);
 
-	/// get this force resulting torque.
+	/// get this force resulting torque. Force choses it's application point, or
+	/// lack of it. Pure-torque dynamic effect that is effectively a combination of forces
+	/// can be implemented this way.
 	double getTorque(const RigidBody b, const ref Kinematics c);
 
 	/// if there is some timing logic inside IForce, move forward in time.
@@ -325,8 +395,8 @@ final class RigidBody: PhysicalEntity
 	double mass;
 	HydroForceModel hydroModel;
 	Vessel vesselOwner;	/// may be null
-
-	AttachedWire*[] wires;
+	/// wires that are attached to this body
+	AttachedWire[] wires;
 
 	// TODO: maybe tree needs double precision as well.
 	private QuadTree!(RigidBody).LeafNode* spacialTreeNode;
@@ -360,6 +430,13 @@ final class RigidBody: PhysicalEntity
 		return planarVel + kinet.vel;
 	}
 
+	double getForcesTorque(vec2d force, Transform2D atTransform) const
+	{
+		vec2d posVec = atTransform.wposition - kinet.pos;
+		vec3d torque = cross(vec3d(posVec.x, posVec.y, 0.0), vec3d(force.x, force.y, 0.0));
+		return torque.z;
+	}
+
 	private void updateSpacialTreeNode()
 	{
 		spacialTreeNode.rect = Rectangle(
@@ -370,7 +447,7 @@ final class RigidBody: PhysicalEntity
 	/// physics update step, RK2
 	override void integrate(float dt)
 	{
-		foreach (AttachedWire* wire; wires)
+		foreach (AttachedWire wire; wires)
 			wire.updateTotalLength(dt);
 
 		Kinematics kinet1 = kinet;
@@ -403,7 +480,7 @@ final class RigidBody: PhysicalEntity
 		transform.position = kinet.pos;
 		transform.rotation = kinet.rotation;
 
-		foreach (AttachedWire* wire; wires)
+		foreach (AttachedWire wire; wires)
 			wire.simulate(dt);
 	}
 
@@ -416,6 +493,12 @@ final class RigidBody: PhysicalEntity
 			assert(!isNaN(resultForce.x) && !isNaN(resultForce.y),
 				"NaN force from " ~ force.to!string);
 		}
+		foreach (wire; wires)
+		{
+			resultForce += wire.getForce(this, c);
+			assert(!isNaN(resultForce.x) && !isNaN(resultForce.y),
+				"NaN force from " ~ wire.to!string);
+		}
 		resultForce -= hydroModel.drag(c.velLength, c.velSquaredLength, c.AoA) * c.velNormalized;
 		resultForce += hydroModel.lift(c.velSquaredLength, c.AoA) * c.velLeft;
 		assert(mass > 0.0);
@@ -427,6 +510,11 @@ final class RigidBody: PhysicalEntity
 		double resultTorque = 0.0;
 		foreach (force; forces)
 			resultTorque += force.getTorque(this, c);
+		foreach (wire; wires)
+		{
+			resultTorque += wire.getTorque(this, c);
+			assert(!isNaN(resultTorque), "NaN torque from " ~ wire.to!string);
+		}
 		resultTorque += hydroModel.torque(c.velSquaredLength, c.angVel, c.AoA);
 		assert(moi > 0.0);
 		return resultTorque / moi;

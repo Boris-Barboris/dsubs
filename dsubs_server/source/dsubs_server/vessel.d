@@ -128,6 +128,9 @@ class Vessel
 		if (m_propulsor)
 			targetThrottle = 0.0f;
 		m_causeOfDeath = cause;
+		// optimization: do not simulate wires of dead vessels
+		if (m_rigidBody)
+			m_rigidBody.wires.length = 0;
 		return true;
 	}
 }

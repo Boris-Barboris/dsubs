@@ -394,8 +394,11 @@ final class Tube
 }
 
 
+
 final class AttachedWire
 {
+	enum sfColor WIRE_COLOR = sfColor(180, 180, 180, 255);
+
 	private
 	{
 		/// attachment transform
@@ -416,7 +419,7 @@ final class AttachedWire
 		m_trace.attachTransform = m_trans;
 		m_trace.attachTrace = &m_sub.trace;
 		if (g_lineShape is null)
-			g_lineShape = new LineShape(vec2d(0, 0), vec2d(0, 0), sfWhite, 1.0f);
+			g_lineShape = new LineShape(vec2d(0, 0), vec2d(0, 0), WIRE_COLOR, 0.45f);
 	}
 
 	void appendSnapshot(const WireSnapshot snap)

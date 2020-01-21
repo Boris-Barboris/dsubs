@@ -10,7 +10,7 @@ template Protocol(string messagesModule)
 {
 	mixin("import " ~ messagesModule ~ ";");
 	mixin("alias msgModule = " ~ messagesModule ~ ";");
-	pragma(msg, "Generating protocol for module " ~ messagesModule);
+	// pragma(msg, "Generating protocol for module " ~ messagesModule);
 
 	static
 	{
@@ -34,7 +34,7 @@ template Protocol(string messagesModule)
 			mixin("alias symbol = " ~ messagesModule ~ "." ~ member ~ ";");
 			static if (is(symbol == struct))
 			{
-				pragma(msg, "Detected protocol message ", symbol);
+				// pragma(msg, "Detected protocol message ", symbol);
 				msgMarshallers ~= cast(MsgMarshallerFunc) &marshalMessage!symbol;
 				msgDemarshallers ~= cast(MsgDemarshallerFunc) &demarshalMessage!symbol;
 				msgTypeNames ~= symbol.stringof;

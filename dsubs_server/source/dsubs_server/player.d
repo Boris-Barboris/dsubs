@@ -391,7 +391,7 @@ final class Player: Captain
 		WireSnapshot[] res;
 		for (size_t i = 0; i < s.rigidBody.wires.length; i++)
 		{
-			AttachedWire* wire = s.rigidBody.wires[i];
+			AttachedWire wire = s.rigidBody.wires[i];
 			WireSnapshot wireSnap;
 			wireSnap.atTime = Globals.sim.worldTime + timeShift;
 			wireSnap.points.length = wire.points.length;
