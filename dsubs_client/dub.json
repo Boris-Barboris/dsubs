@@ -25,6 +25,6 @@
 		}
 	],
 	"description": "dsubs client",
-	"copyright": "Copyright (C) 2017-2019, Alexander Baranin",
+	"copyright": "Copyright (C) 2017-2020, Alexander Baranin",
 	"copyFiles-windows": ["libs-win-x86/*.dll"]
 }

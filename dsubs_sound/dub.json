@@ -14,6 +14,6 @@
 		"-J $PACKAGE_DIR/octave"
 	],
 	"description": "Server-side acoustics library for dsubs",
-	"copyright": "Copyright (C) 2017-2019, Alexander Baranin",
+	"copyright": "Copyright (C) 2017-2020, Alexander Baranin",
 	"targetType": "library"
 }

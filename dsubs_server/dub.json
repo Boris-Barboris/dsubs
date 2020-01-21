@@ -7,15 +7,13 @@
 	],
 	"dependencies": {
 		"gfm:math": "~>6.2.7",
-		"lubeck": "~>1.1.7",
 		"mysql-native": { "path": "../mysql-native" },
 		"dsubs_common": { "path": "../dsubs_common" },
 		"dsubs_sound": { "path": "../dsubs_sound" },
 		"requests": { "path": "../requests" }
 	},
 	"subConfigurations": {
-		"requests": "std",
-		"lubeck": "openblas"
+		"requests": "std"
 	},
 	"dflags": [
 		"-J /home/boris/src/dsubs/dsubs_sound/source/dsubs_sound/kernels"
