@@ -444,6 +444,13 @@ Hydrophones:
 Active sonars:
   Bow: 2200Hz mid-freq pulse, 210 deg FoV`,
 				[
+					// right towed array pylon
+					ConvexPolygon(arr2vec2f([
+							6.0f, -35.0f,
+							6.0f, -34.0f,
+							1.0f, -27.0f,
+							1.0f, -31.0f
+						]), RgbaColor(70, 70, 70), 0.2f, RgbaColor(100, 100, 100)),
 					ConvexPolygon(xSymmetry([
 							0.0, 35.0,
 							-1.5, 34.8,
@@ -496,7 +503,7 @@ Active sonars:
 						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
 				],
 				[MountPoint(vec2f(0.0, -34.0f))],
-				1,
+				2,
 				[
 					HydrophoneTemplate(
 						"bow", HydrophoneType.standard,
@@ -510,7 +517,7 @@ Active sonars:
 				["Seven-blade screw"],
 				roomProtos.byValue.map!(p => p.toTemplate()).array,
 				tubeProtos.byValue.map!(p => p.tmpl).array,
-				[MountPoint(vec2f(4.6f, -23.0f))]
+				[MountPoint(vec2f(6.0f, -35.0f))]
 			));
 		sp.roomProtos = roomProtos;
 		sp.tubeProtos = tubeProtos;
@@ -817,6 +824,18 @@ Active sonars:
 
 
 private:
+
+/// build vec2f array from float array
+vec2f[] arr2vec2f(const float[] coords)
+{
+	assert(coords.length >= 2);
+	assert(coords.length % 2 == 0);
+	int len = coords.length.to!int / 2;
+	vec2f[] res;
+	for (int i = 0; i < len; i++)
+		res ~= vec2f(coords[i*2], coords[i*2 + 1]);
+	return res;
+}
 
 /// build axially-symmetric mesh from it's half. 'coords' array should be in form
 /// [ x1, y1, x2, y2 ... ]
