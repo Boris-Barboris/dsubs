@@ -434,8 +434,8 @@ Search patterns: straight, snake, spiral.
 		// 		230, 2 / 90.0f, 3.0f));
 		hydroProtos ~= SubHydrophonePrototype(
 			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -35.0f)),
-			HydrophonePrototype([0.0f], 50, GLOBAL_SRATE / 2, dgr2rad(300),
-				300, 3 / 90.0f, 4.0f));
+			HydrophonePrototype([0.0f], 50, GLOBAL_SRATE / 2, dgr2rad(330),
+				330, 3 / 90.0f, 4.0f));
 		hydroProtos[$-1].hydroProto.mirrored = true;
 		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(500.0f, 1);
 		sp = new SubmarineFactory(
