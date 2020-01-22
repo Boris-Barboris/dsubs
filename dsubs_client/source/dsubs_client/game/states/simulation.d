@@ -44,12 +44,35 @@ final class SimulatorState: GameState
 	mixin Readonly!(Submarine, "playerSub");
 	mixin Readonly!(CameraController, "camController");
 	mixin Readonly!(SimulationGUI, "gui");
-	mixin Readonly!(StreamingSoundSource, "sonarSound");
+	mixin Readonly!(StreamingSoundSource[], "sonarSounds");
+	mixin Readonly!(StreamingSoundSource, "activeSonarSound");
 	mixin Readonly!(usecs_t, "lastServerTime");
 	mixin Readonly!(ContactOverlayShapeCahe, "contactOverlayShapeCache");
 	mixin Readonly!(ClientContactManager, "contactManager");
 	mixin Readonly!(TacticalOverlay, "tacticalOverlay");
 	mixin Readonly!(PlayerSubIcon, "playerSubIcon");
+
+	private
+	{
+		float[StreamingSoundSource] m_savedSoundGains;
+	}
+
+	@property void activeSonarSound(StreamingSoundSource rhs)
+	{
+		if (m_activeSonarSound !is rhs)
+		{
+			if (m_activeSonarSound)
+			{
+				m_savedSoundGains[m_activeSonarSound] = m_activeSonarSound.gain;
+				m_activeSonarSound.gain = 0.0f;
+			}
+			if (rhs)
+			{
+				rhs.gain = m_savedSoundGains[rhs];
+			}
+			m_activeSonarSound = rhs;
+		}
+	}
 
 	private MonoTime m_lastServerTimeOnClient;
 
@@ -86,7 +109,8 @@ final class SimulatorState: GameState
 		m_tacticalOverlay.updateScenarioElements(rawRecState.mapElements);
 
 		m_gui = new SimulationGUI();
-		m_gui.waterfall.listenDir = rawRecState.listenDirs[0];
+		foreach (i, listenDir; rawRecState.listenDirs)
+			m_gui.waterfalls[i].listenDir = listenDir;
 		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) rawRecState.subSnap);
 		m_gui.handleChatMessage(rawRecState.briefing);
 
@@ -96,7 +120,11 @@ final class SimulatorState: GameState
 		foreach (TubeFullState tubeState; rawRecState.tubeStates)
 			m_playerSub.tube(tubeState.tubeId).updateFromFullState(tubeState);
 
-		m_sonarSound = new StreamingSoundSource();
+		foreach (i; 0 .. m_playerSub.tmpl.hydrophones.length)
+		{
+			m_sonarSounds ~= new StreamingSoundSource();
+			m_savedSoundGains[m_sonarSounds[$-1]] = 1.0f;
+		}
 		m_contactOverlayShapeCache = new ContactOverlayShapeCahe();
 		m_contactManager = new ClientContactManager(m_recState, m_playerSub.tmpl.hydrophones.length.to!int);
 	}
@@ -139,10 +167,9 @@ final class SimulationGUI
 		Panel m_mainHintPanel;
 		TextField tgtCourseField, tgtThrottleField;
 		TextBox chatMessageBox;
-		WaterfallGui m_passiveGui;
+		WaterfallGui[] m_passiveGuis;
 		SonarGui m_sonarGui;
 		Div m_topLevelDiv;
-		float m_oldSonarGain = 1.0f;
 		TubeUI[int] tubeUis;
 	}
 
@@ -160,7 +187,7 @@ final class SimulationGUI
 			Game.guiManager.removePanel(m_mainHintPanel);
 	}
 
-	@property Waterfall waterfall() { return m_passiveGui.wf; }
+	@property auto waterfalls() { return m_passiveGuis.map!(wfgui => wfgui.wf); }
 	@property SonarDisplay sonardisp() { return m_sonarGui.sonar; }
 
 	void handleSubKinematicRes(CICSubKinematicRes res)
@@ -195,7 +222,7 @@ final class SimulationGUI
 
 	void handleCICListenDirReq(CICListenDirReq req)
 	{
-		m_passiveGui.wf.listenDir = req.dir;
+		m_passiveGuis[req.hydrophoneIdx].wf.listenDir = req.dir;
 	}
 
 	this()
@@ -204,32 +231,38 @@ final class SimulationGUI
 
 		// Tabs at the top of the screen
 
+		Button[] tabs;
 		Button tacticalTab = builder(new Button()).content("F1 Tactical").
 			fontSize(BIG_BTN_FONT).build;
-		Button psonarTab = builder(new Button()).content("F2 Passive sonar").
-			fontSize(BIG_BTN_FONT).build;
-		Button asonarTab = builder(new Button()).content("F3 Active sonar").
-			fontSize(BIG_BTN_FONT).build;
+		Button[] hydrophoneTabs;
+		int tabId = 2;
+		foreach (const HydrophoneTemplate ht; playerSub.tmpl.hydrophones)
+		{
+			Button btn = builder(new Button()).content(
+				"F" ~ tabId.to!string ~ " " ~ ht.name ~ " BB").
+				fontSize(BIG_BTN_FONT).build;
+			hydrophoneTabs ~= btn;
+			tabId++;
+		}
+		Button asonarTab = builder(new Button()).content("F" ~ tabId.to!string ~
+			" Active sonar").fontSize(BIG_BTN_FONT).build;
+		tabs = [tacticalTab] ~ hydrophoneTabs ~ [asonarTab];
 
-		Game.hotkeyManager.setHotkey(Hotkey(sfKeyF1), ()
+		int[] tabIdxToHotkeyKey;
+		tabIdxToHotkeyKey.length = 8;
+		static foreach (idx; 0 .. 8)
 		{
-			tacticalTab.simulateClick();
-		});
-		Game.hotkeyManager.setHotkey(Hotkey(sfKeyF2), ()
-		{
-			psonarTab.simulateClick();
-		});
-		Game.hotkeyManager.setHotkey(Hotkey(sfKeyF3), ()
-		{
-			asonarTab.simulateClick();
-		});
+			tabIdxToHotkeyKey[idx] = mixin("sfKeyF" ~ (idx + 1).to!string);
+		}
 
-		Div tabDiv = builder(hDiv([
-			tacticalTab,
-			psonarTab,
-			asonarTab
-		])).fixedSize(vec2i(1, TAB_SIZE)).backgroundColor(COLORS.simPanelBgnd).
-			mouseTransparent(false).build;
+		foreach (i, btn; tabs)
+		{
+			Game.hotkeyManager.setHotkey(Hotkey(tabIdxToHotkeyKey[i]),
+				((btn) => { btn.simulateClick(); }) (btn));
+		}
+
+		Div tabDiv = builder(hDiv(cast(GuiElement[]) tabs)).fixedSize(vec2i(1, TAB_SIZE)).
+			backgroundColor(COLORS.simPanelBgnd).mouseTransparent(false).build;
 
 		// Course and speed labels
 
@@ -382,7 +415,13 @@ final class SimulationGUI
 			builder(hDiv(cast(GuiElement[]) tubeUiDivs)).fixedSize(vec2i(100, 230)).
 			borderWidth(8).build
 		])).build;
-		m_passiveGui = createWaterfallPanel(playerSub.tmpl.hydrophones[0]);
+
+		bool[Div] passiveSonarDivs;
+		foreach (i, hydroTmpl; playerSub.tmpl.hydrophones)
+		{
+			m_passiveGuis ~= createWaterfallPanel(hydroTmpl, i.to!int);
+			passiveSonarDivs[m_passiveGuis[$-1].root] = true;
+		}
 		m_sonarGui = createSonarGui(playerSub.tmpl.sonar);
 
 		m_topLevelDiv = builder(vDiv([
@@ -401,34 +440,21 @@ final class SimulationGUI
 			Game.inputRouter.clearFocused();
 		}
 
-		void saveSoundIfNeeded()
-		{
-			if (m_topLevelDiv.children[1] is m_passiveGui.root)
-			{
-				m_oldSonarGain = Game.simState.sonarSound.gain;
-				Game.simState.sonarSound.gain = 0.0f;
-			}
-		}
-
-		void restoreSoundIfNeeded()
-		{
-			if (m_topLevelDiv.children[1] !is m_passiveGui.root)
-				Game.simState.sonarSound.gain = m_oldSonarGain;
-		}
-
 		tacticalTab.onClick += ()
 		{
-			saveSoundIfNeeded();
+			Game.simState.activeSonarSound = null;
 			setMiddlePane(tabFiller);
 		};
-		psonarTab.onClick += ()
+		foreach (i, btn; hydrophoneTabs)
 		{
-			restoreSoundIfNeeded();
-			setMiddlePane(m_passiveGui.root);
-		};
+			btn.onClick += ((i) => {
+				Game.simState.activeSonarSound = Game.simState.sonarSounds[i];
+				setMiddlePane(m_passiveGuis[i].root);
+			})(i);
+		}
 		asonarTab.onClick += ()
 		{
-			saveSoundIfNeeded();
+			Game.simState.activeSonarSound = null;
 			setMiddlePane(m_sonarGui.root);
 		};
 

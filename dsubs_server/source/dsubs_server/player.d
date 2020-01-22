@@ -341,6 +341,20 @@ final class Player: Captain
 		}
 	}
 
+	void handleWireDesiredLengthReq(WireDesiredLengthReq req)
+	{
+		synchronized(Globals.simMut.reader)
+		{
+			Submarine s = m_submarine;
+			enforce(s, "player has no submarine, unable to WireDesiredLengthReq");
+			if (s.dead)
+				return;
+			enforce(req.wireIdx >= 0 && req.wireIdx < s.rigidBody.wires.length,
+				"invalid wire index");
+			s.rigidBody.wires[req.wireIdx].desiredLength = req.desiredLength;
+		}
+	}
+
 	void handleLaunchTubeReq(LaunchTubeReq req)
 	{
 		synchronized(Globals.simMut.reader)

@@ -178,44 +178,46 @@ private:
 
 	void h_listenDirReq(CICListenDirReq req)
 	{
-		assert(req.hydrophoneIdx == 0);
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.gui.waterfall.listenDir = req.dir;
+			Game.simState.gui.waterfalls[req.hydrophoneIdx].listenDir = req.dir;
 		}
 	}
 
 	void h_acousticRes(CICSubAcousticRes res)
 	{
-		assert(res.data.length <= 1);
-		StreamingSoundSource s;
-		vec2d* origin;
 		synchronized(Game.mainMutex)
 		{
-			if (res.data.length > 0)
+			bool[int] arrivedDataIdx;
+			// broadband idx
+			foreach (HydrophoneData hdata; res.data)
 			{
-				foreach (AntennaeData antData; res.data[0].antennaes)
+				arrivedDataIdx[hdata.hydrophoneIdx] = true;
+				foreach (AntennaeData antData; hdata.antennaes)
 				{
-					Game.simState.gui.waterfall.drawData(
-						antData.beams, res.data[0].rotation, antData.antennaeIdx);
+					Game.simState.gui.waterfalls[hdata.hydrophoneIdx].drawData(
+						antData.beams, hdata.rotation, antData.antennaeIdx);
 				}
-				origin = &res.data[0].position;
+				Game.simState.gui.waterfalls[hdata.hydrophoneIdx].completeRow(&hdata.position);
 			}
-			Game.simState.gui.waterfall.completeRow(origin);
-			s = Game.simState.sonarSound;
-		}
-		if (s && res.audio.length > 0)
-		{
-			s.pullFinishedBuffers();
-			if (s.queuedCount > 0)
-				s.append(res.audio[0].samples, res.audio[0].samplingRate);
-			else
+			foreach (waterfall; Game.simState.gui.waterfalls)
+				if (waterfall.hydrophoneIdx !in arrivedDataIdx)
+					waterfall.completeRow(null);
+			// time-domain sound
+			foreach (HydrophoneAudio audio; res.audio)
 			{
-				// we delay first sample enqueing in order to reduce the risk of buffering
-				Game.delay(()
-					{
-						s.append(res.audio[0].samples, res.audio[0].samplingRate);
-					}, msecs(250), null);
+				StreamingSoundSource s = Game.simState.sonarSounds[audio.hydrophoneIdx];
+				s.pullFinishedBuffers();
+				if (s.queuedCount > 0)
+					s.append(audio.samples, audio.samplingRate);
+				else
+				{
+					// we delay first sample enqueing in order to reduce the risk of buffering
+					Game.delay( ((audio, source) => {
+							source.append(audio.samples, audio.samplingRate);
+						}) (audio, s),
+						msecs(250), null);
+				}
 			}
 		}
 	}
@@ -290,8 +292,7 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
-			assert(msg.hydrophoneIdx == 0);
-			auto wto = Game.simState.gui.waterfall.trackerOverlay;
+			auto wto = Game.simState.gui.waterfalls[msg.hydrophoneIdx].trackerOverlay;
 			wto.updatePeaks(msg.peaks);
 			auto manager = Game.simState.contactManager;
 			foreach (ht; msg.trackers)
@@ -303,7 +304,6 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
-			assert(msg.tracker.id.sensorIdx == 0);
 			auto manager = Game.simState.contactManager;
 			manager.handleTracker(msg.tracker);
 		}
@@ -313,7 +313,6 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
-			assert(msg.tid.sensorIdx == 0);
 			auto manager = Game.simState.contactManager;
 			manager.handleDropTracker(msg.tid);
 		}

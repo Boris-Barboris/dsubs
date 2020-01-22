@@ -160,4 +160,11 @@ private:
 		info(p.name, " requests tube launch: ", req);
 		p.handleLaunchTubeReq(req);
 	}
+
+	void h_wireDesiredLengthReq(WireDesiredLengthReq req)
+	{
+		Player p = m_player;
+		enforceAuthAndSim(p);
+		p.handleWireDesiredLengthReq(req);
+	}
 }

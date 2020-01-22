@@ -428,13 +428,13 @@ Search patterns: straight, snake, spiral.
 		decoyTubePrototype.tmpl.id = 3;
 		tubeProtos[3] = decoyTubePrototype;
 		SubHydrophonePrototype[] hydroProtos;
-		// hydroProtos ~= SubHydrophonePrototype(
-		// 	"bow", HydrophoneType.fixed, MountPoint(vec2f(0.0f, 31.0f)),
-		// 	HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(230),
-		// 		230, 2 / 90.0f, 3.0f));
+		hydroProtos ~= SubHydrophonePrototype(
+			"bow", HydrophoneType.fixed, MountPoint(vec2f(0.0f, 31.0f)),
+			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(230),
+				230, 2 / 90.0f, 3.0f));
 		hydroProtos ~= SubHydrophonePrototype(
 			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -35.0f)),
-			HydrophonePrototype([0.0f], 50, GLOBAL_SRATE / 2, dgr2rad(330),
+			HydrophonePrototype([0.0f], 50, 2500, dgr2rad(330),
 				330, 3 / 90.0f, 4.0f));
 		hydroProtos[$-1].hydroProto.mirrored = true;
 		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(500.0f, 1);

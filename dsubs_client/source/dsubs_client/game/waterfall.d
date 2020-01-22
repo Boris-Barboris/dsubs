@@ -33,10 +33,10 @@ struct WaterfallGui
 }
 
 
-WaterfallGui createWaterfallPanel(const HydrophoneTemplate ht)
+WaterfallGui createWaterfallPanel(const HydrophoneTemplate ht, int hydrophoneIndex)
 {
 	WaterfallGui res;
-	res.wf = new Waterfall(ht, 0);
+	res.wf = new Waterfall(ht, hydrophoneIndex);
 	Slider volumeSlider = new Slider();
 	volumeSlider.value = 0.5f;
 
@@ -44,11 +44,12 @@ WaterfallGui createWaterfallPanel(const HydrophoneTemplate ht)
 		{
 			if (newVal == 0.0f)
 			{
-				Game.simState.sonarSound.gain = 0.0f;
+				Game.simState.sonarSounds[hydrophoneIndex].gain = 0.0f;
 				return;
 			}
 			newVal = (newVal - 0.5f) * 2;
-			Game.simState.sonarSound.gain = toLinear(newVal * toDb(short.max / 200));
+			Game.simState.sonarSounds[hydrophoneIndex].gain =
+				toLinear(newVal * toDb(short.max / 200));
 		};
 
 	Div volumeDiv = builder(hDiv([
@@ -498,6 +499,8 @@ final class Waterfall: PanoramicDisplay!ushort
 		CircQueue!(vec2d, true) m_originQueue;
 	}
 
+	@property int hydrophoneIdx() const { return m_hydrophoneIdx; }
+
 	@property TrackerOverlay trackerOverlay() { return m_trackerOverlay; }
 
 	this(const HydrophoneTemplate ht, int hydrophoneIdx)
@@ -636,7 +639,8 @@ final class Waterfall: PanoramicDisplay!ushort
 			if (btn == sfMouseLeft)
 			{
 				this.outer.updateDirectorElement(x - position.x);
-				Game.ciccon.sendMessage(immutable CICListenDirReq(0, this.outer.m_listenDir));
+				Game.ciccon.sendMessage(immutable CICListenDirReq(
+					this.outer.m_hydrophoneIdx, this.outer.m_listenDir));
 			}
 			if (btn == sfMouseRight && !m_panned)
 				spawnContextMenu(x, y);

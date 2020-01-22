@@ -21,7 +21,7 @@ struct ServerStatusRes
 {
 	__gshared const int g_marshIdx;
 	int playersOnline;
-	int apiVersion = 6;
+	int apiVersion = 7;
 }
 
 /** This message requests authorization from the server.
@@ -256,4 +256,12 @@ struct ChatMessageRes
 {
 	__gshared const int g_marshIdx;
 	ChatMessage message;
+}
+
+/// Client sends when it wants to set desired wire length.
+struct WireDesiredLengthReq
+{
+	__gshared const int g_marshIdx;
+	int wireIdx;
+	float desiredLength = 0.0f;
 }

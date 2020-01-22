@@ -154,6 +154,7 @@ final class Slider: GuiElement
 			{
 				sfRectangleShape_setFillColor(m_handle, m_handleColor);
 				returnMouseFocus();
+				onDragEnd(m_value);
 			}
 		}
 		m_dragging = rhs;
@@ -209,4 +210,5 @@ final class Slider: GuiElement
 	}
 
 	Event!(void delegate(float newVal)) onValueChanged;
+	Event!(void delegate(float finalVal)) onDragEnd;
 }

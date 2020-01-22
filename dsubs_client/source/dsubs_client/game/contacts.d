@@ -127,7 +127,8 @@ final class ClientContact
 		if (m_trackerEls[ht.id.sensorIdx] is null)
 		{
 			// new tracker
-			Waterfall.TrackerOverlay wto = Game.simState.gui.waterfall.trackerOverlay;
+			Waterfall.TrackerOverlay wto = Game.simState.gui.
+				waterfalls[ht.id.sensorIdx].trackerOverlay;
 			m_trackerEls[ht.id.sensorIdx] = new HydrophoneTrackerElement(wto, ht);
 		}
 		else
