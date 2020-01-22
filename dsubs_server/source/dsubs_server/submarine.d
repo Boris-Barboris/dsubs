@@ -29,7 +29,7 @@ final class Submarine: Vessel
 	}
 
 	@property int spawnId() const { return m_spawnId; }
-	@property inout(Hydrophone)[] hydrophones() inout { return m_hydrophones; }
+	@property Hydrophone[] hydrophones() { return m_hydrophones; }
 	@property ActiveSonar sonar() { return m_sonar; }
 
 	@property Captain captain() { return m_captain; }
@@ -112,7 +112,7 @@ final class Submarine: Vessel
 		if (res)
 		{
 			foreach (h; m_hydrophones)
-				h.active = false;
+				h.canBeActive = false;
 			if (m_sonar)
 				m_sonar.active = false;
 		}
@@ -151,7 +151,7 @@ final class SubmarineFactory: VesselFactory
 			t.rotation = hp.mount.rotation;
 			res.transform.addChild(t);
 			Hydrophone h;
-			if (ht.type == HydrophoneType.fixed)
+			if (hp.type == HydrophoneType.fixed)
 			{
 				h = new Hydrophone(Globals.sctx.queue(0), t, hp.hydroProto);
 				h.onPreKinematics += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
@@ -159,7 +159,7 @@ final class SubmarineFactory: VesselFactory
 			}
 			else
 			{
-				assert(ht.type == HydrophoneType.towed);
+				assert(hp.type == HydrophoneType.towed);
 				AttachedWire wire = new AttachedWire(t, res.rigidBody, hp.wirePrototype);
 				wire.desiredLength = 500.0f;
 				res.rigidBody.wires ~= wire;

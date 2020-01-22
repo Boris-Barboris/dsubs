@@ -173,7 +173,6 @@ final class SimulationGUI
 		double proj = dot(vel, fwd);
 		curSpeed.format!"speed: %.2f"(proj);
 		// pass to other classes that need it
-		m_passiveGui.wf.handleSubKinematicRes(res);
 		m_sonarGui.sonar.handleSubKinematicRes(res);
 	}
 

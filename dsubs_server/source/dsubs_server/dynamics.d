@@ -237,7 +237,7 @@ final class AttachedWire: IForce
 	{
 		if (pointIdx >= m_points.length)
 			return false;
-		pos = m_points[pointIdx];
+		pos = m_points[pointIdx].pos;
 		vec2d tangentPos;
 		if (pointIdx + 1 == m_points.length)
 			tangentPos = m_attachTransform.wposition;
@@ -245,7 +245,7 @@ final class AttachedWire: IForce
 			tangentPos = m_points[pointIdx + 1].pos;
 		if (pos == tangentPos)
 			return true;
-		rot = courseAngle(tangentPos - pos);
+		rot = courseAngle(pos - tangentPos);
 		assert(!isNaN(rot));
 		return true;
 	}
@@ -264,7 +264,7 @@ final class AttachedWire: IForce
 		else
 		{
 			m_sensorTransform.position = m_attachTransform.wposition;
-			m_sensorTransform.rotation = m_attachTransform.wrotation;
+			m_sensorTransform.rotation = clampAnglePi(m_attachTransform.wrotation + PI);
 		}
 	}
 

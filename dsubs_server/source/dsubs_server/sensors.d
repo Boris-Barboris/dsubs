@@ -17,7 +17,7 @@ struct SubHydrophonePrototype
     /// wire parameters for towed array.
     AttachedWirePrototype wirePrototype;
 
-    @property const(HydrophoneTemplate) getTemplate() const
+    @property HydrophoneTemplate getTemplate()
     {
         return HydrophoneTemplate(
             name, type, mount, hydroProto.antennaeSpan, hydroProto.antennaeRots, wirePrototype.maxLength);

@@ -20,6 +20,7 @@ import dsubs_sound.common: GLOBAL_SRATE;
 
 import dsubs_server.common;
 import dsubs_server.propulsion;
+import dsubs_server.sensors;
 import dsubs_server.dynamics;
 import dsubs_server.player: Captain;
 public import dsubs_server.submarine;
@@ -426,6 +427,17 @@ Search patterns: straight, snake, spiral.
 		decoyTubePrototype.tmpl.mount = MountPoint(vec2f(4.5, -21.0f), -dgr2rad(100));
 		decoyTubePrototype.tmpl.id = 3;
 		tubeProtos[3] = decoyTubePrototype;
+		SubHydrophonePrototype[] hydroProtos;
+		// hydroProtos ~= SubHydrophonePrototype(
+		// 	"bow", HydrophoneType.fixed, MountPoint(vec2f(0.0f, 31.0f)),
+		// 	HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(230),
+		// 		230, 2 / 90.0f, 3.0f));
+		hydroProtos ~= SubHydrophonePrototype(
+			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -35.0f)),
+			HydrophonePrototype([0.0f], 50, GLOBAL_SRATE / 2, dgr2rad(300),
+				300, 3 / 90.0f, 4.0f));
+		hydroProtos[$-1].hydroProto.mirrored = true;
+		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(500.0f, 1);
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Stork",
@@ -504,20 +516,13 @@ Active sonars:
 				],
 				[MountPoint(vec2f(0.0, -34.0f))],
 				2,
-				[
-					HydrophoneTemplate(
-						"bow", HydrophoneType.standard,
-						MountPoint(vec2f(0.0f, 31.0f)),
-						dgr2rad(230), [0.0f]
-					)
-				],
+				hydroProtos.map!(hp => hp.getTemplate()).array,
 				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
 					asp.getSliceXResol(), asp.radialRes, asp.maxSec),
 				["Seven-blade screw"],
 				roomProtos.byValue.map!(p => p.toTemplate()).array,
-				tubeProtos.byValue.map!(p => p.tmpl).array,
-				[MountPoint(vec2f(6.0f, -35.0f))]
+				tubeProtos.byValue.map!(p => p.tmpl).array
 			));
 		sp.roomProtos = roomProtos;
 		sp.tubeProtos = tubeProtos;
@@ -533,10 +538,7 @@ Active sonars:
 		vec2f dims = getHullDims(sp.tmpl.hullModel);
 		// trace("dims: ", dims);
 		sp.hullLength = dims.y;
-		sp.hprots = [
-			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(230),
-			230, 2 / 90.0f, 3.0f)
-		];
+		sp.hprots = hydroProtos;
 		sp.asprot = asp;
 		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-25.0f, -23.0f, -15.0f]);
 		sp.playable = true;
@@ -601,6 +603,12 @@ Active sonars:
 		asp.reflBearingNoise = 0.029f;
 		asp.zeroLevel = dB(seaNoiseIL(2200).val - 23.0f);
 		asp.endScale = 1 / 180.0f;
+		hydroProtos.length = 0;
+		hydroProtos ~= SubHydrophonePrototype(
+			"hull", HydrophoneType.fixed, MountPoint(vec2f(0.0f, 0.0f)),
+			HydrophonePrototype(
+				[dgr2rad(90.0f), -dgr2rad(90.0f)], 200, GLOBAL_SRATE / 2, dgr2rad(120),
+				100, 1.5 / 90.0f, 3.4f));
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Lima",
@@ -726,13 +734,7 @@ Active sonars:
 				],
 				[MountPoint(vec2f(0.0, -34.0f))],
 				5,
-				[
-					HydrophoneTemplate(
-						"hull", HydrophoneType.standard,
-						MountPoint(vec2f(0.0f, 0.0f)),
-						dgr2rad(120), [dgr2rad(90.0f), -dgr2rad(90.0f)]
-					)
-				],
+				hydroProtos.map!(hp => hp.getTemplate()).array,
 				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
 					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
 					asp.getSliceXResol(), asp.radialRes, asp.maxSec),
@@ -756,10 +758,7 @@ Active sonars:
 		dims = getHullDims(sp.tmpl.hullModel);
 		// trace("dims: ", dims);
 		sp.hullLength = dims.y;
-		sp.hprots = [
-			HydrophonePrototype([dgr2rad(90.0f), -dgr2rad(90.0f)], 200, GLOBAL_SRATE / 2, dgr2rad(120),
-			100, 1.5 / 90.0f, 3.4f)
-		];
+		sp.hprots = hydroProtos;
 		sp.asprot = asp;
 		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-21.0f, -19.0f, -11.0f]);
 		sp.playable = true;

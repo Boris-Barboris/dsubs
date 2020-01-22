@@ -566,22 +566,22 @@ final class Waterfall: PanoramicDisplay!ushort
 		return null;
 	}
 
-	void handleSubKinematicRes(CICSubKinematicRes res)
-	{
-		// update m_originQueue
-		m_originQueue.pushBack(res.snap.position +
-			rotateVector(m_ht.mount.mountCenter, res.snap.rotation));
-	}
-
 	void drawData(const(ushort)[] data, double subWrot, int antIdx)
 	{
 		float row = m_vertPos < 0 ? -m_vertPos - 0.5f : m_height + 0.5f;
 		drawRow(data, row, m_ht.fov, subWrot + m_ht.antRots[antIdx]);
 	}
 
-	// draw black line to zero out the next row we will render into
-	void completeRow()
+	// draw black line to zero out the next row we will render into.
+	void completeRow(vec2d* sensorPosition)
 	{
+		if (sensorPosition)
+			m_originQueue.pushBack(*sensorPosition);
+		else
+			if (m_originQueue.length > 0)
+				m_originQueue.pushBack(m_originQueue.fromBack(0));
+			else
+				m_originQueue.pushBack(Game.simState.playerSub.transform.wposition);
 		sfRenderTexture_display(m_renderTexture);
 		m_vertPos++;
 		if (m_vertPos > 0)

@@ -160,7 +160,8 @@ struct ListenDirReq
 	float dir;		/// world-space listen direction
 }
 
-/// Server streams acoustic data to the player
+/// Server streams acoustic data to the player. All hydrophones that were active
+/// are represented here. If some hydrophone is absent, it was inactive.
 struct AcousticStreamRes
 {
 	__gshared const int g_marshIdx;

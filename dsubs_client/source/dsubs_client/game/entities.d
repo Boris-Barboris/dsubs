@@ -496,8 +496,8 @@ final class Submarine: WorldRenderable
 			m_tubes[tt.id] = new Tube(this.transform,
 				tt.mount, m_ammoRooms[tt.roomId], tt.id, tt.type);
 		// build wires
-		foreach (i, wireMount; m_tmpl.wireMounts)
-			m_wires ~= new AttachedWire(this, i.to!int, wireMount);
+		foreach (i, hyhroTemplate; m_tmpl.hydrophones.filter!(h => h.type == HydrophoneType.towed).array)
+			m_wires ~= new AttachedWire(this, i.to!int, hyhroTemplate.mount);
 	}
 
 	void updateKinematics(ref const KinematicSnapshot snap)

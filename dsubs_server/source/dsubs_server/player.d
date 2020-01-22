@@ -207,7 +207,7 @@ final class Player: Captain
 
 	immutable(ReconnectStateRes) getReconnectState()
 	{
-		const Submarine s = m_submarine;
+		Submarine s = m_submarine;
 		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
 		ReconnectStateRes recState = ReconnectStateRes(
 			s.spawnId, s.prototypeName, s.propulsor.prototypeName,
@@ -448,23 +448,24 @@ final class Player: Captain
 			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(),
 				genSubWireSnapshots()));
 			immutable(HydrophoneData)[] hdata;
-			foreach (i, const h; s.hydrophones)
-			{
-				HydrophoneData hd;
-				hd.hydrophoneIdx = i.to!int;
-				for (int j = 0; j < h.antennaCount; j++)
-					hd.antennaes ~= AntennaeData(j, h.getBroadbandData(j));
-				hdata ~= cast(immutable) hd;
-			}
 			immutable(HydrophoneAudio)[] haudio;
 			foreach (i, h; s.hydrophones)
 			{
+				if (!h.active)
+					continue;
+				HydrophoneData hd;
+				hd.hydrophoneIdx = i.to!int;
+				hd.position = posToClientSpace(h.transform.wposition);
+				hd.rotation = rotToClientSpace(h.transform.wrotation);
+				for (int j = 0; j < h.antennaCount; j++)
+					hd.antennaes ~= AntennaeData(j, h.getBroadbandData(j));
+				hdata ~= cast(immutable) hd;
 				if (h.listenDirValid)
 				{
 					int srate;
 					auto samples = h.pcb;
 					// trace("samples start: ", samples[0..10], " end: ", samples[$-10..$]);
-					haudio ~= immutable HydrophoneAudio(i.to!int, h.listenDir + coordRot,
+					haudio ~= immutable HydrophoneAudio(i.to!int, rotToClientSpace(h.listenDir),
 						samples, samples.length.to!int);
 				}
 			}

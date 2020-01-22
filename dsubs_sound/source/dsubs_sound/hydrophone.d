@@ -32,6 +32,7 @@ struct HydrophonePrototype
 	float antennaeSpan;
 	/// number of beams, formed by each antennae
 	int beamCount;
+	/// lower is better
 	float directivity;
 	dB baseNoise = 3.0f;
 	float bearingErrNoise = 4e-3f;

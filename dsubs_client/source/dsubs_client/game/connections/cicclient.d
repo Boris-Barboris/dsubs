@@ -190,14 +190,19 @@ private:
 		assert(res.data.length == 1);
 		assert(res.data[0].hydrophoneIdx == 0);
 		StreamingSoundSource s;
+		vec2d* origin;
 		synchronized(Game.mainMutex)
 		{
-			foreach (AntennaeData antData; res.data[0].antennaes)
+			if (res.data.length > 0)
 			{
-				Game.simState.gui.waterfall.drawData(
-					antData.beams, res.rotationAtTime, antData.antennaeIdx);
+				foreach (AntennaeData antData; res.data[0].antennaes)
+				{
+					Game.simState.gui.waterfall.drawData(
+						antData.beams, res.data[0].rotation, antData.antennaeIdx);
+				}
+				origin = &res.data[0].position;
 			}
-			Game.simState.gui.waterfall.completeRow();
+			Game.simState.gui.waterfall.completeRow(origin);
 			s = Game.simState.sonarSound;
 		}
 		if (s && res.audio.length > 0)

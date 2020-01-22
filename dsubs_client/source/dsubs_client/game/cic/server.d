@@ -137,25 +137,17 @@ final class CICServer
 
 	void handleAcousticStreamRes(AcousticStreamRes res)
 	{
-		CICSubAcousticRes bdcst;
-		bdcst.data = res.data;
-		bdcst.audio = res.audio;
+		CICSubAcousticRes bdcst = cast(CICSubAcousticRes) res;
 		enforce(m_state.recStateInitialized);
 		enforce(res.atTime == m_state.recState.subSnap.atTime);
-		bdcst.rotationAtTime = m_state.recState.subSnap.rotation;
 		m_listener.broadcast(cast(immutable) bdcst);
-		KinematicSnapshot snap;
-		synchronized(m_state.rsMut)
-		{
-			snap = m_state.recState.subSnap;
-		}
 		// waterfall analyzers
 		synchronized(m_state.ctcMut)
 		{
 			foreach (HydrophoneData hd; res.data)
 			{
 				WaterfallAnalyzer al = m_wfAnalizers[hd.hydrophoneIdx];
-				al.processNewData(hd.antennaes, snap);
+				al.processNewData(hd, res.atTime);
 				CICWaterfallUpdateRes wfu;
 				wfu.hydrophoneIdx = hd.hydrophoneIdx;
 				wfu.peaks = al.getPeaks();

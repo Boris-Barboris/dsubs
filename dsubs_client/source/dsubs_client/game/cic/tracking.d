@@ -15,7 +15,7 @@ import dsubs_client.common;
 
 private struct WaterfallSlice
 {
-	AntennaeData[] data;
+	AntennaeData[] antData;
 	usecs_t atTime;
 	double worldRot;
 	vec2d worldPos;
@@ -71,26 +71,26 @@ final class WaterfallAnalyzer
 	}
 
 	/// Record new hydrophone data and analyze it. Move or deactivate trackers.
-	void processNewData(AntennaeData[] data, KinematicSnapshot subSnap)
+	void processNewData(HydrophoneData hdata, usecs_t atTime)
 	{
-		m_lastSlice.data = data;
-		m_lastSlice.atTime = subSnap.atTime;
-		m_lastSlice.worldRot = subSnap.rotation + m_tmpl.mount.rotation;
-		m_lastSlice.worldPos = subSnap.position + rotateVector(m_tmpl.mount.mountCenter, subSnap.rotation);
+		m_lastSlice.antData = hdata.antennaes;
+		m_lastSlice.atTime = atTime;
+		m_lastSlice.worldRot = hdata.rotation;
+		m_lastSlice.worldPos = hdata.position;
 
 		// recalculate min
 		m_min = int.max;
-		foreach (AntennaeData d; data)
+		foreach (AntennaeData d; hdata.antennaes)
 			m_min = min(m_min, minElement(d.beams));
 
 		// find all peaks and write them to array
 		m_peaks.length = 0;
 		m_freePeaks.length = 0;
-		int beamCount = data[0].beams.length.to!int;
-		foreach (i, AntennaeData d; data)
+		int beamCount = hdata.antennaes[0].beams.length.to!int;
+		foreach (i, AntennaeData d; hdata.antennaes)
 		{
 			double andLeftWrot = m_lastSlice.worldRot + m_tmpl.antRots[i] + m_tmpl.fov / 2;
-			ushort[] beams = m_lastSlice.data[i].beams;
+			ushort[] beams = m_lastSlice.antData[i].beams;
 			foreach (j, ushort ilevel; beams)
 			{
 				ushort ilevelPrev = j > 0 ? beams[j - 1] : ushort.max;
@@ -115,7 +115,7 @@ final class WaterfallAnalyzer
 		m_freePeaks = m_peaks;
 		foreach (HydrophoneTrackerContext* htc; trackers)
 		{
-			float sinceLast = (subSnap.atTime - htc.prevTime) / 1e6f;
+			float sinceLast = (atTime - htc.prevTime) / 1e6f;
 			float expectedWrot = htc.prevWrot + htc.angVel * sinceLast;
 			assert(!isNaN(expectedWrot));
 			htc.counter = (htc.counter + 1) % TRACKER_GEN_FREQ;
@@ -133,7 +133,7 @@ final class WaterfallAnalyzer
 					htc.lossCounter = 0;
 					double newAngVel = angleDist(m_freePeaks[0].rot, htc.prevWrot) / sinceLast;
 					htc.angVel = lerp(htc.angVel, newAngVel, ANGVEL_FILTER_K);
-					htc.prevTime = subSnap.atTime;
+					htc.prevTime = atTime;
 					htc.tracker.bearing = htc.prevWrot = m_freePeaks[0].rot;
 					m_freePeaks = m_freePeaks[1 .. $];
 				}

@@ -411,7 +411,7 @@ struct HydrophoneAudio
 	int hydrophoneIdx;
 	float listenDir;	// world-space direction of the beam
 	short[] samples;	// 16-bit PCB mono
-	int samplingRate;	// usually 4096 Hz
+	int samplingRate;	// 8192 Hz
 }
 
 enum MapElementType: byte
