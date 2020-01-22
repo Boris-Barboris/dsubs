@@ -129,11 +129,12 @@ normal simulation state by either successfully spawning submarine or
 reconnecting to it.
 */
 
-/// Server periodically sends the player updates with his submarine position
+/// Server periodically sends the player updates with his submarine position.
 struct SubKinematicRes
 {
 	__gshared const int g_marshIdx;
 	KinematicSnapshot snap;
+	// all the wires that are attached to the sub are reported.
 	WireSnapshot[] wireSnaps;
 }
 

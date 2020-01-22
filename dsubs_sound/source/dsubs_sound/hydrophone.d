@@ -159,7 +159,9 @@ final class Hydrophone
 		AsyncEvent m_isotropicReadyEvt;
 
 		// when false, no calculations should be performed
-		bool m_active = true;
+		bool m_shouldBeActive = true;
+		// additional toggle that is used by towed mechanism.
+		bool m_canBeActive = true;
 		// set to true to never generate Tds for m_listenDir.
 		bool m_muteTds;
 		// world-space direction the player is listening to
@@ -203,17 +205,28 @@ final class Hydrophone
 
 	@property Transform2D transform() { return m_transform; }
 
-	@property bool active() const { return m_active; }
+	@property bool active() const { return m_shouldBeActive && m_canBeActive; }
+
+	@property bool canBeActive() const { return m_canBeActive; }
 
 	@property bool listenDirValid() const { return m_listenDirValid; }
 
 	@property size_t antennaCount() const { return m_ant.length; }
 
-	@property void active(bool rhs)
+	@property void shouldBeActive(bool rhs)
 	{
-		if (!m_active && rhs)
+		if (!m_shouldBeActive && rhs && m_canBeActive)
 			m_needPrevReset = true;
-		m_active = rhs;
+		m_shouldBeActive = rhs;
+		if (!rhs)
+			m_listenDirValid = false;
+	}
+
+	@property void canBeActive(bool rhs)
+	{
+		if (!m_canBeActive && rhs && m_shouldBeActive)
+			m_needPrevReset = true;
+		m_canBeActive = rhs;
 		if (!rhs)
 			m_listenDirValid = false;
 	}

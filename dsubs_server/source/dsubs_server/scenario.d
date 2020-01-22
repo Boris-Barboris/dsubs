@@ -205,7 +205,7 @@ final class BattleRoyale: Scenario
 					botSub.transform.rotation = spawnRot;
 					m_civilianBots[botSub] = true;
 					foreach (h; botSub.hydrophones)
-						h.active = false;
+						h.shouldBeActive = false;
 					Globals.bots.registerEntity(crew);
 					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
 					botSub.register();

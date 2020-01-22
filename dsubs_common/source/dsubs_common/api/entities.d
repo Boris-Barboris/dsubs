@@ -351,6 +351,8 @@ struct HydrophoneTemplate
 	/// length of this array is equal to number of antennaes in
 	/// the hydrophone.
 	float[] antRots;
+	/// max wire length in case of towed hydrophone.
+	float maxLength = 0.0f;
 }
 
 struct SonarTemplate
@@ -398,7 +400,7 @@ struct HydrophoneData
 	int hydrophoneIdx;	// index of the sub's hydrophone
 	AntennaeData[] antennaes;
 	/// world position of the hydrophone's focus
-	vec2d focusPosition;
+	vec2d position;
 	/// world rotation
 	double rotation;
 }

@@ -8,6 +8,7 @@ import dsubs_sound.hydrophone;
 
 import dsubs_server.common;
 import dsubs_server.vessel;
+import dsubs_server.sensors;
 import dsubs_server.weaponry;
 import dsubs_server.dynamics: AttachedWire, AttachedWirePrototype;
 import dsubs_server.propulsion: Propulsor;
@@ -124,7 +125,7 @@ final class SubmarineFactory: VesselFactory
 {
 	immutable SubmarineTemplate tmpl;
 	bool playable = false;
-	HydrophonePrototype[] hprots;
+	SubHydrophonePrototype[] hprots;
 	ActiveSonarPrototype* asprot;
 	AmmoRoomPrototype[int] roomProtos;
 	TubePrototype[int] tubeProtos;
@@ -146,13 +147,30 @@ final class SubmarineFactory: VesselFactory
 		foreach (i, ref hp; hprots)
 		{
 			Transform2D t = new Transform2D();
-			t.position = tmpl.hydrophones[i].mount.mountCenter.tod;
-			t.rotation = tmpl.hydrophones[i].mount.rotation;
+			t.position = hp.mount.mountCenter.tod;
+			t.rotation = hp.mount.rotation;
 			res.transform.addChild(t);
-			Hydrophone h = new Hydrophone(Globals.sctx.queue(0), t, hp);
+			Hydrophone h;
+			if (ht.type == HydrophoneType.fixed)
+			{
+				h = new Hydrophone(Globals.sctx.queue(0), t, hp.hydroProto);
+				h.onPreKinematics += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+				h.onPostKinematics += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+			}
+			else
+			{
+				assert(ht.type == HydrophoneType.towed);
+				AttachedWire wire = new AttachedWire(t, res.rigidBody, hp.wirePrototype);
+				wire.desiredLength = 500.0f;
+				res.rigidBody.wires ~= wire;
+				h = new Hydrophone(Globals.sctx.queue(0), wire.sensorTransform, hp.hydroProto);
+				h.onPreKinematics += {
+					h.canBeActive = wire.sensorTransformValid;
+					h.ktsStart = wire.sensorPointVel.length.mps2kts;
+				};
+				h.onPostKinematics += { h.ktsEnd = wire.sensorPointVel.length.mps2kts; };
+			}
 			res.m_hydrophones ~= h;
-			h.onPreKinematics += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
-			h.onPostKinematics += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
 		}
 		// active sonar
 		{
@@ -185,17 +203,6 @@ final class SubmarineFactory: VesselFactory
 				h.flowNoiseMultipliers ~= tube;
 			if (res.m_sonar)
 				res.m_sonar.flowNoiseMultipliers ~= tube;
-		}
-		// wires
-		foreach (const MountPoint wireMount; tmpl.wireMounts)
-		{
-			Transform2D attachTransform = new Transform2D();
-			attachTransform.position = wireMount.mountCenter.to!vec2d;
-			res.transform.addChild(attachTransform);
-			AttachedWire wire = new AttachedWire(attachTransform, res.rigidBody,
-				AttachedWirePrototype(500.0f));
-			wire.desiredLength = 500.0f;
-			res.rigidBody.wires ~= wire;
 		}
 	}
 

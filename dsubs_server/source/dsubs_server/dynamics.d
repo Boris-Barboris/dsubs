@@ -158,10 +158,11 @@ private enum float WINCH_EXTEND_SPD_FACTOR = 0.9f;
 struct AttachedWirePrototype
 {
 	float maxLength;
+	int sensorTransformPoint = 1;
 	float winchSpeed = 5.0f;
-	float pointCD0 = 1e-2f;
-	float pointCD1 = 1e-2f;
-	float pointMass = 0.1f;
+	float pointCD0 = 2e-2f;
+	float pointCD1 = 2e-2f;
+	float pointMass = 0.2f;
 }
 
 /// Extendable/retractable wire that is attached to rigid body.
@@ -173,6 +174,10 @@ final class AttachedWire: IForce
 		WirePoint[] m_points;
 		/// Attachment point on the rigid body.
 		Transform2D m_attachTransform;
+		/// Transform, created for the sensor.
+		Transform2D m_sensorTransform;
+		/// index of the point that is bound to m_sensorTransform.
+		size_t m_sensorPointIdx;
 		/// Body that owns the m_attachTransform.
 		RigidBody m_rigidBody;
 		/// Total length of the wire on full extention.
@@ -201,15 +206,66 @@ final class AttachedWire: IForce
 		vec2d m_lastAttachForce = vec2d(0, 0);
 	}
 
+	@property Transform2D sensorTransform() { return m_sensorTransform; }
+
 	this(Transform2D transform, RigidBody rigidBody, AttachedWirePrototype proto)
 	{
 		m_attachTransform = transform;
+		m_sensorPointIdx = proto.sensorTransformPoint.to!size_t;
+		m_sensorTransform = new Transform2D();
 		m_rigidBody = rigidBody;
 		maxLength = proto.maxLength;
 		m_winchSpeed = proto.winchSpeed;
 		m_pointCD0 = proto.pointCD0;
 		m_pointCD1 = proto.pointCD1;
 		m_pointMass = proto.pointMass;
+	}
+
+	@property bool sensorTransformValid() const { return m_points.length > m_sensorPointIdx; }
+
+	@property vec2d sensorPointVel() const
+	{
+		if (sensorTransformValid)
+			return m_points[m_sensorPointIdx].vel;
+		else
+			return m_rigidBody.kinet.vel;
+	}
+
+	/// Try to simulate transform for a hydrophone. Returns false if the wire
+	/// is too short or too compact.
+	private bool getPointPosTangentRot(size_t pointIdx, out vec2d pos, out double rot)
+	{
+		if (pointIdx >= m_points.length)
+			return false;
+		pos = m_points[pointIdx];
+		vec2d tangentPos;
+		if (pointIdx + 1 == m_points.length)
+			tangentPos = m_attachTransform.wposition;
+		else
+			tangentPos = m_points[pointIdx + 1].pos;
+		if (pos == tangentPos)
+			return true;
+		rot = courseAngle(tangentPos - pos);
+		assert(!isNaN(rot));
+		return true;
+	}
+
+	void updateSensorTransform()
+	{
+		vec2d pos;
+		double rot;
+		if (getPointPosTangentRot(m_sensorPointIdx, pos, rot))
+		{
+			m_sensorTransform.position = pos;
+			// we do not mutate rotation if it cannot be effectively computed
+			if (!isNaN(rot))
+				m_sensorTransform.rotation = rot;
+		}
+		else
+		{
+			m_sensorTransform.position = m_attachTransform.wposition;
+			m_sensorTransform.rotation = m_attachTransform.wrotation;
+		}
 	}
 
 	@property Transform2D attachTransform() { return m_attachTransform; }
@@ -415,6 +471,8 @@ final class RigidBody: PhysicalEntity
 		kinet.pos = transform.wposition;
 		kinet.rotation = transform.wrotation;
 		kinet.updateCache();
+		foreach (AttachedWire wire; wires)
+			wire.updateSensorTransform();
 		//trace(kinet);
 	}
 
@@ -481,7 +539,10 @@ final class RigidBody: PhysicalEntity
 		transform.rotation = kinet.rotation;
 
 		foreach (AttachedWire wire; wires)
+		{
 			wire.simulate(dt);
+			wire.updateSensorTransform();
+		}
 	}
 
 	private vec2d linAcc(const ref Kinematics c)

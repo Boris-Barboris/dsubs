@@ -156,7 +156,7 @@ final class Player: Captain
 					if (m_submarine)
 					{
 						foreach (h; m_submarine.hydrophones)
-							h.active = false;
+							h.shouldBeActive = false;
 						m_submarine.sonar.active = false;
 					}
 					m_connection = null;
@@ -193,7 +193,7 @@ final class Player: Captain
 				if (m_submarine.dead)
 					throw new Exception("submarine is dead");
 				foreach (h; m_submarine.hydrophones)
-					h.active = true;
+					h.shouldBeActive = true;
 				m_submarine.sonar.active = true;
 			}
 		}
@@ -238,7 +238,7 @@ final class Player: Captain
 				randomizePosition(req, s);
 				foreach (h; s.hydrophones)
 				{
-					h.active = true;
+					h.shouldBeActive = true;
 					h.listenDir = -coordRot;
 				}
 				s.register();

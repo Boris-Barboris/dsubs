@@ -168,7 +168,7 @@ final class Torpedo: Weapon
 		guidance.m_lastPos = transform.position;
 		if (m_hydrophone)
 		{
-			m_hydrophone.active = true;
+			m_hydrophone.shouldBeActive = true;
 			Globals.acous.registerHydrophone(m_hydrophone);
 		}
 		if (m_sonar)
@@ -199,7 +199,7 @@ final class Torpedo: Weapon
 		if (res)
 		{
 			if (m_hydrophone)
-				m_hydrophone.active = false;
+				m_hydrophone.canBeActive = false;
 			if (m_sonar)
 				m_sonar.active = false;
 		}

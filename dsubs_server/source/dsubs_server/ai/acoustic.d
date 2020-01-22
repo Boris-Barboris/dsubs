@@ -48,7 +48,7 @@ final class AIAcoustic
 	{
 		foreach (Hydrophone h; m_crew.submarine.hydrophones)
 		{
-			h.active = true;
+			h.shouldBeActive = true;
 			h.maintainImprints = true;
 		}
 	}
