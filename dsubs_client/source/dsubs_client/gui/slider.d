@@ -180,6 +180,7 @@ final class Slider: GuiElement
 	private void handleMouseScroll(int x, int y, float delta)
 	{
 		value = max(0.0f, min(1.0f, m_value + WHEEL_GAIN * delta));
+		onDragEnd(m_value);
 	}
 
 	override void handleMouseFocusLoss()

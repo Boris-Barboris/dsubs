@@ -44,6 +44,7 @@ struct HydrophonePrototype
 	float dissMod = 4.0f;
 	/// coaxial towed array can only focus on the cone, so it's contacts are mirrored.
 	bool mirrored = false;
+	float localNoiseRangeCutoff = 200.0f;
 }
 
 
@@ -79,6 +80,7 @@ final class Hydrophone
 		m_directivity = p.directivity;
 		m_baseNoise = p.baseNoise;
 		m_dissMod = p.dissMod;
+		m_localNoiseRangeCutoff = p.localNoiseRangeCutoff;
 		m_span = p.antennaeSpan;
 		m_listenSpan = p.listenSpan;
 		m_mirrored = p.mirrored;
@@ -133,6 +135,7 @@ final class Hydrophone
 		float m_bearingErrNoise;
 		float m_flowNoiseMult;
 		float m_omniNoiseMult;
+		float m_localNoiseRangeCutoff;
 		float m_dissMod;
 		dB m_baseNoise;
 		bool m_mirrored;
@@ -147,7 +150,6 @@ final class Hydrophone
 		enum float ERF_HALO_GAIN = 2.0f;
 		enum float ISOTROPIC_VAR = 2.0;
 		enum float LOCAL_NOISE_RANGE_FULL = 10.0f;
-		enum float LOCAL_NOISE_RANGE_CUTOFF = 200.0f;
 
 		// broadband sea background noise intensity
 		Intensity m_baseSeaNoise;
@@ -469,9 +471,9 @@ final class Hydrophone
 		res.rangeStart = max(10.0, res.dirStart.length);
 		res.rangeEnd = max(10.0, res.dirEnd.length);
 		res.omniFactorStart = max(s.minOmniFactor(res.rangeStart),
-			caclOmniFactor(res.rangeStart));
+			caclOmniFactor(res.rangeStart, m_localNoiseRangeCutoff));
 		res.omniFactorEnd = max(s.minOmniFactor(res.rangeEnd),
-			caclOmniFactor(res.rangeEnd));
+			caclOmniFactor(res.rangeEnd, m_localNoiseRangeCutoff));
 		assert(res.range > 0.0);
 		res.worldBearingStart = courseAngle(res.dirStart);
 		res.worldBearingEnd = courseAngle(res.dirEnd);
@@ -481,12 +483,12 @@ final class Hydrophone
 		return res;
 	}
 
-	private static float caclOmniFactor(float range)
+	private static float caclOmniFactor(float range, float cutoff)
 	{
 		if (range <= LOCAL_NOISE_RANGE_FULL)
 			return 1.0f;
 		float linGain = max(0.0f, 1.0f -
-			(range - LOCAL_NOISE_RANGE_FULL) / LOCAL_NOISE_RANGE_CUTOFF);
+			(range - LOCAL_NOISE_RANGE_FULL) / cutoff);
 		return pow(linGain, 2);
 	}
 

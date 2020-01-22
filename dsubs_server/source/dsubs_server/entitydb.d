@@ -432,10 +432,13 @@ Search patterns: straight, snake, spiral.
 			"bow", HydrophoneType.fixed, MountPoint(vec2f(0.0f, 31.0f)),
 			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(230),
 				230, 2 / 90.0f, 3.0f));
+		HydrophonePrototype hprotoInternal = HydrophonePrototype(
+			[0.0f], 50, 2500, dgr2rad(330), 330, 3 / 90.0f, 4.0f);
+		hprotoInternal.omniNoiseMult = 0.05f;
+		hprotoInternal.localNoiseRangeCutoff = 250.0f;
 		hydroProtos ~= SubHydrophonePrototype(
 			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -35.0f)),
-			HydrophonePrototype([0.0f], 50, 2500, dgr2rad(330),
-				330, 3 / 90.0f, 4.0f));
+			hprotoInternal);
 		hydroProtos[$-1].hydroProto.mirrored = true;
 		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(500.0f, 1);
 		sp = new SubmarineFactory(
@@ -453,6 +456,7 @@ Armament:
   2x broadside decoy launchers.
 Hydrophones:
   Bow: spherical array, 230 deg FoV
+  Stern: 500m LF towed array, 330 deg FoV
 Active sonars:
   Bow: 2200Hz mid-freq pulse, 210 deg FoV`,
 				[
@@ -605,10 +609,16 @@ Active sonars:
 		asp.endScale = 1 / 180.0f;
 		hydroProtos.length = 0;
 		hydroProtos ~= SubHydrophonePrototype(
+			"bow", HydrophoneType.fixed, MountPoint(vec2f(0.0f, 23.0f)),
+			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(210),
+				160, 2.0 / 90.0f, 3.5f));
+		hydroProtos[0].hydroProto.flowNoiseMult = 2.0e-5f;
+		hydroProtos ~= SubHydrophonePrototype(
 			"hull", HydrophoneType.fixed, MountPoint(vec2f(0.0f, 0.0f)),
 			HydrophonePrototype(
 				[dgr2rad(90.0f), -dgr2rad(90.0f)], 200, GLOBAL_SRATE / 2, dgr2rad(120),
 				100, 1.5 / 90.0f, 3.4f));
+		hydroProtos[1].hydroProto.flowNoiseMult = 1.4e-5f;
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Lima",
@@ -624,6 +634,7 @@ Armament:
   2x bow torpedo tubes (60 sec reload).
   2x broadside decoy launchers.
 Hydrophones:
+  Bow: spherical array, 210 deg FoV
   Hull: 2 linear arrays, 120 deg FoV each.
 Active sonars:
   Bow: 2400Hz mid-freq pulse, 210 deg FoV`,
