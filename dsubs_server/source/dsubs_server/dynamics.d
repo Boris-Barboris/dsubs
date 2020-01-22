@@ -157,7 +157,7 @@ private enum float WINCH_EXTEND_SPD_FACTOR = 0.9f;
 
 struct AttachedWirePrototype
 {
-	float maxLength;
+	float maxLength = 0.0f;
 	int sensorTransformPoint = 1;
 	float winchSpeed = 5.0f;
 	float pointCD0 = 2e-2f;

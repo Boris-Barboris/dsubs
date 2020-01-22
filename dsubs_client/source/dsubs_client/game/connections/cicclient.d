@@ -187,8 +187,7 @@ private:
 
 	void h_acousticRes(CICSubAcousticRes res)
 	{
-		assert(res.data.length == 1);
-		assert(res.data[0].hydrophoneIdx == 0);
+		assert(res.data.length <= 1);
 		StreamingSoundSource s;
 		vec2d* origin;
 		synchronized(Game.mainMutex)
