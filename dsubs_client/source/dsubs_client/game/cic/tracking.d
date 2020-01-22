@@ -48,8 +48,44 @@ private
 	enum float CAPTURE_SEEK_AREA_PERSEC = dgr2rad(4);
 	enum float CAPTURE_SEEK_MAX_AREA = dgr2rad(8);
 	enum float ANGVEL_FILTER_K = 0.66;
-	enum DETECT_MARGIN = ushort.max / 24;
+	enum float DETECTION_MARGIN_TO_NOISE = 3.0f;
 }
+
+
+/// We synchronize ray generation for trackers that track the same
+/// contact.
+struct RayGeneratorSynchronizer
+{
+	/// map from contactId to tracker count. If there are more than one tracker,
+	/// all contact trackers will be synchronized and generate rays simultaniously.
+	private int[ContactId] trackerCounts;
+
+	/// get the number of ray generators that are bound to contact.
+	int get(ContactId ctcId) const
+	{
+		return trackerCounts.get(ctcId, 0);
+	}
+
+	void increase(ContactId ctcId)
+	{
+		trackerCounts.update(ctcId, { return 1; }, (ref int current) => current + 1);
+	}
+
+	void decrease(ContactId ctcId)
+	{
+		assert(ctcId in trackerCounts);
+		int result = --trackerCounts[ctcId];
+		assert(result >= 0);
+		if (result == 0)
+			trackerCounts.remove(ctcId);
+	}
+
+	void clear()
+	{
+		trackerCounts.clear();
+	}
+}
+
 
 final class WaterfallAnalyzer
 {
@@ -59,14 +95,19 @@ final class WaterfallAnalyzer
 		int m_sensorIdx;
 		const HydrophoneTemplate m_tmpl;
 		HydrophoneTrackerContext*[TrackerId] m_trackers;
+		RayGeneratorSynchronizer* m_sync;
 		Peak[] m_peaks, m_freePeaks;
 		int m_min;
+		ushort m_detectMargin = ushort.max / 8;
+		bool m_noiseEstimated;
+		ushort m_noiseLevelEstimate;
 	}
 
-	this(const HydrophoneTemplate tmpl, int sensorIdx)
+	this(const HydrophoneTemplate tmpl, int sensorIdx, RayGeneratorSynchronizer* sync)
 	{
 		m_tmpl = tmpl;
 		m_sensorIdx = sensorIdx;
+		m_sync = sync;
 		m_peaks.reserve(32);
 	}
 
@@ -83,6 +124,24 @@ final class WaterfallAnalyzer
 		foreach (AntennaeData d; hdata.antennaes)
 			m_min = min(m_min, minElement(d.beams));
 
+		if (!m_noiseEstimated && m_min < ushort.max / 4 * 3)
+		{
+			int deltas = 0;
+			float deltaAbsSum = 0.0f;
+			// estimate noise
+			foreach (AntennaeData d; hdata.antennaes)
+			{
+				for (size_t i = 0; i < d.beams.length - 1; i++)
+				{
+					deltas++;
+					deltaAbsSum += fabs(d.beams[i + 1].to!float - d.beams[i].to!float);
+				}
+			}
+			m_noiseLevelEstimate = (deltaAbsSum / deltas).lrint.to!ushort;
+			m_detectMargin = (m_noiseLevelEstimate * DETECTION_MARGIN_TO_NOISE).lrint.to!ushort;
+			m_noiseEstimated = true;
+		}
+
 		// find all peaks and write them to array
 		m_peaks.length = 0;
 		m_freePeaks.length = 0;
@@ -95,7 +154,7 @@ final class WaterfallAnalyzer
 			{
 				ushort ilevelPrev = j > 0 ? beams[j - 1] : ushort.max;
 				ushort ilevelNext = j < beams.length - 2 ? beams[j + 1] : ushort.max;
-				if (ilevel > (m_min + DETECT_MARGIN) &&
+				if (ilevel > (m_min + m_detectMargin) &&
 					ilevel >= ilevelPrev && ilevel > ilevelNext)
 				{
 					// we've found the peak
@@ -182,6 +241,10 @@ final class WaterfallAnalyzer
 		{
 			(*sourceCtx).tracker.id.ctcId = dest;
 			m_trackers[destId] = *sourceCtx;
+			// update tracker counts
+			m_sync.decrease(source);
+			if (destCtx is null)
+				m_sync.increase(dest);
 		}
 		m_trackers.remove(sourceId);
 	}
@@ -189,7 +252,10 @@ final class WaterfallAnalyzer
 	bool dropTracker(ContactId cid)
 	{
 		TrackerId tid = TrackerId(m_sensorIdx, cid);
-		return m_trackers.remove(tid);
+		bool wasDropped = m_trackers.remove(tid);
+		if (wasDropped)
+			m_sync.decrease(cid);
+		return wasDropped;
 	}
 
 	HydrophoneTracker createTracker(TrackerId tid, float bearing)
@@ -200,6 +266,7 @@ final class WaterfallAnalyzer
 		ctx.prevWrot = bearing;
 		ctx.prevTime = m_lastSlice.atTime;
 		m_trackers[tid] = ctx;
+		m_sync.increase(tid.ctcId);
 		return ctx.tracker;
 	}
 
@@ -223,13 +290,18 @@ final class WaterfallAnalyzer
 	}
 
 	/// Generate contact data from active trackers wich counters are in the right position
-	ContactData[] generateRayData()
+	ContactData[] generateRayData(usecs_t currentTime)
 	{
 		ContactData[] res;
 		foreach (tc; m_trackers.byValue)
 		{
+			ContactId ctcId = tc.tracker.id.ctcId;
+			bool mustBeSync = (m_sync.get(ctcId) != 0);
+			bool timeToGenerate = mustBeSync ?
+				(currentTime / 1000_000 % TRACKER_GEN_FREQ) == 0 :
+				tc.counter == 0;
 			if (tc.tracker.state == TrackerState.active &&
-				tc.counter == 0 && tc.lossCounter == 0)
+				timeToGenerate && tc.lossCounter == 0)
 			{
 				ContactData data = ContactData(-1, tc.tracker.id.ctcId, m_lastSlice.atTime,
 					DataSource(DataSourceType.Hydrophone, m_sensorIdx), DataType.Ray);

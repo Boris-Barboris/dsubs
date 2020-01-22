@@ -161,7 +161,7 @@ final class SubmarineFactory: VesselFactory
 			{
 				assert(hp.type == HydrophoneType.towed);
 				AttachedWire wire = new AttachedWire(t, res.rigidBody, hp.wirePrototype);
-				wire.desiredLength = 500.0f;
+				// wire.desiredLength = 500.0f;
 				res.rigidBody.wires ~= wire;
 				h = new Hydrophone(Globals.sctx.queue(0), wire.sensorTransform, hp.hydroProto);
 				h.onPreKinematics += {

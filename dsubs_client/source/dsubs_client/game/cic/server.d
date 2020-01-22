@@ -26,6 +26,7 @@ final class CICServer
 		CICState m_state;
 		BackendConnection m_bcon;
 		WaterfallAnalyzer[] m_wfAnalizers;
+		RayGeneratorSynchronizer* m_raySyncer;
 		bool m_dead;
 	}
 
@@ -37,6 +38,7 @@ final class CICServer
 	{
 		m_listener = new CICListener(this, password);
 		m_state = new CICState();
+		m_raySyncer = new RayGeneratorSynchronizer();
 		m_bcon = bcon;
 		m_spawnId = spawnId;
 	}
@@ -66,7 +68,7 @@ final class CICServer
 		const SubmarineTemplate sbmTpl = *Game.entityManager.
 			submarineTemplates[res.submarineName];
 		foreach (size_t i, const HydrophoneTemplate ht; sbmTpl.hydrophones)
-			m_wfAnalizers ~= new WaterfallAnalyzer(ht, i.to!int);
+			m_wfAnalizers ~= new WaterfallAnalyzer(ht, i.to!int, m_raySyncer);
 	}
 
 	void handleSubKinematicRes(SubKinematicRes res)
@@ -153,7 +155,7 @@ final class CICServer
 				wfu.peaks = al.getPeaks();
 				wfu.trackers = al.getTrackers();
 				m_listener.broadcast(cast(immutable) wfu);
-				ContactData[] newCdata = al.generateRayData();
+				ContactData[] newCdata = al.generateRayData(res.atTime);
 				foreach (cd; newCdata)
 					processContactData(cd);
 			}
