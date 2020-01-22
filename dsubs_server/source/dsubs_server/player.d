@@ -215,6 +215,7 @@ final class Player: Captain
 			s.targetCourse + coordRot, s.targetThrottle,
 			s.hydrophones.map!(
 				h => float(h.listenDir + coordRot)).array,
+			s.rigidBody.wires.map!(w => w.desiredLength).array,
 			s.tubeRange.map!(t => t.fullState).array,
 			s.ammoRoomRange.map!(r => r.fullState).array
 			);

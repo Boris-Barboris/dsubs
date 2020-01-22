@@ -2,6 +2,7 @@ module dsubs_client.game.states.simulation;
 
 import std.algorithm;
 import std.array;
+import std.range: enumerate;
 import std.datetime: unixTimeToStdTime, DateTime, SysTime;
 import std.format;
 
@@ -22,6 +23,7 @@ import dsubs_client.game.states.mainmenu;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cameracontroller;
 import dsubs_client.game.tacoverlay;
+import dsubs_client.game.wireui;
 import dsubs_client.game.contacts;
 import dsubs_client.game.waterfall;
 import dsubs_client.game.sonardisp;
@@ -111,6 +113,8 @@ final class SimulatorState: GameState
 		m_gui = new SimulationGUI();
 		foreach (i, listenDir; rawRecState.listenDirs)
 			m_gui.waterfalls[i].listenDir = listenDir;
+		foreach (i, desiredLength; rawRecState.desiredWireLenghts)
+			m_gui.wireUis[i].updateDesiredLength(desiredLength);
 		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) rawRecState.subSnap);
 		m_gui.handleChatMessage(rawRecState.briefing);
 
@@ -171,7 +175,10 @@ final class SimulationGUI
 		SonarGui m_sonarGui;
 		Div m_topLevelDiv;
 		TubeUI[int] tubeUis;
+		WireUi[] m_wireUis;
 	}
+
+	@property WireUi[] wireUis() { return m_wireUis; }
 
 	void showMainHint(string labelContent)
 	{
@@ -223,6 +230,11 @@ final class SimulationGUI
 	void handleCICListenDirReq(CICListenDirReq req)
 	{
 		m_passiveGuis[req.hydrophoneIdx].wf.listenDir = req.dir;
+	}
+
+	void handleCICWireDesiredLengthReq(CICWireDesiredLengthReq req)
+	{
+		m_wireUis[req.wireIdx].updateDesiredLength(req.desiredLength);
 	}
 
 	this()
@@ -410,9 +422,20 @@ final class SimulationGUI
 			tubeUiDivs ~= ui.mainDiv;
 		}
 
+		foreach (i, ht; playerSub.tmpl.hydrophones.filter!(
+			ht => ht.type == HydrophoneType.towed).enumerate)
+		{
+			m_wireUis ~= new WireUi(i.to!int, "towed array " ~ (i + 1).to!string,
+				ht.maxWireLength);
+		}
+		Div wireVertDiv = builder(vDiv([filler()] ~ cast(GuiElement[])
+			m_wireUis.map!(wire => wire.rootDiv).array)).
+			borderWidth(4).fixedSize(vec2i(200, 230)).build;
+
 		GuiElement tabFiller = builder(vDiv([
 			filler(),
-			builder(hDiv(cast(GuiElement[]) tubeUiDivs)).fixedSize(vec2i(100, 230)).
+			builder(hDiv(cast(GuiElement[]) tubeUiDivs ~ wireVertDiv)).
+			fixedSize(vec2i(100, 230)).
 			borderWidth(8).build
 		])).build;
 

@@ -115,6 +115,7 @@ struct ReconnectStateRes
 	float targetCourse;
 	float targetThrottle;
 	float[] listenDirs;
+	float[] desiredWireLenghts;
 	TubeFullState[] tubeStates;
 	AmmoRoomFullState[] ammoRoomStates;
 	MapElement[] mapElements;

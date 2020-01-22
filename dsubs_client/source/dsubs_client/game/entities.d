@@ -465,6 +465,8 @@ final class Submarine: WorldRenderable
 	private KinematicTrace trace;
 	private AttachedWire[] m_wires;
 
+	@property AttachedWire[] wires() { return m_wires; }
+
 	private AmmoRoom[int] m_ammoRooms;
 	private Tube[int] m_tubes;
 

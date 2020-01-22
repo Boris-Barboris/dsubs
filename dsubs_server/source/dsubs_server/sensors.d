@@ -13,13 +13,13 @@ struct SubHydrophonePrototype
 	string name;
 	HydrophoneType type;
 	MountPoint mount;
-    HydrophonePrototype hydroProto;
-    /// wire parameters for towed array.
-    AttachedWirePrototype wirePrototype;
+	HydrophonePrototype hydroProto;
+	/// wire parameters for towed array.
+	AttachedWirePrototype wirePrototype;
 
-    @property HydrophoneTemplate getTemplate()
-    {
-        return HydrophoneTemplate(
-            name, type, mount, hydroProto.antennaeSpan, hydroProto.antennaeRots, wirePrototype.maxLength);
-    }
+	@property HydrophoneTemplate getTemplate()
+	{
+		return HydrophoneTemplate(
+			name, type, mount, hydroProto.antennaeSpan, hydroProto.antennaeRots, wirePrototype.maxLength);
+	}
 }

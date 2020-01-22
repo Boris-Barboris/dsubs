@@ -361,4 +361,12 @@ private:
 			Game.simState.gui.handleChatMessage(msg.res.message);
 		}
 	}
+
+	void h_wireDesiredLengthReq(CICWireDesiredLengthReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.gui.handleCICWireDesiredLengthReq(msg);
+		}
+	}
 }

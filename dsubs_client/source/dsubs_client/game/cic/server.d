@@ -125,6 +125,21 @@ final class CICServer
 		}
 	}
 
+	void handleCICWireDesiredLengthReq(CICWireDesiredLengthReq req)
+	{
+		synchronized
+		{
+			synchronized(m_state.rsMut)
+			{
+				if (m_dead)
+					return;
+				m_state.handleWireDesiredLengthReq(req);
+			}
+			m_bcon.sendMessage(cast(immutable WireDesiredLengthReq) req);
+			m_listener.broadcast(cast(immutable) req);
+		}
+	}
+
 	void handleDeathRes(DeathRes res)
 	{
 		synchronized(m_state.ctcMut)

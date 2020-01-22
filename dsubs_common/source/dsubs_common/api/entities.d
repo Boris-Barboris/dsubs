@@ -352,7 +352,7 @@ struct HydrophoneTemplate
 	/// the hydrophone.
 	float[] antRots;
 	/// max wire length in case of towed hydrophone.
-	float maxLength = 0.0f;
+	float maxWireLength = 0.0f;
 }
 
 struct SonarTemplate

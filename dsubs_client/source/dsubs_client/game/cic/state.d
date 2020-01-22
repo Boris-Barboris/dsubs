@@ -87,6 +87,11 @@ final class CICState
 		m_recState.targetThrottle = req.target;
 	}
 
+	void handleWireDesiredLengthReq(CICWireDesiredLengthReq req)
+	{
+		m_recState.desiredWireLenghts[req.wireIdx] = req.desiredLength;
+	}
+
 	void handleCourseReq(CICCourseReq req)
 	{
 		m_recState.targetCourse = req.target;

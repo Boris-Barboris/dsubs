@@ -182,4 +182,10 @@ private:
 		enforce(m_inSimFlow, "not in simulator flow");
 		m_cicserv.bcon.sendMessage(cast(immutable) req.req);
 	}
+
+	void h_wireDesiredLengthReq(CICWireDesiredLengthReq req)
+	{
+		enforce(m_inSimFlow, "not in simulator flow");
+		m_cicserv.handleCICWireDesiredLengthReq(req);
+	}
 }

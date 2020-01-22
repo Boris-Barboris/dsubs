@@ -21,7 +21,7 @@ struct CICLoginRes
 {
 	__gshared const int g_marshIdx;
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
-	int apiVersion = 3;
+	int apiVersion = 4;
 }
 
 /// CIC client sends this to receive entity DB
@@ -268,4 +268,11 @@ struct CICTrimContactData
 	__gshared const int g_marshIdx;
 	ContactId ctcId;
 	usecs_t olderThan;
+}
+
+struct CICWireDesiredLengthReq
+{
+	__gshared const int g_marshIdx;
+	int wireIdx;
+	float desiredLength = 0.0f;
 }
