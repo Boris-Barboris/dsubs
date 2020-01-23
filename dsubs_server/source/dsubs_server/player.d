@@ -410,12 +410,12 @@ final class Player: Captain
 			WireSnapshot wireSnap;
 			wireSnap.atTime = Globals.sim.worldTime + timeShift;
 			wireSnap.points.length = wire.points.length;
+			wireSnap.attachPosition = posToClientSpace(wire.attachTransform.wposition);
 			foreach (j, point; wire.points)
 			{
-				wireSnap.points[j].position = posToClientSpace(point.pos);
-				wireSnap.points[j].velocity = dirToClientSpace(point.vel);
+				wireSnap.points[j].position = (posToClientSpace(point.pos) - wireSnap.attachPosition).to!vec2f;
+				wireSnap.points[j].velocity = dirToClientSpace(point.vel).to!vec2f;
 			}
-			wireSnap.attachPosition = posToClientSpace(wire.attachTransform.wposition);
 			res ~= wireSnap;
 		}
 		return res;

@@ -1,6 +1,7 @@
 module dsubs_client.game.kinetic;
 
-import std.algorithm: min, max;
+import std.algorithm: min, max, map;
+import std.array: array;
 import std.conv: to;
 import std.experimental.logger;
 
@@ -129,6 +130,23 @@ vec2d fixedPointVelocity(KinematicSnapshot kinet, Transform2D atTransform)
 }
 
 
+/// Global reference frame version of API structure
+struct WirePointSnapshotAbs
+{
+	/// absolute position
+	vec2d position;
+	vec2d velocity;
+}
+
+struct WireSnapshotAbs
+{
+	usecs_t atTime;
+	/// world position of the attachment point
+	vec2d attachPosition;
+	WirePointSnapshotAbs[] points;
+}
+
+
 /// Trace of attached wire kinematics that is updated periodically from the server
 /// and is being interpolated on the client for smooth rendering purposes.
 struct WireTrace
@@ -138,22 +156,22 @@ struct WireTrace
 		immutable int maxLen = 3;
 
 		// most recent snapshots received
-		WireSnapshot[maxLen] records;
+		WireSnapshotAbs[maxLen] records;
 		// number of actual snapshots in trace, from 0 to 3
 		int len = 0;
 		// index of the oldest snapshot in the trace
 		int oldest = 0;
 		// client-side interpolated state
-		WireSnapshot curState;
+		WireSnapshotAbs curState;
 		usecs_t curTime;
 	}
 
 	KinematicTrace* attachTrace;
 	Transform2D attachTransform;
 
-	static WireSnapshot deepCopy(const WireSnapshot rhs)
+	private static WireSnapshotAbs deepCopy(const WireSnapshotAbs rhs)
 	{
-		return WireSnapshot(rhs.atTime, rhs.attachPosition, rhs.points.dup);
+		return WireSnapshotAbs(rhs.atTime, rhs.attachPosition, rhs.points.dup);
 	}
 
 	@property bool canInterpolate() const { return len > 0; }
@@ -162,6 +180,9 @@ struct WireTrace
 	/// current state jumps forward.
 	void appendSnapshot(const WireSnapshot snapshot)
 	{
+		WireSnapshotAbs snapshotAbs = WireSnapshotAbs(snapshot.atTime, snapshot.attachPosition);
+		snapshotAbs.points = snapshot.points.map!(wps => WirePointSnapshotAbs(
+			wps.position.to!vec2d + snapshot.attachPosition, wps.velocity.to!vec2d)).array;
 		if (len == maxLen)
 		{
 			int newOldest = (oldest + 1) % maxLen;
@@ -172,30 +193,30 @@ struct WireTrace
 				curState = deepCopy(records[newOldest]);
 				curTime = curState.atTime;
 			}
-			records[oldest] = *cast(WireSnapshot*) &snapshot;
+			records[oldest] = *cast(WireSnapshotAbs*) &snapshotAbs;
 			oldest = newOldest;
 		}
 		else
 		{
 			if (len == 0)
 			{
-				curTime = snapshot.atTime;
-				curState = deepCopy(snapshot);
+				curTime = snapshotAbs.atTime;
+				curState = deepCopy(snapshotAbs);
 			}
-			records[(oldest + len) % maxLen] = *cast(WireSnapshot*) &snapshot;
+			records[(oldest + len) % maxLen] = *cast(WireSnapshotAbs*) &snapshotAbs;
 			len++;
 		}
 	}
 
 	/// result of an interpolation
-	@property const(WireSnapshot) result() const
+	@property const(WireSnapshotAbs) result() const
 	{
 		assert(canInterpolate);
 		return curState;
 	}
 
 	/// the most recent snapshot received
-	@property const(WireSnapshot) mostRecent() const
+	@property const(WireSnapshotAbs) mostRecent() const
 	{
 		assert(canInterpolate);
 		return records[(oldest + len - 1) % maxLen];

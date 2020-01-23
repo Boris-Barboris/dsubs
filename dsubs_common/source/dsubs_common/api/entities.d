@@ -448,8 +448,9 @@ struct ChatMessage
 
 struct WirePointSnapshot
 {
-	vec2d position;
-	vec2d velocity;
+	/// position of this point relative to the wire's attach position.
+	vec2f position;
+	vec2f velocity;
 }
 
 struct WireSnapshot
