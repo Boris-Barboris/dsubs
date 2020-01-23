@@ -1191,7 +1191,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		vec2d deltaPerUsec = -m_solution.vel * tacowner.m_camCtrl.camera.zoom / 1e6;
 		deltaPerUsec.y = -deltaPerUsec.y;
 		// iterate all contact data points
-		foreach (ContactDataOverlayElement el; tacowner.m_selectedContactData.byValue)
+		foreach (ContactDataOverlayElement el; tacowner.m_selectedContactDataByTime[])
 		{
 			vec2d dataPosScreen;
 			vec2d dataOnTrail;
