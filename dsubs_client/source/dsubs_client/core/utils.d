@@ -49,8 +49,8 @@ mixin template RewriteSet(T, string fieldName, string postupdateCode)
 mixin template Readonly(T, string fieldName)
 {
 	mixin("private " ~ T.stringof ~ " m_" ~ fieldName ~ ";");
-	mixin("final @property " ~ T.stringof ~ " " ~ fieldName ~
-		"() { return m_" ~ fieldName ~ ";};");
+	mixin("final @property inout(" ~ T.stringof ~ ") " ~ fieldName ~
+		"() inout { return m_" ~ fieldName ~ ";};");
 }
 
 

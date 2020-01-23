@@ -433,7 +433,7 @@ Search patterns: straight, snake, spiral.
 			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(230),
 				230, 2 / 90.0f, 3.0f));
 		HydrophonePrototype hprotoInternal = HydrophonePrototype(
-			[0.0f], 50, 2500, dgr2rad(330), 330, 3 / 90.0f, 4.0f);
+			[0.0f], 50, 2500, dgr2rad(330), 330, 1.6 / 90.0f, 2.8f);
 		hprotoInternal.omniNoiseMult = 0.05f;
 		hprotoInternal.localNoiseRangeCutoff = 250.0f;
 		hydroProtos ~= SubHydrophonePrototype(

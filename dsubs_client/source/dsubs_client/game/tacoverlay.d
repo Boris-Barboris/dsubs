@@ -1,8 +1,10 @@
 module dsubs_client.game.tacoverlay;
 
-import std.algorithm: max, min;
+import std.algorithm: max, min, filter;
 import std.conv: to;
+import std.array: array;
 import std.math;
+import std.container.rbtree;
 import std.experimental.logger;
 
 import core.time;
@@ -82,6 +84,7 @@ final class ContactOverlayShapeCahe
 	mixin Readonly!(LineShape, "rayTracker");
 	mixin Readonly!(LineShape, "shortestToSolution");
 
+	// https://stackoverflow.com/a/8509802/3084875
 	static sfColor rotateColor(sfColor color, float hue)
 	{
 		float U = cos(hue * PI / 180);
@@ -432,6 +435,9 @@ final class HydrophoneTrackerElement: OverlayElementWithHover
 /// Main overlay of F1 screen
 final class TacticalOverlay: Overlay
 {
+
+	alias ContactDataTimeTree = RedBlackTree!(ContactDataOverlayElement, (a, b) => a.data.time < b.data.time, true);
+
 	private
 	{
 		CameraController m_camCtrl;
@@ -439,6 +445,7 @@ final class TacticalOverlay: Overlay
 		bool m_panned;	/// true when mouse has moved since RMB down
 		TacticalContactElement m_selectedContact;
 		ContactDataOverlayElement[int] m_selectedContactData;
+		ContactDataTimeTree m_selectedContactDataByTime;
 		OverlayElement[] m_scenarioElements;
 		HoveredContactDescription m_hoverDesc;
 
@@ -448,6 +455,7 @@ final class TacticalOverlay: Overlay
 	this(CameraController camCtrl)
 	{
 		m_camCtrl = camCtrl;
+		m_selectedContactDataByTime = new ContactDataTimeTree();
 		mouseTransparent = false;
 		// mouse and keyboard handlers
 		onMouseDown += &processMouseDown;
@@ -616,6 +624,7 @@ final class TacticalOverlay: Overlay
 			foreach (ContactDataOverlayElement el; m_selectedContactData.byValue)
 				el.onHide();
 			m_selectedContactData.clear();
+			m_selectedContactDataByTime.clear();
 		}
 		if (rhs !is null)
 		{
@@ -642,6 +651,7 @@ final class TacticalOverlay: Overlay
 				return;
 		}
 		m_selectedContactData[ctd.id] = newElement;
+		m_selectedContactDataByTime.stableInsert(newElement);
 	}
 
 	/// Contact data must no longer be rendered for selectedContact
@@ -652,6 +662,7 @@ final class TacticalOverlay: Overlay
 		{
 			existing.onHide();
 			m_selectedContactData.remove(id);
+			removeCdoeFromTree(*existing);
 		}
 	}
 
@@ -661,9 +672,22 @@ final class TacticalOverlay: Overlay
 		if (cdoe)
 		{
 			m_selectedContactData[cdoe.data.id] = cdoe;
+			m_selectedContactDataByTime.stableInsert(cdoe);
 			return;
 		}
 		m_elements[el] = true;
+	}
+
+	private void removeCdoeFromTree(ContactDataOverlayElement cdoe)
+	{
+		// we now remove the record from time-sorted tree.
+		auto equalInTime = m_selectedContactDataByTime.equalRange(cdoe);
+		assert(!equalInTime.empty);
+		// Multiple samples can have the same time, we need to reinsert them after removal.
+		ContactDataOverlayElement[] toReinsert = equalInTime.filter!(e => e.data.id != cdoe.data.id).array;
+		m_selectedContactDataByTime.remove(equalInTime);
+		if (toReinsert.length > 0)
+			m_selectedContactDataByTime.stableInsert(toReinsert);
 	}
 
 	override void remove(OverlayElement el)
@@ -672,6 +696,7 @@ final class TacticalOverlay: Overlay
 		if (cdoe)
 		{
 			m_selectedContactData.remove(cdoe.data.id);
+			removeCdoeFromTree(cdoe);
 			if (!cdoe.hidden)
 				cdoe.onHide();
 			return;

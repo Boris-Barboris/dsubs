@@ -48,7 +48,7 @@ private
 	enum float CAPTURE_SEEK_AREA_PERSEC = dgr2rad(4);
 	enum float CAPTURE_SEEK_MAX_AREA = dgr2rad(8);
 	enum float ANGVEL_FILTER_K = 0.66;
-	enum float DETECTION_MARGIN_TO_NOISE = 3.0f;
+	enum float DETECTION_MARGIN_TO_NOISE = 3.5f;
 	/// after how many data slices we redo our noise estimation
 	enum int NOISE_ESTIMATION_FREQUENCY = 10;
 }
@@ -103,7 +103,7 @@ final class WaterfallAnalyzer
 		ushort m_detectMargin = ushort.max / 8;
 		bool m_noiseEstimated;
 		int m_noiseEstimationCounter;
-		ushort m_noiseLevelEstimate;
+		float m_noiseLevelEstimate;
 	}
 
 	this(const HydrophoneTemplate tmpl, int sensorIdx, RayGeneratorSynchronizer* sync)
@@ -127,8 +127,7 @@ final class WaterfallAnalyzer
 		foreach (AntennaeData d; hdata.antennaes)
 			m_min = min(m_min, minElement(d.beams));
 
-		if ((!m_noiseEstimated || m_noiseEstimationCounter % NOISE_ESTIMATION_FREQUENCY == 0) &&
-			 m_min < ushort.max / 4 * 3 && m_min > 0)
+		if ((!m_noiseEstimated || m_noiseEstimationCounter % NOISE_ESTIMATION_FREQUENCY == 0) && m_min > 0)
 		{
 			int deltas = 0;
 			float deltaAbsSum = 0.0f;
@@ -141,8 +140,8 @@ final class WaterfallAnalyzer
 					deltaAbsSum += fabs(d.beams[i + 1].to!float - d.beams[i].to!float);
 				}
 			}
-			m_noiseLevelEstimate = (deltaAbsSum / deltas).lrint.to!ushort;
-			m_detectMargin = (m_noiseLevelEstimate * DETECTION_MARGIN_TO_NOISE).lrint.to!ushort;
+			m_noiseLevelEstimate = deltaAbsSum / deltas;
+			m_detectMargin = ceil(m_noiseLevelEstimate * DETECTION_MARGIN_TO_NOISE).lrint.to!ushort;
 			m_noiseEstimated = true;
 			m_noiseEstimationCounter = (m_noiseEstimationCounter + 1) % NOISE_ESTIMATION_FREQUENCY;
 		}
