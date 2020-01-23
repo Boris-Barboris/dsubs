@@ -440,7 +440,7 @@ Search patterns: straight, snake, spiral.
 			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -35.0f)),
 			hprotoInternal);
 		hydroProtos[$-1].hydroProto.mirrored = true;
-		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(500.0f, 1);
+		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(600.0f, 1);
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
 				"Stork",
@@ -456,7 +456,7 @@ Armament:
   2x broadside decoy launchers.
 Hydrophones:
   Bow: spherical array, 230 deg FoV
-  Stern: 500m LF towed array, 330 deg FoV
+  Stern: 600m LF towed array, 330 deg FoV
 Active sonars:
   Bow: 2200Hz mid-freq pulse, 210 deg FoV`,
 				[
