@@ -6,6 +6,7 @@ import std.array: array;
 import std.math;
 import std.container.rbtree;
 import std.experimental.logger;
+import std.range;
 
 import core.time;
 
@@ -651,7 +652,7 @@ final class TacticalOverlay: Overlay
 				return;
 		}
 		m_selectedContactData[ctd.id] = newElement;
-		m_selectedContactDataByTime.stableInsert(newElement);
+		addOrUpdateCdoeToTree(newElement);
 	}
 
 	/// Contact data must no longer be rendered for selectedContact
@@ -672,10 +673,17 @@ final class TacticalOverlay: Overlay
 		if (cdoe)
 		{
 			m_selectedContactData[cdoe.data.id] = cdoe;
-			m_selectedContactDataByTime.stableInsert(cdoe);
+			addOrUpdateCdoeToTree(cdoe);
 			return;
 		}
 		m_elements[el] = true;
+	}
+
+	private void addOrUpdateCdoeToTree(ContactDataOverlayElement cdoe)
+	{
+		auto equalInTime = m_selectedContactDataByTime.equalRange(cdoe);
+		if (equalInTime.empty || equalInTime.filter!(e => e.data.id == cdoe.data.id).empty)
+			m_selectedContactDataByTime.stableInsert(cdoe);
 	}
 
 	private void removeCdoeFromTree(ContactDataOverlayElement cdoe)
@@ -1184,12 +1192,51 @@ final class TacticalContactElement: OverlayElementWithHover
 		return ZERO_SPD_PIXEL_MARGIN + sqrt(speed) * PIXEL_PER_MPS;
 	}
 
+	private usecs_t m_lastTriangCheck;
+	private vec2d m_lastTriangIntersectRes;
+
+	private enum TriangState
+	{
+		NOT,
+		LEADER,
+		DUPLICATE
+	}
+
+	/// returns true only if there are two rays intersecting
+	private TriangState checkTriangulatingRays(RayDataTacticalElement rel, ref vec2d screenRayIntersection)
+	{
+		if (rel.data.time == m_lastTriangCheck)
+		{
+			screenRayIntersection = m_lastTriangIntersectRes;
+			return TriangState.DUPLICATE;
+		}
+		auto timeSlotSamples = tacowner.m_selectedContactDataByTime.equalRange(rel);
+		if (timeSlotSamples.save().walkLength < 2)
+			return TriangState.NOT;
+		ContactDataOverlayElement[] raysInTimeSlot = timeSlotSamples.filter!(cdoe =>
+			cast(RayDataTacticalElement) cdoe !is null).array;
+		if (raysInTimeSlot.length != 2)
+			return TriangState.NOT;
+		// now we actually intersect the rays
+		RayDataTacticalElement a = cast(RayDataTacticalElement) raysInTimeSlot[0];
+		RayDataTacticalElement b = cast(RayDataTacticalElement) raysInTimeSlot[1];
+		bool res = a.m_mainShape.intersect(b.m_mainShape, screenRayIntersection);
+		if (res)
+		{
+			m_lastTriangCheck = rel.data.time;
+			m_lastTriangIntersectRes = screenRayIntersection;
+			return TriangState.LEADER;
+		}
+		return TriangState.NOT;
+	}
+
 	private void drawPastTrailAndDataLines(Window wnd)
 	{
 		m_pastTrailLine.render(wnd);
 		LineShape deltaShape = ctcOverlayCache.dataTrailDelta;
 		vec2d deltaPerUsec = -m_solution.vel * tacowner.m_camCtrl.camera.zoom / 1e6;
 		deltaPerUsec.y = -deltaPerUsec.y;
+		m_lastTriangCheck = 0;
 		// iterate all contact data points
 		foreach (ContactDataOverlayElement el; tacowner.m_selectedContactDataByTime[])
 		{
@@ -1214,16 +1261,23 @@ final class TacticalContactElement: OverlayElementWithHover
 					dataOnTrail = m_lastScreenPos +
 						deltaPerUsec * (m_solution.time - rel.data.time);
 					dataOnTrail.y = -dataOnTrail.y;
-					bool inside;
-					double k;
-					dataPosScreen = rel.m_mainShape.getAltitudeBase(
-						dataOnTrail, inside, k);
+					TriangState triangState = checkTriangulatingRays(rel, dataPosScreen);
+					if (triangState == TriangState.NOT)
+					{
+						bool inside;
+						double k;
+						dataPosScreen = rel.m_mainShape.getAltitudeBase(
+							dataOnTrail, inside, k);
+					}
+					else
+						if (triangState == TriangState.DUPLICATE)
+							continue;
 				}
 				else
 					continue;
 			}
 			// it looks shit if delta line is close to parallel with any of the lines,
-			// so we'll always draw two lines.
+			// so we'll always draw two lines. Let's call it an 'error leg'.
 			vec2d deltaVec = dataOnTrail - dataPosScreen;
 			if (deltaVec.squaredLength < 1e-2)
 				continue;	// do not draw delta

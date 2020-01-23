@@ -297,6 +297,8 @@ final class WaterfallAnalyzer
 	ContactData[] generateRayData(usecs_t currentTime)
 	{
 		ContactData[] res;
+		if (currentTime != m_lastSlice.atTime)
+			return [];
 		foreach (tc; m_trackers.byValue)
 		{
 			ContactId ctcId = tc.tracker.id.ctcId;
@@ -307,7 +309,7 @@ final class WaterfallAnalyzer
 			if (tc.tracker.state == TrackerState.active &&
 				timeToGenerate && tc.lossCounter == 0)
 			{
-				ContactData data = ContactData(-1, tc.tracker.id.ctcId, m_lastSlice.atTime,
+				ContactData data = ContactData(-1, tc.tracker.id.ctcId, currentTime,
 					DataSource(DataSourceType.Hydrophone, m_sensorIdx), DataType.Ray);
 				RayData ray = RayData(m_lastSlice.worldPos, tc.tracker.bearing);
 				data.data.ray = ray;
