@@ -49,6 +49,8 @@ private
 	enum float CAPTURE_SEEK_MAX_AREA = dgr2rad(8);
 	enum float ANGVEL_FILTER_K = 0.66;
 	enum float DETECTION_MARGIN_TO_NOISE = 3.0f;
+	/// after how many data slices we redo our noise estimation
+	enum int NOISE_ESTIMATION_FREQUENCY = 10;
 }
 
 
@@ -100,6 +102,7 @@ final class WaterfallAnalyzer
 		int m_min;
 		ushort m_detectMargin = ushort.max / 8;
 		bool m_noiseEstimated;
+		int m_noiseEstimationCounter;
 		ushort m_noiseLevelEstimate;
 	}
 
@@ -124,7 +127,8 @@ final class WaterfallAnalyzer
 		foreach (AntennaeData d; hdata.antennaes)
 			m_min = min(m_min, minElement(d.beams));
 
-		if (!m_noiseEstimated && m_min < ushort.max / 4 * 3)
+		if ((!m_noiseEstimated || m_noiseEstimationCounter % NOISE_ESTIMATION_FREQUENCY == 0) &&
+			 m_min < ushort.max / 4 * 3 && m_min > 0)
 		{
 			int deltas = 0;
 			float deltaAbsSum = 0.0f;
@@ -140,6 +144,7 @@ final class WaterfallAnalyzer
 			m_noiseLevelEstimate = (deltaAbsSum / deltas).lrint.to!ushort;
 			m_detectMargin = (m_noiseLevelEstimate * DETECTION_MARGIN_TO_NOISE).lrint.to!ushort;
 			m_noiseEstimated = true;
+			m_noiseEstimationCounter = (m_noiseEstimationCounter + 1) % NOISE_ESTIMATION_FREQUENCY;
 		}
 
 		// find all peaks and write them to array
