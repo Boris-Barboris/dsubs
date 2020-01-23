@@ -82,10 +82,29 @@ final class ContactOverlayShapeCahe
 	mixin Readonly!(LineShape, "rayTracker");
 	mixin Readonly!(LineShape, "shortestToSolution");
 
-	@property LineShape rayDataLine()
+	static sfColor rotateColor(sfColor color, float hue)
 	{
-		return new LineShape(vec2d(0, 0), vec2d(0, 0),
-			sfColor(155, 244, 66, 75), 0.5);
+		float U = cos(hue * PI / 180);
+		float W = sin(hue * PI / 180);
+
+		sfColor res;
+		res.r = ((.299+.701*U+.168*W)*color.r
+			+ (.587-.587*U+.330*W)*color.g
+			+ (.114-.114*U-.497*W)*color.b).to!ubyte;
+		res.g = ((.299-.299*U-.328*W)*color.r
+			+ (.587+.413*U+.035*W)*color.g
+			+ (.114-.114*U+.292*W)*color.b).to!ubyte;
+		res.b = ((.299-.3*U+1.25*W)*color.r
+			+ (.587-.588*U-1.05*W)*color.g
+			+ (.114+.886*U-.203*W)*color.b).to!ubyte;
+		res.a = color.a;
+		return res;
+	}
+
+	LineShape rayDataLine(int sensorIdx)
+	{
+		sfColor rayColor = rotateColor(sfColor(155, 244, 66, 75), sensorIdx * -65);
+		return new LineShape(vec2d(0, 0), vec2d(0, 0), rayColor, 0.5);
 	}
 
 	@property LineShape weaponProjectionLine()
@@ -1490,7 +1509,7 @@ final class RayDataTacticalElement: DataTacticalElement
 	{
 		assert(data.type == DataType.Ray);
 		super(owner, data);
-		m_mainShape = ctcOverlayCache.rayDataLine;
+		m_mainShape = ctcOverlayCache.rayDataLine(data.source.sensorIdx);
 		size = vec2i(0, 0);
 		mouseTransparent = true;
 		onPreDraw();	/// we rely on m_mainShape being initialized after construction
