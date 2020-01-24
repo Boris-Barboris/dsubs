@@ -8,6 +8,7 @@
 *.sln.docstates
 .directory
 *.prod
+build/*tar.gz
 libdsubs_common.a
 librequests.a
 dsubs_client/dsubs_client
