@@ -902,6 +902,12 @@ final class SonarPing: FixedLengthSoundSource
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f,
 		FIRFilter* listenerFilter = null)
 	{
+		if (m_freq > maxFreq || m_freq < minFreq)
+		{
+			Intensity silence;
+			onTdsReady(&silence, null, null);
+			return;
+		}
 		float range = max(10.0f, (listenerPos - position).length);
 		float prevRange = max(10.0f, (prevListenerPos - prevPos).length);
 		float avgRange = 0.5f * (range + prevRange);
