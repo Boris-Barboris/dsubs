@@ -1,6 +1,7 @@
 module dsubs_client.game.states.mainmenu;
 
 import std.utf;
+import std.process: browse;
 
 import core.thread;
 
@@ -206,6 +207,17 @@ final class MainMenuState: GameState
 				", server " ~ res.apiVersion.to!string;
 			error(errorStr);
 			infoLabel.content = errorStr;
+			if (res.apiVersion > ServerStatusRes.init.apiVersion)
+			{
+				try
+				{
+					browse("https://github.com/Boris-Barboris/dsubs_demo/releases");
+				}
+				catch (Exception ex)
+				{
+					error(ex.toString());
+				}
+			}
 			return;
 		}
 		canLogin = true;
