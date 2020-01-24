@@ -78,8 +78,8 @@ make -j 8
 
 
 # install dmd compiler
-mkdir -p ~/dlang && wget https://dlang.org/install.sh -O ~/dlang/install.sh && bash ~/dlang/install.sh install dmd-2.085.0
-source ~/dlang/dmd-2.085.0/activate
+mkdir -p ~/dlang && wget https://dlang.org/install.sh -O ~/dlang/install.sh && bash ~/dlang/install.sh install dmd-2.090.0
+source ~/dlang/dmd-2.090.0/activate
 
 # clone dsubs
 git clone --recursive git@github.com:Boris-Barboris/dsubs.git
