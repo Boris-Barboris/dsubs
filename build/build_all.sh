@@ -4,6 +4,23 @@ set -e
 COMMIT=$(git describe)
 echo "COMMIT=${COMMIT}"
 
+echo "building Windows"
+echo "starting VM"
+sudo virsh start win7
+sleep 30
+ssh win7 "cd dsubs\\dsubs_client && git fetch && git checkout ${COMMIT} && dub upgrade && dub build --arch=x86 -c prod -b plain"
+scp win7:dsubs/dsubs_client/dsubs_client.exe ./dsubs_client.exe
+mkdir dsubs
+mv dsubs_client.exe dsubs/
+rsync -ar ../dsubs_client/fonts dsubs/
+rsync -ar ../dsubs_client/libs-win-x86/*.dll dsubs/
+cp ../dsubs_client/alsoft.ini dsubs/
+zip -r dsubs-${COMMIT}-win-x86.zip dsubs
+rm -rf dsubs
+echo "Windows build OK"
+sudo virsh shutdown win7
+
+
 echo "building Trusty"
 echo "starting lxd"
 sudo systemctl start lxd
@@ -65,4 +82,3 @@ ssh dsubsbionic "
 rsync -v dsubsbionic:~/dsubs-linux-bionic-amd64.tar.gz ./dsubs-${COMMIT}-linux-bionic-amd64.tar.gz
 echo "Bionic build OK"
 sudo virsh shutdown ubuntu18.04
-

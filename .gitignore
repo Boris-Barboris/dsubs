@@ -9,6 +9,8 @@
 .directory
 *.prod
 build/*tar.gz
+build/*zip
+build/dsubs
 libdsubs_common.a
 librequests.a
 dsubs_client/dsubs_client
