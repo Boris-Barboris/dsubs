@@ -312,7 +312,7 @@ final class AttachedWire: IForce
 			// new m_points are to be spawned. We place them on the attachment point.
 			vec2d attachPos = m_attachTransform.wposition;
 			// we need to calculate the ejection speed
-			vec2d attachVel = rigidBody.fixedPointVelocity(attachTransform);
+			vec2d attachVel = m_rigidBody.fixedPointVelocity(attachTransform);
 			vec2d ejectionVel = attachVel - m_attachTransform.wforward.normalized * activeWinchSpeed;
 			for (size_t i = currentSegments; i < nextSegments; i++)
 			{
