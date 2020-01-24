@@ -980,6 +980,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		DragMode m_dragMode;
 		bool m_drawPastTrail;
 		bool m_drawRayTracker;
+		bool m_rayIntersections = true;
 		bool m_drawExtrapolatedPhantom;
 		float m_lastRayTrackerBearing;
 		vec2d m_lastRayTrackerOrigin;
@@ -1197,9 +1198,12 @@ final class TacticalContactElement: OverlayElementWithHover
 
 	private enum TriangState
 	{
+		/// this ray data sample has no triangulation pair
 		NOT,
+		/// this ray data sample is the first in a triangulation pair
 		LEADER,
-		DUPLICATE
+		/// this ray data sample is the second in a triangulation pair
+		FOLLOWER
 	}
 
 	/// returns true only if there are two rays intersecting
@@ -1208,7 +1212,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		if (rel.data.time == m_lastTriangCheck)
 		{
 			screenRayIntersection = m_lastTriangIntersectRes;
-			return TriangState.DUPLICATE;
+			return TriangState.FOLLOWER;
 		}
 		auto timeSlotSamples = tacowner.m_selectedContactDataByTime.equalRange(rel);
 		if (timeSlotSamples.save().walkLength < 2)
@@ -1261,17 +1265,20 @@ final class TacticalContactElement: OverlayElementWithHover
 					dataOnTrail = m_lastScreenPos +
 						deltaPerUsec * (m_solution.time - rel.data.time);
 					dataOnTrail.y = -dataOnTrail.y;
-					TriangState triangState = checkTriangulatingRays(rel, dataPosScreen);
-					if (triangState == TriangState.NOT)
+					TriangState triangState;
+					if (m_rayIntersections)
+					{
+						triangState = checkTriangulatingRays(rel, dataPosScreen);
+						if (triangState == TriangState.FOLLOWER)
+							continue;
+					}
+					if (!m_rayIntersections || triangState == TriangState.NOT)
 					{
 						bool inside;
 						double k;
 						dataPosScreen = rel.m_mainShape.getAltitudeBase(
 							dataOnTrail, inside, k);
 					}
-					else
-						if (triangState == TriangState.DUPLICATE)
-							continue;
 				}
 				else
 					continue;
@@ -1377,7 +1384,13 @@ final class TacticalContactElement: OverlayElementWithHover
 				inMerge = true;
 				g_mergeSourceId = m_contact.id;
 			};
+			// add toggle triangulation mode
+			Button tbtn = builder(new Button()).fontSize(15).content("toggle ray intersect").build();
+			tbtn.onClick += {
+				m_rayIntersections = !m_rayIntersections;
+			};
 			buttons ~= mbtn;
+			buttons ~= tbtn;
 			ContextMenu menu = contextMenu(
 					Game.guiManager,
 					buttons,
