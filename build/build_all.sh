@@ -47,7 +47,7 @@ sudo systemctl stop lxd
 echo "building Xenial"
 echo "starting VM"
 sudo virsh start ubuntu16.04
-sleep 20
+sleep 30
 ssh dsubsxenial "
   set -e
   . dlang/dmd-2.090.0/activate
@@ -67,7 +67,7 @@ sudo virsh destroy ubuntu16.04
 echo "building Bionic"
 echo "starting VM"
 sudo virsh start ubuntu18.04
-sleep 20
+sleep 30
 ssh dsubsbionic "
   set -e
   . dlang/dmd-2.090.0/activate
