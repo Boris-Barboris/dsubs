@@ -522,18 +522,20 @@ final class Hydrophone
 	private void popSourceSignal()
 	{
 		int compCount = m_sourceQueue.front.components;
-		assert(compCount > 0);
-		//trace("popping with evt: ", m_sourceQueue.front.evt);
-		for (int i = 0; i < compCount; i++)
+		if (compCount > 0)
 		{
-			AsyncEvent e = m_sourceQueue.front.evt[i];
-			if (e != AsyncEvent.init)
-				e.waitFor();
+			//trace("popping with evt: ", m_sourceQueue.front.evt);
+			for (int i = 0; i < compCount; i++)
+			{
+				AsyncEvent e = m_sourceQueue.front.evt[i];
+				if (e != AsyncEvent.init)
+					e.waitFor();
+			}
+			foreach (i, a; m_ant)
+				a.applyBuiltIntensity(i.to!int, m_sourceQueue.front);
+			if (m_maintainImprints)
+				appendToImprints(m_sourceQueue.front);
 		}
-		foreach (i, a; m_ant)
-			a.applyBuiltIntensity(i.to!int, m_sourceQueue.front);
-		if (m_maintainImprints)
-			appendToImprints(m_sourceQueue.front);
 		m_sourceQueue.popFront();
 	}
 
@@ -599,6 +601,7 @@ final class Hydrophone
 			assert(p.components < p.MAX_COMPONENTS);
 			if (bandIntSum != null)
 			{
+				assert(!isNaN(bandIntSum.val));
 				// band intensity sum is already calculated on the CPU
 				p.bandSum[p.components] = *bandIntSum;
 			}
@@ -829,7 +832,9 @@ final class Hydrophone
 			//trace("p.bandSum = ", p.bandSum);
 			for (int i = 0; i < p.components; i++)
 				bandSum += p.bandSum[i].val;
-			assert(!isNaN(bandSum));
+			assert(!isNaN(bandSum), p.source.to!string ~
+				" has returned NaN bandSum, it's precalc: " ~
+				p.to!string);
 			// we actually draw average bin intensity
 			bandSum /= GLOBAL_SRATE / 2;
 			float omniMult = p.omniFactorEnd * m_directivity * m_omniNoiseMult;
