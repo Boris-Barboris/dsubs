@@ -157,6 +157,7 @@ final class Hydrophone
 		// broadband flow noise intensity
 		Intensity m_baseFlowNoiseStart;
 		Intensity m_baseFlowNoiseEnd;
+		Intensity m_totalOmni;
 		Buffer m_baseFlowNoiseStartBuf;
 		Buffer m_baseFlowNoiseEndBuf;
 		AsyncEvent m_isotropicReadyEvt;
@@ -408,6 +409,7 @@ final class Hydrophone
 			}
 		}
 		m_imprints.length = 0;
+		m_totalOmni = 0.0f;
 		startCalculateSeaNoise(q);
 		startCalculateFlowNoise(q);
 		foreach (a; m_ant)
@@ -555,18 +557,30 @@ final class Hydrophone
 			return;
 		signalIntensity /= GLOBAL_SRATE / 2;
 		bool visible = sp.antPrec[].map!(ap => ap.inside).canFind(true);
+		float omniMult = sp.omniFactorEnd * m_directivity * m_omniNoiseMult;
 		if (visible)
 			imprint.directionAvailable = true;
 		else
 		{
-			float omniMult = sp.omniFactorEnd * m_directivity * m_omniNoiseMult;
 			signalIntensity *= omniMult;
 			imprint.directionAvailable = false;
 		}
+		// we wish to account for omni noise for AI-human parity
+		if (omniMult > 0.0f)
+			m_totalOmni += omniMult * signalIntensity;
 		imprint.signalLevel = Intensity(signalIntensity).toDb();
+		assert(!isNaN(imprint.signalLevel.val));
 		// if signal level is statistically significant
 		if (imprint.signalLevel > imprint.backgroundLevel)
 			m_imprints ~= imprint;
+	}
+
+	void adjustImprintsToOmni()
+	{
+		if (m_totalOmni == 0.0f || !m_maintainImprints)
+			return;
+		foreach (ref SourceImprint si; m_imprints)
+			si.backgroundLevel = Intensity(si.backgroundLevel.toLinear + m_totalOmni).toDb;
 	}
 
 	private void startSourceCalc(CommandQueue q, SoundSource s, ref SourcePrecalc p)

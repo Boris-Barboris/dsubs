@@ -164,6 +164,7 @@ final class AcousticEnv
 				continue;
 			hydrophone.flushSourceQueue();
 			hydrophone.endIsotropic();
+			hydrophone.adjustImprintsToOmni();
 			if (hydrophone.listenDirValid)
 				hydrophone.endFinalizePcbData();
 		}
