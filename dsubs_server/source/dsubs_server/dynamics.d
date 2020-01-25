@@ -313,7 +313,7 @@ final class AttachedWire: IForce
 			vec2d attachPos = m_attachTransform.wposition;
 			// we need to calculate the ejection speed
 			vec2d attachVel = m_rigidBody.fixedPointVelocity(attachTransform);
-			vec2d ejectionVel = attachVel - m_attachTransform.wforward.normalized * activeWinchSpeed;
+			vec2d ejectionVel = attachVel - m_attachTransform.wforward * activeWinchSpeed;
 			for (size_t i = currentSegments; i < nextSegments; i++)
 			{
 				m_points[i].pos = attachPos;
