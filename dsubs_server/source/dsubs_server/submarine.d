@@ -121,6 +121,9 @@ final class Submarine: Vessel
 }
 
 
+private enum float FLOW_NOISE_INTERFERENCE_RANGE = 10.0f;
+
+
 final class SubmarineFactory: VesselFactory
 {
 	immutable SubmarineTemplate tmpl;
@@ -200,8 +203,14 @@ final class SubmarineFactory: VesselFactory
 			res.onPreKinematics += &tube.onPreKinematics;
 			res.onPostKinematics += &tube.onPostKinematics;
 			foreach (h; res.m_hydrophones)
-				h.flowNoiseMultipliers ~= tube;
-			if (res.m_sonar)
+			{
+				if ((h.transform.wposition - tube.transform.wposition).length <=
+						FLOW_NOISE_INTERFERENCE_RANGE)
+					h.flowNoiseMultipliers ~= tube;
+			}
+			if (res.m_sonar &&
+				(res.m_sonar.transform.wposition - tube.transform.wposition).length <=
+					FLOW_NOISE_INTERFERENCE_RANGE)
 				res.m_sonar.flowNoiseMultipliers ~= tube;
 		}
 	}
