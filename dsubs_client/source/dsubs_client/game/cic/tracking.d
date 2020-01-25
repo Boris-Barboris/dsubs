@@ -302,7 +302,7 @@ final class WaterfallAnalyzer
 		foreach (tc; m_trackers.byValue)
 		{
 			ContactId ctcId = tc.tracker.id.ctcId;
-			bool mustBeSync = (m_sync.get(ctcId) != 0);
+			bool mustBeSync = (m_sync.get(ctcId) > 1);
 			bool timeToGenerate = mustBeSync ?
 				(currentTime / 1000_000 % TRACKER_GEN_FREQ) == 0 :
 				tc.counter == 0;
