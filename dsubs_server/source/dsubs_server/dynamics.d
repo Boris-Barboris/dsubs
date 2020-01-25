@@ -395,7 +395,8 @@ final class AttachedWire: IForce
 			assert(!isNaN(point.pos.x));
 			assert(!isNaN(point.pos.y));
 			if (i == m_points.length - 1)
-				m_lastAttachForce = -attachForceMagn * deltaVel.normalizedz;
+				m_lastAttachForce = attachForceMagn *
+					(point.pos - m_attachTransform.wposition).normalizedz;
 		}
 		assert(!isNaN(m_lastAttachForce.x));
 		assert(!isNaN(m_lastAttachForce.y));

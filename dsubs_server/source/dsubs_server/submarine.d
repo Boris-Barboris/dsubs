@@ -157,8 +157,10 @@ final class SubmarineFactory: VesselFactory
 			if (hp.type == HydrophoneType.fixed)
 			{
 				h = new Hydrophone(Globals.sctx.queue(0), t, hp.hydroProto);
-				h.onPreKinematics += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
-				h.onPostKinematics += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+				h.onPreKinematics += ((h) => {
+					h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; }) (h);
+				h.onPostKinematics += ((h) => {
+					h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; }) (h);
 			}
 			else
 			{
@@ -167,11 +169,12 @@ final class SubmarineFactory: VesselFactory
 				// wire.desiredLength = 500.0f;
 				res.rigidBody.wires ~= wire;
 				h = new Hydrophone(Globals.sctx.queue(0), wire.sensorTransform, hp.hydroProto);
-				h.onPreKinematics += {
+				h.onPreKinematics += ((h, wire) => {
 					h.canBeActive = wire.sensorTransformValid;
 					h.ktsStart = wire.sensorPointVel.length.mps2kts;
-				};
-				h.onPostKinematics += { h.ktsEnd = wire.sensorPointVel.length.mps2kts; };
+				}) (h, wire);
+				h.onPostKinematics += ((h, wire) => {
+					h.ktsEnd = wire.sensorPointVel.length.mps2kts; }) (h, wire);
 			}
 			res.m_hydrophones ~= h;
 		}
