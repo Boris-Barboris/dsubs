@@ -38,6 +38,13 @@ double cmove(double cur, double tgt, double spd, double dt)
 		return cur - spd * dt;
 }
 
+VecT normalizedz(VecT)(const VecT rhs)
+{
+	if (rhs.x == 0.0 && rhs.y == 0.0)
+		return VecT(0, 0);
+	return rhs.normalized;
+}
+
 /// return v clamped between lower and upper
 NumT clamp(NumT)(NumT v, NumT lower, NumT upper)
 	if (isNumeric!NumT)

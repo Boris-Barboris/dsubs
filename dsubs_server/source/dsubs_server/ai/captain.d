@@ -4,7 +4,7 @@ import std.algorithm: any, filter, map, sort;
 import std.array: array;
 
 import dsubs_common.containers.circqueue;
-import dsubs_common.math.angles;
+import dsubs_common.math;
 import dsubs_common.api.entities;
 
 import dsubs_sound.activesonar;
@@ -738,7 +738,7 @@ final class AICaptain
 			vec2d relVel = torpSol.velocity - m_crew.submarine.rigidBody.kinet.vel;
 			vec2d relPos = torpSol.currentPos - m_crew.submarine.transform.wposition;
 			// if torp swims perfectly on us, relVel is parallel to -relPos.
-			if (dot(relVel.normalized, relPos.normalized) >= 0.0)
+			if (dot(relVel.normalizedz, relPos.normalizedz) >= 0.0)
 				return 0.0;
 			double angle = angleBetween(relVel, relPos);
 			double totalMiss = relPos.length * sin(angle).fabs;

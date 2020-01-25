@@ -34,7 +34,7 @@ final class Animal
 	{
 		m_destination = rhs;
 		double speed = uniform!("(]")(0.1, m_factory.maxSpeed);
-		m_velocity = speed * (m_destination - m_transform.wposition).normalized;
+		m_velocity = speed * (m_destination - m_transform.wposition).normalizedz;
 		m_rigidBody.kinet.vel = m_velocity;
 	}
 

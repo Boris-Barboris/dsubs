@@ -339,7 +339,7 @@ final class AttachedWire: IForce
 				assert(isNormal(deltaVel));
 				// assert that the system is not too stiff for us.
 				assert(deltaVel < velMagn);
-				point.vel -= dt * dragMagn / m_pointMass * point.vel.normalized;
+				point.vel -= deltaVel * point.vel.normalized;
 			}
 		}
 		// we now give a first estimation of new point positions
@@ -363,16 +363,19 @@ final class AttachedWire: IForce
 			}
 			else
 			{
-				fixedPos = newPositions[j + 1];
+				fixedPos = newPositions[i];
 				distanceLimit = m_segmentLength;
 			}
 			assert(!isNaN(distanceLimit));
 			double distance = (fixedPos - newPositions[j]).length;
+			assert(!isNaN(distance));
 			if (distance > distanceLimit)
 			{
 				// project
-				vec2d delta = (distance - distanceLimit) *
-					(fixedPos - newPositions[j]).normalized;
+				vec2d delta = (1.0 - distanceLimit / distance) *
+					(fixedPos - newPositions[j]);
+				assert(!isNaN(delta.x));
+				assert(!isNaN(delta.y));
 				newPositions[j] = newPositions[j] + delta;
 			}
 		}
@@ -386,12 +389,16 @@ final class AttachedWire: IForce
 			point.vel = (newPositions[i] - point.pos) / dt;
 			vec2d deltaVel = point.vel - estimatedVel;
 			// deltaVel.length / dt is acceleration, F = ma
-			attachForceMagn += deltaVel.length / dt * m_pointMass ;
+			attachForceMagn += deltaVel.length / dt * m_pointMass;
 			// deltaVel is the velocity change that was caused by rigid body's pull.
 			point.pos = newPositions[i];
+			assert(!isNaN(point.pos.x));
+			assert(!isNaN(point.pos.y));
 			if (i == m_points.length - 1)
-				m_lastAttachForce = -attachForceMagn * deltaVel.normalized;
+				m_lastAttachForce = -attachForceMagn * deltaVel.normalizedz;
 		}
+		assert(!isNaN(m_lastAttachForce.x));
+		assert(!isNaN(m_lastAttachForce.y));
 	}
 
 	// IForce stuff
