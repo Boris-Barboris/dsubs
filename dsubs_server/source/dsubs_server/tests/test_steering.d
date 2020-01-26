@@ -112,11 +112,9 @@ unittest
 	Globals.sim.onSimulationPassStart += (usecs_t worldTime) {
 		if (Globals.sim.worldTime > 120 * cast(ulong)1e6)
 			s.targetCourse = dgr2rad(90);
-		if (Globals.sim.worldTime > 300 * cast(ulong)1e6)
-			s.targetCourse = dgr2rad(180);
 		writeWireCsvRow(fileWire, worldTime, s.rigidBody.wires[0]);
 	};
-	Globals.sim.worldTimeLimit = 160 * cast(ulong)1e6;
+	Globals.sim.worldTimeLimit = 900 * cast(ulong)1e6;
 	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();

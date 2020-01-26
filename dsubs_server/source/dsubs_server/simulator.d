@@ -55,6 +55,7 @@ final class Simulator
 
 	bool printTimings = false;
 	bool doSleep = true;
+	float acceleration = 1.0f;
 
 	Event!(void delegate(usecs_t now)) onSimulationPassStart;
 	Event!(void delegate(usecs_t now)) onSimulationPassEnd;
@@ -154,7 +155,7 @@ final class Simulator
 				}
 				auto now = MonoTime.currTime();
 				// GC.enable();
-				loopStart = loopStart + seconds(1);
+				loopStart = loopStart + msecs((1000 / acceleration).to!uint);
 				now = MonoTime.currTime();
 				Duration toSleep = loopStart - now;
 				if (toSleep < msecs(100))
