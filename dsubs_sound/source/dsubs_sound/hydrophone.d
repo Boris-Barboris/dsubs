@@ -59,6 +59,8 @@ struct SourceImprint
 {
 	SoundSource source;
 	IntensityLevel backgroundLevel;
+	/// If this is an omni source for the hydrophone, this is omni component intensity.
+	Intensity ownOmniIntensity;
 	IntensityLevel signalLevel;
 	// omni sources have this true if they are heard only by their
 	// omni component.
@@ -561,17 +563,16 @@ final class Hydrophone
 			imprint.directionAvailable = false;
 		}
 		// we wish to account for omni noise for AI-human parity
-		Intensity m_thisOmni;
 		if (omniMult > 0.0f)
 		{
-			m_thisOmni = Intensity(omniMult * signalIntensity);
-			m_totalOmni += m_thisOmni;
+			imprint.ownOmniIntensity = Intensity(omniMult * signalIntensity);
+			m_totalOmni += imprint.ownOmniIntensity;
 		}
 		// we replace noise floor by floor + 0.5 of variance
 		// m_isotropicReadyEvt is finished at the time of this call
 		// so we can safely call getIsotropicIntens
 		imprint.backgroundLevel = IntensityLevel(
-			0.5f * m_baseNoise + (getIsotropicIntens() - m_thisOmni).toDb);
+			0.5f * m_baseNoise + getIsotropicIntens().toDb);
 		imprint.signalLevel = Intensity(signalIntensity).toDb();
 		assert(!isNaN(imprint.signalLevel.val));
 		// if signal level is statistically significant
@@ -584,7 +585,8 @@ final class Hydrophone
 		if (m_totalOmni == 0.0f || !m_maintainImprints)
 			return;
 		foreach (ref SourceImprint si; m_imprints)
-			si.backgroundLevel = Intensity(si.backgroundLevel.toLinear + m_totalOmni).toDb;
+			si.backgroundLevel = Intensity(si.backgroundLevel.toLinear +
+				m_totalOmni - si.ownOmniIntensity).toDb;
 	}
 
 	private void startSourceCalc(CommandQueue q, SoundSource s, ref SourcePrecalc p)
@@ -802,13 +804,13 @@ final class Hydrophone
 					antPrec.relBearing1 + p.haloBound,
 					antPrec.relBearing1 - p.haloBound),
 				allCellsSect);
-			assert(sectIsec1.count < 2);
+			// FIXME: assert(sectIsec1.count < 2, sectIsec1.to!string);
 			SectorIntersection sectIsec2 = projectSectorsIntersect(
 				Sector(
 					antPrec.relBearing2 + p.haloBound,
 					antPrec.relBearing2 - p.haloBound),
 				allCellsSect);
-			assert(sectIsec2.count < 2);
+			// FIXME: assert(sectIsec2.count < 2, sectIsec2.to!string);
 
 			// let's check visibility of this source
 			antPrec.beamStart = beams.length.to!int;

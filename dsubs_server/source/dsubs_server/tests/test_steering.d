@@ -96,3 +96,30 @@ unittest
 }
 
 */
+
+unittest
+{
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Globals.buildForTests();
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	foreach (h; s.hydrophones)
+		h.shouldBeActive = false;
+	s.targetThrottle = 0.4f;
+	s.targetCourse = -dgr2rad(30);
+	s.rigidBody.wires[0].desiredLength = 600.0f;
+	s.register();
+	File* file = writeRbodyCsvHeader("steering", "towed_wire", "stork");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, s);
+	File* fileWire = writeRbodyCsvHeader("steering", "towed_wire", "wire_tail");
+	Globals.sim.onSimulationPassStart += (usecs_t worldTime) {
+		if (Globals.sim.worldTime > 120 * cast(ulong)1e6)
+			s.targetCourse = dgr2rad(90);
+		if (Globals.sim.worldTime > 300 * cast(ulong)1e6)
+			s.targetCourse = dgr2rad(180);
+		writeWireCsvRow(fileWire, worldTime, s.rigidBody.wires[0]);
+	};
+	Globals.sim.worldTimeLimit = 460 * cast(ulong)1e6;
+	scope(exit) Globals.resetForTests();
+	Globals.sim.start();
+	Globals.sim.join();
+}

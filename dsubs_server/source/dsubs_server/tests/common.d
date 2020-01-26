@@ -10,7 +10,7 @@ import dsubs_common.math;
 
 import dsubs_server.common;
 import dsubs_server.vessel: Vessel;
-import dsubs_server.dynamics: RigidBody;
+import dsubs_server.dynamics: RigidBody, WirePoint, AttachedWire;
 
 
 File* writeRbodyCsvHeader(string testGroup, string testName, string entityName)
@@ -28,6 +28,17 @@ void writeRbodyCsvRow(File* file, usecs_t worldTime, RigidBody rb)
 	file.writefln!"%d,%f,%f,%f,%f,%f,%f"(
 		worldTime, rb.kinet.pos.x, rb.kinet.pos.y, rotVec.x, rotVec.y,
 		rb.kinet.vel.x, rb.kinet.vel.y);
+}
+
+void writeWireCsvRow(File* file, usecs_t worldTime, AttachedWire aw)
+{
+	if (aw.sensorTransformValid)
+	{
+		vec2d rotVec = aw.sensorPointVel;
+		file.writefln!"%d,%f,%f,%f,%f,%f,%f"(
+			worldTime, aw.sensorTransform.wposition.x, aw.sensorTransform.wposition.y,
+			rotVec.x, rotVec.y, rotVec.x, rotVec.y);
+	}
 }
 
 auto captureVesselRbCsv(File* f, Vessel s, usecs_t shutdownOn = -1)

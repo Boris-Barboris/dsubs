@@ -2,6 +2,7 @@ module dsubs_server.dynamics;
 
 import std.algorithm;
 import std.array;
+import std.range: retro, enumerate;
 
 // "lflags": ["/home/boris/src/dsubs/dsubs_server/libopenblas"],
 // import mir.ndslice: magic, repeat, as, slice;
@@ -149,6 +150,7 @@ struct WirePoint
 	vec2d vel = vec2f(0.0f, 0.0f);
 	/// position in global reference frame.
 	vec2d pos = vec2f(0.0f, 0.0f);
+	private bool onMaxLength;
 }
 
 private enum float PREFERRED_SEGMENT_LENGTH = 20.0f;
@@ -291,29 +293,35 @@ final class AttachedWire: IForce
 		m_desiredLength = rhs;
 	}
 
+	private float getActiveWinchSpeed(out vec2d attachVel)
+	{
+		float res = m_winchSpeed;
+		attachVel = m_rigidBody.fixedPointVelocity(attachTransform.wposition);
+		if (m_desiredLength > m_currentTotalLength)
+		{
+			// we limit unwinding speed for slow-moving sub.
+			double attachSpd = attachVel.length;
+			res = min(res, WINCH_EXTEND_SPD_FACTOR * attachSpd);
+		}
+		return res;
+	}
+
 	/// Update length characteristics and point count as if 'dt' seconds have passed.
 	void updateTotalLength(float dt)
 	{
 		size_t currentSegments = m_points.length;
-		float activeWinchSpeed = m_winchSpeed;
-		if (m_desiredLength > m_currentTotalLength)
-		{
-			// we limit unwinding speed for slow-moving sub.
-			double rbSpeed = m_rigidBody.kinet.velLength;
-			activeWinchSpeed = min(activeWinchSpeed, WINCH_EXTEND_SPD_FACTOR * rbSpeed);
-		}
+		vec2d attachVel;
+		float activeWinchSpeed = getActiveWinchSpeed(attachVel);
 		m_currentTotalLength = cmove(m_currentTotalLength, m_desiredLength, activeWinchSpeed, dt);
 		size_t nextSegments = ceil(m_currentTotalLength / m_segmentLength).lrint.to!size_t;
 		m_firstSegmentLength = m_currentTotalLength - (nextSegments - 1) * m_segmentLength;
+		vec2d attachPos = m_attachTransform.wposition;
+		vec2d ejectionVel = attachVel - attachVel.normalizedz * activeWinchSpeed;
 		// now we resize m_points array if needed
 		m_points.length = nextSegments;
 		if (nextSegments > currentSegments)
 		{
 			// new m_points are to be spawned. We place them on the attachment point.
-			vec2d attachPos = m_attachTransform.wposition;
-			// we need to calculate the ejection speed
-			vec2d attachVel = m_rigidBody.fixedPointVelocity(attachTransform);
-			vec2d ejectionVel = attachVel - m_attachTransform.wforward * activeWinchSpeed;
 			for (size_t i = currentSegments; i < nextSegments; i++)
 			{
 				m_points[i].pos = attachPos;
@@ -339,7 +347,7 @@ final class AttachedWire: IForce
 				assert(isNormal(deltaVel));
 				// assert that the system is not too stiff for us.
 				assert(deltaVel < velMagn);
-				point.vel -= deltaVel * point.vel.normalized;
+				point.vel *= (velMagn - deltaVel) / velMagn;
 			}
 		}
 		// we now give a first estimation of new point positions
@@ -348,7 +356,7 @@ final class AttachedWire: IForce
 		for (size_t i = 0; i < newPositions.length; i++)
 			newPositions[i] = m_points[i].pos + m_points[i].vel * dt;
 
-		// simple constraint projection loop that moves new positions by the straigt line
+		// simple constraint projection loop that moves new positions along the straigt line
 		// to the allowed position.
 		for (size_t i = newPositions.length; i > 0; i--)
 		{
@@ -377,29 +385,65 @@ final class AttachedWire: IForce
 				assert(!isNaN(delta.x));
 				assert(!isNaN(delta.y));
 				newPositions[j] = newPositions[j] + delta;
+				m_points[j].onMaxLength = true;
 			}
+			else
+				m_points[j].onMaxLength = false;
 		}
 
 		// update m_points and calculate attach force
 		m_lastAttachForce = vec2d(0, 0);
 		double attachForceMagn = 0.0;
-		foreach (i, ref point; m_points)
+		// shock propagates from attachment to tail, hence retro
+		foreach (i, point; m_points[].retro.enumerate())
 		{
+			size_t j = m_points.length - 1 - i;
+			// velocity of free floating
 			vec2d estimatedVel = point.vel;
-			point.vel = (newPositions[i] - point.pos) / dt;
-			vec2d deltaVel = point.vel - estimatedVel;
+			m_points[j].vel = (newPositions[j] - point.pos) / dt;
+			if (point.onMaxLength)
+			{
+				// we need to make sure the velocity is consistent with distance constraint
+				// by making sure it's projection on the wire segment vector is not less
+				// than the projection of the upper wire point's velocity on the same segment.
+				vec2d upperPos;
+				vec2d upperVel;
+				if (i == 0)
+				{
+					upperPos = m_attachTransform.wposition;
+					vec2d attachVel;
+					double activeWinchSpeed = getActiveWinchSpeed(attachVel);
+					vec2d ejectionVel = attachVel - attachVel.normalizedz *
+						activeWinchSpeed * sgn(m_desiredLength - m_currentTotalLength);
+					upperVel = ejectionVel;
+				}
+				else
+				{
+					upperPos = m_points[j + 1].pos;
+					upperVel = m_points[j + 1].vel;
+				}
+				// do constraint vel projection
+				vec2d segmentNorm = (upperPos - newPositions[j]).normalizedz;
+				double upperVelDot = dot(segmentNorm, upperVel);
+				double currentVelDot = dot(segmentNorm, m_points[j].vel);
+				m_points[j].vel += (upperVelDot - currentVelDot) * segmentNorm;
+			}
+			// accumulate total force that acts on parent rigid body
+			vec2d deltaVel = m_points[j].vel - estimatedVel;
 			// deltaVel.length / dt is acceleration, F = ma
 			attachForceMagn += deltaVel.length / dt * m_pointMass;
 			// deltaVel is the velocity change that was caused by rigid body's pull.
-			point.pos = newPositions[i];
-			assert(!isNaN(point.pos.x));
-			assert(!isNaN(point.pos.y));
-			if (i == m_points.length - 1)
-				m_lastAttachForce = attachForceMagn *
-					(point.pos - m_attachTransform.wposition).normalizedz;
+			m_points[j].pos = newPositions[j];
+			assert(!isNaN(m_points[j].pos.x));
+			assert(!isNaN(m_points[j].pos.y));
 		}
-		assert(!isNaN(m_lastAttachForce.x));
-		assert(!isNaN(m_lastAttachForce.y));
+		if (m_points.length > 0)
+		{
+			m_lastAttachForce = attachForceMagn *
+				(m_points[$-1].pos - m_attachTransform.wposition).normalizedz;
+			assert(!isNaN(m_lastAttachForce.x));
+			assert(!isNaN(m_lastAttachForce.y));
+		}
 	}
 
 	// IForce stuff
@@ -411,7 +455,7 @@ final class AttachedWire: IForce
 	/// get this force resulting torque.
 	double getTorque(const RigidBody b, const ref Kinematics c)
 	{
-		return b.getForcesTorque(m_lastAttachForce, m_attachTransform);
+		return b.getForcesTorque(m_lastAttachForce, m_attachTransform.wposition);
 	}
 
 	/// if there is some timing logic inside IForce, move forward in time.
@@ -486,11 +530,11 @@ final class RigidBody: PhysicalEntity
 		//trace(kinet);
 	}
 
-	/// Return global velocity of the point that is fixed on rigid body's surface and is represented by child
-	/// transform.
-	vec2d fixedPointVelocity(Transform2D atTransform)
+	/// Return global velocity of the point that is fixed on rigid body's surface and
+	/// is represented by child transform.
+	vec2d fixedPointVelocity(vec2d wpos)
 	{
-		vec2d deltaPos = atTransform.wposition - transform.wposition;
+		vec2d deltaPos = wpos - transform.wposition;
 		vec3d deltaPos3d = vec3d(deltaPos.x, deltaPos.y, 0.0);
 		vec3d angVel3d = vec3d(0.0, 0.0, kinet.angVel);
 		vec3d linearVel3d = cross(angVel3d, deltaPos3d);
@@ -498,9 +542,9 @@ final class RigidBody: PhysicalEntity
 		return planarVel + kinet.vel;
 	}
 
-	double getForcesTorque(vec2d force, Transform2D atTransform) const
+	double getForcesTorque(vec2d force, vec2d wpos) const
 	{
-		vec2d posVec = atTransform.wposition - kinet.pos;
+		vec2d posVec = wpos - kinet.pos;
 		vec3d torque = cross(vec3d(posVec.x, posVec.y, 0.0), vec3d(force.x, force.y, 0.0));
 		return torque.z;
 	}
