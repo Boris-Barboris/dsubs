@@ -545,11 +545,6 @@ final class Hydrophone
 	{
 		SourceImprint imprint;
 		imprint.source = sp.source;
-		// we replace noise floor by floor + 0.5 of variance
-		// m_isotropicReadyEvt is finished at the time of this call
-		// so we can safely call getIsotropicIntens
-		imprint.backgroundLevel = IntensityLevel(
-			0.5f * m_baseNoise + getIsotropicIntens().toDb);
 		float signalIntensity = 0.0f;
 		for (int i = 0; i < sp.components; i++)
 			signalIntensity += sp.bandSum[i].val;
@@ -566,8 +561,17 @@ final class Hydrophone
 			imprint.directionAvailable = false;
 		}
 		// we wish to account for omni noise for AI-human parity
+		Intensity m_thisOmni;
 		if (omniMult > 0.0f)
-			m_totalOmni += omniMult * signalIntensity;
+		{
+			m_thisOmni = Intensity(omniMult * signalIntensity);
+			m_totalOmni += m_thisOmni;
+		}
+		// we replace noise floor by floor + 0.5 of variance
+		// m_isotropicReadyEvt is finished at the time of this call
+		// so we can safely call getIsotropicIntens
+		imprint.backgroundLevel = IntensityLevel(
+			0.5f * m_baseNoise + (getIsotropicIntens() - m_thisOmni).toDb);
 		imprint.signalLevel = Intensity(signalIntensity).toDb();
 		assert(!isNaN(imprint.signalLevel.val));
 		// if signal level is statistically significant
