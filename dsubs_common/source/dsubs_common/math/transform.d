@@ -193,14 +193,14 @@ class Transform2D
 	{
 		if (m_parent is null)
 			return m_rotation;
-		return world.transformAngle(0.0);
+		return m_parent.wrotation + m_rotation;
 	}
 
 	final @property double wrotation() const
 	{
 		if (m_parent is null)
 			return m_rotation;
-		return world.transformAngle(0.0);
+		return m_parent.wrotation + m_rotation;
 	}
 
 	/// returns local translation

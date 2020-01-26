@@ -247,7 +247,9 @@ final class AttachedWire: IForce
 			tangentPos = m_points[pointIdx + 1].pos;
 		if (pos == tangentPos)
 			return true;
-		rot = courseAngle(pos - tangentPos);
+		// FIXME: we assume the closest turn
+		rot = m_sensorTransform.rotation + angleDist(courseAngle(pos - tangentPos),
+			m_sensorTransform.rotation);
 		assert(!isNaN(rot));
 		return true;
 	}
@@ -266,7 +268,7 @@ final class AttachedWire: IForce
 		else
 		{
 			m_sensorTransform.position = m_attachTransform.wposition;
-			m_sensorTransform.rotation = clampAnglePi(m_attachTransform.wrotation + PI);
+			m_sensorTransform.rotation = m_attachTransform.wrotation + PI;
 		}
 	}
 

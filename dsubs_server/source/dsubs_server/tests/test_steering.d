@@ -102,8 +102,6 @@ unittest
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Globals.buildForTests();
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	foreach (h; s.hydrophones)
-		h.shouldBeActive = false;
 	s.targetThrottle = 0.4f;
 	s.targetCourse = -dgr2rad(30);
 	s.rigidBody.wires[0].desiredLength = 600.0f;
@@ -118,7 +116,7 @@ unittest
 			s.targetCourse = dgr2rad(180);
 		writeWireCsvRow(fileWire, worldTime, s.rigidBody.wires[0]);
 	};
-	Globals.sim.worldTimeLimit = 460 * cast(ulong)1e6;
+	Globals.sim.worldTimeLimit = 160 * cast(ulong)1e6;
 	scope(exit) Globals.resetForTests();
 	Globals.sim.start();
 	Globals.sim.join();

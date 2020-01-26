@@ -92,8 +92,7 @@ final class Hydrophone
 		m_bearingErrNoise = p.bearingErrNoise;
 		m_flowNoiseMult = p.flowNoiseMult;
 		m_omniNoiseMult = p.omniNoiseMult;
-		// FIXME: math is not ready for omnidirectional hydrophones
-		assert(m_span > 0.0f && m_span < 2 * PI - MAX_HALO);
+		assert(m_span > 0.0f && m_span <= 2f * cast(float)PI, m_span.to!string);
 		assert(p.beamCount > 0);
 		m_beamAngle = m_span / p.beamCount;
 		m_listenToCellR = m_listenSpan / m_beamAngle;
@@ -125,7 +124,7 @@ final class Hydrophone
 	{
 		Transform2D m_transform;
 		vec2d m_prevPos;
-		double m_prevRot;
+		double m_prevRot = 0.0;
 		Antennae[] m_ant;
 		FIRFilter* m_tdsFilter;
 		int m_minFreq, m_maxFreq;
@@ -428,11 +427,10 @@ final class Hydrophone
 
 	private struct AntennaePrecalc
 	{
-		int beamStart;
-		int beamEnd;
+		SectorIntersection affectedBeamsProj;
 		double relBearing1;
 		double relBearing2;
-		// true when source is between beams
+		// true when source is visible for this antennae beams
 		bool inside;
 	}
 
@@ -466,6 +464,8 @@ final class Hydrophone
 	// calculated in opencl. That requires queuing in order to be efficient.
 	private CircQueue!SourcePrecalc m_sourceQueue;
 
+
+	/// precalculate world-space values and key gains for sound source.
 	private SourcePrecalc precalcForSource(SoundSource s)
 	{
 		SourcePrecalc res;
@@ -480,7 +480,9 @@ final class Hydrophone
 			caclOmniFactor(res.rangeEnd, m_localNoiseRangeCutoff));
 		assert(res.range > 0.0);
 		res.worldBearingStart = courseAngle(res.dirStart);
-		res.worldBearingEnd = courseAngle(res.dirEnd);
+		// FIXME: we always assume the shortest rotation to maintain angle continuity.
+		res.worldBearingEnd = res.worldBearingStart + angleDist(
+			courseAngle(res.dirEnd), res.worldBearingStart);
 		res.haloBaseRadius = (atan(s.radius / res.range) + pointHaloAngle(res.range)) *
 			(1 + uniform(-0.06f, 0.06f));
 		res.haloBound = fmin(HALO_GAIN * res.haloBaseRadius, MAX_HALO);
@@ -596,8 +598,8 @@ final class Hydrophone
 		PowerIntegr integr;
 		if (m_listenDirValid)
 		{
-			float left = m_listenDir + m_listenSpan / 2;
-			float right = m_listenDir - m_listenSpan / 2;
+			double left = m_listenDir + m_listenSpan / 2;
+			double right = m_listenDir - m_listenSpan / 2;
 			integr = integrateBetweenBeams(left, right,
 				p.worldBearingStart, p.worldBearingEnd, p.haloBound * SOUND_HALO_GAIN);
 			if (m_mirrored)
@@ -660,14 +662,15 @@ final class Hydrophone
 		float endPart;
 	}
 
-	private static PowerIntegr integrateBetweenBeams(float left, float right,
-		float brngStart, float brngEnd, float haloRadius, int integrPoints = 13)
+	private static PowerIntegr integrateBetweenBeams(double left, double right,
+		double brngStart, double brngEnd, float haloRadius, int integrPoints = 13)
 	{
 		assert(integrPoints >= 2);
 		assert(right <= left);
 		PowerIntegr res;
-		float drx = angleDist(brngEnd, brngStart) / (integrPoints - 1);
-		float relBearing = brngStart;
+		double drx = (brngEnd - brngStart) / (integrPoints - 1);
+		double relBearing = brngStart;
+		assert(left >= right);
 		Sector beamSector = Sector(left, right);
 		for (int i = 0; i < integrPoints; i++)
 		{
@@ -677,10 +680,13 @@ final class Hydrophone
 			float part = 0.0f;
 			if (sp.count == 1)
 			{
-				float normLeft = (sp.proj[0].left - 0.5f) * 2 * ERF_HALO_GAIN;
-				float normRight = (sp.proj[0].right - 0.5f) * 2 * ERF_HALO_GAIN;
-				assert(normRight >= normLeft);
-				part = 0.5f * (erf(normRight) - erf(normLeft));
+				double normLeft = (sp.proj[0].left - 0.5f) * 2 * ERF_HALO_GAIN;
+				double normRight = (sp.proj[0].right - 0.5f) * 2 * ERF_HALO_GAIN;
+				assert(normRight >= normLeft, normLeft.to!string ~ " " ~
+					normRight.to!string ~ " " ~ sp.proj[0].to!string ~ " beamSector: " ~
+					beamSector.to!string ~ ", relBearing: " ~ relBearing.to!string ~
+					", haloRadius: " ~ haloRadius.to!string);
+				part = 0.5 * (erf(normRight) - erf(normLeft));
 				assert(part >= 0.0f);
 				assert(part <= 1.0f);
 				float totalPartPart = part;
@@ -781,66 +787,52 @@ final class Hydrophone
 			}
 		}
 
-		int sectorNormToCell(float norm)
+		/// map normalized antennae sector coordinate to index in the beams array.
+		int sectorNormToBeam(float norm)
 		{
-			return max(0, min(beams.length - 1, floor(norm * beams.length).lrint)).to!int;
+			return max(0, min(beams.length - 1,
+				floor(norm * beams.length).lrint)).to!int;
 		}
 
-		/// returns true if source is visible for this antennae
+		/// Returns true if source is visible for this antennae.
 		bool precalcForAntennae(int antIdx, ref SourcePrecalc p)
 		{
 			float bearingErr = uniform(-m_bearingErrNoise, m_bearingErrNoise);
 
 			AntennaePrecalc* antPrec = &p.antPrec[antIdx];
 
-			antPrec.relBearing1 = clampAnglePi(
-				p.worldBearingStart + bearingErr - m_prevRot - rot);
-			antPrec.relBearing2 = clampAnglePi(
-				p.worldBearingEnd + bearingErr - m_transform.wrotation - rot);
+			// we do not clamp relative bearings, this causes rotation artifacts.
+			antPrec.relBearing1 =
+				p.worldBearingStart + bearingErr - m_prevRot - rot;
+			antPrec.relBearing2 =
+				p.worldBearingEnd + bearingErr - m_transform.wrotation - rot;
 
+			// sector in antennae-local reference frame that spans all beams. It is
+			// not moving.
 			Sector allCellsSect = Sector(beam0Left, -beam0Left);
-			SectorIntersection sectIsec1 = projectSectorsIntersect(
-				Sector(
-					antPrec.relBearing1 + p.haloBound,
-					antPrec.relBearing1 - p.haloBound),
-				allCellsSect);
-			// FIXME: assert(sectIsec1.count < 2, sectIsec1.to!string);
-			SectorIntersection sectIsec2 = projectSectorsIntersect(
-				Sector(
-					antPrec.relBearing2 + p.haloBound,
-					antPrec.relBearing2 - p.haloBound),
-				allCellsSect);
-			// FIXME: assert(sectIsec2.count < 2, sectIsec2.to!string);
-
-			// let's check visibility of this source
-			antPrec.beamStart = beams.length.to!int;
-			antPrec.beamEnd = -1;
-			if (sectIsec1.count == 0 && sectIsec2.count == 0)
-				return false;
-
-			// FIXME: we don't handle the case when the target passes behind the blind
-			// spot.
-
-			// now we operate on raw non-intersected projections
-			SectorProjection proj1 = projectSectors(
-				Sector(
-					antPrec.relBearing1 + p.haloBound,
-					antPrec.relBearing1 - p.haloBound),
-				allCellsSect);
-			SectorProjection proj2 = projectSectors(
-				Sector(
-					antPrec.relBearing2 + p.haloBound,
-					antPrec.relBearing2 - p.haloBound),
-				allCellsSect);
-			antPrec.beamStart = min(antPrec.beamStart,
-				sectorNormToCell(proj1.left));
-			antPrec.beamEnd = max(antPrec.beamEnd,
-				sectorNormToCell(proj1.right));
-			antPrec.beamStart = min(antPrec.beamStart,
-				sectorNormToCell(proj2.left));
-			antPrec.beamEnd = max(antPrec.beamEnd,
-				sectorNormToCell(proj2.right));
-			antPrec.inside = antPrec.beamEnd >= antPrec.beamStart;
+			// sector in antennae-local reference frame that spans all rays that the sound
+			// is coming from to this antennae.
+			assert(p.haloBound > 0);
+			assert(p.haloBound <= 2 * PI);
+			assert(antPrec.relBearing1 + p.haloBound > antPrec.relBearing1 - p.haloBound,
+				antPrec.relBearing1.to!string ~ " " ~
+				p.worldBearingStart.to!string ~ " " ~
+				m_prevRot.to!string ~ " " ~
+				bearingErr.to!string);
+			Sector soundEmissionSect = Sector(
+				max(antPrec.relBearing1 + p.haloBound, antPrec.relBearing2 + p.haloBound),
+				min(antPrec.relBearing1 - p.haloBound, antPrec.relBearing2 - p.haloBound));
+			assert(soundEmissionSect.left < soundEmissionSect.right + 2 * PI,
+				(*antPrec).to!string ~ " p: " ~ p.to!string ~
+				" prevRot " ~ m_prevRot.to!string ~
+				" m_transform.wrotation " ~ m_transform.wrotation.to!string);
+			antPrec.affectedBeamsProj = projectSectorsIntersect(
+				soundEmissionSect, allCellsSect);
+			antPrec.inside = antPrec.affectedBeamsProj.count > 0;
+			if (antPrec.inside)
+				assert(antPrec.affectedBeamsProj.proj[0].left !=
+					antPrec.affectedBeamsProj.proj[0].right,
+				(*antPrec).to!string);
 			return antPrec.inside;
 		}
 
@@ -863,20 +855,26 @@ final class Hydrophone
 				foreach (ref beam; beams)
 					beam += bandSum * omniMult;
 			}
-			// apply broadband power to beams
-			for (int beamId = antPrec.beamStart; beamId <= antPrec.beamEnd; beamId++)
+			// apply directional broadband power to beams
+			for (int i = 0; i < antPrec.affectedBeamsProj.count; i++)
 			{
-				float beamLeft = beam0Left - beamId * m_beamAngle;
-				float beamRight = beamLeft - m_beamAngle;
-				float powerPart = integrateBetweenBeams(beamLeft, beamRight,
-					antPrec.relBearing1, antPrec.relBearing2, p.haloBound).totalPart;
-				assert(!isNaN(powerPart));
-				if (powerPart > omniMult)
+				SectorProjection proj = antPrec.affectedBeamsProj.proj[i];
+				int beamStart = sectorNormToBeam(proj.left);
+				int beamEnd = sectorNormToBeam(proj.right);
+				for (int beamId = beamStart; beamId <= beamEnd; beamId++)
 				{
-					float addedIntensity = bandSum * (1.0f - omniMult) * powerPart;
-					beams[beamId] += addedIntensity;
-					if (m_mirrored)
-						beams[$ - beamId - 1] += addedIntensity;
+					float beamLeft = beam0Left - beamId * m_beamAngle;
+					float beamRight = beamLeft - m_beamAngle;
+					float powerPart = integrateBetweenBeams(beamLeft, beamRight,
+						antPrec.relBearing1, antPrec.relBearing2, p.haloBound).totalPart;
+					assert(!isNaN(powerPart));
+					if (powerPart > omniMult)
+					{
+						float addedIntensity = bandSum * (1.0f - omniMult) * powerPart;
+						beams[beamId] += addedIntensity;
+						if (m_mirrored)
+							beams[$ - beamId - 1] += addedIntensity;
+					}
 				}
 			}
 		}
@@ -936,16 +934,18 @@ void hydrophoneVsPropellerBalancingPlot(CommandQueue q,
 
 	for (size_t k = 0; k < spdMarksCount; k++)
 	{
+		h.transform.rotation = 0.0;
 		for (size_t i = 0; i < rowCount; i++)
 		{
 			h.onPreKinematics();
 			h.ktsStart = h.ktsEnd = dspd * k;
+			h.transform.rotation = -(i.to!double * 0.05);
 			h.resetAndStartIsotropic(q);
 			foreach (j, float spd; propSpeeds)
 			{
 				float shaftFreq = spd * shaftFreqPerMs;
 				propTrans.position = rotateVector(vec2d(0.0, (i + 1) * drange),
-					relBearings[j]);
+					relBearings[j] + i * 0.03);
 				prop.onPreKinematics();
 				prop.preUpdate(shaftFreq, spd);
 				prop.postUpdate(shaftFreq, spd, 1.0f);
@@ -954,258 +954,259 @@ void hydrophoneVsPropellerBalancingPlot(CommandQueue q,
 			h.flushSourceQueue();
 			h.endIsotropic();
 			h.m_ant[0].imprint(ilevels[i + k * rowCount]);
+			h.onPostKinematics();
 		}
 	}
 	printIlevelsToPng(testFileTitle ~ ".png", ilevels, 0.0f, 90.0f);
 }
 
 
-// unittest
-// {
-// 	import std.array;
-// 	import std.algorithm: map, maxElement;
-// 	import std.range;
-// 	import std.stdio;
-// 	import core.time: MonoTime;
-// 	import dsubs_sound.image;
-// 	import dsubs_sound.wav;
+unittest
+{
+	import std.array;
+	import std.algorithm: map, maxElement;
+	import std.range;
+	import std.stdio;
+	import core.time: MonoTime;
+	import dsubs_sound.image;
+	import dsubs_sound.wav;
 
-// 	DsubsSoundOpenclCtx ctx = s_clCtx;
-// 	CommandQueue q = ctx.queue(0);
-// 	Transform2D propTrans = new Transform2D();
-// 	PropellerSound prop = new PropellerSound(propTrans, stdPropellerProto());
-// 	float freqPerMs = 2.19f / 17.0f;
-// 	float[] speeds = [1.0f, 3.0f, 5.0f, 7.5f, 10.0f, 12.5f, 15.0f, 17.0f];
-// 	float[] relBearings = iota(0, speeds.length).map!(
-// 		i => (dgr2rad(75) - i * dgr2rad(150) / (speeds.length - 1)).to!float).array;
-// 	trace("relative bearings: ", relBearings);
+	DsubsSoundOpenclCtx ctx = s_clCtx;
+	CommandQueue q = ctx.queue(0);
+	Transform2D propTrans = new Transform2D();
+	PropellerSound prop = new PropellerSound(q, propTrans, stdPropellerProto());
+	float freqPerMs = 2.19f / 17.0f;
+	float[] speeds = [1.0f, 3.0f, 5.0f, 7.5f, 10.0f, 12.5f, 15.0f, 17.0f];
+	float[] relBearings = iota(0, speeds.length).map!(
+		i => (dgr2rad(75) - i * dgr2rad(150) / (speeds.length - 1)).to!float).array;
+	trace("relative bearings: ", relBearings);
 
-// 	HydrophonePrototype hp = HydrophonePrototype(
-// 		[0.0f],
-// 		250, GLOBAL_SRATE / 2, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f);
-// 	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
-// 	h.transform.rotation = PI; // good corner case
-// 	h.onPreKinematics();
-// 	float spdKts = mps2kts(0);
-// 	h.ktsStart = h.ktsEnd = spdKts;
+	HydrophonePrototype hp = HydrophonePrototype(
+		[0.0f],
+		250, GLOBAL_SRATE / 2, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f);
+	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
+	h.transform.rotation = PI; // good corner case
+	h.onPreKinematics();
+	float spdKts = mps2kts(0);
+	h.ktsStart = h.ktsEnd = spdKts;
 
-// 	// hydrophoneVsPropellerBalancingPlot(q, "std_hydrophone_vs_stdProp_30km",
-// 	// 	hp, stdPropellerProto(), 2.19f / 17.0f, 1.0f, 17.0f);
+	hydrophoneVsPropellerBalancingPlot(q, "std_hydrophone_vs_stdProp_30km",
+		hp, stdPropellerProto(), 2.19f / 17.0f, 1.0f, 17.0f);
 
-// 	// for (size_t i = 0; i < ilevels.length; i++)
-// 	// {
-// 	// 	// h.onPreKinematics();
-// 	// 	// h.transform.rotation = i * dgr2rad(0.5);
-// 	// 	h.resetAndStartIsotropic(q);
-// 	// 	foreach (j, float spd; speeds)
-// 	// 	{
-// 	// 		float freq = spd * freqPerMs;
-// 	// 		propTrans.position = rotateVector(vec2d(0.0, (i + 1) * -150.0), relBearings[j]);
-// 	// 		prop.onPreKinematics();
-// 	// 		prop.preUpdate(freq, spd);
-// 	// 		prop.postUpdate(freq, spd, 1.0f);
-// 	// 		h.applySoundSource(q, prop);
-// 	// 	}
-// 	// 	h.flushSourceQueue();
-// 	// 	h.endIsotropic();
-// 	// 	h.m_ant[0].imprint(ilevels[i]);
-// 	// }
-// 	// printIlevelsToPng("std_hydrophone_vs_std_propeller_30km.png", ilevels, 0.0f, 90.0f);
+	// for (size_t i = 0; i < ilevels.length; i++)
+	// {
+	// 	// h.onPreKinematics();
+	// 	// h.transform.rotation = i * dgr2rad(0.5);
+	// 	h.resetAndStartIsotropic(q);
+	// 	foreach (j, float spd; speeds)
+	// 	{
+	// 		float freq = spd * freqPerMs;
+	// 		propTrans.position = rotateVector(vec2d(0.0, (i + 1) * -150.0), relBearings[j]);
+	// 		prop.onPreKinematics();
+	// 		prop.preUpdate(freq, spd);
+	// 		prop.postUpdate(freq, spd, 1.0f);
+	// 		h.applySoundSource(q, prop);
+	// 	}
+	// 	h.flushSourceQueue();
+	// 	h.endIsotropic();
+	// 	h.m_ant[0].imprint(ilevels[i]);
+	// }
+	// printIlevelsToPng("std_hydrophone_vs_std_propeller_30km.png", ilevels, 0.0f, 90.0f);
 
-// 	// // test own speed vs detection capability
-// 	// float dspd = mps2kts(17) / ilevels.length;
-// 	// for (size_t i = 0; i < ilevels.length; i++)
-// 	// {
-// 	// 	h.onPreKinematics();
-// 	// 	h.ktsStart = h.ktsEnd = spdKts + dspd * i;
-// 	// 	h.transform.rotation = PI + i / 10.0f;
-// 	// 	h.resetAndStartIsotropic(q);
-// 	// 	foreach (j, float spd; speeds)
-// 	// 	{
-// 	// 		float freq = spd * freqPerMs;
-// 	// 		propTrans.position = rotateVector(vec2d(0.0, -2000.0), relBearings[j]);
-// 	// 		prop.onPreKinematics();
-// 	// 		prop.preUpdate(freq, spd);
-// 	// 		prop.postUpdate(freq, spd, 1.0f);
-// 	// 		h.applySoundSource(q, prop);
-// 	// 	}
-// 	// 	h.flushSourceQueue();
-// 	// 	h.endIsotropic();
-// 	// 	h.m_ant[0].imprint(ilevels[i]);
-// 	// }
-// 	// printIlevelsToPng("std_hydrophone_0-17ms_2km_target.png", ilevels, 0.0f, 90.0f);
+	// // test own speed vs detection capability
+	// float dspd = mps2kts(17) / ilevels.length;
+	// for (size_t i = 0; i < ilevels.length; i++)
+	// {
+	// 	h.onPreKinematics();
+	// 	h.ktsStart = h.ktsEnd = spdKts + dspd * i;
+	// 	h.transform.rotation = PI + i / 10.0f;
+	// 	h.resetAndStartIsotropic(q);
+	// 	foreach (j, float spd; speeds)
+	// 	{
+	// 		float freq = spd * freqPerMs;
+	// 		propTrans.position = rotateVector(vec2d(0.0, -2000.0), relBearings[j]);
+	// 		prop.onPreKinematics();
+	// 		prop.preUpdate(freq, spd);
+	// 		prop.postUpdate(freq, spd, 1.0f);
+	// 		h.applySoundSource(q, prop);
+	// 	}
+	// 	h.flushSourceQueue();
+	// 	h.endIsotropic();
+	// 	h.m_ant[0].imprint(ilevels[i]);
+	// }
+	// printIlevelsToPng("std_hydrophone_0-17ms_2km_target.png", ilevels, 0.0f, 90.0f);
 
-// 	// generate sound sample of cavitating std_propeller on 1km range
-// 	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
-// 	h.active = false;
-// 	h.active = true;
-// 	h.listenDir = PI;
-// 	float spd = 15.0f;
-// 	float freq = spd * freqPerMs;
-// 	trace("fundamental shaft frequency = ", freq);
-// 	h.ktsStart = h.ktsEnd = mps2kts(0);
-// 	h.transform.rotation = PI;
-// 	h.onPreKinematics();
+	// generate sound sample of cavitating std_propeller on 1km range
+	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
+	h.shouldBeActive = false;
+	h.shouldBeActive = true;
+	h.listenDir = PI;
+	float spd = 15.0f;
+	float freq = spd * freqPerMs;
+	trace("fundamental shaft frequency = ", freq);
+	h.ktsStart = h.ktsEnd = mps2kts(0);
+	h.transform.rotation = PI;
+	h.onPreKinematics();
 
-// 	float[] samples;
-// 	samples.length = GLOBAL_SRATE * 8;
-// 	for (int i = 0; i < 8; i++)
-// 	{
-// 		prop.onPreKinematics();
-// 		prop.preUpdate(freq, spd);
-// 		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
-// 			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
-// 		prop.postUpdate(freq, spd, 1.0f);
-// 		h.maintainImprints = true;
-// 		h.resetAndStartIsotropic(q);
-// 		assert(h.m_listenDirValid);
-// 		assert(h.m_ant[0].listenCell >= 0);
-// 		h.applySoundSource(q, prop);
-// 		h.flushSourceQueue();
-// 		assert(h.imprints.length == 1);
-// 		assert(h.imprints[0].source is prop);
-// 		assert(h.imprints[0].directionAvailable);
-// 		h.endIsotropic();
-// 		h.finalizeListenTds(q);
-// 		q.s_tds.enqueueRead(q,
-// 			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
-// 	}
-// 	q.finish();
-// 	// trace("samples: ", samples[0..16]);
-// 	float maxp = samples.map!(a => a.abs).maxElement;
-// 	assert(!isNaN(maxp));
-// 	trace("std_hydrophone_vs_std_propeller_cav_1km maxp: ", maxp);
-// 	writeWavFile("std_hydrophone_vs_std_propeller_cav_1km.wav",
-// 		samples, 0.8f / maxp, GLOBAL_SRATE);
+	float[] samples;
+	samples.length = GLOBAL_SRATE * 8;
+	for (int i = 0; i < 8; i++)
+	{
+		prop.onPreKinematics();
+		prop.preUpdate(freq, spd);
+		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
+			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
+		prop.postUpdate(freq, spd, 1.0f);
+		h.maintainImprints = true;
+		h.resetAndStartIsotropic(q);
+		assert(h.m_listenDirValid);
+		assert(h.m_ant[0].listenCell >= 0);
+		h.applySoundSource(q, prop);
+		h.flushSourceQueue();
+		assert(h.imprints.length == 1);
+		assert(h.imprints[0].source is prop);
+		assert(h.imprints[0].directionAvailable);
+		h.endIsotropic();
+		h.finalizeListenTds(q);
+		q.s_tds.enqueueRead(q,
+			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
+	}
+	q.finish();
+	// trace("samples: ", samples[0..16]);
+	float maxp = samples.map!(a => a.abs).maxElement;
+	assert(!isNaN(maxp));
+	trace("std_hydrophone_vs_std_propeller_cav_1km maxp: ", maxp);
+	writeWavFile("std_hydrophone_vs_std_propeller_cav_1km.wav",
+		samples, 0.8f / maxp, GLOBAL_SRATE);
 
-// 	// generate sound sample of silent-running std_propeller on 1km range
-// 	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
-// 	h.listenDir = PI;
-// 	h.active = false;
-// 	h.active = true;
-// 	spd = 4.0f;
-// 	freq = spd * freqPerMs;
-// 	trace("fundamental shaft frequency = ", freq);
-// 	h.ktsStart = h.ktsEnd = mps2kts(0);
+	// generate sound sample of silent-running std_propeller on 1km range
+	propTrans.position = vec2d(0.0, -1000.0).rotateVector(dgr2rad(3));
+	h.listenDir = PI;
+	h.shouldBeActive = false;
+	h.shouldBeActive = true;
+	spd = 4.0f;
+	freq = spd * freqPerMs;
+	trace("fundamental shaft frequency = ", freq);
+	h.ktsStart = h.ktsEnd = mps2kts(0);
 
-// 	samples.length = GLOBAL_SRATE * 8;
-// 	for (int i = 0; i < 8; i++)
-// 	{
-// 		prop.onPreKinematics();
-// 		prop.preUpdate(freq, spd);
-// 		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
-// 			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
-// 		prop.postUpdate(freq, spd, 1.0f);
-// 		h.resetAndStartIsotropic(q);
-// 		assert(h.m_listenDirValid);
-// 		assert(h.m_ant[0].listenCell >= 0);
-// 		h.applySoundSource(q, prop);
-// 		h.flushSourceQueue();
-// 		h.endIsotropic();
-// 		h.finalizeListenTds(q);
-// 		q.s_tds.enqueueRead(q,
-// 			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
-// 	}
-// 	q.finish();
-// 	// trace("samples: ", samples[0..16]);
-// 	maxp = samples.map!(a => a.abs).maxElement;
-// 	assert(!isNaN(maxp));
-// 	trace("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);
-// 	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav",
-// 		samples, 0.8f / maxp, GLOBAL_SRATE);
+	samples.length = GLOBAL_SRATE * 8;
+	for (int i = 0; i < 8; i++)
+	{
+		prop.onPreKinematics();
+		prop.preUpdate(freq, spd);
+		propTrans.position = vec2d(0.0, -1000.0).rotateVector(
+			dgr2rad(3) - (i + 1) * dgr2rad(6.0f / 8));
+		prop.postUpdate(freq, spd, 1.0f);
+		h.resetAndStartIsotropic(q);
+		assert(h.m_listenDirValid);
+		assert(h.m_ant[0].listenCell >= 0);
+		h.applySoundSource(q, prop);
+		h.flushSourceQueue();
+		h.endIsotropic();
+		h.finalizeListenTds(q);
+		q.s_tds.enqueueRead(q,
+			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
+	}
+	q.finish();
+	// trace("samples: ", samples[0..16]);
+	maxp = samples.map!(a => a.abs).maxElement;
+	assert(!isNaN(maxp));
+	trace("std_hydrophone_vs_std_propeller_1km maxp: ", maxp);
+	writeWavFile("std_hydrophone_vs_std_propeller_1km.wav",
+		samples, 0.8f / maxp, GLOBAL_SRATE);
 
-// 	// test prerecorded source
-// 	PrerecordedSoundPrototype psProto = PrerecordedSoundPrototype(
-// 		s_clCtx.getWavFile("../dsubs_sound/big_iron_8192.wav"),
-// 		15.0f, 90.0f);
-// 	PrerecordedSoundSource psSource = new PrerecordedSoundSource(
-// 		new Transform2D(), psProto, null);
-// 	psSource.transform.position = vec2d(0.0, -10000.0);
-// 	samples.length = GLOBAL_SRATE * 12;
-// 	for (int i = 0; i < 12; i++)
-// 	{
-// 		psSource.onPreKinematics();
-// 		h.resetAndStartIsotropic(q);
-// 		assert(h.m_listenDirValid);
-// 		assert(h.m_ant[0].listenCell >= 0);
-// 		psSource.transform.position = vec2d(0.0, -10000.0 + 9500 / 11 * i);
-// 		if (!psSource.finished)
-// 			h.applySoundSource(q, psSource);
-// 		h.flushSourceQueue();
-// 		h.endIsotropic();
-// 		h.finalizeListenTds(q);
-// 		q.s_tds.enqueueRead(q,
-// 			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
-// 		if (!psSource.finished)
-// 			psSource.onPostAcoustics();
-// 	}
-// 	q.finish();
-// 	maxp = samples.map!(a => a.abs).maxElement;
-// 	assert(!isNaN(maxp));
-// 	trace("std_hydrophone_vs_big_iron_1km maxp: ", maxp);
-// 	writeWavFile("std_hydrophone_vs_big_iron_1km.wav",
-// 		samples, 0.8f / maxp, GLOBAL_SRATE);
-// }
+	// test prerecorded source
+	PrerecordedSoundPrototype psProto = PrerecordedSoundPrototype(
+		s_clCtx.getWavFile("../dsubs_sound/big_iron_8192.wav"),
+		15.0f, 90.0f);
+	PrerecordedSoundSource psSource = new PrerecordedSoundSource(
+		new Transform2D(), psProto, null);
+	psSource.transform.position = vec2d(0.0, -10000.0);
+	samples.length = GLOBAL_SRATE * 12;
+	for (int i = 0; i < 12; i++)
+	{
+		psSource.onPreKinematics();
+		h.resetAndStartIsotropic(q);
+		assert(h.m_listenDirValid);
+		assert(h.m_ant[0].listenCell >= 0);
+		psSource.transform.position = vec2d(0.0, -10000.0 + 9500 / 11 * i);
+		if (!psSource.finished)
+			h.applySoundSource(q, psSource);
+		h.flushSourceQueue();
+		h.endIsotropic();
+		h.finalizeListenTds(q);
+		q.s_tds.enqueueRead(q,
+			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
+		if (!psSource.finished)
+			psSource.onPostAcoustics();
+	}
+	q.finish();
+	maxp = samples.map!(a => a.abs).maxElement;
+	assert(!isNaN(maxp));
+	trace("std_hydrophone_vs_big_iron_1km maxp: ", maxp);
+	writeWavFile("std_hydrophone_vs_big_iron_1km.wav",
+		samples, 0.8f / maxp, GLOBAL_SRATE);
+}
 
 
-// unittest
-// {
-// 	import std.array;
-// 	import std.algorithm: map, maxElement;
-// 	import std.range;
-// 	import std.stdio;
-// 	import core.time: MonoTime;
-// 	import dsubs_sound.image;
-// 	import dsubs_sound.wav;
+unittest
+{
+	import std.array;
+	import std.algorithm: map, maxElement;
+	import std.range;
+	import std.stdio;
+	import core.time: MonoTime;
+	import dsubs_sound.image;
+	import dsubs_sound.wav;
 
-// 	DsubsSoundOpenclCtx ctx = s_clCtx;
-// 	CommandQueue q = ctx.queue(0);
-// 	Transform2D propTrans = new Transform2D();
-// 	PropellerSoundPrototype pp = PropellerSoundPrototype(
-// 			loadSpectrumFromImageAndWarp(q,
-// 				"../dsubs_sound/minoga.png", 1.0f, 60, 110),
-// 			loadSpectrumFromImageAndWarp(q,
-// 				"../dsubs_sound/minoga_cav.png", 1.0f, 45, 130),
-// 			cast(immutable) new TrochoidModulatorParams([
-// 				Harmonic(1.0f, 0.25f),
-// 				Harmonic(3.0f, 0.75f)],
-// 				0.4, 0.7, -0.4),
-// 			0.25f, dgr2rad(30), 5.0f, 0.03f, 0.7f
-// 		);
-// 	PropellerSound prop = new PropellerSound(propTrans, pp);
-// 	HydrophonePrototype hp = HydrophonePrototype(
-// 		[0.0f],
-// 		250, GLOBAL_SRATE / 2, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f);
-// 	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
-// 	h.transform.rotation = PI; // good corner case
-// 	propTrans.position = vec2d(0.0, -1000.0);
-// 	float shaftRotFreq = 21.45f;
-// 	float spd = 29.0f;
+	DsubsSoundOpenclCtx ctx = s_clCtx;
+	CommandQueue q = ctx.queue(0);
+	Transform2D propTrans = new Transform2D();
+	PropellerSoundPrototype pp = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(q,
+				"../dsubs_sound/minoga.png", 1.0f, 60, 110),
+			loadSpectrumFromImageAndWarp(q,
+				"../dsubs_sound/minoga_cav.png", 1.0f, 45, 130),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.25f),
+				Harmonic(3.0f, 0.75f)],
+				0.4, 0.7, -0.4),
+			0.25f, dgr2rad(30), 5.0f, 0.03f, 0.7f
+		);
+	PropellerSound prop = new PropellerSound(q, propTrans, pp);
+	HydrophonePrototype hp = HydrophonePrototype(
+		[0.0f],
+		250, GLOBAL_SRATE / 2, dgr2rad(210.0f), 210, 2.0 / 90.0f, 3.0f);
+	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
+	h.transform.rotation = PI; // good corner case
+	propTrans.position = vec2d(0.0, -1000.0);
+	float shaftRotFreq = 21.45f;
+	float spd = 29.0f;
 
-// 	// hydrophoneVsPropellerBalancingPlot(q, "std_hydrophone_vs_minoga_30km",
-// 	// 	hp, pp, shaftRotFreq / spd, 20.0f, 29.0f);
+	// hydrophoneVsPropellerBalancingPlot(q, "std_hydrophone_vs_minoga_30km",
+	// 	hp, pp, shaftRotFreq / spd, 20.0f, 29.0f);
 
-// 	float[] samples;
-// 	h.listenDir = PI;
-// 	h.ktsStart = h.ktsEnd = 0.0f;
-// 	h.active = true;
-// 	samples.length = GLOBAL_SRATE * 4;
-// 	for (int i = 0; i < 4; i++)
-// 	{
-// 		prop.onPreKinematics();
-// 		prop.preUpdate(shaftRotFreq, spd);
-// 		prop.postUpdate(shaftRotFreq, spd, 1.0f);
-// 		h.resetAndStartIsotropic(q);
-// 		h.applySoundSource(q, prop);
-// 		h.flushSourceQueue();
-// 		h.endIsotropic();
-// 		h.finalizeListenTds(q);
-// 		q.s_tds.enqueueRead(q,
-// 			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
-// 	}
-// 	q.finish();
-// 	float maxp = samples.map!(a => a.abs).maxElement;
-// 	assert(!isNaN(maxp));
-// 	writeWavFile("std_hydrophone_vs_current.wav",
-// 		samples, 0.8f / maxp, GLOBAL_SRATE);
-// }
+	float[] samples;
+	h.listenDir = PI;
+	h.ktsStart = h.ktsEnd = 0.0f;
+	h.shouldBeActive = true;
+	samples.length = GLOBAL_SRATE * 4;
+	for (int i = 0; i < 4; i++)
+	{
+		prop.onPreKinematics();
+		prop.preUpdate(shaftRotFreq, spd);
+		prop.postUpdate(shaftRotFreq, spd, 1.0f);
+		h.resetAndStartIsotropic(q);
+		h.applySoundSource(q, prop);
+		h.flushSourceQueue();
+		h.endIsotropic();
+		h.finalizeListenTds(q);
+		q.s_tds.enqueueRead(q,
+			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
+	}
+	q.finish();
+	float maxp = samples.map!(a => a.abs).maxElement;
+	assert(!isNaN(maxp));
+	writeWavFile("std_hydrophone_vs_current.wav",
+		samples, 0.8f / maxp, GLOBAL_SRATE);
+}

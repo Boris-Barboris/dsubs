@@ -2,6 +2,7 @@ module dsubs_common.math.angles;
 
 import std.algorithm;
 import std.math;
+import std.conv: to;
 
 public import gfm.math.vector;
 
@@ -115,24 +116,36 @@ unittest
 	assert((vec2d(-1.0, 0.0) - rotateVector(vec2d(0.0, 1.0), PI_2)).length < 0.001);
 }
 
-/// Sector consists of two beams and area between them. Sector can be full circle.
-/// Area between beams spans clockwise - from left beam to right beam.
+/// Sector consists of two beams and area between them. Sector can be full circle,
+/// or even more than a full circle.
+/// Area/angle between beams spans clockwise - from left beam to right beam.
 struct Sector
 {
-	float left;		/// left beam, radians
-	float right;	/// right beam, radians
-	private float angle; // always non-positive
+	double left;		/// left beam, radians
+	double right;		/// right beam, radians
 
-	void normalize(bool clampLeft = true)
+	/// Non-positive number that represents the angle that left ray must rotate to
+	/// to become the right ray. Sector beams are not clamped to show that ray
+	/// 0 is not equal to ray 2 * PI : this is done to help with physics
+	/// calculations that imply continuity.
+	/// Rays that represent continuous relative rotation must not
+	/// lose the information that the object has spun around you twice and landed at
+	/// the same azimuth.
+	@property double angle() const
 	{
-		angle = angleDist(right, left);
-		if (angle > 0)
-			angle -= 2 * PI;
-		assert(!isNaN(angle));
-		assert(angle < 0);
-		if (clampLeft)
-			left = clampAnglePi(left);
-		right = left + angle;
+		double res = right - left;
+		assert(!isNaN(res));
+		assert(res <= 0);
+		return res;
+	}
+
+	/// rotate sector to it's equivalent with 'left' ray belonging to
+	/// [-PI, PI].
+	void normalize()
+	{
+		double savedAngle = angle;
+		left = clampAnglePi(left);
+		right = left + savedAngle;
 	}
 }
 
@@ -140,8 +153,8 @@ struct Sector
 /// 'onto' in case of projectSectorsIntersect. Clockwise is positive.
 struct SectorProjection
 {
-	float left;		// [0;1] for intersecting projection
-	float right;	// [left;1] for intersecting projection
+	double left;	// [0;1] for intersecting projection
+	double right;	// [left;1] for intersecting projection
 }
 
 /// Two sectors intersection is zero, one or two subsectors. This structure contains
@@ -149,33 +162,37 @@ struct SectorProjection
 struct SectorIntersection
 {
 	int count = 0;
-	SectorProjection[2] proj;	/// only the first "count" projections are valid.
+	/// only the first "count" projections are valid.
+	/// two sectors, even larger than a full circle ones, intersect in at most two
+	/// continuous angular coordinate regions.
+	SectorProjection[2] proj;
 }
 
-/// Simple non-intersecting projection with no clamping. You must be careful with
-/// the relative sector position and normalization.
-SectorProjection projectSectors(Sector what, Sector onto)
-{
-	SectorProjection res;
-	what.normalize(false);
-	onto.normalize(false);
-
-	res.left = (what.left - onto.left) / onto.angle;
-	res.right = res.left + what.angle / onto.angle;
-	return res;
-}
-
-/// Intersect and return at most two projections of sector intersections
+/// Intersect and return at most two projections of sector intersections.
+/// This function assumes that sectors are intersecting in traditional sense:
+/// some angle that belongs to one sector maps to the 2D vector that can be mapped
+/// to angle that belongs to another sector, wich means they are equal or
+/// 2 * PI * N - distant from each other.
 SectorIntersection projectSectorsIntersect(Sector what, Sector onto)
 {
 	SectorIntersection res;
+
+	// case 1: what is full circle or more. Than whole 'onto' is covered.
+	if (what.angle <= -2 * PI)
+	{
+		res.count = 1;
+		res.proj[0] = SectorProjection(0.0, 1.0);
+		return res;
+	}
+
+	// now we normalize the sectors - bring them to -2PI;2PI region.
 	what.normalize();
 	onto.normalize();
 
 	static struct Ray
 	{
 		int sector;
-		float dir;
+		double dir;
 	}
 
 	Ray[6] rays;
@@ -204,15 +221,15 @@ SectorIntersection projectSectorsIntersect(Sector what, Sector onto)
 
 	bool insideWhat;
 	bool insideOnto;
-	float left;
+	double left;
 	for (int i = 0; i < 6; i++)
 	{
 		int raySector = rays[i].sector;
 		if (insideOnto && insideWhat)
 		{
 			// we have met an end of an intersection
-			float normStart = (rays[i-1].dir - left) / onto.angle;
-			float normEnd = (rays[i].dir - left) / onto.angle;
+			double normStart = (rays[i-1].dir - left) / onto.angle;
+			double normEnd = (rays[i].dir - left) / onto.angle;
 			version(unittest)
 			{
 				assert(!isNaN(normStart));
@@ -249,13 +266,15 @@ unittest
 	assert((proj.proj[0].left - 0.5f).fabs < 1e-4);
 	assert((proj.proj[0].right - 1.0f).fabs < 1e-4);
 
-	proj = projectSectorsIntersect(Sector(1, -1), Sector(0.5, -0.5));
+	proj = projectSectorsIntersect(Sector(1 - 6 * PI, -1 - 6 * PI),
+		Sector(0.5 + 4 * PI, -0.5 + 4 * PI));
 	writeln(proj);
 	assert(proj.count == 1);
 	assert((proj.proj[0].left - 0.0f).fabs < 1e-4);
 	assert((proj.proj[0].right - 1.0f).fabs < 1e-4);
 
-	proj = projectSectorsIntersect(Sector(-0.1, 0.1), Sector(PI - 0.1, -PI + 0.1));
+	proj = projectSectorsIntersect(Sector(-0.1 - 6 * PI, 0.1 - 8 * PI),
+		Sector(PI - 0.1, -PI + 0.1));
 	writeln(proj);
 	assert(proj.count == 2);
 	assert((proj.proj[0].left - 0.516f).fabs < 1e-2);

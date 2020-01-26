@@ -166,7 +166,10 @@ final class Simulator
 				if (doSleep)
 					Thread.sleep(toSleep);
 				else
+				{
 					loopStart = now;
+					Thread.yield();
+				}
 			}
 		}
 		catch (Throwable t)
