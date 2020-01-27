@@ -1,0 +1,19 @@
+I wish to finalize the feature list and the concept of the release version.
+
+Preliminary market research results:
+    * Dsubs is a niche within a niche. Not only does a subsim genre experience lack of interest, it is also
+    divided by hardcore sim vs arcade shooting subgenres. Hardcore sensor-focused sim is interesting for a minority of
+    players.
+    * Casual audience genuinly cares about graphics.
+    * There are no modern hardcore subsims on the market besides Cold Waters that fits the arcade niche.
+    * Cold waters has ~50k copies (probably about 25k) sold on steam at $20 = $500.000 approx gross revenue.
+    * Cold waters has ~200 concurrent players. Even the most popular game will fit on one server.
+    * DW has <50k copies sold (probably way less, around 5k) at $7.5.
+
+
+Side competitors:
+    https://store.steampowered.com/app/602960/Barotrauma/
+    good chunk of ideas for submarine internal contents.
+
+
+Let's play from target player occupancy.
