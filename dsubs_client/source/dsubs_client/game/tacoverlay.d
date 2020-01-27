@@ -451,6 +451,31 @@ final class TacticalOverlay: Overlay
 		HoveredContactDescription m_hoverDesc;
 
 		enum int HOVER_DESC_YSHIFT = 28;
+
+		bool m_inMerge;
+		ContactId m_mergeSourceId;
+		TacticalContactElement m_mergeSourceElement;
+	}
+
+	@property bool inMerge() const { return m_inMerge; }
+
+	@property ContactId mergeSourceId() const { return m_mergeSourceId; }
+
+	void startMerge(TacticalContactElement sourceElement, ContactId newMergeSource)
+	{
+		m_inMerge = true;
+		m_mergeSourceId = newMergeSource;
+		m_mergeSourceElement = sourceElement;
+		Game.simState.gui.showMainHint(sourceElement, "Click on the contact to merge into",
+			{ m_inMerge = false; m_mergeSourceElement = null; });
+	}
+
+	void cancelMerge()
+	{
+		assert(m_inMerge);
+		assert(m_mergeSourceElement);
+		Game.simState.gui.hideMainHint(m_mergeSourceElement);
+		assert(!m_inMerge);
 	}
 
 	this(CameraController camCtrl)
@@ -502,7 +527,8 @@ final class TacticalOverlay: Overlay
 		if (btn == sfMouseLeft)
 		{
 			selectedContact = null;
-			inMerge = false;
+			if (inMerge)
+				cancelMerge();
 		}
 		if (btn == sfMouseRight)
 		{
@@ -722,7 +748,8 @@ final class TacticalOverlay: Overlay
 			if (!el.hidden)
 				el.onHide();
 		}
-		inMerge = false;
+		if (inMerge)
+			cancelMerge();
 	}
 
 	override void draw(Window wnd, long usecsDelta)
@@ -873,23 +900,6 @@ final class PlayerSubIcon: OverlayElement
 		super.draw(wnd, usecsDelta);
 		m_shape.render(wnd);
 		m_velLine.render(wnd);
-	}
-}
-
-private __gshared
-{
-	bool g_inMerge;
-	ContactId g_mergeSourceId;
-
-	@property bool inMerge() { return g_inMerge; }
-
-	@property void inMerge(bool rhs)
-	{
-		if (g_inMerge && !rhs)
-			Game.simState.gui.hideMainHint();
-		else if (!g_inMerge && rhs)
-			Game.simState.gui.showMainHint("Click on the contact to merge into");
-		g_inMerge = rhs;
 	}
 }
 
@@ -1364,12 +1374,12 @@ final class TacticalContactElement: OverlayElementWithHover
 			}
 			if (!m_panning)
 			{
-				if (g_inMerge)
+				if (tacowner.inMerge)
 				{
-					if (g_mergeSourceId != m_contact.id)
+					if (tacowner.mergeSourceId != m_contact.id)
 						Game.ciccon.sendMessage(immutable CICContactMergeReq(
-							g_mergeSourceId, m_contact.id));
-					inMerge = false;
+							tacowner.mergeSourceId, m_contact.id));
+					tacowner.cancelMerge();
 				}
 				else
 					tacowner.selectedContact = this;
@@ -1381,8 +1391,7 @@ final class TacticalContactElement: OverlayElementWithHover
 			// add merge to button
 			Button mbtn = builder(new Button()).fontSize(15).content("merge").build();
 			mbtn.onClick += {
-				inMerge = true;
-				g_mergeSourceId = m_contact.id;
+				tacowner.startMerge(this, m_contact.id);
 			};
 			// add toggle triangulation mode
 			Button tbtn = builder(new Button()).fontSize(15).content("toggle ray intersect").build();
@@ -1456,8 +1465,8 @@ final class TacticalContactElement: OverlayElementWithHover
 
 	override void drop()
 	{
-		if (g_inMerge && m_contact.id == g_mergeSourceId)
-			inMerge = false;
+		if (tacowner.inMerge && m_contact.id == tacowner.mergeSourceId)
+			tacowner.cancelMerge();
 		super.drop();
 	}
 

@@ -169,6 +169,8 @@ final class SimulationGUI
 		Label curCourse, curSpeed;
 		Label m_mainHintLabel;
 		Panel m_mainHintPanel;
+		Object m_mainHintOwner;
+		void delegate() m_onMainHintHidden;
 		TextField tgtCourseField, tgtThrottleField;
 		TextBox chatMessageBox;
 		WaterfallGui[] m_passiveGuis;
@@ -180,18 +182,34 @@ final class SimulationGUI
 
 	@property WireUi[] wireUis() { return m_wireUis; }
 
-	void showMainHint(string labelContent)
+	/// Sets main hint label content to labelContent and records
+	/// the owner of the label. When this particular hint is overwritten or hidden in any way,
+	/// onHintHidden will be called.
+	void showMainHint(Object hintOwner, string labelContent, void delegate() onHintHidden = null)
 	{
+		if (m_mainHintOwner !is hintOwner)
+		{
+			if (m_onMainHintHidden)
+				m_onMainHintHidden();
+		}
 		m_mainHintLabel.content = labelContent;
+		m_mainHintOwner = hintOwner;
+		m_onMainHintHidden = onHintHidden;
 		if (m_mainHintPanel.added)
 			return;
 		Game.guiManager.addPanel(m_mainHintPanel);
 	}
 
-	void hideMainHint()
+	/// hides main hint, but only if it is owned by the owner
+	void hideMainHint(Object hintOwner)
 	{
-		if (m_mainHintPanel.added)
+		if (hintOwner is m_mainHintOwner && m_mainHintPanel.added)
+		{
+			if (m_onMainHintHidden)
+				m_onMainHintHidden();
+			m_mainHintOwner = null;
 			Game.guiManager.removePanel(m_mainHintPanel);
+		}
 	}
 
 	@property auto waterfalls() { return m_passiveGuis.map!(wfgui => wfgui.wf); }
@@ -360,26 +378,32 @@ final class SimulationGUI
 		{
 			if (evt.code == sfKeyReturn)
 				trySendTgtCourse();
-			else
-				showMainHint("Press ENTER to apply");
 		};
 
 		tgtThrottleField.onKeyPressed += (evt)
 		{
 			if (evt.code == sfKeyReturn)
 				trySendTgtThrottle();
-			else
-				showMainHint("Press ENTER to apply");
+		};
+
+		tgtCourseField.onKbFocusGain += ()
+		{
+			showMainHint(tgtCourseField, "Press ENTER to apply");
+		};
+
+		tgtThrottleField.onKbFocusGain += ()
+		{
+			showMainHint(tgtThrottleField, "Press ENTER to apply");
 		};
 
 		tgtCourseField.onKbFocusLoss += ()
 		{
-			hideMainHint();
+			hideMainHint(tgtCourseField);
 		};
 
 		tgtThrottleField.onKbFocusLoss += ()
 		{
-			hideMainHint();
+			hideMainHint(tgtThrottleField);
 		};
 
 		Game.hotkeyManager.setHotkey(Hotkey(sfKeyC), ()

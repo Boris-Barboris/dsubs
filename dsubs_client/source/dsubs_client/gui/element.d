@@ -278,14 +278,22 @@ class GuiElement: IInputReceiver
 
 	// focuses
 	mixin Readonly!(bool, "kbFocused");
-	void handleKbFocusGain() { m_kbFocused = true; }
+	void handleKbFocusGain()
+	{
+		m_kbFocused = true;
+		onKbFocusGain();
+	}
 	void handleKbFocusLoss()
 	{
 		m_kbFocused = false;
 		onKbFocusLoss();
 	}
 	mixin Readonly!(bool, "mouseFocused");
-	void handleMouseFocusGain() { m_mouseFocused = true; }
+	void handleMouseFocusGain()
+	{
+		m_mouseFocused = true;
+		onMouseFocusGain();
+	}
 	void handleMouseFocusLoss()
 	{
 		m_mouseFocused = false;
@@ -359,6 +367,8 @@ class GuiElement: IInputReceiver
 	// events for users to subscribe to
 	Event!(void delegate(IInputReceiver oldOwner)) onMouseEnter;
 	Event!(void delegate(IInputReceiver newOwner)) onMouseLeave;
+	Event!(void delegate()) onMouseFocusGain;
+	Event!(void delegate()) onKbFocusGain;
 	Event!(void delegate()) onMouseFocusLoss;
 	Event!(void delegate()) onKbFocusLoss;
 	Event!(void delegate(int x, int y)) onMouseMove;

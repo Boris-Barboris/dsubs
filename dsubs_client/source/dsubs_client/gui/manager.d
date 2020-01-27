@@ -38,6 +38,7 @@ class Panel
 
 	private DList!(Panel).Iterator m_zorderIter;
 
+	/// returns true when the panel is added to manager
 	@property bool added() const { return m_manager !is null; }
 
 	/// If true, mouse click will push this panel on top of the stack.
