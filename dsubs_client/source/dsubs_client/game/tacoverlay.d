@@ -341,7 +341,7 @@ final class HydrophoneTrackerElement: OverlayElementWithHover
 		m_label = new Label();
 		m_label.enableScissorTest = false;
 		m_label.content = m_tracker.id.ctcId.to!string;
-		m_label.fontSize = 12;
+		m_label.fontSize = 16;
 		m_label.fontColor = sfWhite;
 		m_label.htextAlign = HTextAlign.CENTER;
 		m_label.size = vec2i(m_label.contentWidth.to!int, m_label.contentHeight.to!int + 4);

@@ -13,7 +13,29 @@ Preliminary market research results:
 
 Side competitors:
     https://store.steampowered.com/app/602960/Barotrauma/
-    good chunk of ideas for submarine internal contents.
+    good chunk of ideas for submarine internal systems.
 
 
 Let's play from target player occupancy.
+
+Campaign length of 8 hours?
+
+What are dsubs strengths? Rich acoustics model, actual sound-based gameplay.
+Sound pattern recognition, acoustic humor, ping shenanigans, underwater signalling,
+music.
+
+Campaign can tell a story of a serviceman in 2D world of underwater ships that
+communicate entirely through sounds.
+
+
+Campaign ideas:
+* Smuggler patrol, transponder.
+* Hunting poachers.
+* Music-based identification of an impostor.
+* Leviathan, or some other mythical entity.
+* Weather effects that block active sonar. Storm equivalent.
+* Strong currents as strategic points.
+* Covert missions where you must not be classified.
+* Duel with very cunning AI captain.
+* No escort missions because they are not fun.
+* Full-scale naval battle, many vs many.

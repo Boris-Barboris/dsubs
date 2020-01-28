@@ -121,8 +121,8 @@ class PanoramicDisplay(DataIntType): GuiElement
 
 	struct PanoramicParams
 	{
-		int compassHeight = 18;
-		int headerHeight = 18;
+		int compassHeight = 24;
+		int headerHeight = 24;
 		int width = 360 * 8;
 		int height = -1;
 		int camViewPortWidth = 360 * 8;
@@ -818,7 +818,7 @@ final class Waterfall: PanoramicDisplay!ushort
 			float m_bearing;
 			LineShape m_line;
 			enum sfColor PEAK_COLOR = sfColor(100, 100, 100, 255);
-			enum float PEAK_HEIGHT = 5;
+			enum float PEAK_HEIGHT = 8;
 		}
 
 		this(TrackerOverlay to, float bearing)
