@@ -449,8 +449,10 @@ final class TorpedoGuidance: IGuidance
 					}
 				}
 				Globals.auxTaskPool.put(task(&reportFunc));
+				trace(v, " is killed in explosion");
 			}
-			trace(v, " is killed in explosion");
+			else
+				trace(v, " is in explosion radius");
 		}
 		m_torpedo.kill("detonation");
 		SoundSource detonationSoundSource = new PrerecordedSoundSource(
