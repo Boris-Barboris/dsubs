@@ -44,5 +44,5 @@ Campaign ideas:
 Looks like good entity db editor, balancing tool and level editors are mandatory.
 It can be done without level editor, but should it be? Probably too time-consuming. Maybe there are existing
 2d editors that can be repurposed.
-Lobby and instancing system needed for campaigns.
+Lobby and instancing system needed for campaigns. Backend split into two service layers.
 Time acceleration may be a good feature that is easy to implement, but should be avoided via mission design.
