@@ -827,7 +827,8 @@ Active sonars:
 		af.mass = 30.0f;
 		af.maxSpeed = 7.0f;
 		af.reflprot = ReflectorPrototype(vec2f(4.0f, 15.0f), [-20.0f, -20.0f, -20.0f]);
-		m_animals["humpback"] = af;
+		af.species = "humpback whale";
+		m_animals[af.species] = af;
 	}
 
 }

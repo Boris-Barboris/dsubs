@@ -11,6 +11,7 @@ import dsubs_server.common;
 import dsubs_server.player: Captain, Player;
 import dsubs_server.bots: BotCaptain;
 import dsubs_server.vessel: Vessel;
+import dsubs_server.animal: Animal;
 import dsubs_server.submarine;
 import dsubs_server.torpedo;
 
@@ -98,9 +99,25 @@ final class DatabaseService
 		Torpedo weapon)
 	{
 		Submarine deadSub = cast(Submarine) deadVessel;
-		if (deadSub is null)
+		Animal deadAnimal = cast(Animal) deadVessel;
+		if (deadSub is null && deadAnimal is null)
 			return;
-		Captain deadCaptain = deadSub.captain;
+		string deadCaptainName;
+		string deadCaptainType;
+		string deadVesselPrototypeName;
+		if (deadSub)
+		{
+			Captain deadCaptain = deadSub.captain;
+			deadCaptainName = deadCaptain ? deadCaptain.name: null;
+			deadCaptainType = captainType(deadCaptain);
+			deadVesselPrototypeName = deadSub.prototypeName;
+		}
+		else
+		{
+			deadCaptainName = deadAnimal.name;
+			deadCaptainType = "animal";
+			deadVesselPrototypeName = deadAnimal.species;
+		}
 		void func(Connection con)
 		{
 			con.exec("INSERT INTO kill_records " ~
@@ -110,9 +127,9 @@ final class DatabaseService
 				shooter ? shooter.name: null,
 				captainType(shooter),
 				shooterSub ? shooterSub.prototypeName : null,
-				deadCaptain ? deadCaptain.name: null,
-				captainType(deadCaptain),
-				deadSub.prototypeName,
+				deadCaptainName,
+				deadCaptainType,
+				deadVesselPrototypeName,
 				weapon.prototypeName,
 				weapon.guidance.distanceTraveled
 			);

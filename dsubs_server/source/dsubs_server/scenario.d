@@ -337,7 +337,8 @@ final class BattleRoyale: Scenario
 		while (whalesToSpawn-- > 0)
 		{
 			info("Spawning whale");
-			Animal animal = Globals.entityDb.getAnimalFactory("humpback").build();
+			Animal animal = Globals.entityDb.getAnimalFactory("humpback whale").
+				build("Akhmed");
 			vec2d spawnPos;
 			double spawnRot;
 			getRandomSpawn(spawnPos, spawnRot);

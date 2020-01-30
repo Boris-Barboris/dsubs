@@ -18,6 +18,7 @@ final class Animal
 {
 	private
 	{
+		string m_name;
 		Transform2D m_transform;
 		RigidBody m_rigidBody;
 		AnimalFactory m_factory;
@@ -27,6 +28,10 @@ final class Animal
 		vec2d m_velocity = vec2d(0, 0);
 		PrerecordedSoundSource m_currentSoundSource;
 	}
+
+	@property string name() const { return m_name; }
+
+	@property string species() const { return m_factory.species; }
 
 	@property Transform2D transform() { return m_transform; }
 
@@ -138,10 +143,12 @@ final class AnimalFactory
 	float maxSpeed = 0.0;
 	ReflectorPrototype reflprot;
 	float mass;
+	string species;
 
-	final Animal build() const
+	final Animal build(string name) const
 	{
 		Animal res = new Animal(cast() this);
+		res.m_name = name;
 		res.m_rigidBody.mass = mass;
 		res.m_rigidBody.moi = 1.0f;
 		res.m_reflector = new Reflector(res.m_transform, reflprot);
