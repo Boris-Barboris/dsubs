@@ -4,7 +4,7 @@ CREATE TABLE players (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     login_name TEXT NOT NULL UNIQUE,
     login_password TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT UTC_TIMESTAMP
 );
 
 CREATE TABLE captain_type (
@@ -15,7 +15,7 @@ INSERT INTO captain_type VALUES ('player'), ('bot');
 
 CREATE TABLE kill_records (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT UTC_TIMESTAMP,
     shooter_captain_name TEXT,
     shooter_captain_type varchar(32),
     shooter_hull_name TEXT,
