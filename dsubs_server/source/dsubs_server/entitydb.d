@@ -246,7 +246,8 @@ private:
 		);
 		pdescs ~= pd;
 		pd.type = WeaponParamType.sensorMode;
-		pd.WeaponSensorMode = WeaponSensorMode.active | WeaponSensorMode.passive;
+		pd.sensorModes = cast(WeaponSensorMode) (
+			WeaponSensorMode.active | WeaponSensorMode.passive);
 		pdescs ~= pd;
 
 		pf = new PropulsorFactory(
