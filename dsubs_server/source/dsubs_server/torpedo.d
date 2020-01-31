@@ -874,7 +874,7 @@ final class TorpedoFactory: WeaponFactory
 				case WeaponParamType.sensorMode:
 					enforce(sensorModes & param.sensorMode, "invalid sensor mode");
 					enforce(popcnt(param.sensorMode) == 1, "must choose one");
-					enforce(param.sensorMode == WeaponSensorMode.active, "only active sensor mode implemented");
+					enforce(param.sensorMode != WeaponSensorMode.activePassive, "alternating mode not implemented");
 					g.m_sensorMode = param.sensorMode;
 					break;
 				case WeaponParamType.searchPattern:

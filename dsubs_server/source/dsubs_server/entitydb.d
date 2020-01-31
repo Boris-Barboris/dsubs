@@ -245,6 +245,9 @@ private:
 			400.0f, 150.0f, 200.0f
 		);
 		pdescs ~= pd;
+		pd.type = WeaponParamType.sensorMode;
+		pd.WeaponSensorMode = WeaponSensorMode.active | WeaponSensorMode.passive;
+		pdescs ~= pd;
 
 		pf = new PropulsorFactory(
 			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
@@ -285,6 +288,7 @@ Search patterns: straight, snake, spiral.
 				90.0f,
 				cast(WeaponParamType)(
 					WeaponParamType.activeCourse |
+					WeaponParamType.sensorMode |
 					WeaponParamType.marchCourse |
 					WeaponParamType.activeSpeed |
 					WeaponParamType.marchSpeed |
