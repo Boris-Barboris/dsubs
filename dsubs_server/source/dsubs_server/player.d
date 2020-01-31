@@ -3,7 +3,7 @@ module dsubs_server.player;
 import std.algorithm.iteration;
 import std.array: array;
 import std.string: strip;
-import std.process: environment, pipeProcess, Redirect;
+import std.process: environment, pipeProcess, Redirect, wait;
 import std.parallelism: task;
 
 import core.atomic;
@@ -568,6 +568,7 @@ final class PlayerCollection
 				void doSend()
 				{
 					auto pipes = pipeProcess(["/usr/bin/sendmail", "-t"], Redirect.stdin);
+					scope(exit) wait(pipes.pid);
 					pipes.stdin.writeln("To: " ~ emailDest);
 					pipes.stdin.writeln("Subject: dsubs_server authentication");
 					pipes.stdin.writeln("");
