@@ -179,9 +179,8 @@ final class PropellerSound: SoundSource
 
 	private float genISpec(CommandQueue q, float avgRange, float relBearing,
 		ref ISpectrum dest, const ref ISpectrum source, int minFreq, int maxFreq,
-		float kstart, float kend, float dissMod)
+		float kavg, float dissMod)
 	{
-		float kavg = (kstart.fabs + kend.fabs) / 2;
 		float bearingK = 1.0f -
 			0.5f * (1.0f - m_aftIntensity) * (cos(2.0f * relBearing) + 1.0f);
 		float imult = kavg * bearingK;
@@ -236,6 +235,7 @@ final class PropellerSound: SoundSource
 		float range = max(10.0f, (listenerPos - m_transform.wposition).length);
 		float prevRange = max(10.0f, (prevListenerPos - prevPos).length);
 		float avgRange = 0.5f * (range + prevRange);
+		assert(!isNaN(avgRange));
 		float relBearing =
 			courseAngle(listenerPos - m_transform.wposition) - m_transform.wrotation;
 		// now actual power calculation
@@ -253,30 +253,40 @@ final class PropellerSound: SoundSource
 			(m_normalVelEnd - m_critNormalVel) * fabs(m_normalVelEnd - m_critNormalVel) :
 			0.0f;
 		assert(!isNaN(cavSqrEnd));
+		float kavg = 0.5f * (freqCubeStart.fabs + freqCubeEnd.fabs);
 		// broadband component
-		float kavg = genISpec(q, avgRange, relBearing, q.s_ispec, *m_baseBBSpectrum,
-			minFreq, maxFreq, freqCubeStart, freqCubeEnd, dissMod);
-		if (needTds && kavg > 0.0f)
+		if (kavg > 0.0f)
 		{
-			q.s_ispec.toTimeDomain(q, q.s_tds);
-			doModulate(q, q.s_tds, kavg, freqCubeStart / pow(prevRange, 2),
-				freqCubeEnd / pow(range, 2));
-			onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
+			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec, *m_baseBBSpectrum,
+				minFreq, maxFreq, kavg, dissMod);
+			assert(!isNaN(kavgScaled));
+			if (needTds)
+			{
+				q.s_ispec.toTimeDomain(q, q.s_tds);
+				doModulate(q, q.s_tds, kavgScaled, freqCubeStart / pow(prevRange, 2),
+					freqCubeEnd / pow(range, 2));
+				onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
+			}
+			else
+				onTdsReady(null, &q.s_bandSumBuf, null);
 		}
-		else
-			onTdsReady(null, &q.s_bandSumBuf, null);
 		// cavitation component
-		kavg = genISpec(q, avgRange, relBearing, q.s_ispec, *m_baseCavSpectrum,
-			minFreq, maxFreq, cavSqrStart, cavSqrEnd, dissMod);
-		if (needTds && kavg > 0.0f)
+		kavg = 0.5f * (cavSqrStart.fabs + cavSqrEnd.fabs);
+		if (kavg > 0.0f)
 		{
-			q.s_ispec.toTimeDomain(q, q.s_tds);
-			doModulate(q, q.s_tds, kavg, cavSqrStart / pow(prevRange, 2),
-				cavSqrEnd / pow(range, 2));
-			onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
+			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec, *m_baseCavSpectrum,
+				minFreq, maxFreq, kavg, dissMod);
+			assert(!isNaN(kavgScaled));
+			if (needTds)
+			{
+				q.s_ispec.toTimeDomain(q, q.s_tds);
+				doModulate(q, q.s_tds, kavgScaled, cavSqrStart / pow(prevRange, 2),
+					cavSqrEnd / pow(range, 2));
+				onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
+			}
+			else
+				onTdsReady(null, &q.s_bandSumBuf, null);
 		}
-		else
-			onTdsReady(null, &q.s_bandSumBuf, null);
 	}
 }
 
