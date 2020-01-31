@@ -3,6 +3,8 @@ module dsubs_server.player;
 import std.algorithm.iteration;
 import std.array: array;
 import std.string: strip;
+import std.process: environment, pipeProcess, Redirect, wait;
+import std.parallelism: task;
 
 import core.atomic;
 
@@ -557,6 +559,30 @@ final class PlayerCollection
 				Globals.database.insertPlayer(username, password);
 			else if (pdb.login_password != password)
 				throw new AuthException("invalid login or password");
+			string emailDest = environment.get("EMAIL_DEST");
+			if (emailDest)
+			{
+				info("sending mail");
+				string mailToSend = "user " ~ pdb.login_name ~
+					" has authenticated";
+				void doSend()
+				{
+					auto pipes = pipeProcess(["/usr/bin/sendmail", "-t"], Redirect.stdin);
+					scope(exit) wait(pipes.pid);
+					pipes.stdin.writeln("To: " ~ emailDest);
+					pipes.stdin.writeln("Subject: dsubs_server authentication");
+					pipes.stdin.writeln("");
+					pipes.stdin.writeln(mailToSend);
+					// a single period tells sendmail we are finished
+					pipes.stdin.writeln(".");
+					// but at this point sendmail might not see it, we need to flush
+					pipes.stdin.flush();
+					// sendmail happens to exit on ".", but sometimes you have to
+					// close the file:
+					pipes.stdin.close();
+				}
+				Globals.auxTaskPool.put(task(&doSend));
+			}
 		}
 		synchronized(Globals.simMut.reader)
 		{
