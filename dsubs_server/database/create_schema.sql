@@ -11,7 +11,7 @@ CREATE TABLE captain_type (
     name varchar(32) PRIMARY KEY
 );
 
-INSERT INTO captain_type VALUES ('player'), ('bot');
+INSERT INTO captain_type VALUES ('player'), ('bot'), ('animal');
 
 CREATE TABLE kill_records (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
