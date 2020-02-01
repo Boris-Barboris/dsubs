@@ -360,6 +360,7 @@ final class Hydrophone
 		float flowNoiseMultExternal = 1.0f;
 		foreach (fnm; flowNoiseMultipliers)
 			flowNoiseMultExternal *= fnm.getFlowNoiseMult();
+		assert(!isNaN(flowNoiseMultExternal));
 
 		void dispatchFlowCalc(ref ISpectrum spec, float kts)
 		{
@@ -438,10 +439,13 @@ final class Hydrophone
 	private void awaitIsotropicBuffers()
 	{
 		// if needed
-		if (m_isotropicReadyEvt != AsyncEvent.init)
+		if (m_waterNoiseReadyEvt != AsyncEvent.init)
 		{
 			m_waterNoiseReadyEvt.waitFor();
 			m_waterNoiseReadyEvt = AsyncEvent.init;
+		}
+		if (m_isotropicReadyEvt != AsyncEvent.init)
+		{
 			m_isotropicReadyEvt.waitFor();
 			m_isotropicReadyEvt = AsyncEvent.init;
 		}
@@ -545,7 +549,7 @@ final class Hydrophone
 			popSourceSignal();
 		}
 		// source is visible, let's issue sound rendering commands
-		startSourceCalc(q, s, m_sourceQueue.pushBack(prec));
+		startSourceCalc(q, s, &m_sourceQueue.pushBack(prec));
 	}
 
 	/// Process leftovers in source queue
@@ -620,7 +624,7 @@ final class Hydrophone
 				m_totalOmni - si.ownOmniIntensity).toDb;
 	}
 
-	private void startSourceCalc(CommandQueue q, SoundSource s, ref SourcePrecalc p)
+	private void startSourceCalc(CommandQueue q, SoundSource s, SourcePrecalc* p)
 	{
 		bool needTds = m_listenDirValid;
 
@@ -635,7 +639,8 @@ final class Hydrophone
 			{
 				double leftMirrored = right + 2.0 * (m_prevRot - right);
 				double rightMirrored = left + 2.0 * (m_prevRot - left);
-				PowerIntegr integrMirror = integrateBetweenBeams(leftMirrored, rightMirrored,
+				PowerIntegr integrMirror = integrateBetweenBeams(
+					leftMirrored, rightMirrored,
 					p.worldBearingStart, p.worldBearingEnd, p.haloBound * SOUND_HALO_GAIN);
 				if (integrMirror.totalPart > integr.totalPart)
 					integr = integrMirror;
@@ -650,7 +655,7 @@ final class Hydrophone
 		void onTdsReady(Intensity* bandIntSum, Buffer* bandIntensitySumBuf, Tds* tds)
 		{
 			assert(p.components < p.MAX_COMPONENTS);
-			if (bandIntSum != null)
+			if (bandIntSum !is null)
 			{
 				assert(!isNaN(bandIntSum.val));
 				// band intensity sum is already calculated on the CPU
@@ -881,6 +886,8 @@ final class Hydrophone
 			// we actually draw average bin intensity
 			bandSum /= GLOBAL_SRATE / 2;
 			float omniMult = p.omniFactorEnd * m_directivity * m_omniNoiseMult;
+			assert(omniMult <= 1.0f, p.to!string);
+			assert(omniMult >= 0.0f, p.to!string);
 			if (omniMult > 0.0f)
 			{
 				foreach (ref beam; beams)

@@ -67,7 +67,7 @@ class Transform2D
 			t.propagate();
 	}
 
-	protected void rebuild()
+	void rebuild()
 	{
 		m_localTransform = mat3x3d.scaling(m_scale);
 		m_localTransform = mat3x3d.rotateZ(m_rotation) * m_localTransform;

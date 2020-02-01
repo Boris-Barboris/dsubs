@@ -32,6 +32,7 @@ struct CircQueue(T, bool canOverwrite = false)
 	void popFront()
 	{
 		assert(len > 0);
+		arr[ifront] = T.init;
 		ifront = (ifront + 1) % capacity;
 		len--;
 	}

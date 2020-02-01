@@ -32,6 +32,13 @@ abstract class SoundSource
 		onPreKinematics += &savePrevPos;
 	}
 
+	/// Rebuild transform's internal caches to prevent further recalculations
+	/// in threaded code.
+	final void refreshTransform()
+	{
+		m_transform.rebuild();
+	}
+
 	/// world-space position of emitter center
 	final @property vec2d position() { return m_transform.wposition; }
 
@@ -257,8 +264,8 @@ final class PropellerSound: SoundSource
 		// broadband component
 		if (kavg > 0.0f)
 		{
-			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec, *m_baseBBSpectrum,
-				minFreq, maxFreq, kavg, dissMod);
+			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec,
+				*m_baseBBSpectrum, minFreq, maxFreq, kavg, dissMod);
 			assert(!isNaN(kavgScaled));
 			if (needTds)
 			{
@@ -274,8 +281,8 @@ final class PropellerSound: SoundSource
 		kavg = 0.5f * (cavSqrStart.fabs + cavSqrEnd.fabs);
 		if (kavg > 0.0f)
 		{
-			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec, *m_baseCavSpectrum,
-				minFreq, maxFreq, kavg, dissMod);
+			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec,
+				*m_baseCavSpectrum, minFreq, maxFreq, kavg, dissMod);
 			assert(!isNaN(kavgScaled));
 			if (needTds)
 			{

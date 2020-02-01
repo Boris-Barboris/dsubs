@@ -124,6 +124,9 @@ final class AcousticEnv
 
 	void processActiveSonars()
 	{
+		foreach (Reflector r; m_reflectors)
+			r.refreshTransform();
+
 		foreach (ActiveSonar sonar; Globals.taskPool.parallel(m_sonars, 1))
 		{
 			if (!sonar.active)
@@ -145,28 +148,33 @@ final class AcousticEnv
 
 	void applySourcesOnHydrophones()
 	{
+		foreach (source; m_sources)
+			source.refreshTransform();
+
 		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
-			if (!hydrophone.active)
-				continue;
-			int workerIdx = Globals.taskPool.workerIndex.to!int;
-			auto q = Globals.sctx.queue(workerIdx);
-			hydrophone.resetAndStartIsotropic(q);
-			foreach (source; m_sources)
-				hydrophone.applySoundSource(q, source);
-			if (hydrophone.listenDirValid)
-				hydrophone.startFinalizePcbData(q);
+			if (hydrophone.active)
+			{
+				size_t workerIdx = Globals.taskPool.workerIndex;
+				auto q = Globals.sctx.queue(workerIdx);
+				hydrophone.resetAndStartIsotropic(q);
+				foreach (source; m_sources)
+					hydrophone.applySoundSource(q, source);
+				if (hydrophone.listenDirValid)
+					hydrophone.startFinalizePcbData(q);
+			}
 		}
 
 		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
-			if (!hydrophone.active)
-				continue;
-			hydrophone.flushSourceQueue();
-			hydrophone.endIsotropic();
-			hydrophone.adjustImprintsToOmni();
-			if (hydrophone.listenDirValid)
-				hydrophone.endFinalizePcbData();
+			if (hydrophone.active)
+			{
+				hydrophone.flushSourceQueue();
+				hydrophone.endIsotropic();
+				hydrophone.adjustImprintsToOmni();
+				if (hydrophone.listenDirValid)
+					hydrophone.endFinalizePcbData();
+			}
 		}
 		/// wait for completion of all OpenCL operations
 		for (size_t i = 0; i < Globals.sctx.queueCount; i++)

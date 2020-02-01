@@ -65,6 +65,8 @@ final class Reflector
 
 	private ReflectorPrototype m_proto;
 
+	void refreshTransform() { m_transform.rebuild(); }
+
 	/// calculate width, depth and reflectivity fields of PreparedReflector
 	public void calcForEmitter(vec2d emitterPos, ref PreparedReflector res) const
 	{
