@@ -24,9 +24,7 @@ sudo virsh shutdown win7
 echo "building Trusty"
 echo "starting lxd"
 sudo systemctl start lxd
-sleep 15
-sudo systemctl restart lxd
-sleep 15
+sleep 10
 sudo lxc start dsubstrusty
 sleep 10
 ssh dsubstrusty "
