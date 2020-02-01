@@ -295,6 +295,11 @@ final class Tube
 		weaponParams[val.type] = val;
 	}
 
+	@property WeaponSensorMode sensorMode() const
+	{
+		return weaponParams[WeaponParamType.sensorMode].sensorMode;
+	}
+
 	@property void sensorMode(WeaponSensorMode rhs)
 	{
 		WeaponParamValue val;

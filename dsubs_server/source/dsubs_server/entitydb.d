@@ -280,8 +280,9 @@ private:
 				"Minoga",
 `"Minoga" heavy torpedo.
 
-Sensors: active sonar.
-Speed range: 21-29 m/s.
+Sensors: active sonar or passive hydrophone.
+Effective speed range (active): 21-29 m/s.
+Effective speed range (passive): 21-26 m/s.
 Max range (29m/s): 7000m.
 Max range (21m/s): 9500m.
 Search patterns: straight, snake, spiral.
@@ -454,6 +455,7 @@ Search patterns: straight, snake, spiral.
 			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -35.0f)),
 			hprotoInternal);
 		hydroProtos[$-1].hydroProto.mirrored = true;
+		hydroProtos[$-1].hydroProto.imageBlackLevel = 10.0f;
 		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(600.0f, 1);
 		sp = new SubmarineFactory(
 			cast(immutable(SubmarineTemplate)) SubmarineTemplate(

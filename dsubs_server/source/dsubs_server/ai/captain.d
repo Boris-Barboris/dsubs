@@ -1120,7 +1120,6 @@ final class AICaptain
 			vec2d tgtPos, Tube tube, string weapon)
 		{
 			assert(weapon == "Minoga");
-			WeaponParamValue[] res;
 			vec2d posDiff = tgtPos - tube.transform.wposition;
 			WeaponFactory factory = Globals.entityDb.getWeaponFactory(weapon);
 			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.marchCourse);
@@ -1134,7 +1133,7 @@ final class AICaptain
 			WeaponParamValue speed = WeaponParamValue(WeaponParamType.activeSpeed);
 			speed.speed = uniform(factory.activeSpeedRange.min,
 				factory.activeSpeedRange.max);
-			res = [courseParam, activationRangeParam, search, speed]
+			WeaponParamValue[] res = [courseParam, activationRangeParam, search, speed];
 			if (m_difficulty != BOT_DIFFICULTY.easy)
 			{
 				// pasive torpedo is too dangerous, give it to medium or hard bots

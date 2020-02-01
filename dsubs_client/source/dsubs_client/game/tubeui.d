@@ -28,7 +28,7 @@ private
 {
 	enum int FONT = 12;
 	enum int LAUNCH_FONT = 15;
-	enum int AIM_BLOCK_HEIGHT = 100;
+	enum int AIM_BLOCK_HEIGHT = 120;
 }
 
 
@@ -317,6 +317,33 @@ final class TubeUI
 				Game.window.mousePos, FONT + 4);
 		};
 
+		Label sensorLabel = builder(new Label()).content("sens ").
+			fontSize(FONT).fixedSize(vec2i(30, 1)).build;
+		Button sensorButton = builder(new Button()).content(
+			m_tube.sensorMode.to!string).
+			fontSize(FONT).backgroundColor(COLORS.simButtonBgnd).build;
+		sensorButton.onClick += () {
+			Button[] smButtons;
+			foreach (WeaponSensorMode sensMode; m_tube.availableSensorModes)
+			{
+				Button btn = builder(new Button()).content(sensMode.to!string).
+					fontSize(FONT).build;
+				btn.onClick += (WeaponSensorMode sm) {
+					return {
+						// we may be way too late and the weapon was changed, so we check
+						if (m_tube.availableSensorModes.canFind(sm))
+						{
+							m_tube.sensorMode = sm;
+							sensorButton.content = sm.to!string;
+						}
+					};
+				} (sensMode);
+				smButtons ~= btn;
+			}
+			contextMenu(Game.guiManager, smButtons, Game.window.size,
+				Game.window.mousePos, FONT + 4);
+		};
+
 		m_aimDiv = builder(vDiv([
 				builder(hDiv([courseLabel, m_courseTextField])).
 					fixedSize(vec2i(1, FONT + 4)).build,
@@ -328,16 +355,18 @@ final class TubeUI
 					fixedSize(vec2i(1, FONT + 4)).build,
 				builder(hDiv([patternLabel, patternButton])).
 					fixedSize(vec2i(1, FONT + 4)).build,
+				builder(hDiv([sensorLabel, sensorButton])).
+					fixedSize(vec2i(1, FONT + 4)).build,
 				filler()
 			])).borderWidth(4).fixedSize(vec2i(80, AIM_BLOCK_HEIGHT)).build;
 
 		// bind up and down keys in cycle
-		for (size_t i = 0; i < m_aimDiv.children.length - 2; i++)
+		for (size_t i = 0; i < m_aimDiv.children.length - 3; i++)
 		{
 			TextField curField = cast(TextField)((cast(Div) m_aimDiv.children[i]).children[1]);
 			assert(curField);
 			TextField nextField = cast(TextField)(
-				(cast(Div) m_aimDiv.children[(i + 1) % ($ - 2)]).children[1]);
+				(cast(Div) m_aimDiv.children[(i + 1) % ($ - 3)]).children[1]);
 			assert(nextField);
 			curField.onKeyPressed += (nf) {
 				return (const sfKeyEvent* evt) {
