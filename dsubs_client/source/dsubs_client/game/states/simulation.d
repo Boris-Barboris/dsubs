@@ -208,6 +208,7 @@ final class SimulationGUI
 			if (m_onMainHintHidden)
 				m_onMainHintHidden();
 			m_mainHintOwner = null;
+			m_onMainHintHidden = null;
 			Game.guiManager.removePanel(m_mainHintPanel);
 		}
 	}

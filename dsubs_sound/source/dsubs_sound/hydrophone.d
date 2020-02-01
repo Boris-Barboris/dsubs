@@ -161,6 +161,7 @@ final class Hydrophone
 		Intensity m_totalOmni;
 		Buffer m_baseFlowNoiseStartBuf;
 		Buffer m_baseFlowNoiseEndBuf;
+		AsyncEvent m_waterNoiseReadyEvt;
 		AsyncEvent m_isotropicReadyEvt;
 
 		// when false, no calculations should be performed
@@ -328,7 +329,7 @@ final class Hydrophone
 		q.s_ispec.reduceSum(q, m_baseSeaNoiseBuf, m_minFreq, m_maxFreq);
 		// m_baseSeaNoiseBuf must contain sum of intensity bins
 		// !!don't forget to scale it's value by m_listenToCellR!!
-		m_baseSeaNoiseBuf.enqueueFullRead(q, &m_baseSeaNoise, null).release();
+		m_waterNoiseReadyEvt = m_baseSeaNoiseBuf.enqueueFullRead(q, &m_baseSeaNoise, null);
 		// if we have an active listener, we need to apply sea noise to it
 		if (m_listenDirValid)
 		{
@@ -417,10 +418,22 @@ final class Hydrophone
 			a.reset();
 	}
 
+	private void awaitIsotropicBuffers()
+	{
+		// if needed
+		if (m_isotropicReadyEvt != AsyncEvent.init)
+		{
+			m_waterNoiseReadyEvt.waitFor();
+			m_waterNoiseReadyEvt = AsyncEvent.init;
+			m_isotropicReadyEvt.waitFor();
+			m_isotropicReadyEvt = AsyncEvent.init;
+		}
+	}
+
 	/// Call after resetAndStartIsotropic
 	void endIsotropic()
 	{
-		m_isotropicReadyEvt.waitFor();
+		awaitIsotropicBuffers();
 		foreach (a; m_ant)
 			a.applyIsotropic();
 	}
@@ -571,8 +584,7 @@ final class Hydrophone
 			m_totalOmni += imprint.ownOmniIntensity;
 		}
 		// we replace noise floor by floor + 0.5 of variance
-		// m_isotropicReadyEvt is finished at the time of this call
-		// so we can safely call getIsotropicIntens
+		awaitIsotropicBuffers();
 		imprint.backgroundLevel = IntensityLevel(
 			0.5f * m_baseNoise + getIsotropicIntens().toDb);
 		imprint.signalLevel = Intensity(signalIntensity).toDb();
