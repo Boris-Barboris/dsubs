@@ -155,7 +155,7 @@ final class AcousticEnv
 			foreach (source; m_sources)
 				hydrophone.applySoundSource(q, source);
 			if (hydrophone.listenDirValid)
-				hydrophone.startFinalizePcbData(q, 50.0f);
+				hydrophone.startFinalizePcbData(q);
 		}
 
 		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))

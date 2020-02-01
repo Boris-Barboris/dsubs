@@ -21,7 +21,7 @@ struct ServerStatusRes
 {
 	__gshared const int g_marshIdx;
 	int playersOnline;
-	int apiVersion = 9;
+	int apiVersion = 10;
 }
 
 /** This message requests authorization from the server.

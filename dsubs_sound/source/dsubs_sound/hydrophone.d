@@ -45,6 +45,9 @@ struct HydrophonePrototype
 	/// coaxial towed array can only focus on the cone, so it's contacts are mirrored.
 	bool mirrored = false;
 	float localNoiseRangeCutoff = 200.0f;
+	dB imageBlackLevel = 5.0f;
+	dB imageWhiteLevel = 90.0f;
+	float pcbMaxPressure = 50.0f;
 }
 
 
@@ -86,6 +89,9 @@ final class Hydrophone
 		m_span = p.antennaeSpan;
 		m_listenSpan = p.listenSpan;
 		m_mirrored = p.mirrored;
+		m_imageBlackLevel = p.imageBlackLevel;
+		m_imageWhiteLevel = p.imageWhiteLevel;
+		m_pcbMaxPressure = p.pcbMaxPressure;
 		if (m_mirrored)
 			assert(p.antennaeRots.length == 1,
 				"mirrored hydrophone cannot have more than 1 antennae");
@@ -96,7 +102,7 @@ final class Hydrophone
 		assert(p.beamCount > 0);
 		m_beamAngle = m_span / p.beamCount;
 		m_listenToCellR = m_listenSpan / m_beamAngle;
-		m_sourceQueue = CircQueue!SourcePrecalc(16);
+		m_sourceQueue = CircQueue!SourcePrecalc(32);
 		foreach (rot; p.antennaeRots)
 			m_ant ~= new Antennae(p.beamCount, rot);
 		onPreKinematics += &savePrevPos;
@@ -139,6 +145,9 @@ final class Hydrophone
 		float m_localNoiseRangeCutoff;
 		float m_dissMod;
 		dB m_baseNoise;
+		dB m_imageBlackLevel;
+		dB m_imageWhiteLevel;
+		float m_pcbMaxPressure;
 		bool m_mirrored;
 
 		/// speed in knots at the start of integration
@@ -265,14 +274,14 @@ final class Hydrophone
 	}
 
 	/// Starts converting m_curTds to short Pcb samples and enqueue asynchronous read
-	/// to m_pcb short buffer
-	void startFinalizePcbData(CommandQueue q, float maxp)
+	/// to m_pcb array of shorts
+	void startFinalizePcbData(CommandQueue q)
 	{
 		finalizeListenTds(q);
 		Kernel k = q.mk_toShortPcb;
 		k.setArg(0, q.s_tds.mem);
 		k.setArg(1, q.s_pcbBuf.mem);
-		k.setArg(2, maxp);
+		k.setArg(2, m_pcbMaxPressure);
 		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null);
 		m_pcbEvt = q.s_pcbBuf.enqueueFullRead(q, m_pcb.ptr, null);
 	}
@@ -787,15 +796,17 @@ final class Hydrophone
 			}
 		}
 
-		void imprint(ref ushort[] dest, dB maxLevel = 90.0f) const
+		void imprint(ref ushort[] dest) const
 		{
 			dest.length = beams.length;
 			foreach (i, const c; beams)
 			{
-				float level = max(0.0f, IntensityLevel(c.toDb + uniform(0.0f, m_baseNoise)));
+				dB level = max(0.0f, IntensityLevel(
+					c.toDb + uniform(0.0f, m_baseNoise) - m_imageBlackLevel));
 				assert(!isNaN(level));
 				dest[i] = lrint(
-					min(float(ushort.max), level / maxLevel * ushort.max)).to!ushort;
+					min(float(ushort.max), level /
+						(m_imageWhiteLevel - m_imageBlackLevel) * ushort.max)).to!ushort;
 			}
 		}
 
