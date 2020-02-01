@@ -25,6 +25,8 @@ echo "building Trusty"
 echo "starting lxd"
 sudo systemctl start lxd
 sleep 15
+sudo systemctl restart lxd
+sleep 15
 sudo lxc start dsubstrusty
 sleep 10
 ssh dsubstrusty "
@@ -38,6 +40,7 @@ ssh dsubstrusty "
   dub build -b plain -c prod
   cd ~
   bash bundle.sh
+  sync
 "
 rsync -v dsubstrusty:~/dsubs-linux-trusty-amd64.tar.gz ./dsubs-${COMMIT}-linux-trusty-amd64.tar.gz
 echo "Trusty build OK"
@@ -48,7 +51,7 @@ sudo systemctl stop lxd
 echo "building Xenial"
 echo "starting VM"
 sudo virsh start ubuntu16.04
-sleep 45
+sleep 60
 ssh dsubsxenial "
   set -e
   . dlang/dmd-2.090.0/activate
@@ -60,6 +63,7 @@ ssh dsubsxenial "
   dub build -b plain -c prod
   cd ~
   bash bundle.sh
+  sync
 "
 rsync -v dsubsxenial:~/dsubs-linux-xenial-amd64.tar.gz ./dsubs-${COMMIT}-linux-xenial-amd64.tar.gz
 echo "Xenial build OK"
@@ -69,7 +73,7 @@ sudo virsh destroy ubuntu16.04
 echo "building Bionic"
 echo "starting VM"
 sudo virsh start ubuntu18.04
-sleep 45
+sleep 60
 ssh dsubsbionic "
   set -e
   . dlang/dmd-2.090.0/activate
@@ -81,6 +85,7 @@ ssh dsubsbionic "
   dub build -b plain -c prod
   cd ~
   bash bundle.sh
+  sync
 "
 rsync -v dsubsbionic:~/dsubs-linux-bionic-amd64.tar.gz ./dsubs-${COMMIT}-linux-bionic-amd64.tar.gz
 echo "Bionic build OK"
