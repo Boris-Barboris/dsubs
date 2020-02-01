@@ -321,6 +321,15 @@ Search patterns: straight, snake, spiral.
 		tf.detonationSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/explosion1_8192.wav"),
 			40.0f, 145.0f, 2e-3f);
+		// minoga's passive sonar
+		tf.hprot = new HydrophonePrototype([0.0f], 250, 3000, dgr2rad(120),
+				30, 4 / 90.0f, 3.0f);
+		tf.hydrophoneNoiseMargin = ushort.max / 12;
+		tf.hprot.imageBlackLevel = 35.0f;
+		tf.hprot.omniNoiseMult = 0.0025f;
+		tf.hprot.localNoiseRangeCutoff = 100.0f;
+		tf.hprot.flowNoiseMult = 1e-8f;
+
 
 		tf.defaultSensorMode = WeaponSensorMode.active;
 		tf.fuelEffExponent = 2.5f;

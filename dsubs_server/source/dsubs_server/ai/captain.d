@@ -1116,9 +1116,11 @@ final class AICaptain
 			return ExecutionResult.success;
 		}
 
-		private WeaponParamValue[] getFiringParameters(vec2d tgtPos, Tube tube, string weapon)
+		private WeaponParamValue[] getFiringParameters(
+			vec2d tgtPos, Tube tube, string weapon)
 		{
 			assert(weapon == "Minoga");
+			WeaponParamValue[] res;
 			vec2d posDiff = tgtPos - tube.transform.wposition;
 			WeaponFactory factory = Globals.entityDb.getWeaponFactory(weapon);
 			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.marchCourse);
@@ -1130,8 +1132,22 @@ final class AICaptain
 			WeaponParamValue search = WeaponParamValue(WeaponParamType.searchPattern);
 			search.searchPattern = WeaponSearchPattern.snake;
 			WeaponParamValue speed = WeaponParamValue(WeaponParamType.activeSpeed);
-			speed.speed = uniform(factory.activeSpeedRange.min, factory.activeSpeedRange.max);
-			return [courseParam, activationRangeParam, search, speed];
+			speed.speed = uniform(factory.activeSpeedRange.min,
+				factory.activeSpeedRange.max);
+			res = [courseParam, activationRangeParam, search, speed]
+			if (m_difficulty != BOT_DIFFICULTY.easy)
+			{
+				// pasive torpedo is too dangerous, give it to medium or hard bots
+				if (uniform(0, 2) == 0)
+				{
+					// 1 of 3 torps is passive
+					WeaponParamValue sensorMode = WeaponParamValue(
+						WeaponParamType.sensorMode);
+					sensorMode.sensorMode = WeaponSensorMode.passive;
+					res ~= sensorMode;
+				}
+			}
+			return res;
 		}
 
 		protected @property float activationRangeGain()

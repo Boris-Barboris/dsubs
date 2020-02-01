@@ -100,6 +100,7 @@ final class Hydrophone
 		m_omniNoiseMult = p.omniNoiseMult;
 		assert(m_span > 0.0f && m_span <= 2f * cast(float)PI, m_span.to!string);
 		assert(p.beamCount > 0);
+		m_beamCount = p.beamCount;
 		m_beamAngle = m_span / p.beamCount;
 		m_listenToCellR = m_listenSpan / m_beamAngle;
 		m_sourceQueue = CircQueue!SourcePrecalc(32);
@@ -134,6 +135,7 @@ final class Hydrophone
 		Antennae[] m_ant;
 		FIRFilter* m_tdsFilter;
 		int m_minFreq, m_maxFreq;
+		int m_beamCount;
 		float m_span;
 		float m_beamAngle;
 		float m_listenSpan;
@@ -227,6 +229,12 @@ final class Hydrophone
 	@property bool listenDirValid() const { return m_listenDirValid; }
 
 	@property size_t antennaCount() const { return m_ant.length; }
+
+	/// single antennae span, radians.
+	@property float span() const { return m_span; }
+
+	/// number of beams in antennae. Effectively the length of broadbandData array.
+	@property int beamCount() const { return m_beamCount; }
 
 	@property void shouldBeActive(bool rhs)
 	{

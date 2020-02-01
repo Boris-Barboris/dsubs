@@ -60,12 +60,12 @@ void cleanFolderForSonarImages(string testGroup, string testName)
 	catch (Exception fileEx) {}
 }
 
-void writeSonarImage(string testGroup, string testName, string entityName,
-	const(ubyte)[] rawBytes, int w, int h, int imageIndex)
+void writeTestImage(string testGroup, string testName, string entityName,
+	const(ubyte)[] rawBytes, int w, int h, int imageIndex, string suffix = "_sonar")
 {
 	string dirName = "test_data/" ~ testGroup ~ "/" ~ testName ~ "_images";
 	mkdirRecurse(dirName);
-	string fileName = entityName ~ "_sonar" ~ imageIndex.to!string ~ ".png";
+	string fileName = entityName ~ suffix ~ imageIndex.to!string ~ ".png";
 	write_image(dirName ~ "/" ~ fileName, w, h, rawBytes, ColFmt.Y);
 }
 

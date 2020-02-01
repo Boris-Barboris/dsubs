@@ -153,7 +153,10 @@ final class Torpedo: Weapon
 
 	@property inout(Hydrophone) hydrophone() inout { return m_hydrophone; }
 	@property ActiveSonar sonar() { return m_sonar; }
-	override @property TorpedoGuidance guidance() { return cast(TorpedoGuidance) m_guidance; }
+	override @property TorpedoGuidance guidance()
+	{
+		return cast(TorpedoGuidance) m_guidance;
+	}
 	override @property bool detonated() const { return m_detonated; }
 
 	this(Submarine shooter, string templateName)
@@ -167,10 +170,7 @@ final class Torpedo: Weapon
 		super.register();
 		guidance.m_lastPos = transform.position;
 		if (m_hydrophone)
-		{
-			m_hydrophone.shouldBeActive = true;
 			Globals.acous.registerHydrophone(m_hydrophone);
-		}
 		if (m_sonar)
 		{
 			m_sonar.active = true;
@@ -351,6 +351,9 @@ final class TorpedoGuidance: IGuidance
 				if (!isNaN(m_curTargetAngVel))
 				{
 					m_trackAngVelAccumul += m_curTargetAngVel;
+					float accumulLimit = dgr2rad(50) / m_trackAngVelKi;
+					m_trackAngVelAccumul = clamp(m_trackAngVelAccumul,
+						-accumulLimit, accumulLimit);
 					m_torpedo.targetCourse = m_curTargetDir +
 						m_trackAngVelAccumul * m_trackAngVelKi;
 				}
@@ -462,6 +465,7 @@ final class TorpedoGuidance: IGuidance
 	}
 
 	Event!(void delegate(ubyte[] image, int w, int h)) onSonarImageReady;
+	Event!(void delegate(const(ushort)[] bbData)) onHydrophoneSliceReady;
 
 	/// process sensor signals.
 	private void handleSensors(usecs_t dt)
@@ -516,6 +520,26 @@ final class TorpedoGuidance: IGuidance
 					m_sinceLastPing = 0;
 				break;
 			}
+
+			case WeaponSensorMode.passive:
+			{
+				Hydrophone h = m_torpedo.m_hydrophone;
+				assert(h !is null);
+				assert(h.antennaCount == 1);
+				bool wasActive = h.active;
+				h.shouldBeActive = true;
+				if (!wasActive)
+				{
+					// hydrophone will only start generating data on the next
+					// simulation step after activation.
+					return;
+				}
+				ushort[] broadbandData = h.getBroadbandData(0);
+				onHydrophoneSliceReady(broadbandData);
+				processHydrophoneData(broadbandData);
+				break;
+			}
+
 			default:
 				assert(0, "not implemented");
 		}
@@ -530,6 +554,10 @@ final class TorpedoGuidance: IGuidance
 		double m_curTargetDir;
 		double m_curTargetAngVel;
 		usecs_t m_prevTargetTime;
+
+		// detection margins
+		int m_sonarNoiseMargin;
+		int m_hydrophoneNoiseMargin;
 	}
 
 	/// look for targets in the sonar slice
@@ -543,7 +571,7 @@ final class TorpedoGuidance: IGuidance
 		}
 		int width = sonar.proto.getSliceXResol();
 		int height = sonar.proto.radialRes;
-		int[] peakColumns = findPeaks(slice, width, height, 15);
+		int[] peakColumns = findPeaks(slice, width, height, m_sonarNoiseMargin);
 		// trace("found peaks: ", peakColumns);
 		if (peakColumns.length == 0)
 			return;
@@ -556,7 +584,7 @@ final class TorpedoGuidance: IGuidance
 			m_prevTargetTime = Globals.sim.worldTime;
 			m_targetPingId = sonar.pingCounter;
 			m_targetSliceId = sliceId;
-			m_curTargetDir = columnToRotation(
+			m_curTargetDir = sonarColumnToRotation(
 				peakColumns[uniform!"[)"(0, peakColumns.length)], width);
 		}
 		else
@@ -566,7 +594,7 @@ final class TorpedoGuidance: IGuidance
 			m_targetPingId = sonar.pingCounter;
 			m_targetSliceId = sliceId;
 			double[] sliceTargetWrots = peakColumns.map!(
-				pc => columnToRotation(pc, width)).array();
+				pc => sonarColumnToRotation(pc, width)).array();
 			sliceTargetWrots.sort!(
 				(a, b) =>
 					angleDist(a, m_prevTargetDir).fabs <
@@ -578,14 +606,60 @@ final class TorpedoGuidance: IGuidance
 		}
 	}
 
-	double columnToRotation(int col, int width)
+	double sonarColumnToRotation(int col, int width)
 	{
 		return clampAngle(m_torpedo.sonar.transform.wrotation +
 			dgr2rad(m_torpedo.sonar.proto.span / 2) -
 			(col + 0.5f) / width * dgr2rad(m_torpedo.sonar.proto.span));
 	}
 
-	static int[] findPeaks(const(ubyte)[] image, int width, int height, int noiseCutoff)
+	/// look for targets in the broadband data slice
+	private void processHydrophoneData(const(ushort)[] slice)
+	{
+		Hydrophone h = m_torpedo.m_hydrophone;
+		int width = slice.length.to!int;
+		int[] peakColumns = findPeaks(slice, width, 1, m_hydrophoneNoiseMargin);
+		// trace("found peaks: ", peakColumns);
+		if (peakColumns.length == 0)
+		{
+			m_targetTracked = false;
+			return;
+		}
+		if (!m_targetTracked)
+		{
+			// let's select random peak as target
+			m_targetTracked = true;
+			m_prevTargetDir = double.nan;
+			m_curTargetAngVel = double.nan;
+			m_prevTargetTime = Globals.sim.worldTime;
+			m_curTargetDir = hydrphoneColumnToRotation(
+				peakColumns[uniform!"[)"(0, peakColumns.length)]);
+		}
+		else
+		{
+			// find the peak in this slice that is closest to currently tracked target
+			m_prevTargetDir = m_curTargetDir;
+			double[] sliceTargetWrots = peakColumns.map!(
+				pc => hydrphoneColumnToRotation(pc)).array();
+			sliceTargetWrots.sort!(
+				(a, b) =>
+					angleDist(a, m_prevTargetDir).fabs <
+					angleDist(b, m_prevTargetDir).fabs)();
+			m_curTargetDir = sliceTargetWrots[0];
+			m_curTargetAngVel = angleDist(m_curTargetDir, m_prevTargetDir) * 1e6 /
+				(Globals.sim.worldTime - m_prevTargetTime);
+			m_prevTargetTime = Globals.sim.worldTime;
+		}
+	}
+
+	double hydrphoneColumnToRotation(int col)
+	{
+		Hydrophone h = m_torpedo.hydrophone;
+		return clampAngle(h.transform.wrotation + h.span / 2 -
+			(col + 0.5f) / h.beamCount * h.span);
+	}
+
+	static int[] findPeaks(T)(const(T)[] image, int width, int height, int noiseCutoff)
 	{
 		int minimum = minElement(image);
 		int detectionLevel = minimum + noiseCutoff;
@@ -693,6 +767,7 @@ abstract class WeaponFactory: VesselFactory
 	MinMax activationRange;
 	WeaponSensorMode sensorModes;
 	WeaponParamDescSearchPatterns searchPatterns;
+	/// Sensor mode that is chosen if client does not explicitly set the mode.
 	WeaponSensorMode defaultSensorMode;
 	WeaponSearchPattern defaultSearchPattern = WeaponSearchPattern.straight;
 
@@ -772,6 +847,9 @@ final class TorpedoFactory: WeaponFactory
 	float trackAngVelKi = 1.0f;
 	int pingIntervalSearch = 10;
 	PrerecordedSoundPrototype detonationSoundProto;
+	// detection margins
+	int sonarNoiseMargin = 15;
+	int hydrophoneNoiseMargin = ushort.max / 12;
 
 	this(immutable WeaponTemplate t, PropulsorFactory pf)
 	{
@@ -804,6 +882,8 @@ final class TorpedoFactory: WeaponFactory
 		res.guidance.m_trackAngVelKi = trackAngVelKi;
 		res.guidance.m_pingIntervalSearch = pingIntervalSearch;
 		res.guidance.m_detonationSoundProto = cast() detonationSoundProto;
+		res.guidance.m_sonarNoiseMargin = sonarNoiseMargin;
+		res.guidance.m_hydrophoneNoiseMargin = hydrophoneNoiseMargin;
 		if (hprot)
 		{
 			Transform2D t = new Transform2D();
@@ -814,6 +894,8 @@ final class TorpedoFactory: WeaponFactory
 			res.m_hydrophone = h;
 			h.onPreKinematics += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
 			h.onPostKinematics += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
+			h.shouldBeActive = false;
+			h.muteTds = true;
 		}
 		if (asprot)
 		{
@@ -874,7 +956,8 @@ final class TorpedoFactory: WeaponFactory
 				case WeaponParamType.sensorMode:
 					enforce(sensorModes & param.sensorMode, "invalid sensor mode");
 					enforce(popcnt(param.sensorMode) == 1, "must choose one");
-					enforce(param.sensorMode != WeaponSensorMode.activePassive, "alternating mode not implemented");
+					enforce(param.sensorMode != WeaponSensorMode.activePassive,
+						"alternating mode not implemented");
 					g.m_sensorMode = param.sensorMode;
 					break;
 				case WeaponParamType.searchPattern:

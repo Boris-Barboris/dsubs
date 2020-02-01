@@ -1,7 +1,8 @@
 module dsubs_server.tests.test_guidance;
 
 import std.stdio;
-import std.algorithm: min;
+import std.algorithm: min, map;
+import std.array: array;
 
 import dsubs_common.api.protocols.backend;
 import dsubs_common.math;
@@ -125,7 +126,7 @@ unittest
 	int imageCounter;
 	cleanFolderForSonarImages("guidance", "minoga_snake");
 	t.guidance.onSonarImageReady += (img, w, h) {
-		writeSonarImage("guidance", "minoga_snake", "minoga", img, w, h, imageCounter);
+		writeTestImage("guidance", "minoga_snake", "minoga", img, w, h, imageCounter);
 		imageCounter++;
 	};
 
@@ -186,7 +187,7 @@ unittest
 	int imageCounter;
 	cleanFolderForSonarImages("guidance", "minoga_headon");
 	t.guidance.onSonarImageReady += (img, w, h) {
-		writeSonarImage("guidance", "minoga_headon", "minoga", img, w, h, imageCounter);
+		writeTestImage("guidance", "minoga_headon", "minoga", img, w, h, imageCounter);
 		imageCounter++;
 	};
 
@@ -250,7 +251,7 @@ unittest
 	int imageCounter;
 	cleanFolderForSonarImages("guidance", "minoga_straight");
 	t.guidance.onSonarImageReady += (img, w, h) {
-		writeSonarImage("guidance", "minoga_straight", "minoga", img, w, h, imageCounter);
+		writeTestImage("guidance", "minoga_straight", "minoga", img, w, h, imageCounter);
 		imageCounter++;
 	};
 
@@ -315,7 +316,7 @@ unittest
 	int imageCounter;
 	cleanFolderForSonarImages("guidance", "minoga_straight2");
 	t.guidance.onSonarImageReady += (img, w, h) {
-		writeSonarImage("guidance", "minoga_straight2", "minoga", img, w, h, imageCounter);
+		writeTestImage("guidance", "minoga_straight2", "minoga", img, w, h, imageCounter);
 		imageCounter++;
 	};
 
@@ -380,7 +381,7 @@ unittest
 	int imageCounter;
 	cleanFolderForSonarImages("guidance", "minoga_straight3");
 	t.guidance.onSonarImageReady += (img, w, h) {
-		writeSonarImage("guidance", "minoga_straight3", "minoga", img, w, h, imageCounter);
+		writeTestImage("guidance", "minoga_straight3", "minoga", img, w, h, imageCounter);
 		imageCounter++;
 	};
 
@@ -440,7 +441,7 @@ unittest
 	int imageCounter;
 	cleanFolderForSonarImages("guidance", "minoga_spiral_stork");
 	t.guidance.onSonarImageReady += (img, w, h) {
-		writeSonarImage("guidance", "minoga_spiral_stork", "minoga", img, w, h, imageCounter);
+		writeTestImage("guidance", "minoga_spiral_stork", "minoga", img, w, h, imageCounter);
 		imageCounter++;
 	};
 
@@ -506,3 +507,72 @@ unittest
 }
 
 */
+
+
+unittest
+{
+	Globals.buildForTests();
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 400.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeSpeed;
+	pv.speed = 25.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.snake;
+	pvs ~= pv;
+	pv.type = WeaponParamType.sensorMode;
+	pv.sensorMode = WeaponSensorMode.passive;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.register();
+	cleanFolderForSonarImages("guidance", "minoga_snake_passive");
+	int imageRowCounter;
+	ubyte[] imageData;
+	t.guidance.onHydrophoneSliceReady += (const(ushort)[] bbData) {
+		imageData ~= bbData.map!(
+			s => (cast(float)s / ushort.max * ubyte.max).to!ubyte).array;
+		imageRowCounter++;
+	};
+
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	s.transform.position = vec2d(-2800, 3000);
+	s.transform.rotation = -dgr2rad(90);
+	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
+	s.targetCourse = s.transform.rotation;
+	s.targetThrottle = 1.0f;
+	s.register();
+	File* storkFile = writeRbodyCsvHeader("guidance", "minoga_snake_passive", "stork");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+
+	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_snake_passive", "minoga");
+	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
+	Globals.sim.worldTimeLimit = 300 * cast(ulong)1e6;
+
+	double minDist = double.max;
+	Globals.sim.onSimulationPassStart += (now) {
+		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
+	};
+
+	scope(exit) Globals.resetForTests();
+	Globals.sim.start();
+	Globals.sim.join();
+	writeTestImage("guidance", "minoga_snake_passive", "minoga", imageData,
+		(imageData.length / imageRowCounter).to!int, imageRowCounter, 0, "_hphone");
+	trace("minoga was ", minDist,
+		" meters away from stork in minoga_snake_passive test");
+	assert(s.dead);
+}
