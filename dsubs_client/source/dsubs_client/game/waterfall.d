@@ -186,7 +186,7 @@ class PanoramicDisplay(DataIntType): GuiElement
 			m_compassLabels[i] = lbl;
 		}
 		m_underCursorLabel = builder(new Label()).fontSize(compassFontSize).
-			size(vec2i(100, m_compassHeight)).fontColor(sfYellow).
+			size(vec2i(150, m_compassHeight)).fontColor(sfYellow).
 			htextAlign(HTextAlign.CENTER).build();
 	}
 
