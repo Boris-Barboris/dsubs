@@ -476,6 +476,7 @@ final class TacticalOverlay: Overlay
 		assert(m_mergeSourceElement);
 		Game.simState.gui.hideMainHint(m_mergeSourceElement);
 		assert(!m_inMerge);
+		assert(m_mergeSourceElement is null);
 	}
 
 	this(CameraController camCtrl)
