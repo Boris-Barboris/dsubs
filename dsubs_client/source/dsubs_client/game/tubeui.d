@@ -100,7 +100,7 @@ final class TubeUI
 			m_launchButton,
 			desiredStateDiv,
 			m_currentStateLabel,
-			m_weaponButton])).borderWidth(4).fixedSize(vec2i(80, AIM_BLOCK_HEIGHT + 75)).build;
+			m_weaponButton])).borderWidth(4).fixedSize(vec2i(80, AIM_BLOCK_HEIGHT + 95)).build;
 
 		// now we bind updates
 		m_tube.onStateUpdate += &updateFromTube;
