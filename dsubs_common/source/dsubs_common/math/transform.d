@@ -69,6 +69,8 @@ class Transform2D
 
 	void rebuild()
 	{
+		if (!m_dirty)
+			return;
 		m_localTransform = mat3x3d.scaling(m_scale);
 		m_localTransform = mat3x3d.rotateZ(m_rotation) * m_localTransform;
 		m_localTransform = mat3x3d.translation(m_position) * m_localTransform;
