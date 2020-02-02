@@ -71,8 +71,8 @@ private Platform getPlatformById(cl_platform_id id)
 	clGetPlatformInfo(id, CL_PLATFORM_NAME, 64, name.ptr, &actual_len).clError;
 	name.length = actual_len;
 	res.name = cast(string) name;
-	char[] vers = new char[64];
-	clGetPlatformInfo(id, CL_PLATFORM_VERSION, 64, vers.ptr, &actual_len).clError;
+	char[] vers = new char[256];
+	clGetPlatformInfo(id, CL_PLATFORM_VERSION, 256, vers.ptr, &actual_len).clError;
 	vers.length = actual_len;
 	res.vers = cast(string) vers;
 	return res;
@@ -500,7 +500,8 @@ final class CommandQueue
 		m_q = clCreateCommandQueue(ctx.m_ctx, ctx.m_dev, 0, &err);
 		err.clError();
 
-		// command queue acquires kernels
+		// command queue acquires kernels. They are queue-specific because the
+		// args belong to kernel object and not a queue.
 		mk_firTds = new Kernel(prog, "firTds");
 		mk_firTds2 = new Kernel(prog, "firTds2");
 		mk_firTdsTwoFilters = new Kernel(prog, "firTdsTwoFilters");
@@ -539,6 +540,7 @@ final class CommandQueue
 		s_ilspec = ILevelSpectrum(ctx);
 		s_pcbBuf = Buffer(ctx, GLOBAL_SRATE * short.sizeof);
 		s_bandSumBuf = Buffer(ctx, float.sizeof);
+		s_reduceSumTempGlobalBuf = Buffer(ctx, GLOBAL_SRATE * float.sizeof);
 	}
 
 	private
@@ -592,6 +594,8 @@ final class CommandQueue
 		Buffer s_bandSumBuf;	/// 4-byte buffer for one float
 		/// short buffer for converted Tds
 		Buffer s_pcbBuf;
+		/// buffer to use in sum reductions
+		Buffer s_reduceSumTempGlobalBuf;
 	}
 
 	/// Context this queue belongs to
@@ -672,7 +676,7 @@ final class DsubsSoundOpenclCtx
 		WaterFIRFilter waterFilter;
 	}
 
-	this(int queueCount = totalCPUs)
+	this(int queueCount)
 	{
 		m_plat = loadOpenclLibrary();
 		cl_context_properties[] ctx_props;
@@ -698,9 +702,9 @@ final class DsubsSoundOpenclCtx
 		m_filters["octaveBp1900_2500"] = new FIRFilter(queue(0), octaveBp1900_2500);
 		m_filters["octaveHp3500"] = new FIRFilter(queue(0), octaveHp3500);
 		m_filters["octaveHp50"] = new FIRFilter(queue(0), octaveHp50);
-		waterFilter = loadWaterFilterFromFile(m_queues[0],
+		waterFilter = loadWaterFilterFromFile(queue(0),
 			import("water_filter_values.csv"), 40000.0f, 4.0f);
-		m_queues[0].finish();
+		queue(0).finish();
 		trace("Filters loaded");
 		b_wrdks = Buffer(queue(0), wrdk);
 	}
@@ -745,7 +749,7 @@ version (unittest)
 	{
 		try
 		{
-			s_clCtx = new DsubsSoundOpenclCtx();
+			s_clCtx = new DsubsSoundOpenclCtx(1);
 		}
 		catch (Exception ex)
 		{

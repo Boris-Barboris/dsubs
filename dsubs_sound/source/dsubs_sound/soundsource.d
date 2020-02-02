@@ -92,7 +92,10 @@ abstract class SoundSource
 		int minFreq, int maxFreq,			// listener's passband.
 		bool needTds,						// wether tds generation is requested by listener
 		float dissMod = 4.0f,				// water dissipation modifier
-		FIRFilter* listenerFilter = null);	// filter, used to implement listener's passband. If the sound source does not work in frequency domain, this filter should be used by the source to clamp itself to listener's passband.
+		FIRFilter* listenerFilter = null,
+		bool logMore = false);
+		// filter, used to implement listener's passband. If the
+		// sound source does not work in frequency domain, this filter should be used by the source to clamp itself to listener's passband.
 }
 
 
@@ -208,6 +211,9 @@ final class PropellerSound: SoundSource
 		k.setArg(7, uintSeed());
 		k.enqueue(q, 1, [minFreq - 1], [maxFreq - minFreq + 1], null, null);
 
+		// trace(cast(void*) this, ", kavg = ", kavg, ", avgRange = ", avgRange,
+		// 	", imult = ", imult);
+
 		// bin sum
 		dest.reduceSum(q, q.s_bandSumBuf, minFreq, maxFreq);
 
@@ -235,7 +241,7 @@ final class PropellerSound: SoundSource
 		scope void delegate(Intensity* bandIntensitySumReady,
 			Buffer* bandIntensitySumBuf, Tds* tds) onTdsReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f,
-		FIRFilter* listenerFilter = null)
+		FIRFilter* listenerFilter = null, bool logMore = false)
 	{
 		assert(minFreq >= 1);
 		assert(maxFreq <= ISpectrum.MAX_FREQ);
@@ -244,7 +250,9 @@ final class PropellerSound: SoundSource
 		float avgRange = 0.5f * (range + prevRange);
 		assert(!isNaN(avgRange));
 		float relBearing =
-			courseAngle(listenerPos - m_transform.wposition) - m_transform.wrotation;
+			clampAnglePi(
+				courseAngle(listenerPos - m_transform.wposition) -
+				m_transform.wrotation);
 		// now actual power calculation
 		float freqCubeStart = pow(m_shaftFreqStart, 3);
 		assert(!isNaN(freqCubeStart));
@@ -267,6 +275,16 @@ final class PropellerSound: SoundSource
 			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec,
 				*m_baseBBSpectrum, minFreq, maxFreq, kavg, dissMod);
 			assert(!isNaN(kavgScaled));
+			if (logMore)
+			{
+				trace(cast(void*) this,
+						", source = ", this.owner.to!string,
+						", kavg = ", kavg,
+						", avgRange = ", avgRange,
+						", dissMod = ", dissMod,
+						", relBearing = ", relBearing,
+						", kavgScaled = ", kavgScaled);
+			}
 			if (needTds)
 			{
 				q.s_ispec.toTimeDomain(q, q.s_tds);
@@ -284,6 +302,16 @@ final class PropellerSound: SoundSource
 			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec,
 				*m_baseCavSpectrum, minFreq, maxFreq, kavg, dissMod);
 			assert(!isNaN(kavgScaled));
+			if (logMore)
+			{
+				trace(cast(void*) this,
+						", source = ", this.owner.to!string,
+						", kavg = ", kavg,
+						", avgRange = ", avgRange,
+						", dissMod = ", dissMod,
+						", relBearing = ", relBearing,
+						", kavgScaled = ", kavgScaled);
+			}
 			if (needTds)
 			{
 				q.s_ispec.toTimeDomain(q, q.s_tds);
@@ -380,7 +408,7 @@ final class PrerecordedSoundSource: FixedLengthSoundSource
 		scope void delegate(Intensity* bandIntensitySumReady,
 			Buffer* bandIntensitySumBuf, Tds* tds) onTdsReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod,
-		FIRFilter* listenerFilter)
+		FIRFilter* listenerFilter, bool logMore = false)
 	{
 		assert(minFreq >= 1);
 		assert(maxFreq <= ISpectrum.MAX_FREQ);

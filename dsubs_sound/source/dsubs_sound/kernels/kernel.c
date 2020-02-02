@@ -197,17 +197,20 @@ void __kernel reduceSum(
 	__local volatile float localBuffer[64];
 	const uint id = get_global_id(0);
 
-	if (id >= end)
-		return;
-
 	const uint lid = get_local_id(0);
 	const uint group_size = get_local_size(0);
 	const uint group_id = get_group_id(0);
 	const uint numgroups = get_num_groups(0);
 
 	// initialize shared memory contents
-	float res = what[id];
+	float res = 0.0f;
+	if (id < end)
+		res = what[id];
 	localBuffer[lid] = res;
+
+	if (id >= end)
+		return;
+
 	barrier(CLK_LOCAL_MEM_FENCE);
 
 	// local memory reduction
@@ -245,18 +248,21 @@ void __kernel reduceSumSquared(
 	__local volatile float localBuffer[64];
 	const uint id = get_global_id(0);
 
-	if (id >= end)
-		return;
-
 	const uint lid = get_local_id(0);
 	const uint group_size = get_local_size(0);
 	const uint group_id = get_group_id(0);
 	const uint numgroups = get_num_groups(0);
 
 	// initialize shared memory contents
-	float res = what[id];
+	float res = 0.0f;
+	if (id < end)
+		res = what[id];
 	res *= res;
 	localBuffer[lid] = res;
+
+	if (id >= end)
+		return;
+
 	barrier(CLK_LOCAL_MEM_FENCE);
 
 	// local memory reduction
@@ -726,7 +732,7 @@ void __kernel propellerGenISpec(
 	float ispan = uniform(&randState, -rngSpan, rngSpan);
 	float val = sourceIspec[idx] * imult;
 	val += val * ispan;
-	val = fmax(val, 1e-6f);
+	val = fmax(val, 1e-8f);
 	val = getILatRange2(wrdks[idx], toDb(val), range, dissMod);
 	destIspec[idx] = toLinear(val);
 }

@@ -375,15 +375,19 @@ final class Hydrophone
 			k.enqueue(q, 1, [m_minFreq - 1],
 				[m_maxFreq - m_minFreq + 1], null, null);
 		}
+		assert(!isNaN(m_ktsStart));
 		dispatchFlowCalc(q.s_ispec, m_ktsStart);
+		assert(!isNaN(m_ktsEnd));
 		dispatchFlowCalc(q.s_ispec2, m_ktsEnd);
 
-		q.s_ispec.reduceSum(q, m_baseFlowNoiseStartBuf, m_minFreq, m_maxFreq);
-		q.s_ispec2.reduceSum(q, m_baseFlowNoiseEndBuf, m_minFreq, m_maxFreq);
 		// !!don't forget to scale it's value by m_listenToCellR!!
+		q.s_ispec.reduceSum(q, m_baseFlowNoiseStartBuf, m_minFreq, m_maxFreq);
 		m_baseFlowNoiseStartBuf.enqueueFullRead(q, &m_baseFlowNoiseStart, null).release();
+
+		q.s_ispec2.reduceSum(q, m_baseFlowNoiseEndBuf, m_minFreq, m_maxFreq);
 		m_isotropicReadyEvt = m_baseFlowNoiseEndBuf.enqueueFullRead(q,
 			&m_baseFlowNoiseEnd, null);
+
 		// if we have an active listener, we need to apply flow noise to it
 		if (m_listenDirValid)
 		{
@@ -439,12 +443,12 @@ final class Hydrophone
 	private void awaitIsotropicBuffers()
 	{
 		// if needed
-		if (m_waterNoiseReadyEvt != AsyncEvent.init)
+		if (m_waterNoiseReadyEvt !is AsyncEvent.init)
 		{
 			m_waterNoiseReadyEvt.waitFor();
 			m_waterNoiseReadyEvt = AsyncEvent.init;
 		}
-		if (m_isotropicReadyEvt != AsyncEvent.init)
+		if (m_isotropicReadyEvt !is AsyncEvent.init)
 		{
 			m_isotropicReadyEvt.waitFor();
 			m_isotropicReadyEvt = AsyncEvent.init;
@@ -652,6 +656,8 @@ final class Hydrophone
 			needTds = false;
 		}
 
+		bool logMore = false; // this.m_beamCount > 50;
+
 		void onTdsReady(Intensity* bandIntSum, Buffer* bandIntensitySumBuf, Tds* tds)
 		{
 			assert(p.components < p.MAX_COMPONENTS);
@@ -667,7 +673,17 @@ final class Hydrophone
 				assert(bandIntensitySumBuf !is null);
 				AsyncEvent evt = bandIntensitySumBuf.enqueueFullRead(q,
 					&p.bandSum[p.components], null);
-				p.evt[p.components] = evt;
+				if (logMore)
+				{
+					// Stalls!
+					evt.waitFor();
+					trace(cast(void*) p.source,
+						", source = ", p.source.owner.to!string,
+						", comp = ", p.components,
+						", bandsum = ", p.bandSum[p.components]);
+				}
+				else
+					p.evt[p.components] = evt;
 			}
 			if (needTds && tds)
 			{
@@ -675,10 +691,10 @@ final class Hydrophone
 				float omniImultEnd = p.omniFactorEnd * m_directivity * m_omniNoiseMult;
 				dB intensStart = max(-60.0f, toDb(
 					omniImultStart + (1.0f - omniImultStart) * integr.startPart));
-				assert(intensStart <= 0.0f);
+				assert(intensStart <= 0.0f, intensStart.to!string);
 				dB intensEnd = max(-60.0f, toDb(
 					omniImultEnd + (1.0f - omniImultEnd) * integr.endPart));
-				assert(intensEnd <= 0.0f);
+				assert(intensEnd <= 0.0f, intensEnd.to!string);
 				modulateILevelInterp(q, *tds, intensStart, intensEnd);
 				tds.addTo(q, m_curTds);
 			}
@@ -686,7 +702,7 @@ final class Hydrophone
 		}
 
 		s.buildSignals(q, m_transform.wposition, m_prevPos, &onTdsReady,
-			m_minFreq, m_maxFreq, needTds, m_dissMod, m_tdsFilter);
+			m_minFreq, m_maxFreq, needTds, m_dissMod, m_tdsFilter, logMore);
 	}
 
 	private struct PowerIntegr
@@ -999,6 +1015,8 @@ void hydrophoneVsPropellerBalancingPlot(CommandQueue q,
 }
 
 
+/*
+
 unittest
 {
 	import std.array;
@@ -1248,3 +1266,5 @@ unittest
 	writeWavFile("std_hydrophone_vs_current.wav",
 		samples, 0.8f / maxp, GLOBAL_SRATE);
 }
+
+*/

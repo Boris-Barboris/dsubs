@@ -55,7 +55,7 @@ final class Simulator
 
 	bool printTimings = false;
 	bool doSleep = true;
-	float acceleration = 8.0f;
+	float acceleration = 1.0f;
 
 	Event!(void delegate(usecs_t now)) onSimulationPassStart;
 	Event!(void delegate(usecs_t now)) onSimulationPassEnd;

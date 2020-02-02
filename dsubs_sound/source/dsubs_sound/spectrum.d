@@ -87,14 +87,25 @@ struct Tds
 		assert(globalSize % 64 == 0);
 		size_t groupCount = globalSize / 64;
 		Kernel k = q.mk_reduceSumSquared;
-		Buffer tempGlobal = Buffer(q.ctx, float.sizeof * groupCount);
 		k.setArg(0, buf.mem);
-		k.setArg(1, tempGlobal.mem);
+		k.setArg(1, q.s_reduceSumTempGlobalBuf.mem);
 		k.setArg(2, dest.mem);
 		k.setArg(3, multiplier);
 		k.setArg(4, endIndex);
-		k.enqueue(q, 1, [startIndex.to!size_t], [globalSize], [64], null);
+		k.enqueue(q, 1, [startIndex.to!size_t], [globalSize], [cast(size_t) 64], null);
 	}
+
+	// void reduceSumSquared(CommandQueue q, ref Buffer dest, float multiplier,
+	// 	uint startIndex, uint endIndex)
+	// {
+	// 	Kernel k = q.mk_sumSquaredBuf;
+	// 	k.setArg(0, mem);
+	// 	k.setArg(1, dest.mem);
+	// 	k.setArg(2, multiplier);
+	// 	k.setArg(3, startIndex);
+	// 	k.setArg(4, endIndex);
+	// 	k.task(q, null);
+	// }
 }
 
 
@@ -296,13 +307,25 @@ struct EnergySpectrum(SpectrumType stype)
 		assert(globalSize % 64 == 0);
 		size_t groupCount = globalSize / 64;
 		Kernel k = q.mk_reduceSum;
-		Buffer tempGlobal = Buffer(q.ctx, float.sizeof * groupCount);
 		k.setArg(0, buf.mem);
-		k.setArg(1, tempGlobal.mem);
+		k.setArg(1, q.s_reduceSumTempGlobalBuf.mem);
 		k.setArg(2, dest.mem);
 		k.setArg(3, endFreq.to!uint);
-		k.enqueue(q, 1, [offset], [globalSize], [64], null);
+		k.enqueue(q, 1, [offset], [globalSize], [cast(size_t) 64], null);
 	}
+
+	// void reduceSum(CommandQueue q, ref Buffer dest,
+	// 	int startFreq = 1, int endFreq = MAX_FREQ)
+	// {
+	// 	assert(startFreq >= 1);
+	// 	assert(endFreq <= MAX_FREQ);
+	// 	Kernel k = q.mk_sumBuf;
+	// 	k.setArg(0, buf.mem);
+	// 	k.setArg(1, dest.mem);
+	// 	k.setArg(2, startFreq.to!uint - 1);
+	// 	k.setArg(3, endFreq.to!uint);
+	// 	k.task(q, null);
+	// }
 
 	void addTo(CommandQueue q, ref EnergySpectrum!(stype) dest,
 		int minFreq = 1, int maxFreq = MAX_FREQ)
@@ -356,4 +379,31 @@ unittest
 	tds.buf.fullRead(q, sound.ptr, null);
 	trace("4096 spectrum max pressure: ", sound[].map!(s => s.abs).maxElement);
 	trace("4096 spectrum mean square pressure: ", sound[].map!(s => s * s).sum / GLOBAL_SRATE);
+}
+
+unittest
+{
+	import std.algorithm;
+
+	CommandQueue q = s_clCtx.queue(0);
+	ISpectrum source = ISpectrum(q, 2.0f);
+	Buffer dest = Buffer(s_clCtx, float.sizeof);
+	source.reduceSum(q, dest, 250, GLOBAL_SRATE / 2 - 10);
+	float res;
+	dest.enqueueFullRead(q, &res, null).waitFor();
+	assert(fabs(res - 2 * (GLOBAL_SRATE / 2 - 10 - 250 + 1)) < 1e-6, res.to!string);
+}
+
+
+unittest
+{
+	import std.algorithm;
+
+	CommandQueue q = s_clCtx.queue(0);
+	Tds source = Tds(q, 1.0f);
+	Buffer dest = Buffer(s_clCtx, float.sizeof);
+	source.reduceSumSquared(q, dest, 1.0f, 79, 255);
+	float res;
+	dest.enqueueFullRead(q, &res, null).waitFor();
+	assert(fabs(res - (255 - 79)) < 1e-6, res.to!string);
 }

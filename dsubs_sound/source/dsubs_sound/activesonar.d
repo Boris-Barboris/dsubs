@@ -902,7 +902,7 @@ final class SonarPing: FixedLengthSoundSource
 		scope void delegate(Intensity* bandIntensitySumReady,
 			Buffer* bandIntensitySumBuf, Tds* tds) onTdsReady,
 		int minFreq, int maxFreq, bool needTds, float dissMod = 1.0f,
-		FIRFilter* listenerFilter = null)
+		FIRFilter* listenerFilter = null, bool logMore = false)
 	{
 		if (m_freq > maxFreq || m_freq < minFreq)
 			return;
