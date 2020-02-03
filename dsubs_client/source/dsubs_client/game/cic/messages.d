@@ -21,7 +21,7 @@ struct CICLoginRes
 {
 	__gshared const int g_marshIdx;
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
-	int apiVersion = 5;
+	int apiVersion = 6;
 }
 
 /// CIC client sends this to receive entity DB
@@ -194,12 +194,28 @@ struct CICContactCreatedFromHTrackerRes
 	HydrophoneTracker tracker;
 }
 
-/// Request/broadcast to update contact properties (type, comment, solution).
-/// Id and createdAt cannot be updated.
-struct CICContactUpdateReq
+/// Request/broadcast to update contact type.
+struct CICContactUpdateTypeReq
 {
 	__gshared const int g_marshIdx;
-	Contact contact;
+	ContactId id;
+	ContactType ctcType;
+}
+
+/// Request/broadcast to update contact solution.
+struct CICContactUpdateSolutionReq
+{
+	__gshared const int g_marshIdx;
+	ContactId id;
+	ContactSolution solution;
+}
+
+/// Request/broadcast to update contact description.
+struct CICContactUpdateDescriptionReq
+{
+	__gshared const int g_marshIdx;
+	ContactId id;
+	@MaxLenAttr(128) description;
 }
 
 /// Sent by client to update or append new data sample to contact.

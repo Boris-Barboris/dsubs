@@ -1459,9 +1459,9 @@ final class TacticalContactElement: OverlayElementWithHover
 	/// Send updated solution to CIC
 	private void requestSolutionUpdate()
 	{
-		Contact newContactBody = contact.m_ctc;
-		newContactBody.solution = m_solution;
-		Game.ciccon.sendMessage(immutable CICContactUpdateReq(newContactBody));
+		Contact contactBody = contact.m_ctc;
+		Game.ciccon.sendMessage(
+			immutable CICContactUpdateSolutionReq(contactBody.id, m_solution));
 	}
 
 	override void drop()

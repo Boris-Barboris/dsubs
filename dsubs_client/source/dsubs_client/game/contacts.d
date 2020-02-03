@@ -299,8 +299,8 @@ Button[] commonContactContextMenu(ClientContact ctc)
 			Contact curContact = ctc.m_ctc;
 			if (curContact.type != ctype)
 			{
-				curContact.type = ctype;
-				Game.ciccon.sendMessage(immutable CICContactUpdateReq(curContact));
+				Game.ciccon.sendMessage(
+					immutable CICContactUpdateTypeReq(curContact.id, ctype));
 			}
 		};
 		classifications ~= btn;
@@ -308,6 +308,14 @@ Button[] commonContactContextMenu(ClientContact ctc)
 	NestedContextBtn classifySubmenu = builder(new NestedContextBtn(classifications, 20)).
 		fontSize(15).content("classify as").build();
 	res ~= classifySubmenu;
+	// description
+	Button describebtn = builder(new Button()).fontSize(15).content(
+		"describe").build();
+	describebtn += {
+		// we need to create new panel in the center of the screen
+		Contact curContact = ctc.m_ctc;
+	};
+	res ~= describebtn;
 	// trimming
 	Button[] trimmingBtns;
 	foreach (int secsToLeave; [30, 60, 180, 300])
