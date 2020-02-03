@@ -1,6 +1,6 @@
 module dsubs_server.sensors;
 
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 
 import dsubs_sound.hydrophone;
 

@@ -8,7 +8,7 @@ import std.ascii: isUpper;
 import core.sync.mutex: Mutex;
 import core.sync.condition: Condition;
 
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 import dsubs_client.game.cic.protocol;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cic.entities;

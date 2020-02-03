@@ -6,7 +6,7 @@ import core.atomic;
 import core.thread;
 
 import dsubs_common.api;
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 import dsubs_common.api.encryption;
 import dsubs_common.network.connection;
 

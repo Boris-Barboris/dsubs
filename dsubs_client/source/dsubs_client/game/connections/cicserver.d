@@ -4,7 +4,7 @@ import std.socket;
 
 import dsubs_common.api;
 import dsubs_common.api.protocol;
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 import dsubs_common.network.connection;
 
 import dsubs_client.game.cic.messages;

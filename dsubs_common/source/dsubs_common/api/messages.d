@@ -1,6 +1,6 @@
 /// Protocol messages for master-client - dsubs backend interactions.
 
-module dsubs_common.api.protocols.backend;
+module dsubs_common.api.messages;
 
 public import dsubs_common.api.constants;
 public import dsubs_common.api.entities;

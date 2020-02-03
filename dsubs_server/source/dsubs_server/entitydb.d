@@ -7,7 +7,7 @@ import std.range: retro;
 import std.exception;
 
 import dsubs_common.api;
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 import dsubs_common.math;
 
 import dsubs_sound.activesonar;

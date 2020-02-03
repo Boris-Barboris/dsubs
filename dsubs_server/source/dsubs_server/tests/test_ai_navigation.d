@@ -2,7 +2,7 @@ module dsubs_server.tests.test_ai_navigation;
 
 import std.stdio;
 
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 import dsubs_common.math;
 
 import dsubs_server.common;

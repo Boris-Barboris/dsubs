@@ -4,7 +4,7 @@ import std.stdio;
 import std.algorithm: min, map;
 import std.array: array;
 
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 import dsubs_common.math;
 
 import dsubs_server.common;

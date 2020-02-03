@@ -7,7 +7,7 @@ import core.thread;
 import core.memory: GC;
 
 import dsubs_common.api;
-import dsubs_common.api.protocols.backend: EntityDbRes;
+import dsubs_common.api.messages: EntityDbRes;
 
 import dsubs_client.common;
 import dsubs_client.core.scheduler;

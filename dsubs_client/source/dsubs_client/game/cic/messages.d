@@ -2,7 +2,7 @@
 module dsubs_client.game.cic.messages;
 
 public import dsubs_common.api.constants;
-public import dsubs_common.api.protocols.backend;
+public import dsubs_common.api.messages;
 public import dsubs_common.api.entities;
 public import dsubs_common.api.utils;
 

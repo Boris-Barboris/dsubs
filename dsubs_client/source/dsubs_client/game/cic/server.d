@@ -1,6 +1,6 @@
 module dsubs_client.game.cic.server;
 
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 
 import dsubs_client.common;
 import dsubs_client.core.utils;

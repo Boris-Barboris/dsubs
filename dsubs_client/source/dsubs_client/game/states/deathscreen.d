@@ -8,7 +8,7 @@ import derelict.sfml2.window;
 import derelict.sfml2.system;
 
 import dsubs_common.api;
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 
 import dsubs_client.common;
 import dsubs_client.core.utils;

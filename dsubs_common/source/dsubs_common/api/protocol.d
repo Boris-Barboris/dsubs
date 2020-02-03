@@ -67,13 +67,13 @@ template Protocol(string messagesModule)
 }
 
 /// Protocol for client-backend interactions
-alias BackendProtocol = Protocol!"dsubs_common.api.protocols.backend";
+alias BackendProtocol = Protocol!"dsubs_common.api.messages";
 
 
 unittest
 {
 	assert(BackendProtocol.msgTypeCount > 0);
-	alias ServerStatusRes = dsubs_common.api.protocols.backend.ServerStatusRes;
+	alias ServerStatusRes = dsubs_common.api.messages.ServerStatusRes;
 	immutable ServerStatusRes testStruct;
 	auto bytes = BackendProtocol.marshal(testStruct);
 	assert(bytes.length > 0);

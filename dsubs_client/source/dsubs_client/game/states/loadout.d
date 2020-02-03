@@ -12,7 +12,7 @@ import core.thread;
 import derelict.sfml2.window;
 
 import dsubs_common.api;
-import dsubs_common.api.protocols.backend;
+import dsubs_common.api.messages;
 
 import dsubs_client.core.utils;
 import dsubs_client.common;
