@@ -44,7 +44,10 @@ struct CircQueue(T, bool canOverwrite = false)
 			assert(len < capacity);
 		size_t backIdx = (ifront + len) % capacity;
 		arr[backIdx] = val;
-		len++;
+		if (len < arr.length)
+			len++;
+		else
+			ifront = (ifront + 1) % capacity;	// front is evicted
 		return arr[backIdx];
 	}
 
