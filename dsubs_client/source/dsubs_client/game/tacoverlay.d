@@ -919,6 +919,10 @@ final class TacticalContactElement: OverlayElementWithHover
 		m_pastTrailLine = ctcOverlayCache.pastTrailLine;
 		m_rayTracker = ctcOverlayCache.rayTracker;
 		m_velLine = new LineShape(vec2d(5.0f, 5.0f), vec2d(6.0f, 5.0f), sfWhite, 2.0f);
+		m_descLabel = builder(new Label()).
+			fontSize(13).fontColor(sfColor(255, 255, 255, 150)).enableScissorTest(false).
+			htextAlign(HTextAlign.CENTER).vtextAlign(VTextAlign.CENTER).
+			mouseTransparent(true).build();
 		updateFromContact();
 		onMouseUp += &processMouseUp;
 		onMouseMove += &processMouseMove;
@@ -943,6 +947,9 @@ final class TacticalContactElement: OverlayElementWithHover
 	{
 		m_mainShape = ctcOverlayCache.forContactType(m_contact.type);
 		m_velLine.color = m_mainShape.borderColor;
+		m_descLabel.content = m_contact.description;
+		m_descLabel.size = cast(vec2i) vec2f(m_descLabel.contentWidth + 10,
+				m_descLabel.contentHeight + 2);
 		size = cast(vec2i) vec2f(2 * m_mainShape.radius + 8, 2 * m_mainShape.radius + 8);
 		// contact id cannot change, so m_contactName is constant
 		if (m_contactName is null)
@@ -987,6 +994,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		LineShape m_velLine;
 		LineShape m_rayTracker;
 		Label m_contactName;
+		Label m_descLabel;
 		vec2d m_lastScreenPos;
 		DragMode m_dragMode;
 		bool m_drawPastTrail;
@@ -1137,6 +1145,8 @@ final class TacticalContactElement: OverlayElementWithHover
 			m_contactName.position = vec2i(position.x + size.x / 2 - m_contactName.size.x / 2,
 				position.y + size.y - 1);
 		}
+		m_descLabel.position = vec2i(position.x + size.x / 2 - m_descLabel.size.x / 2,
+				position.y + size.y + (needDrawName ? m_contactName.size.y : 0) - 1);
 		if (m_hovered)
 			m_onHoverRect.center = screenPosF;
 		if (m_drawRayTracker)
@@ -1355,6 +1365,7 @@ final class TacticalContactElement: OverlayElementWithHover
 		if (isSelected && m_solution.velAvailable)
 			g_velLabel.draw(wnd, usecsDelta);
 		m_mainShape.render(wnd);
+		m_descLabel.draw(wnd, usecsDelta);
 		if (needDrawName)
 			m_contactName.draw(wnd, usecsDelta);
 	}

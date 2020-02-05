@@ -330,9 +330,9 @@ Button[] commonContactContextMenu(ClientContact ctc)
 		// that allows to enter new contact description.
 		Contact curContact = ctc.m_ctc;
 		TextField descriptionTextField = builder(new TextField()).
-			content(curContact.description).fontSize(25).fixedSize(vec2i(300, 40)).build;
+			content(curContact.description).fontSize(25).fixedSize(vec2i(400, 30)).build;
 		auto layout = vDiv([filler(),
-			builder(hDiv([filler(), descriptionTextField, filler()])).fixedSize(vec2i(0, 40)).build,
+			builder(hDiv([filler(), descriptionTextField, filler()])).fixedSize(vec2i(0, 30)).build,
 			filler()]);
 		Panel editPanel = new Panel(layout);
 		Game.guiManager.addPanel(editPanel);
