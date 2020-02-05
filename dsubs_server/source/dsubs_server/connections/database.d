@@ -2,9 +2,17 @@ module dsubs_server.connections.database;
 
 import core.thread;
 
+import std.algorithm: map;
 import std.array: array;
+import std.digest.sha: SHA256;
+import std.base64: Base64;
+import std.uuid: randomUUID, UUID;
+import std.typecons: Nullable;
+import std.string: representation;
+import std.algorithm: equal;
 
 import mysql;
+import kdf.pbkdf2;
 
 import dsubs_server.common;
 
@@ -19,7 +27,15 @@ import dsubs_server.torpedo;
 struct PlayerDb
 {
 	string login_name;
-	string login_password;
+	Nullable!string login_password;
+	Nullable!string pw_salt;
+	Nullable!string pw_pdkdf2;
+
+	bool passwordMatchesHash(string pw)
+	{
+		return Base64.decode(pw_pdkdf2.get).equal(
+			pbkdf2!SHA256(pw.representation, pw_salt.get.representation));
+	}
 }
 
 
@@ -44,6 +60,16 @@ final class DatabaseService
 		return new Connection(m_mysqlConStr);
 	}
 
+	/// For login - password pair generate salt and hashed password.
+	PlayerDb playerFromLoginPw(string login, Nullable!string password)
+	{
+		PlayerDb res = PlayerDb(login, password);
+		res.pw_salt = randomUUID().toString();
+		res.pw_pdkdf2 = Base64.encode(
+			pbkdf2!SHA256(password.get.representation, res.pw_salt.get.representation));
+		return res;
+	}
+
 	private auto wrapTsac(DlgT)(DlgT dlg)
 	{
 		try
@@ -59,25 +85,46 @@ final class DatabaseService
 		}
 	}
 
+	private static Nullable!string getStringOrNull(T)(T res)
+	{
+		if (res.type == typeid(typeof(null)))
+			return Nullable!string();
+		return Nullable!string(res.get!string);
+	}
+
 	PlayerDb* getPlayerByLogin(string login)
 	{
 		PlayerDb* func(Connection con)
 		{
-			Row[] rs = con.query("SELECT login_name, login_password FROM players WHERE " ~
+			Row[] rs = con.query("SELECT login_name, " ~
+				"pw_salt, pw_pdkdf2 FROM players WHERE " ~
 				"login_name = ?", login).array;
 			if (rs.length == 0)
 				return null;
-			return new PlayerDb(rs[0][0].get!string, rs[0][1].get!string);
+			return new PlayerDb(rs[0][0].get!string, Nullable!string(),
+				getStringOrNull(rs[0][1]), getStringOrNull(rs[0][2]));
 		}
 		return wrapTsac(&func);
 	}
 
-	void insertPlayer(string login, string password)
+	void updatePlayer(PlayerDb pdb)
 	{
 		void func(Connection con)
 		{
-			con.exec("INSERT INTO players (login_name, login_password) " ~
-				"VALUES(?, ?)", login, password);
+			con.exec("UPDATE players SET pw_salt = ?, pw_pdkdf2 = ? " ~
+				"WHERE login_name = ?", pdb.pw_salt, pdb.pw_pdkdf2,
+					pdb.login_name);
+		}
+		wrapTsac(&func);
+	}
+
+	void insertPlayer(string login, string password)
+	{
+		PlayerDb pdb = playerFromLoginPw(login, Nullable!string(password));
+		void func(Connection con)
+		{
+			con.exec("INSERT INTO players (login_name, pw_salt, pw_pdkdf2) " ~
+				"VALUES(?, ?, ?)", pdb.login_name, pdb.pw_salt, pdb.pw_pdkdf2);
 		}
 		wrapTsac(&func);
 	}

@@ -3,7 +3,8 @@ BEGIN;
 CREATE TABLE players (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     login_name TEXT NOT NULL UNIQUE,
-    login_password TEXT NOT NULL,
+    pw_salt TEXT NOT NULL,
+    pw_pdkdf2 TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT UTC_TIMESTAMP
 );
 

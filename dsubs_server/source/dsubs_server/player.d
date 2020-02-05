@@ -558,7 +558,7 @@ final class PlayerCollection
 			PlayerDb* pdb = Globals.database.getPlayerByLogin(username);
 			if (pdb is null)
 				Globals.database.insertPlayer(username, password);
-			else if (pdb.login_password != password)
+			else if (!pdb.passwordMatchesHash(password))
 				throw new AuthException("invalid login or password");
 			string emailDest = environment.get("EMAIL_DEST");
 			if (emailDest)
