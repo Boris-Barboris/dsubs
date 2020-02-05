@@ -199,7 +199,7 @@ struct CICContactUpdateTypeReq
 {
 	__gshared const int g_marshIdx;
 	ContactId id;
-	ContactType ctcType;
+	ContactType type;
 }
 
 /// Request/broadcast to update contact solution.
@@ -215,7 +215,25 @@ struct CICContactUpdateDescriptionReq
 {
 	__gshared const int g_marshIdx;
 	ContactId id;
-	@MaxLenAttr(128) description;
+	@MaxLenAttr(128) string description;
+}
+
+/// Broadcast to update all updatable fields. Is not expected from the client.
+struct CICContactUpdateReq
+{
+	__gshared const int g_marshIdx;
+	ContactId id;
+	ContactType type;
+	ContactSolution solution;
+	@MaxLenAttr(128) string description;
+}
+
+template isContactUpdateMsg(MsgT)
+{
+	enum bool isContactUpdateMsg = is(MsgT == CICContactUpdateTypeReq) ||
+		is(MsgT == CICContactUpdateSolutionReq) ||
+		is(MsgT == CICContactUpdateDescriptionReq) ||
+		is(MsgT == CICContactUpdateReq);
 }
 
 /// Sent by client to update or append new data sample to contact.

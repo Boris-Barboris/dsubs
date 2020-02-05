@@ -259,16 +259,18 @@ final class CICState
 	}
 
 	/// Update contact parameters
-	bool updateContact(Contact from)
+	bool updateContact(MsgT)(MsgT msg)
+		if (isContactUpdateMsg!MsgT)
 	{
-		ContactContext* ctcCtx = m_ctcCtxHash.get(from.id, null);
+		ContactContext* ctcCtx = m_ctcCtxHash.get(msg.id, null);
 		if (ctcCtx is null)
 			return false;	// ok, it was deleted
-		enforce(from.createdAt == ctcCtx.ctc.createdAt,
-			"Contact createdAt is immutable");
-		ctcCtx.ctc.type = from.type;
-		ctcCtx.ctc.description = from.description;
-		ctcCtx.ctc.solution = from.solution;
+		static if (is(MsgT == CICContactUpdateTypeReq))
+			ctcCtx.ctc.type = msg.type;
+		else static if (is(MsgT == CICContactUpdateSolutionReq))
+			ctcCtx.ctc.solution = msg.solution;
+		else static if (is(MsgT == CICContactUpdateDescriptionReq))
+			ctcCtx.ctc.description = msg.description;
 		return true;
 	}
 

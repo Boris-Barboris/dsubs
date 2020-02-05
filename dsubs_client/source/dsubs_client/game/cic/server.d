@@ -281,13 +281,14 @@ final class CICServer
 		}
 	}
 
-	void handleCICContactUpdateReq(CICContactUpdateReq req)
+	void handleCICContactUpdateReq(MsgT)(MsgT req)
+		if (isContactUpdateMsg!MsgT)
 	{
 		synchronized (m_state.ctcMut)
 		{
 			if (m_dead)
 				return;
-			if (m_state.updateContact(req.contact))
+			if (m_state.updateContact(req))
 				m_listener.broadcast(cast(immutable) req);
 		}
 	}
@@ -301,7 +302,8 @@ final class CICServer
 			m_listener.broadcast(cast(immutable) res);
 			Contact* updatedContact = m_state.updateSolutionFromNewData(data);
 			if (updatedContact)
-				m_listener.broadcast(immutable CICContactUpdateReq(*updatedContact));
+				m_listener.broadcast(immutable CICContactUpdateSolutionReq(
+					updatedContact.id, updatedContact.solution));
 		}
 		// we do not throw here because contact could be deleted right after the
 		// message was sent
@@ -356,8 +358,9 @@ final class CICServer
 					wa.mergeTrackers(req.sourceCtcId, req.destCtcId);
 				m_listener.broadcast(cast(immutable) req);
 				// destination contact is often updated
+				Contact destCtc = m_state.getContact(req.destCtcId);
 				m_listener.broadcast(immutable CICContactUpdateReq(
-					m_state.getContact(req.destCtcId)));
+					destCtc.id, destCtc.type, destCtc.solution, destCtc.description));
 			}
 		}
 	}

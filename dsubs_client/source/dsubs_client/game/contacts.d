@@ -108,9 +108,21 @@ final class ClientContact
 		m_tactDispEl.addData(cdata);
 	}
 
-	void updateContact(Contact ctc)
+	void updateContact(MsgT)(MsgT msg)
+		if (isContactUpdateMsg!MsgT)
 	{
-		m_ctc = ctc;
+		static if (is(MsgT == CICContactUpdateTypeReq))
+			m_ctc.type = msg.type;
+		else static if (is(MsgT == CICContactUpdateSolutionReq))
+			m_ctc.solution = msg.solution;
+		else static if (is(MsgT == CICContactUpdateDescriptionReq))
+			m_ctc.description = msg.description;
+		else static if (is(MsgT == CICContactUpdateReq))
+		{
+			m_ctc.type = msg.type;
+			m_ctc.solution = msg.solution;
+			m_ctc.description = msg.description;
+		}
 		m_tactDispEl.updateFromContact();
 		if (m_sonarDispEl)
 			m_sonarDispEl.updateFromContact(this);
@@ -239,7 +251,8 @@ final class ClientContactManager
 		}
 	}
 
-	void handleContactUpdate(Contact msg)
+	void handleContactUpdate(MsgT)(MsgT msg)
+		if (isContactUpdateMsg!MsgT)
 	{
 		m_contactHash[msg.id].updateContact(msg);
 	}
@@ -311,7 +324,7 @@ Button[] commonContactContextMenu(ClientContact ctc)
 	// description
 	Button describebtn = builder(new Button()).fontSize(15).content(
 		"describe").build();
-	describebtn += {
+	describebtn.onClick += {
 		// we need to create new panel in the center of the screen
 		Contact curContact = ctc.m_ctc;
 	};

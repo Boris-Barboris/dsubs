@@ -256,11 +256,35 @@ private:
 		}
 	}
 
+	void h_contactUpdateTypeReq(CICContactUpdateTypeReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.contactManager.handleContactUpdate(msg);
+		}
+	}
+
+	void h_contactUpdateSolutionReq(CICContactUpdateSolutionReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.contactManager.handleContactUpdate(msg);
+		}
+	}
+
+	void h_contactUpdateDescriptionReq(CICContactUpdateDescriptionReq msg)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.simState.contactManager.handleContactUpdate(msg);
+		}
+	}
+
 	void h_contactUpdateReq(CICContactUpdateReq msg)
 	{
 		synchronized(Game.mainMutex)
 		{
-			Game.simState.contactManager.handleContactUpdate(msg.contact);
+			Game.simState.contactManager.handleContactUpdate(msg);
 		}
 	}
 

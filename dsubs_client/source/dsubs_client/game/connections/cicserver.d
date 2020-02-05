@@ -38,6 +38,31 @@ final class CICServerConnection: ProtocolConnection!CICProtocol
 
 private:
 
+	// just pass messages to CIC server.
+	static string passToServerMixin(MsgT)(string serverHandlerName = null)
+	{
+		string conMethodName = "h_" ~ MsgT.stringof;
+		serverHandlerName = serverHandlerName ? serverHandlerName : "handle" ~ MsgT.stringof;
+		string res = "void " ~ conMethodName ~ "(" ~ MsgT.stringof ~ " req)";
+		res ~= `{
+			enforce(m_inSimFlow, "not in simulator flow");
+			m_cicserv.` ~ serverHandlerName ~ `(req);
+		}`;
+		return res;
+	}
+
+	// pass inlined .rec field of the message to backend connection of the CIC server.
+	static string passToBackendMixin(MsgT)()
+	{
+		string conMethodName = "h_" ~ MsgT.stringof;
+		string res = "void " ~ conMethodName ~ "(" ~ MsgT.stringof ~ " req)";
+		res ~= `{
+			enforce(m_inSimFlow, "not in simulator flow");
+			m_cicserv.bcon.sendMessage(cast(immutable) req.req);
+		}`;
+		return res;
+	}
+
 	void h_loginReq(CICLoginReq req)
 	{
 		enforce(!m_authorized, "already authorized");
@@ -81,111 +106,27 @@ private:
 		}
 	}
 
-	void h_throttleReq(CICThrottleReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICThrottleReq(req);
-	}
+	mixin(passToServerMixin!(CICThrottleReq));
+	mixin(passToServerMixin!(CICCourseReq));
+	mixin(passToServerMixin!(CICListenDirReq));
+	mixin(passToServerMixin!(CICEmitPingReq));
+	mixin(passToServerMixin!(CICCreateContactFromDataReq));
 
-	void h_courseReq(CICCourseReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICCourseReq(req);
-	}
+	mixin(passToServerMixin!(CICContactUpdateTypeReq)("handleCICContactUpdateReq"));
+	mixin(passToServerMixin!(CICContactUpdateSolutionReq)("handleCICContactUpdateReq"));
+	mixin(passToServerMixin!(CICContactUpdateDescriptionReq)("handleCICContactUpdateReq"));
 
-	void h_listenDirReq(CICListenDirReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICListenDirReq(req);
-	}
+	mixin(passToServerMixin!(CICContactDataReq));
+	mixin(passToServerMixin!(CICDropContactReq));
+	mixin(passToServerMixin!(CICDropDataReq));
+	mixin(passToServerMixin!(CICContactMergeReq));
+	mixin(passToServerMixin!(CICCreateContactFromHTrackerReq));
+	mixin(passToServerMixin!(CICUpdateTrackerReq));
+	mixin(passToServerMixin!(CICDropTrackerReq));
+	mixin(passToServerMixin!(CICTrimContactData));
+	mixin(passToServerMixin!(CICWireDesiredLengthReq));
 
-	void h_emitPingReq(CICEmitPingReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICEmitPingReq(req);
-	}
-
-	void h_createContactFromDataReq(CICCreateContactFromDataReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICCreateContactFromDataReq(req);
-	}
-
-	void h_contactUpdateReq(CICContactUpdateReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICContactUpdateReq(req);
-	}
-
-	void h_contactDataReq(CICContactDataReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICContactDataReq(req);
-	}
-
-	void h_dropContactReq(CICDropContactReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICDropContactReq(req);
-	}
-
-	void h_dropDataReq(CICDropDataReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICDropDataReq(req);
-	}
-
-	void h_contactMergeReq(CICContactMergeReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICContactMergeReq(req);
-	}
-
-	void h_createContactFromHTrackerReq(CICCreateContactFromHTrackerReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICCreateContactFromHTrackerReq(req);
-	}
-
-	void h_updateTrackerReq(CICUpdateTrackerReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICUpdateTrackerReq(req);
-	}
-
-	void h_dropTrackerReq(CICDropTrackerReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICDropTrackerReq(req);
-	}
-
-	void h_trimContactDataReq(CICTrimContactData req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICTrimContactData(req);
-	}
-
-	void h_loadTubeReq(CICLoadTubeReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.bcon.sendMessage(cast(immutable) req.req);
-	}
-
-	void h_setTubeStateReq(CICSetTubeStateReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.bcon.sendMessage(cast(immutable) req.req);
-	}
-
-	void h_launchTubeReq(CICLaunchTubeReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.bcon.sendMessage(cast(immutable) req.req);
-	}
-
-	void h_wireDesiredLengthReq(CICWireDesiredLengthReq req)
-	{
-		enforce(m_inSimFlow, "not in simulator flow");
-		m_cicserv.handleCICWireDesiredLengthReq(req);
-	}
+	mixin(passToBackendMixin!(CICLoadTubeReq));
+	mixin(passToBackendMixin!(CICSetTubeStateReq));
+	mixin(passToBackendMixin!(CICLaunchTubeReq));
 }
