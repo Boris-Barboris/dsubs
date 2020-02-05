@@ -564,7 +564,7 @@ final class PlayerCollection
 			if (emailDest)
 			{
 				info("sending mail");
-				string mailToSend = "user " ~ pdb.login_name ~
+				string mailToSend = "user " ~ username ~
 					" has authenticated";
 				void doSend()
 				{
