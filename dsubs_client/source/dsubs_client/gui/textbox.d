@@ -99,7 +99,8 @@ final class TextBox: GuiElement
 
 	private int m_textFullHeight = 0;
 
-	// function that splits content into text elements
+	// Function that splits content string into lines and packs each one to text sfml object.
+	// Lines are wrapped per character.
 	private void updateText()
 	{
 		bool naiiveWidth = true;	// glyph width is estimated naively
@@ -115,16 +116,47 @@ final class TextBox: GuiElement
 		int lineSpacing = getLineSpacing();
 		assert(lineSpacing > 0);
 		float lineWidth = size.x - 2.0f * m_padding;
+		// initial estimate of the number of characters that fit into
+		// one line.
 		int charsInLine = max(1, floor(lineWidth / glyphWidth).to!int);
-		dchar[1024] tmp = 0;	// stack-allocated array to hold the line being built
+		dchar[1024] tmp = 0;	// stack-allocated array to hold the line that is being built
+		size_t tmpIdx = 0;		// cursor to fill tmp
 		size_t contentIdx = 0;	// cursor to query m_content
 		size_t curLineStart = 0;	// cursor in m_content where current line has started
 		int lineIdx = 0;		// current line index
 		size_t txtIdx = 0;		// cursor of the m_sfTexts element being filled
-		size_t tmpIdx = 0;		// cursor to fill tmp
+		size_t wordStartIdx = 0;	// index in m_content of the last work start
+		size_t curLineWordStart = 0;	// saved wordStartIdx state at the end of last line
+
+		// write out the word to tmp buffer
+		void finalizeWord(bool writeContentIdx, bool reduceTmpIdx = false)
+		{
+			assert(contentIdx > 0);
+			size_t sepOffset = writeContentIdx ? 0 : 1;
+			size_t tmpIdxOffset = reduceTmpIdx ? 0 : 1;
+			for (size_t i = wordStartIdx; i < contentIdx - sepOffset; i++)
+			{
+				size_t tmpWordIdx = tmpIdx + tmpIdxOffset - (contentIdx - i);
+				tmp[tmpWordIdx] = m_content[i];
+			}
+			wordStartIdx = contentIdx;
+		}
 
 		bool finalizeLine()
 		{
+			assert(wordStartIdx <= contentIdx);
+			if (wordStartIdx < contentIdx)
+			{
+				// word is being processed, this is not a new line character
+				if (tmpIdx <= (contentIdx - wordStartIdx))
+				{
+					// Current word is too wide and will never fit using word wrap.
+					// We need to use character wrap.
+					finalizeWord(true, true);
+				}
+				else
+					tmpIdx -= (contentIdx - wordStartIdx);	// move tmpIdx back
+			}
 			if (tmpIdx > 0)
 			{
 				if (m_sfTexts.length == txtIdx)
@@ -132,24 +164,28 @@ final class TextBox: GuiElement
 				sfText* t = m_sfTexts[txtIdx];
 				tmp[tmpIdx] = 0;	// zero terminator as if it was a C string
 				sfText_setUnicodeString(t, &tmp[0]);
-				if (naiiveWidth && tmpIdx > 1)
+				if (naiiveWidth && tmpIdx > 2)
 				{
 					// we now get accurate glyph width
 					sfFloatRect bounds = sfText_getLocalBounds(t);
 					glyphWidth = bounds.width / tmpIdx.to!float;
-					assert(glyphWidth > 0.0f);
-					charsInLine = max(1, floor(lineWidth / glyphWidth).to!int);
-					naiiveWidth = false;
-					// essentially restart this line building
-					contentIdx = curLineStart;
-					tmpIdx = 0;
-					return false;
+					if (glyphWidth > 0.0f)
+					{
+						charsInLine = max(1, floor(lineWidth / glyphWidth).to!int);
+						naiiveWidth = false;
+						// essentially restart this line building
+						contentIdx = curLineStart;
+						wordStartIdx = curLineWordStart;
+						tmpIdx = 0;
+						return false;
+					}
 				}
 				txtIdx++;
 				setupTextObj(t, lineIdx, lineSpacing);
 			}
 			lineIdx++;
-			tmpIdx = 0;
+			curLineWordStart = wordStartIdx;
+			tmpIdx = contentIdx - wordStartIdx;
 			curLineStart = contentIdx;
 			return true;
 		}
@@ -159,6 +195,8 @@ final class TextBox: GuiElement
 		{
 			dchar symb = m_content[contentIdx];
 			contentIdx++;
+			if (isWordSeparator(symb))
+				finalizeWord(symb == cast(dchar)' ');
 			if (symb == cast(dchar)'\n')
 			{
 				finalizeLine();
@@ -166,7 +204,6 @@ final class TextBox: GuiElement
 			}
 			else
 			{
-				tmp[tmpIdx] = symb;
 				tmpIdx++;
 				if (tmpIdx == charsInLine)
 					finalizeLine();
@@ -181,6 +218,12 @@ final class TextBox: GuiElement
 		m_sfTexts.length = txtIdx;
 
 		m_textFullHeight = (lineIdx + 1) * lineSpacing + m_padding;
+	}
+
+	private pragma(inline) bool isWordSeparator(dchar symbol)
+	{
+		return symbol == cast(dchar)' ' ||
+			symbol == cast(dchar)'\n';
 	}
 
 	private void createTextObj()
