@@ -4,6 +4,7 @@ import std.traits: EnumMembers;
 
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
+import derelict.sfml2.window;
 
 import dsubs_common.api.entities;
 import dsubs_common.math;
@@ -326,7 +327,36 @@ Button[] commonContactContextMenu(ClientContact ctc)
 		"describe").build();
 	describebtn.onClick += {
 		// we need to create new panel in the center of the screen
+		// that allows to enter new contact description.
 		Contact curContact = ctc.m_ctc;
+		TextField descriptionTextField = builder(new TextField()).
+			content(curContact.description).fontSize(25).fixedSize(vec2i(300, 40)).build;
+		auto layout = vDiv([filler(),
+			builder(hDiv([filler(), descriptionTextField, filler()])).fixedSize(vec2i(0, 40)).build,
+			filler()]);
+		Panel editPanel = new Panel(layout);
+		Game.guiManager.addPanel(editPanel);
+		descriptionTextField.onKbFocusLoss += ()
+		{
+			Game.guiManager.removePanel(editPanel);
+		};
+		descriptionTextField.onKeyPressed += (evt)
+		{
+			if (evt.code == sfKeyEscape)
+				descriptionTextField.returnKbFocus();
+			if (evt.code == sfKeyReturn)
+			{
+				// send description update
+				string clampedDesc = descriptionTextField.content.str;
+				if (clampedDesc.length > 128)
+					clampedDesc.length = 128;
+				CICContactUpdateDescriptionReq msg = CICContactUpdateDescriptionReq(
+					curContact.id, clampedDesc);
+				Game.ciccon.sendMessage(cast(immutable) msg);
+			}
+		};
+		descriptionTextField.requestKbFocus();
+		descriptionTextField.selectAll();
 	};
 	res ~= describebtn;
 	// trimming
