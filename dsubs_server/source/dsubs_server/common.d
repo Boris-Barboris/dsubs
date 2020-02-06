@@ -2,6 +2,8 @@
 
 module dsubs_server.common;
 
+public import std.algorithm: map, filter;
+public import std.array: array;
 public import std.algorithm.comparison: min, max;
 public import std.exception: enforce;
 public import std.conv: to;

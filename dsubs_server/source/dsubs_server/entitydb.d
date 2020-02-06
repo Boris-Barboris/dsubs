@@ -78,8 +78,10 @@ final class EntityDb
 		buildTorpedoTemplates();
 		buildAnimalTemplates();
 		immutable EntityDbRes enititydb = immutable EntityDbRes(
-			m_propulsors.values.filter!(a => a.playable).map!(a => cast(immutable) a.tmpl).array,
-			m_submarines.values.filter!(a => a.playable).map!(a => a.tmpl).array,
+			m_propulsors.values.filter!(a => a.playable).map!(
+				a => cast(immutable) a.tmpl).array,
+			m_submarines.values.filter!(a => a.playable).map!(
+				a => cast(immutable) a.tmpl).array,
 			m_weapons.values.map!(a => a.tmpl).array,
 		);
 		marshalledCommonEntityDb = BackendProtocol.marshal(enititydb);

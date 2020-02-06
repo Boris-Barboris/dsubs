@@ -24,7 +24,7 @@ struct AmmoRoomPrototype
 	TubeType roomType;
 	bool[string] allowedWeaponSet;
 
-	AmmoRoomTemplate toTemplate() const
+	@property const(AmmoRoomTemplate) tmpl() const
 	{
 		AmmoRoomTemplate res = AmmoRoomTemplate(id, name);
 		res.capacity = capacity;

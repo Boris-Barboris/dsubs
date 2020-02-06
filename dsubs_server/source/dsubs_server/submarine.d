@@ -124,28 +124,43 @@ final class Submarine: Vessel
 private enum float FLOW_NOISE_INTERFERENCE_RANGE = 10.0f;
 
 
+struct Submarine2DModel
+{
+	ConvexPolygon[] hullModel;
+	int elevatedHullShapeIdx;
+}
+
+
 final class SubmarineFactory: VesselFactory
 {
-	immutable SubmarineTemplate tmpl;
+	string name;
+	string description;
+	Submarine2DModel model;
+	MountPoint[] propulsionMounts;
+	string[] allowedPropulsors;
 	bool playable = false;
 	SubHydrophonePrototype[] hprots;
-	ActiveSonarPrototype* asprot;
+	SubSonarPrototype* asprot;
 	AmmoRoomPrototype[int] roomProtos;
 	TubePrototype[int] tubeProtos;
 
-	this(immutable SubmarineTemplate t)
+	@property const(SubmarineTemplate) tmpl() const
 	{
-		super(t.name);
-		tmpl = t;
+		return const SubmarineTemplate(
+			name, description, model.hullModel, propulsionMounts,
+			model.elevatedHullShapeIdx, hprots.map!(hp => hp.tmpl).array,
+			(asprot !is null) ? asprot.tmpl : SonarTemplate.init,
+			allowedPropulsors, roomProtos.byValue.map!(rp => rp.tmpl).array,
+			tubeProtos.byValue.map!(tp => tp.tmpl).array);
 	}
 
 	private void bootstrap(Submarine res) const
 	{
 		super.bootstrap(res);
 		// propulsor shift according to first mount
-		assert(tmpl.propulsionMounts.length == 1);
-		res.propulsor.transform.position = tmpl.propulsionMounts[0].mountCenter.tod;
-		res.propulsor.transform.rotation = tmpl.propulsionMounts[0].rotation;
+		assert(propulsionMounts.length == 1);
+		res.propulsor.transform.position = propulsionMounts[0].mountCenter.tod;
+		res.propulsor.transform.rotation = propulsionMounts[0].rotation;
 		// hydrophones
 		foreach (i, ref hp; hprots)
 		{
@@ -179,26 +194,24 @@ final class SubmarineFactory: VesselFactory
 			res.m_hydrophones ~= h;
 		}
 		// active sonar
+		if (asprot)
 		{
 			Transform2D t = new Transform2D();
-			t.position = tmpl.sonar.mount.mountCenter.tod;
-			t.rotation = tmpl.sonar.mount.rotation;
+			t.position = asprot.mount.mountCenter.tod;
+			t.rotation = asprot.mount.rotation;
 			res.transform.addChild(t);
-			if (asprot)
+			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot.sonarProto);
+			res.m_sonar.owner = res;
+			res.m_sonar.onPreKinematics += ()
 			{
-				res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot);
-				res.m_sonar.owner = res;
-				res.m_sonar.onPreKinematics += ()
-				{
-					res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;
-					res.m_sonar.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts;
-				};
-				res.m_sonar.onPostKinematics += ()
-				{
-					res.m_sonar.angVelEnd = res.rigidBody.kinet.angVel;
-					res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;
-				};
-			}
+				res.m_sonar.angVelStart = res.rigidBody.kinet.angVel;
+				res.m_sonar.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts;
+			};
+			res.m_sonar.onPostKinematics += ()
+			{
+				res.m_sonar.angVelEnd = res.rigidBody.kinet.angVel;
+				res.m_sonar.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts;
+			};
 		}
 		// tubes
 		foreach (Tube tube; res.m_tubes.byValue)
@@ -222,7 +235,7 @@ final class SubmarineFactory: VesselFactory
 	Submarine build(Captain cpt, Propulsor prop,
 		const(AmmoRoomFullState)[] roomStates, const(TubeSpawnState)[] tubeStates) const
 	{
-		Submarine res = new Submarine(null, tmpl.name);
+		Submarine res = new Submarine(null, name);
 		res.propulsor = prop;
 		AmmoRoomFullState[int] specifiedRoomStates;
 		foreach (rs; roomStates)

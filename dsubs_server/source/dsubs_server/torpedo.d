@@ -749,16 +749,21 @@ final class WeaponCollection
 
 abstract class WeaponFactory: VesselFactory
 {
-	immutable WeaponTemplate tmpl;
+	string name;
+	string descirption;
+	float turningRadius;
+	WeaponParamType availableParams;
+	WeaponParamDesc[] paramDescs;
 
-	this(immutable WeaponTemplate t)
+	@property const(WeaponTemplate) tmpl() const
 	{
-		super(t.name);
-		tmpl = t;
-		assignParamDescsFromTemplate();
+		return const WeaponTemplate(
+			name, descirption, turningRadius, availableParams, paramDescs,
+			fuel.mean, fullThrottleSpd, fuelEffExponent);
 	}
 
 	RolledF fuel;
+	float fullThrottleSpd = 0.0f;
 	float fuelEffExponent = 2.0f;
 
 	// inlined weapon parameter descriptions
@@ -774,9 +779,9 @@ abstract class WeaponFactory: VesselFactory
 	/// Take some torpedo parameters from the WeaponTemplate and assign them
 	/// to relevant factory fields. TODO: reverse the logic. Server-side source of
 	/// truth should be a factory object, and the template should be generated from it.
-	private void assignParamDescsFromTemplate()
+	void assignParamDescsFromTemplate()
 	{
-		foreach (const(WeaponParamDesc) desc; tmpl.paramDescs)
+		foreach (const(WeaponParamDesc) desc; paramDescs)
 		{
 			switch (desc.type)
 			{
