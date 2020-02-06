@@ -21,8 +21,6 @@ class Vessel
 	{
 		Transform2D m_transform;
 		RigidBody m_rigidBody;
-		float m_moiK = 1.0f;
-		float m_hullLength;
 		BasicRudder m_rudder;
 		Propulsor m_propulsor;
 		Reflector m_reflector;
@@ -63,11 +61,6 @@ class Vessel
 
 	Event!(void delegate()) onPreKinematics;
 	Event!(void delegate(usecs_t dt)) onPostKinematics;
-
-	private double calcMoi() const
-	{
-		return m_moiK * m_rigidBody.mass * m_hullLength * m_hullLength / 12.0;
-	}
 
 	/// register the vessel in global component systems
 	void register()
@@ -197,25 +190,33 @@ final class VesselCollection
 }
 
 
-class VesselFactory
+struct VesselRigidBodyTemplate
 {
-	const string templateName;
-	// physical characteristics
 	RolledF mass, Cd0, Cd1, Cr0, Cr1, Cl, Cm;
 	double Cda;
-	// MOI-related stuff
 	float moiK = 1.0f;
 	float hullLength;
+}
+
+struct VesselSteeringTemplate
+{
 	/// Equilibrium drift angle on maximum rudder deflection, radians
 	float equilDrift;
-	ReflectorPrototype reflprot;
 	float rudderKp = 10.0f;
 	float rudderKd = -20.0f;
 	float rudderPosChangeSpeed = 1.0f;
+}
 
-	this(string templateName)
+
+class VesselFactory
+{
+	VesselRigidBodyTemplate rigidBody;
+	ReflectorPrototype reflprot;
+	VesselSteeringTemplate steering;
+
+	double calcMoi(float totalMass) const
 	{
-		this.templateName = templateName;
+		return rigidBody.moiK * totalMass * pow(rigidBody.hullLength, 2) / 12.0;
 	}
 
 	/// All internal binding and preparation of vessel components
@@ -223,22 +224,22 @@ class VesselFactory
 	{
 		res.m_moiK = moiK;
 		res.m_hullLength = hullLength;
-		res.m_rigidBody.mass = mass;
-		res.m_rigidBody.hydroModel.Cd0 = Cd0;
-		res.m_rigidBody.hydroModel.Cd1 = Cd1;
-		res.m_rigidBody.hydroModel.Cda = Cda;
-		res.m_rigidBody.hydroModel.Cr0 = Cr0;
-		res.m_rigidBody.hydroModel.Cr1 = Cr1;
-		res.m_rigidBody.hydroModel.Cl = Cl;
-		res.m_rigidBody.hydroModel.Cm = -Cm.roll();
+		res.m_rigidBody.mass = rigidBody.mass;
+		res.m_rigidBody.hydroModel.Cd0 = rigidBody.Cd0;
+		res.m_rigidBody.hydroModel.Cd1 = rigidBody.Cd1;
+		res.m_rigidBody.hydroModel.Cda = rigidBody.Cda;
+		res.m_rigidBody.hydroModel.Cr0 = rigidBody.Cr0;
+		res.m_rigidBody.hydroModel.Cr1 = rigidBody.Cr1;
+		res.m_rigidBody.hydroModel.Cl = rigidBody.Cl;
+		res.m_rigidBody.hydroModel.Cm = -rigidBody.Cm.roll();
 		// res.m_rigidBody.kinet.angVel = 1.0;
 		auto brudder = new BasicRudder();
 		brudder.transform = res.transform;
-		brudder.Kp = rudderKp;
-		brudder.Kd = rudderKd;
-		brudder.posChangeSpeed = rudderPosChangeSpeed;
+		brudder.Kp = steering.rudderKp;
+		brudder.Kd = steering.rudderKd;
+		brudder.posChangeSpeed = steering.rudderPosChangeSpeed;
 		// Cm * equilDrift = steeringK
-		brudder.steeringK = fabs(equilDrift * res.m_rigidBody.hydroModel.Cm);
+		brudder.steeringK = fabs(steering.equilDrift * res.m_rigidBody.hydroModel.Cm);
 		res.m_rudder = brudder;
 		// reflector
 		res.m_reflector = new Reflector(res.transform, reflprot);
@@ -255,7 +256,7 @@ class VesselFactory
 		else
 			res.m_rigidBody.forces = [cast(IForce) res.m_rudder];
 		// calculate final MOI
-		res.m_rigidBody.moi = res.calcMoi();
+		res.m_rigidBody.moi = calcMoi(res.m_rigidBody.mass);
 		if (res.m_propulsor)
 			res.m_propulsor.bootstrap(res.m_rigidBody);
 		assert(!isNaN(res.m_rigidBody.mass));
