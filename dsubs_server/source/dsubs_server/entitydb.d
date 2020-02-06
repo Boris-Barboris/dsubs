@@ -78,7 +78,7 @@ final class EntityDb
 		buildTorpedoTemplates();
 		buildAnimalTemplates();
 		immutable EntityDbRes enititydb = immutable EntityDbRes(
-			m_propulsors.values.filter!(a => a.playable).map!(a => a.tmpl).array,
+			m_propulsors.values.filter!(a => a.playable).map!(a => cast(immutable) a.tmpl).array,
 			m_submarines.values.filter!(a => a.playable).map!(a => a.tmpl).array,
 			m_weapons.values.map!(a => a.tmpl).array,
 		);
@@ -123,20 +123,17 @@ private:
 		PropulsorFactory bp;
 
 		// Standard screw
-		bp = new PropulsorFactory(
-			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
-				"Seven-blade screw",
-				"Seven-blade screw with no outstanding traits, " ~
-				"but relatively good high-speed performance.\n\nMass: 50t",
-				PropulsorType.screw,
-				7,
-				ConvexPolygon([
+		bp = new PropulsorFactory();
+		bp.name = "Seven-blade screw";
+		bp.description = "Seven-blade screw with no outstanding traits, " ~
+			"but relatively good high-speed performance.\n\nMass: 50t";
+		bp.type = PropulsorType.screw;
+		bp.bladeCount = 7;
+		bp.model = ConvexPolygon([
 					vec2f(1.1f, 0.6f),
 					vec2f(0.6f, -0.6f),
 					vec2f(4.2f, -0.9f)
-				], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40)),
-				2.19f
-			));
+				], RgbaColor(67, 67, 67), 0.2f, RgbaColor(40, 40, 40));
 		bp.posThrustK = RolledF(2500.0f, 20.0f);
 		bp.negThrustK = RolledF(1000.0f, 10.0f);
 		bp.mass = 50.0f;
@@ -155,26 +152,24 @@ private:
 			4.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
 		);
 		bp.playable = true;
-		m_propulsors["Seven-blade screw"] = bp;
+		m_propulsors[bp.name] = bp;
 
 		// Five-blade Lima screw
-		bp = new PropulsorFactory(
-			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
-				"Five-blade Lima screw",
-				"High RPM and low cavitation speed, optimized for flank performance.\n\nMass: 30t",
-				PropulsorType.screw,
-				5,
-				ConvexPolygon([
+		bp = new PropulsorFactory();
+		bp.name = "Five-blade Lima screw";
+		bp.description = "High RPM and low cavitation speed, optimized for flank performance.\n\nMass: 30t";
+		bp.type = PropulsorType.screw;
+		bp.bladeCount = 5;
+		bp.model = ConvexPolygon([
 					vec2f(0.5f, 0.4f),
 					vec2f(0.36f, -0.4f),
 					vec2f(2.2f, -0.7f)
-				], RgbaColor(67, 67, 67), 0.15f, RgbaColor(40, 40, 40)),
-				4.11f
-			));
+				], RgbaColor(67, 67, 67), 0.15f, RgbaColor(40, 40, 40));
 		bp.posThrustK = RolledF(2400.0f, 20.0f);
 		bp.negThrustK = RolledF(1100.0f, 10.0f);
 		bp.mass = 30.0f;
 		bp.shaftRotFreq = 4.11f;
+		bp.rotAcceleration = 0.36f;
 		bp.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/lima_propeller.png", 1.0f, 80, 140),
@@ -189,16 +184,12 @@ private:
 			2.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
 		);
 		bp.playable = true;
-		m_propulsors["Five-blade Lima screw"] = bp;
+		m_propulsors[bp.name] = bp;
 
 		// three-blade civilian screw
-		bp = new PropulsorFactory(
-			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
-				"Civilian three-blade screw",
-				"",
-				PropulsorType.screw,
-				3
-			));
+		bp = new PropulsorFactory();
+		bp.name = "Civilian three-blade screw";
+		bp.bladeCount = 3;
 		bp.posThrustK = RolledF(2250.0f, 20.0f);
 		bp.negThrustK = RolledF(900.0f, 10.0f);
 		bp.mass = 40.0f;
@@ -216,7 +207,7 @@ private:
 			3.4f, dgr2rad(30), 6.0f, 0.03f, 0.4f
 		);
 		bp.playable = false;
-		m_propulsors["Civilian three-blade screw"] = bp;
+		m_propulsors[bp.name] = bp;
 	}
 
 
@@ -250,14 +241,9 @@ private:
 			WeaponSensorMode.active | WeaponSensorMode.passive);
 		pdescs ~= pd;
 
-		pf = new PropulsorFactory(
-			cast(immutable(PropulsorTemplate)) PropulsorTemplate(
-				"Minoga screw",
-				null,
-				PropulsorType.screw,
-				3,
-				ConvexPolygon.init
-			));
+		pf = new PropulsorFactory();
+		pf.name = "Minoga screw";
+		pf.bladeCount = 3;
 		pf.posThrustK = RolledF(10.0f, 0.02f);
 		pf.rotAcceleration = 0.5f;
 		pf.negThrustK = RolledF(0.0f, 0.0f);

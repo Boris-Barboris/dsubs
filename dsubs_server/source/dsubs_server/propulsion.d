@@ -126,7 +126,10 @@ final class BasicPropulsor: Propulsor
 
 final class PropulsorFactory
 {
-	immutable PropulsorTemplate tmpl;
+	string name;
+	string description;
+	PropulsorType type;
+	ubyte bladeCount = 1;
 	bool playable = false;
 	RolledF posThrustK;
 	RolledF negThrustK;
@@ -134,11 +137,13 @@ final class PropulsorFactory
 	float shaftRotFreq = 1.0f;
 	float rotAcceleration = 0.2f;
 	PropellerSoundPrototype soundPrototype;
+	ConvexPolygon model;
 
-	this(immutable PropulsorTemplate t)
+	@property const(PropulsorTemplate) tmpl() const
 	{
-		tmpl = t;
-	}
+		return const PropulsorTemplate(
+			name, description, type, bladeCount, model, shaftRotFreq, rotAcceleration);
+	};
 
 	BasicPropulsor build() const
 	{
