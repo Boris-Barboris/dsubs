@@ -1,6 +1,7 @@
 module dsubs_server.sensors;
 
 import dsubs_common.api.messages;
+import dsubs_common.math.angles;
 
 import dsubs_sound.hydrophone;
 import dsubs_sound.activesonar;
@@ -20,7 +21,7 @@ struct SubHydrophonePrototype
 
 	@property const(HydrophoneTemplate) tmpl() const
 	{
-		return HydrophoneTemplate(
+		return const HydrophoneTemplate(
 			name, type, mount, hydroProto.antennaeSpan, hydroProto.antennaeRots, wirePrototype.maxLength);
 	}
 }
@@ -33,7 +34,7 @@ struct SubSonarPrototype
 
 	@property const(SonarTemplate) tmpl() const
 	{
-		return SonarTemplate(
+		return const SonarTemplate(
 			mount, sonarProto.span.dgr2rad, sonarProto.maxPeakIlevel,
 			sonarProto.minPeakIlevel, sonarProto.getSliceXResol(), sonarProto.radialRes,
 			sonarProto.maxSec);

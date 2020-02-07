@@ -200,7 +200,7 @@ final class SubmarineFactory: VesselFactory
 			t.position = asprot.mount.mountCenter.tod;
 			t.rotation = asprot.mount.rotation;
 			res.transform.addChild(t);
-			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot.sonarProto);
+			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, asprot.sonarProto);
 			res.m_sonar.owner = res;
 			res.m_sonar.onPreKinematics += ()
 			{

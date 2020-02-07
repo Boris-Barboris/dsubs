@@ -260,9 +260,9 @@ double maxSpeed(float Cd0, float Cd1, float posThrustK)
 float throttleForSpeed(Vessel v, float speed)
 {
 	speed = fabs(speed);
-	BasicPropulsor bp = cast(BasicPropulsor) v.propulsor;
 	double maxT = v.rigidBody.hydroModel.Cd0 * speed +
 		speed * speed * v.rigidBody.hydroModel.Cd1;
+	BasicPropulsor bp = cast(BasicPropulsor) v.propulsor;
 	return clamp(sqrt(maxT / bp.posThrustK), -1.0f, 1.0f);
 }
 

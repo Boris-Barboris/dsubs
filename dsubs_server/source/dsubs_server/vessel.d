@@ -201,7 +201,7 @@ struct VesselRigidBodyTemplate
 struct VesselSteeringTemplate
 {
 	/// Equilibrium drift angle on maximum rudder deflection, radians
-	float equilDrift;
+	float equilDrift = 0.0f;
 	float rudderKp = 10.0f;
 	float rudderKd = -20.0f;
 	float rudderPosChangeSpeed = 1.0f;
@@ -222,8 +222,6 @@ class VesselFactory
 	/// All internal binding and preparation of vessel components
 	protected final void bootstrap(Vessel res) const
 	{
-		res.m_moiK = moiK;
-		res.m_hullLength = hullLength;
 		res.m_rigidBody.mass = rigidBody.mass;
 		res.m_rigidBody.hydroModel.Cd0 = rigidBody.Cd0;
 		res.m_rigidBody.hydroModel.Cd1 = rigidBody.Cd1;

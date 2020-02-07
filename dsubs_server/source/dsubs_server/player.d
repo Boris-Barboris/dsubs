@@ -236,7 +236,7 @@ final class Player: Captain
 			{
 				Submarine s = m_submarine;
 				enforce(s is null, "Already spawned");
-				s = Globals.entityDb.buildSubFromLoadout(req, this);
+				s = Globals.entityDb.buildSubFromLoadout(req, this, true);
 				generateShift();
 				randomizePosition(req, s);
 				foreach (h; s.hydrophones)

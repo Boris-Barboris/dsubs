@@ -82,7 +82,8 @@ final class EntityDb
 				a => cast(immutable) a.tmpl).array,
 			m_submarines.values.filter!(a => a.playable).map!(
 				a => cast(immutable) a.tmpl).array,
-			m_weapons.values.map!(a => a.tmpl).array,
+			m_weapons.values.filter!(a => a.playable).map!(
+				a => cast(immutable) a.tmpl).array,
 		);
 		marshalledCommonEntityDb = BackendProtocol.marshal(enititydb);
 		auto sha256 = new SHA256Digest();
@@ -92,12 +93,16 @@ final class EntityDb
 	}
 
 	/// Build submarine object from the Spawn request message
-	Submarine buildSubFromLoadout(const SpawnReq req, Captain cpt)
+	Submarine buildSubFromLoadout(const SpawnReq req, Captain cpt, bool humanPlayer = false)
 	{
 		SubmarineFactory* sp = req.submarineName in m_submarines;
 		enforce(sp !is null, "Unknown submarine");
+		if (humanPlayer)
+			enforce(sp.playable, "sub is unplayable");
 		PropulsorFactory* pp = req.propulsorName in m_propulsors;
 		enforce(pp !is null, "Unknown propulsor");
+		if (humanPlayer)
+			enforce(pp.playable, "propulsor is unplayable");
 		enforce(sp.tmpl.propulsors.any!(p => p == pp.tmpl.name)(),
 			"Propulsor not allowed for submarine");
 		Propulsor prop = pp.build();
@@ -217,31 +222,8 @@ private:
 	{
 		TorpedoFactory tf;
 		PropulsorFactory pf;
-		WeaponParamDesc[] pdescs;
-		WeaponParamDesc pd;
 
 		// Minoga torpedo
-		pd.type = WeaponParamType.marchSpeed;
-		pd.speedRange = MinMax(21, 29);
-		pdescs ~= pd;
-		pd.type = WeaponParamType.activeSpeed;
-		pdescs ~= pd;
-		pd.type = WeaponParamType.activationRange;
-		pd.activationRange = MinMax(200, 10_000);
-		pdescs ~= pd;
-		pd.type = WeaponParamType.searchPattern;
-		pd.searchPatterns = WeaponParamDescSearchPatterns(
-			cast(WeaponSearchPattern)(
-				WeaponSearchPattern.straight |
-				WeaponSearchPattern.snake |
-				WeaponSearchPattern.spiral),
-			400.0f, 150.0f, 200.0f
-		);
-		pdescs ~= pd;
-		pd.type = WeaponParamType.sensorMode;
-		pd.sensorModes = cast(WeaponSensorMode) (
-			WeaponSensorMode.active | WeaponSensorMode.passive);
-		pdescs ~= pd;
 
 		pf = new PropulsorFactory();
 		pf.name = "Minoga screw";
@@ -263,10 +245,10 @@ private:
 			0.25f, dgr2rad(30), 5.0f, 0.03f, 0.7f
 		);
 
-		tf = new TorpedoFactory(
-			cast(immutable(WeaponTemplate)) WeaponTemplate(
-				"Minoga",
-`"Minoga" heavy torpedo.
+		tf = new TorpedoFactory(pf);
+		tf.name = "Minoga";
+		tf.playable = true;
+		tf.description = `"Minoga" heavy torpedo.
 
 Sensors: active sonar or passive hydrophone.
 Effective speed range (active): 21-29 m/s.
@@ -274,18 +256,19 @@ Effective speed range (passive): 21-26 m/s.
 Max range (29m/s): 7000m.
 Max range (21m/s): 9500m.
 Search patterns: straight, snake, spiral.
-`,
-				90.0f,
-				cast(WeaponParamType)(
-					WeaponParamType.activeCourse |
-					WeaponParamType.sensorMode |
-					WeaponParamType.marchCourse |
-					WeaponParamType.activeSpeed |
-					WeaponParamType.marchSpeed |
-					WeaponParamType.searchPattern |
-					WeaponParamType.activationRange),
-				pdescs.dup),
-			pf);
+`;
+		tf.turningRadius = 90.0f;
+		tf.marchSpeedRange = MinMax(21, 29);
+		tf.activeSpeedRange = MinMax(21, 29);
+		tf.activationRange = MinMax(200, 10_000);
+		tf.sensorModes = cast(WeaponSensorMode) (
+			WeaponSensorMode.active | WeaponSensorMode.passive);
+		tf.searchPatterns = WeaponParamDescSearchPatterns(
+			cast(WeaponSearchPattern)(
+				WeaponSearchPattern.straight |
+				WeaponSearchPattern.snake |
+				WeaponSearchPattern.spiral),
+			400.0f, 150.0f, 200.0f);
 		tf.propMount.mountCenter = vec2d(0, -2.55);
 		tf.sensorsMount.mountCenter = vec2d(0, 2.5);
 		// minoga's active sonar
@@ -318,8 +301,6 @@ Search patterns: straight, snake, spiral.
 		tf.hprot.omniNoiseMult = 0.0025f;
 		tf.hprot.localNoiseRangeCutoff = 100.0f;
 		tf.hprot.flowNoiseMult = 1e-8f;
-
-
 		tf.defaultSensorMode = WeaponSensorMode.active;
 		tf.fuelEffExponent = 2.5f;
 		tf.snakeArm = 300.0f;
@@ -327,56 +308,48 @@ Search patterns: straight, snake, spiral.
 		tf.snakeAngle = dgr2rad(60.0f);
 		tf.spiralStartTarget = 1.0f;
 		tf.spiralTargetRedPerRange = 0.08f;
-		float tgtMaxSpeed = 29.0f;
-		tf.fuel = RolledF(7000 / tgtMaxSpeed, 2);
-		tf.mass = RolledF(1.5f, 2e-3);
-		tf.Cd0 = RolledF(0.2f, 1e-3f);
-		tf.Cd1 = RolledF(
-			(pf.posThrustK.mean - tf.Cd0.mean * tgtMaxSpeed) / pow(tgtMaxSpeed, 2), 3e-4f);
-		tf.Cda = 1.5f;
-		tf.equilDrift = dgr2rad(10);
-		double cl = calcClForTurningRadius(tf.equilDrift,
-			tf.tmpl.turningRadius, tf.mass.mean);
-		tf.Cl = RolledF(cl, 0.01f * cl);
-		tf.Cr0 = RolledF(0.01f, 0);
-		tf.Cr1 = RolledF(0, 0);
-		tf.Cm = RolledF(0.003f, 0);
-		tf.rudderKp = 10.0f;
-		tf.rudderKd = -30.0f;
-		tf.rudderPosChangeSpeed = 2.0f;
+		tf.fullThrottleSpd = 29.0f;
+		tf.tgtMaxRangeOnMaxSpd = 7000.0f;
+		tf.rigidBody.mass = RolledF(1.5f, 2e-3);
+		tf.rigidBody.Cd0 = RolledF(0.2f, 1e-3f);
+		tf.rigidBody.Cda = 1.5f;
+		tf.rigidBody.Cr0 = RolledF(0.01f, 0);
+		tf.rigidBody.Cr1 = RolledF(0, 0);
+		tf.rigidBody.Cm = RolledF(0.003f, 0);
+		tf.steering.equilDrift = dgr2rad(10);
+		tf.steering.rudderKp = 10.0f;
+		tf.steering.rudderKd = -30.0f;
+		tf.steering.rudderPosChangeSpeed = 2.0f;
 		// vec2f dims = getHullDims(tf.tmpl.hullModel);
-		tf.hullLength = 5.2f;
+		tf.rigidBody.hullLength = 5.2f;
 		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.2f), [-20.0f, -20.0f, -15.0f]);
-		tf.updateTemplateFuelData();
-		m_weapons["Minoga"] = tf;
+		tf.prepareDynamicsAndParams();
+		m_weapons[tf.name] = tf;
 
-		pdescs.length = 0;
+		// Active decoy
 
-		ActiveDecoyFactory adf = new ActiveDecoyFactory(
-			cast(immutable(WeaponTemplate)) WeaponTemplate(
-				"Decoy(active)",
-				"Active sonar decoy. Lasts 90 seconds.",
-				0.0f,
-				WeaponParamType.none,
-				[])
-		);
+		ActiveDecoyFactory adf = new ActiveDecoyFactory();
+		adf.name = "Decoy(active)";
+		adf.playable = true;
+		adf.description = "Active sonar decoy. Lasts 90 seconds.",
 		adf.fuel = RolledF(90, 5);
-		adf.mass = RolledF(1.0f, 1e-3);
-		adf.Cd0 = RolledF(0.05f, 1e-5f);
-		adf.Cd1 = RolledF(0.01f, 1e-5f);
-		adf.Cda = 0.0f;
-		adf.equilDrift = 0.0f;
-		adf.Cl = RolledF(0.01f, 0.0f);
-		adf.Cr0 = RolledF(0.05f, 0);
-		adf.Cr1 = RolledF(0.25f, 0);
-		adf.Cm = RolledF(0.005f, 0);
-		adf.rudderKp = 0.0f;
-		adf.rudderKd = 0.0f;
-		adf.rudderPosChangeSpeed = 2.0f;
-		adf.hullLength = 4.0f;
+		adf.rigidBody.mass = RolledF(1.0f, 1e-3);
+		adf.rigidBody.Cd0 = RolledF(0.05f, 1e-5f);
+		adf.rigidBody.Cd1 = RolledF(0.01f, 1e-5f);
+		adf.rigidBody.Cda = 0.0f;
+		adf.steering.equilDrift = 0.0f;
+		adf.rigidBody.Cl = RolledF(0.01f, 0.0f);
+		adf.rigidBody.Cr0 = RolledF(0.05f, 0);
+		adf.rigidBody.Cr1 = RolledF(0.25f, 0);
+		adf.rigidBody.Cm = RolledF(0.005f, 0);
+		adf.steering.rudderKp = 0.0f;
+		adf.steering.rudderKd = 0.0f;
+		adf.steering.rudderPosChangeSpeed = 2.0f;
+		adf.rigidBody.hullLength = 4.0f;
 		adf.reflprot = ReflectorPrototype(vec2f(0.6f, 4.0f), [-22.0f, -22.0f, -22.0f]);
 		adf.activeReflectorProto = ReflectorPrototype(vec2f(30, 30), [-7.0f, -7.0f, -7.0f]);
-		m_weapons["Decoy(active)"] = adf;
+		adf.generateParamDescs();
+		m_weapons[adf.name] = adf;
 	}
 
 
@@ -385,7 +358,8 @@ Search patterns: straight, snake, spiral.
 		SubmarineFactory sp;
 
 		// Stork
-		ActiveSonarPrototype* asp = new ActiveSonarPrototype();
+
+		ActiveSonarPrototype asp = ActiveSonarPrototype();
 		AmmoRoomPrototype[int] roomProtos;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 16,
 			TubeType.standard, ["Minoga": true]);
@@ -445,10 +419,10 @@ Search patterns: straight, snake, spiral.
 		hydroProtos[$-1].hydroProto.mirrored = true;
 		hydroProtos[$-1].hydroProto.imageBlackLevel = 10.0f;
 		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(600.0f, 1);
-		sp = new SubmarineFactory(
-			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
-				"Stork",
-`Light attack submarine "Stork" offers good balance of stealth,
+
+		sp = new SubmarineFactory();
+		sp.name = "Stork";
+		sp.description = `Light attack submarine "Stork" offers good balance of stealth,
 offensive capabilities and survivability.
 
 Length: 70m
@@ -463,97 +437,93 @@ Hydrophones:
   Stern: 600m LF towed array, 330 deg FoV
 Active sonars:
   Bow: 2200Hz mid-freq pulse, 210 deg FoV`,
-				[
-					// right towed array pylon
-					ConvexPolygon(arr2vec2f([
-							6.0f, -35.0f,
-							6.0f, -34.0f,
-							1.0f, -27.0f,
-							1.0f, -31.0f
-						]), RgbaColor(70, 70, 70), 0.2f, RgbaColor(100, 100, 100)),
-					ConvexPolygon(xSymmetry([
-							0.0, 35.0,
-							-1.5, 34.8,
-							-2.8, 34,
-							-3.5, 33.0,
-							-4, 32.2,
-							-4.7, 30.0,
-							-5.0, 28.0,
-							-5.0, -18.0,
-							-4.5, -23.0,
-							-3.0, -28.0,
-							-2.0, -31.0,
-							0.0, -35.0
-						]), RgbaColor(70, 70, 70), 0.4f, RgbaColor(100, 100, 100)),
-					ConvexPolygon(xSymmetry([
-							0.0, 15.0,
-							-1.0, 14.7,
-							-1.7, 14.0,
-							-2.0, 13.0,
-							-2.0, 4.0,
-							-1.7, 2.0,
-							-1.0, 0.5,
-							0.0, -1.0
-						]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50)),
-					// bow tubes
-					ConvexPolygon([
-							vec2f(-5.3, 28.0),
-							vec2f(-5.3, 24.0),
-							vec2f(-5.0, 24.3),
-							vec2f(-5.0, 27.7),
-						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
-					ConvexPolygon([
-							vec2f(5.0, 27.7),
-							vec2f(5.0, 24.3),
-							vec2f(5.3, 24.0),
-							vec2f(5.3, 28.0)
-						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
-					// broadside decoy launchers
-					ConvexPolygon([
-							vec2f(-5.10, -20.0),
-							vec2f(-4.90, -22.0),
-							vec2f(-4.60, -21.9),
-							vec2f(-4.80, -20.1),
-						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
-					ConvexPolygon([
-							vec2f(4.80, -20.1),
-							vec2f(4.60, -21.9),
-							vec2f(4.90, -22.0),
-							vec2f(5.10, -20.0)
-						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
-				],
-				[MountPoint(vec2f(0.0, -34.0f))],
-				2,
-				hydroProtos.map!(hp => hp.getTemplate()).array,
-				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
-					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
-					asp.getSliceXResol(), asp.radialRes, asp.maxSec),
-				["Seven-blade screw"],
-				roomProtos.byValue.map!(p => p.toTemplate()).array,
-				tubeProtos.byValue.map!(p => p.tmpl).array
-			));
+		sp.model = Submarine2DModel(
+			[
+				// right towed array pylon
+				ConvexPolygon(arr2vec2f([
+						6.0f, -35.0f,
+						6.0f, -34.0f,
+						1.0f, -27.0f,
+						1.0f, -31.0f
+					]), RgbaColor(70, 70, 70), 0.2f, RgbaColor(100, 100, 100)),
+				ConvexPolygon(xSymmetry([
+						0.0, 35.0,
+						-1.5, 34.8,
+						-2.8, 34,
+						-3.5, 33.0,
+						-4, 32.2,
+						-4.7, 30.0,
+						-5.0, 28.0,
+						-5.0, -18.0,
+						-4.5, -23.0,
+						-3.0, -28.0,
+						-2.0, -31.0,
+						0.0, -35.0
+					]), RgbaColor(70, 70, 70), 0.4f, RgbaColor(100, 100, 100)),
+				ConvexPolygon(xSymmetry([
+						0.0, 15.0,
+						-1.0, 14.7,
+						-1.7, 14.0,
+						-2.0, 13.0,
+						-2.0, 4.0,
+						-1.7, 2.0,
+						-1.0, 0.5,
+						0.0, -1.0
+					]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50)),
+				// bow tubes
+				ConvexPolygon([
+						vec2f(-5.3, 28.0),
+						vec2f(-5.3, 24.0),
+						vec2f(-5.0, 24.3),
+						vec2f(-5.0, 27.7),
+					], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+				ConvexPolygon([
+						vec2f(5.0, 27.7),
+						vec2f(5.0, 24.3),
+						vec2f(5.3, 24.0),
+						vec2f(5.3, 28.0)
+					], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+				// broadside decoy launchers
+				ConvexPolygon([
+						vec2f(-5.10, -20.0),
+						vec2f(-4.90, -22.0),
+						vec2f(-4.60, -21.9),
+						vec2f(-4.80, -20.1),
+					], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+				ConvexPolygon([
+						vec2f(4.80, -20.1),
+						vec2f(4.60, -21.9),
+						vec2f(4.90, -22.0),
+						vec2f(5.10, -20.0)
+					], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+			],
+			2
+		);
+		sp.propulsionMounts = [MountPoint(vec2f(0.0, -34.0f))];
+		sp.allowedPropulsors = ["Seven-blade screw"];
 		sp.roomProtos = roomProtos;
 		sp.tubeProtos = tubeProtos;
-		sp.mass = RolledF(1700.0f, 10.0f);
-		sp.Cd0 = RolledF(40.0, 1.0f);
-		sp.Cd1 = RolledF(6.5, 0.042f);
-		sp.Cda = 0.8;
-		sp.Cl = RolledF(35.0, 0.4f);
-		sp.Cr0 = RolledF(5e4, 100);
-		sp.Cr1 = RolledF(0.5e6, 1e2);
-		sp.Cm = RolledF(500.0f, 6.0f);
-		sp.equilDrift = dgr2rad(20);
-		vec2f dims = getHullDims(sp.tmpl.hullModel);
+		sp.rigidBody.mass = RolledF(1700.0f, 10.0f);
+		sp.rigidBody.Cd0 = RolledF(40.0, 1.0f);
+		sp.rigidBody.Cd1 = RolledF(6.5, 0.042f);
+		sp.rigidBody.Cda = 0.8;
+		sp.rigidBody.Cl = RolledF(35.0, 0.4f);
+		sp.rigidBody.Cr0 = RolledF(5e4, 100);
+		sp.rigidBody.Cr1 = RolledF(0.5e6, 1e2);
+		sp.rigidBody.Cm = RolledF(500.0f, 6.0f);
+		sp.steering.equilDrift = dgr2rad(20);
+		vec2f dims = getHullDims(sp.model.hullModel);
 		// trace("dims: ", dims);
-		sp.hullLength = dims.y;
+		sp.rigidBody.hullLength = dims.y;
 		sp.hprots = hydroProtos;
-		sp.asprot = asp;
+		sp.asprot = new SubSonarPrototype(MountPoint(vec2f(0.0f, 31.0f)), asp);
 		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-25.0f, -23.0f, -15.0f]);
 		sp.playable = true;
-		m_submarines[sp.tmpl.name] = sp;
+		m_submarines[sp.name] = sp;
 
 
 		// Lima
+
 		roomProtos = roomProtos.dup;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 14,
 			TubeType.standard, ["Minoga": true]);
@@ -598,7 +568,7 @@ Active sonars:
 		decoyTubePrototype.tmpl.mount = MountPoint(vec2f(2.1, -21.0f), -dgr2rad(100));
 		decoyTubePrototype.tmpl.id = 3;
 		tubeProtos[3] = decoyTubePrototype;
-		asp = new ActiveSonarPrototype();
+		asp = ActiveSonarPrototype();
 		asp.pingParams = PingParameters(
 			[Chirp(2400, 2400, 0.2f), Chirp(2100, 2100, 0.5f)],
 			3, 2200, "octaveBp1900_2500");
@@ -623,10 +593,10 @@ Active sonars:
 				[dgr2rad(90.0f), -dgr2rad(90.0f)], 200, GLOBAL_SRATE / 2, dgr2rad(120),
 				100, 1.5 / 90.0f, 3.4f));
 		hydroProtos[1].hydroProto.flowNoiseMult = 1.4e-5f;
-		sp = new SubmarineFactory(
-			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
-				"Lima",
-`Extremely fast light attack submarine. It's bow is too narrow to
+
+	sp = new SubmarineFactory();
+	sp.name = "Lima";
+	sp.description = `Extremely fast light attack submarine. It's bow is too narrow to
 hold reasonably sensitive hydrophone array, so it's main ears are hull-mounted
 linear arrays.
 
@@ -641,168 +611,162 @@ Hydrophones:
   Bow: spherical array, 210 deg FoV
   Hull: 2 linear arrays, 120 deg FoV each.
 Active sonars:
-  Bow: 2400Hz mid-freq pulse, 210 deg FoV`,
-  				[
-					// bow planes
-					ConvexPolygon([
-							vec2f(-2.88, 20.74),
-							vec2f(-5.08, 20.74),
-							vec2f(-5.08, 19.45),
-							vec2f(-2.89, 19.40)
-						], RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
-					ConvexPolygon([
-							vec2f(-2.88, 20.74),
-							vec2f(-5.08, 20.74),
-							vec2f(-5.08, 19.45),
-							vec2f(-2.89, 19.40)
-						].xreflect, RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
-					// tail planes
-					ConvexPolygon([
-							vec2f(-1.17, -26.37),
-							vec2f(-5.23, -27.64),
-							vec2f(-5.23, -29.45),
-							vec2f(-0.60, -29.48)
-						], RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
-					ConvexPolygon([
-							vec2f(-1.17, -26.37),
-							vec2f(-5.23, -27.64),
-							vec2f(-5.23, -29.45),
-							vec2f(-0.60, -29.48)
-						].xreflect, RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
-					// main shape
-					ConvexPolygon(xSymmetry([
-							0.0, 26.33,
-							-0.72, 26.25,
-							-1.47, 25.66,
-							-2.19, 24.66,
-							-2.68, 23.18,
-							-2.92, 22.10,
-							-3.12, 20.03,
-							-3.33, 16.83,
-							-3.39, 13.60,
-							-3.44, 8.70,
-							-3.52, 0.84,
-							-3.41, -3.65,
-							-3.23, -8.65,
-							-2.75, -15.40,
-							-1.77, -23.35,
-							0.0, -33.44
-						]), RgbaColor(70, 70, 70), 0.4f, RgbaColor(100, 100, 100)),
-					// sail foundation
-					ConvexPolygon(xSymmetry([
-							0.0, 11.28,
-							-0.60, 10.96,
-							-1.42, 9.59,
-							-1.94, 7.15,
-							-1.72, 3.76,
-							-1.16, 0.71,
-							0.0, -2.70
-						]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50)),
-					// sail roof
-					ConvexPolygon(xSymmetry([
-							0.0, 10.42,
-							-0.21, 10.19,
-							-0.79, 9.23,
-							-1.06, 7.38,
-							-0.85, 3.97,
-							-0.48, 1.61,
-							0.0, 0.11
-						]), RgbaColor(70, 70, 70), 0.2f, RgbaColor(50, 50, 50)),
-					// bow tubes
-					ConvexPolygon([
-							vec2f(-0.85, 25.53),
-							vec2f(-1.01, 25.52),
-							vec2f(-1.18, 25.39),
-							vec2f(-1.26, 25.11),
-							vec2f(-1.24, 24.81),
-							vec2f(-1.09, 24.45),
-							vec2f(-0.87, 24.69),
-							vec2f(-0.69, 25.00),
-							vec2f(-0.66, 25.25),
-							vec2f(-0.70, 25.44)
-						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
-					ConvexPolygon([
-							vec2f(-0.85, 25.53),
-							vec2f(-1.01, 25.52),
-							vec2f(-1.18, 25.39),
-							vec2f(-1.26, 25.11),
-							vec2f(-1.24, 24.81),
-							vec2f(-1.09, 24.45),
-							vec2f(-0.87, 24.69),
-							vec2f(-0.69, 25.00),
-							vec2f(-0.66, 25.25),
-							vec2f(-0.70, 25.44)
-						].xreflect, RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
-					// broadside decoy launchers
-					ConvexPolygon([
-							vec2f(-2.50, -20.0),
-							vec2f(-2.30, -22.0),
-							vec2f(-2.05, -21.9),
-							vec2f(-2.25, -20.1),
-						], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
-					ConvexPolygon([
-							vec2f(-2.50, -20.0),
-							vec2f(-2.30, -22.0),
-							vec2f(-2.05, -21.9),
-							vec2f(-2.25, -20.1),
-						].xreflect, RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
-				],
-				[MountPoint(vec2f(0.0, -34.0f))],
-				5,
-				hydroProtos.map!(hp => hp.getTemplate()).array,
-				SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
-					asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
-					asp.getSliceXResol(), asp.radialRes, asp.maxSec),
-				["Five-blade Lima screw"],
-				roomProtos.byValue.map!(p => p.toTemplate()).array,
-				tubeProtos.byValue.map!(p => p.tmpl).array
-			));
+  Bow: 2400Hz mid-freq pulse, 210 deg FoV`;
+	sp.model = Submarine2DModel(
+		[
+			// bow planes
+			ConvexPolygon([
+					vec2f(-2.88, 20.74),
+					vec2f(-5.08, 20.74),
+					vec2f(-5.08, 19.45),
+					vec2f(-2.89, 19.40)
+				], RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
+			ConvexPolygon([
+					vec2f(-2.88, 20.74),
+					vec2f(-5.08, 20.74),
+					vec2f(-5.08, 19.45),
+					vec2f(-2.89, 19.40)
+				].xreflect, RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
+			// tail planes
+			ConvexPolygon([
+					vec2f(-1.17, -26.37),
+					vec2f(-5.23, -27.64),
+					vec2f(-5.23, -29.45),
+					vec2f(-0.60, -29.48)
+				], RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
+			ConvexPolygon([
+					vec2f(-1.17, -26.37),
+					vec2f(-5.23, -27.64),
+					vec2f(-5.23, -29.45),
+					vec2f(-0.60, -29.48)
+				].xreflect, RgbaColor(65, 65, 65), 0.2f, RgbaColor(90, 90, 90)),
+			// main shape
+			ConvexPolygon(xSymmetry([
+					0.0, 26.33,
+					-0.72, 26.25,
+					-1.47, 25.66,
+					-2.19, 24.66,
+					-2.68, 23.18,
+					-2.92, 22.10,
+					-3.12, 20.03,
+					-3.33, 16.83,
+					-3.39, 13.60,
+					-3.44, 8.70,
+					-3.52, 0.84,
+					-3.41, -3.65,
+					-3.23, -8.65,
+					-2.75, -15.40,
+					-1.77, -23.35,
+					0.0, -33.44
+				]), RgbaColor(70, 70, 70), 0.4f, RgbaColor(100, 100, 100)),
+			// sail foundation
+			ConvexPolygon(xSymmetry([
+					0.0, 11.28,
+					-0.60, 10.96,
+					-1.42, 9.59,
+					-1.94, 7.15,
+					-1.72, 3.76,
+					-1.16, 0.71,
+					0.0, -2.70
+				]), RgbaColor(67, 67, 67), 0.25f, RgbaColor(50, 50, 50)),
+			// sail roof
+			ConvexPolygon(xSymmetry([
+					0.0, 10.42,
+					-0.21, 10.19,
+					-0.79, 9.23,
+					-1.06, 7.38,
+					-0.85, 3.97,
+					-0.48, 1.61,
+					0.0, 0.11
+				]), RgbaColor(70, 70, 70), 0.2f, RgbaColor(50, 50, 50)),
+			// bow tubes
+			ConvexPolygon([
+					vec2f(-0.85, 25.53),
+					vec2f(-1.01, 25.52),
+					vec2f(-1.18, 25.39),
+					vec2f(-1.26, 25.11),
+					vec2f(-1.24, 24.81),
+					vec2f(-1.09, 24.45),
+					vec2f(-0.87, 24.69),
+					vec2f(-0.69, 25.00),
+					vec2f(-0.66, 25.25),
+					vec2f(-0.70, 25.44)
+				], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+			ConvexPolygon([
+					vec2f(-0.85, 25.53),
+					vec2f(-1.01, 25.52),
+					vec2f(-1.18, 25.39),
+					vec2f(-1.26, 25.11),
+					vec2f(-1.24, 24.81),
+					vec2f(-1.09, 24.45),
+					vec2f(-0.87, 24.69),
+					vec2f(-0.69, 25.00),
+					vec2f(-0.66, 25.25),
+					vec2f(-0.70, 25.44)
+				].xreflect, RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+			// broadside decoy launchers
+			ConvexPolygon([
+					vec2f(-2.50, -20.0),
+					vec2f(-2.30, -22.0),
+					vec2f(-2.05, -21.9),
+					vec2f(-2.25, -20.1),
+				], RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+			ConvexPolygon([
+					vec2f(-2.50, -20.0),
+					vec2f(-2.30, -22.0),
+					vec2f(-2.05, -21.9),
+					vec2f(-2.25, -20.1),
+				].xreflect, RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
+		], 5);
+		sp.propulsionMounts = [MountPoint(vec2f(0.0, -34.0f))];
+		sp.allowedPropulsors = ["Five-blade Lima screw"];
+
+				// SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
+				// 	asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
+				// 	asp.getSliceXResol(), asp.radialRes, asp.maxSec),
+
 		sp.roomProtos = roomProtos;
 		sp.tubeProtos = tubeProtos;
-		sp.rudderKp = 8.0f;
-		sp.rudderKd = -8.0f;
-		sp.mass = RolledF(700.0f, 4.0f);
-		sp.Cd0 = RolledF(20.0, 0.1f);
-		sp.Cd1 = RolledF(4.5, 0.042f);
-		sp.Cda = 0.8;
-		sp.Cl = RolledF(25.0, 0.1f);
-		sp.Cr0 = RolledF(5e4, 100);
-		sp.Cr1 = RolledF(0.5e6, 1e2);
-		sp.Cm = RolledF(300.0f, 2.0f);
-		sp.equilDrift = dgr2rad(20);
-		dims = getHullDims(sp.tmpl.hullModel);
+		sp.steering.rudderKp = 8.0f;
+		sp.steering.rudderKd = -8.0f;
+		sp.rigidBody.mass = RolledF(700.0f, 4.0f);
+		sp.rigidBody.Cd0 = RolledF(20.0, 0.1f);
+		sp.rigidBody.Cd1 = RolledF(4.5, 0.042f);
+		sp.rigidBody.Cda = 0.8;
+		sp.rigidBody.Cl = RolledF(25.0, 0.1f);
+		sp.rigidBody.Cr0 = RolledF(5e4, 100);
+		sp.rigidBody.Cr1 = RolledF(0.5e6, 1e2);
+		sp.rigidBody.Cm = RolledF(300.0f, 2.0f);
+		sp.steering.equilDrift = dgr2rad(20);
+		dims = getHullDims(sp.model.hullModel);
 		// trace("dims: ", dims);
-		sp.hullLength = dims.y;
+		sp.rigidBody.hullLength = dims.y;
 		sp.hprots = hydroProtos;
-		sp.asprot = asp;
+		sp.asprot = new SubSonarPrototype(MountPoint(vec2f(0.0f, 23.2f)), asp);
 		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-21.0f, -19.0f, -11.0f]);
 		sp.playable = true;
-		m_submarines[sp.tmpl.name] = sp;
+		m_submarines[sp.name] = sp;
 
 
 		// civilian (bot) trader
-		sp = new SubmarineFactory(
-			cast(immutable(SubmarineTemplate)) SubmarineTemplate(
-				"Bot trader", "", null,
-				[MountPoint(vec2f(0.0, -46.0f))],
-				1,
-				null,
-				SonarTemplate(),
-				["Civilian three-blade screw"]
-			));
-		sp.mass = RolledF(3000.0f, 10.0f);
-		sp.Cd0 = RolledF(90.0, 1.0f);
-		sp.Cd1 = RolledF(20.0, 0.042f);
-		sp.Cda = 0.8;
-		sp.Cl = RolledF(50.0, 0.4f);
-		sp.Cr0 = RolledF(6e4, 100);
-		sp.Cr1 = RolledF(0.6e6, 1e2);
-		sp.Cm = RolledF(700.0f, 6.0f);
-		sp.equilDrift = dgr2rad(20);
-		sp.hullLength = 100;
+		sp = new SubmarineFactory();
+		sp.playable = false;
+		sp.name = "Bot trader";
+		sp.propulsionMounts = [MountPoint(vec2f(0.0, -46.0f))];
+		sp.allowedPropulsors = ["Civilian three-blade screw"];
+		sp.rigidBody.mass = RolledF(3000.0f, 10.0f);
+		sp.rigidBody.Cd0 = RolledF(90.0, 1.0f);
+		sp.rigidBody.Cd1 = RolledF(20.0, 0.042f);
+		sp.rigidBody.Cda = 0.8;
+		sp.rigidBody.Cl = RolledF(50.0, 0.4f);
+		sp.rigidBody.Cr0 = RolledF(6e4, 100);
+		sp.rigidBody.Cr1 = RolledF(0.6e6, 1e2);
+		sp.rigidBody.Cm = RolledF(700.0f, 6.0f);
+		sp.steering.equilDrift = dgr2rad(20);
+		sp.rigidBody.hullLength = 100;
 		sp.reflprot = ReflectorPrototype(vec2f(15.0f, 100.0f), [-8.0f, -5.0f, -4.0f]);
 		sp.playable = false;
-		m_submarines[sp.tmpl.name] = sp;
+		m_submarines[sp.name] = sp;
 	}
 
 

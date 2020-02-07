@@ -750,23 +750,34 @@ final class WeaponCollection
 abstract class WeaponFactory: VesselFactory
 {
 	string name;
-	string descirption;
-	float turningRadius;
-	WeaponParamType availableParams;
-	WeaponParamDesc[] paramDescs;
+	string description;
+	bool marchCourseConfigurable;
+	bool activeCourseConfigurable;
+	bool playable;
 
 	@property const(WeaponTemplate) tmpl() const
 	{
+		assert(m_paramDescsGenerated);
 		return const WeaponTemplate(
-			name, descirption, turningRadius, availableParams, paramDescs,
+			name, description, turningRadius, m_availableParams, m_paramDescs,
 			fuel.mean, fullThrottleSpd, fuelEffExponent);
 	}
 
+	float turningRadius = 0.0f;
 	RolledF fuel;
+	/// balancing parameter. Enter real max speed. Drag Cd1 will be tuned with respect to propulsor
+	/// to match this value.
 	float fullThrottleSpd = 0.0f;
 	float fuelEffExponent = 2.0f;
 
-	// inlined weapon parameter descriptions
+	protected
+	{
+		bool m_paramDescsGenerated;
+		WeaponParamType m_availableParams;
+		WeaponParamDesc[] m_paramDescs;
+	}
+
+	// inlined weapon parameter descriptions. They should not be assigned directly, but
 	MinMax marchSpeedRange;
 	MinMax activeSpeedRange;
 	MinMax activationRange;
@@ -776,38 +787,61 @@ abstract class WeaponFactory: VesselFactory
 	WeaponSensorMode defaultSensorMode;
 	WeaponSearchPattern defaultSearchPattern = WeaponSearchPattern.straight;
 
-	/// Take some torpedo parameters from the WeaponTemplate and assign them
-	/// to relevant factory fields. TODO: reverse the logic. Server-side source of
-	/// truth should be a factory object, and the template should be generated from it.
-	void assignParamDescsFromTemplate()
+	/// Process allparameters and generate m_availableParams and m_paramDescs.
+	void generateParamDescs()
 	{
-		foreach (const(WeaponParamDesc) desc; paramDescs)
+		m_availableParams = WeaponParamType.none;
+		m_paramDescs.length = 0;
+		if (marchCourseConfigurable)
+			m_availableParams |= WeaponParamType.marchCourse;
+		if (activeCourseConfigurable)
+			m_availableParams |= WeaponParamType.activeCourse;
+		if (marchSpeedRange.max > marchSpeedRange.min)
 		{
-			switch (desc.type)
-			{
-				case WeaponParamType.sensorMode:
-					sensorModes = desc.sensorModes;
-					break;
-				case WeaponParamType.marchSpeed:
-					marchSpeedRange = desc.speedRange;
-					break;
-				case WeaponParamType.activeSpeed:
-					activeSpeedRange = desc.speedRange;
-					break;
-				case WeaponParamType.searchPattern:
-					searchPatterns = desc.searchPatterns;
-					break;
-				case WeaponParamType.activationRange:
-					activationRange = desc.activationRange;
-					break;
-				default:
-					assert(0, "unexpected parameter type");
-			}
+			m_availableParams |= WeaponParamType.marchSpeed;
+			WeaponParamDesc pd;
+			pd.type = WeaponParamType.marchSpeed;
+			pd.speedRange = marchSpeedRange;
+			m_paramDescs ~= pd;
 		}
+		if (activeSpeedRange.max > activeSpeedRange.min)
+		{
+			m_availableParams |= WeaponParamType.activeSpeed;
+			WeaponParamDesc pd;
+			pd.type = WeaponParamType.activeSpeed;
+			pd.speedRange = activeSpeedRange;
+			m_paramDescs ~= pd;
+		}
+		if (activationRange.max > activationRange.min)
+		{
+			m_availableParams |= WeaponParamType.activationRange;
+			WeaponParamDesc pd;
+			pd.type = WeaponParamType.activationRange;
+			pd.activationRange = activationRange;
+			m_paramDescs ~= pd;
+		}
+		if (popcnt(sensorModes))
+		{
+			m_availableParams |= WeaponParamType.sensorMode;
+			WeaponParamDesc pd;
+			pd.type = WeaponParamType.sensorMode;
+			pd.sensorModes = sensorModes;
+			m_paramDescs ~= pd;
+		}
+		if (popcnt(searchPatterns.availablePatterns))
+		{
+			m_availableParams |= WeaponParamType.searchPattern;
+			WeaponParamDesc pd;
+			pd.type = WeaponParamType.searchPattern;
+			pd.searchPatterns = searchPatterns;
+			m_paramDescs ~= pd;
+		}
+		m_paramDescsGenerated = true;
 	}
 
 	Weapon build(Submarine shooter, const(WeaponParamValue)[] launchParams) const;
 }
+
 
 final class ActiveDecoyFactory: WeaponFactory
 {
@@ -815,15 +849,13 @@ final class ActiveDecoyFactory: WeaponFactory
 		ReflectorPrototype(vec2f(30, 30), [-7.0f, -7.0f, -7.0f]);
 	usecs_t activateAfter = 4_000_000;
 
-	this(immutable WeaponTemplate t) { super(t); }
-
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
 	override StaticDecoy build(Submarine shooter,
 		const(WeaponParamValue)[] launchParams) const
 	{
 		enforce(launchParams.length == 0, "decoy is not configurable");
 		ActiveDecoyGuidance guidance = new ActiveDecoyGuidance();
-		StaticDecoy res = new StaticDecoy(shooter, tmpl.name, guidance);
+		StaticDecoy res = new StaticDecoy(shooter, name, guidance);
 		super.bootstrap(res);
 		guidance.m_decoy = res;
 		guidance.m_fuelLeft = fuel;
@@ -856,19 +888,31 @@ final class TorpedoFactory: WeaponFactory
 	int sonarNoiseMargin = 15;
 	int hydrophoneNoiseMargin = ushort.max / 12;
 
-	this(immutable WeaponTemplate t, PropulsorFactory pf)
+	this(PropulsorFactory pf)
 	{
-		super(t);
 		propFactory = pf;
+		marchCourseConfigurable = true;
+		activeCourseConfigurable = true;
 	}
 
-	void updateTemplateFuelData()
+	// balancing params
+	float tgtMaxRangeOnMaxSpd;
+	float balancingStddev = 0.01f;
+
+	/// Prepare balance-costrained factory parameters and template param descriptions and values.
+	void prepareDynamicsAndParams()
 	{
-		WeaponTemplate* mutTemplate = cast(WeaponTemplate*) &this.tmpl;
-		mutTemplate.fuel = fuel.mean;
-		mutTemplate.fuelExponent = fuelEffExponent;
-		mutTemplate.fullThrottleSpd = maxSpeed(
-			Cd0.mean, Cd1.mean, propFactory.posThrustK.mean);
+		generateParamDescs();
+		// tune drag to match expected performace
+		rigidBody.Cd1.mean =
+			(propFactory.posThrustK.mean - rigidBody.Cd0.mean * fullThrottleSpd) / pow(fullThrottleSpd, 2);
+		rigidBody.Cd1.stddev = rigidBody.Cd1.mean * balancingStddev;
+		// tune Cl to match turning radius
+		rigidBody.Cl.mean = calcClForTurningRadius(steering.equilDrift, turningRadius, rigidBody.mass.mean);
+		rigidBody.Cl.stddev = rigidBody.Cl.mean * balancingStddev;
+		// tune fuel to match expected range
+		fuel.mean = tgtMaxRangeOnMaxSpd / fullThrottleSpd;
+		fuel.stddev = fuel.mean * balancingStddev;
 	}
 
 	private void bootstrap(Torpedo res) const
@@ -945,7 +989,7 @@ final class TorpedoFactory: WeaponFactory
 		foreach (const WeaponParamValue param; params)
 		{
 			enforce(popcnt(param.type) == 1, "must choose one parameter to set");
-			enforce(param.type & tmpl.availableParams, "parameter " ~
+			enforce(param.type & m_availableParams, "parameter " ~
 				param.type.to!string ~ " is unavailable");
 			enforce((param.type & assignedParams) == 0, "parameter " ~
 				param.type.to!string ~ " is already assigned");
@@ -993,7 +1037,7 @@ final class TorpedoFactory: WeaponFactory
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
 	override Torpedo build(Submarine shooter, const(WeaponParamValue)[] launchParams) const
 	{
-		Torpedo res = new Torpedo(shooter, templateName);
+		Torpedo res = new Torpedo(shooter, name);
 		res.propulsor = propFactory.build();
 		configureGuidance(res, launchParams);
 		bootstrap(res);
