@@ -80,4 +80,6 @@ I would like to be able to:
 * tune torpedoes.
 * real-time or accelerated simulation for torpedoes or combat.
 
-Looks like a year of work tbh.
+Looks like a year of work unfortunately.
+
+Next I'll have to write a scenario editor for this ((.

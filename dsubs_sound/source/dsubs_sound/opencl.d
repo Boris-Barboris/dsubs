@@ -701,7 +701,7 @@ final class DsubsSoundOpenclCtx
 		m_filters["octaveHp200"] = new FIRFilter(queue(0), octaveHp200);
 		m_filters["octaveBp1900_2500"] = new FIRFilter(queue(0), octaveBp1900_2500);
 		m_filters["octaveHp3500"] = new FIRFilter(queue(0), octaveHp3500);
-		m_filters["octaveHp50"] = new FIRFilter(queue(0), octaveHp50);
+		m_filters["octaveBp50_2500"] = new FIRFilter(queue(0), octaveBp50_2500);
 		waterFilter = loadWaterFilterFromFile(queue(0),
 			import("water_filter_values.csv"), 40000.0f, 4.0f);
 		queue(0).finish();

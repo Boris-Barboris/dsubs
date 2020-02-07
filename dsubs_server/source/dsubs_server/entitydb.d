@@ -417,6 +417,7 @@ Search patterns: straight, snake, spiral.
 			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -35.0f)),
 			hprotoInternal);
 		hydroProtos[$-1].hydroProto.mirrored = true;
+		hydroProtos[$-1].hydroProto.filterName = "octaveBp50_2500";
 		hydroProtos[$-1].hydroProto.imageBlackLevel = 10.0f;
 		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(600.0f, 1);
 

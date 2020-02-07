@@ -48,6 +48,7 @@ struct HydrophonePrototype
 	dB imageBlackLevel = 5.0f;
 	dB imageWhiteLevel = 90.0f;
 	float pcbMaxPressure = 50.0f;
+	string filterName;
 }
 
 
@@ -79,7 +80,8 @@ final class Hydrophone
 		assert(p.minFreq >= 20 && p.maxFreq >= p.minFreq && p.maxFreq <= GLOBAL_SRATE);
 		m_transform = t;
 		m_minFreq = p.minFreq;
-		m_tdsFilter = q.ctx.getFilter("octaveHp" ~ m_minFreq.to!string);
+		m_tdsFilter = p.filterName.length ? q.ctx.getFilter(p.filterName) :
+			q.ctx.getFilter("octaveHp" ~ m_minFreq.to!string);
 		m_maxFreq = p.maxFreq;
 		assert(m_maxFreq <= GLOBAL_SRATE / 2);
 		m_directivity = p.directivity;
