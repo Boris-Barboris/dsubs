@@ -74,6 +74,7 @@ I would like to be able to:
 * interactively observe submarine's kinematic performance for given propulsor.
 * interactive edit of submarine model. Symmetry modes.
 * tune steering parameters.
+* draw and edit noise spectrums.
 * tune hydrophones and active sonars in sandbox environment.
 * tune animal visibility, movement and sound profile.
 * tune propulsor noise and modulation, visibility.
@@ -83,3 +84,8 @@ I would like to be able to:
 Looks like a year of work unfortunately.
 
 Next I'll have to write a scenario editor for this ((.
+
+OR
+
+we do current source-based approach and write some command-line helpers for interactive development.
+I'm afraid the second way is just not viable.
