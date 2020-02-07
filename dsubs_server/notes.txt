@@ -63,3 +63,21 @@ https://flarum.org/features/
 
 Sound collection:
 https://maritime.org/sound/
+
+
+Balancing tool/editor.
+
+It is imperative for fast content development process to provide facilities
+for rapid submarine, sensor, weapon, propulsor and animal creation.
+
+I would like to be able to:
+* interactively observe submarine's kinematic performance for given propulsor.
+* interactive edit of submarine model. Symmetry modes.
+* tune steering parameters.
+* tune hydrophones and active sonars in sandbox environment.
+* tune animal visibility, movement and sound profile.
+* tune propulsor noise and modulation, visibility.
+* tune torpedoes.
+* real-time or accelerated simulation for torpedoes or combat.
+
+Looks like a year of work tbh.

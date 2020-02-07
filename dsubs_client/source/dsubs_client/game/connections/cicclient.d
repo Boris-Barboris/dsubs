@@ -208,13 +208,19 @@ private:
 			{
 				StreamingSoundSource s = Game.simState.sonarSounds[audio.hydrophoneIdx];
 				s.pullFinishedBuffers();
-				if (s.queuedCount > 0)
-					s.append(audio.samples, audio.samplingRate);
-				else
+				if (s.queuedCount == 1)
 				{
-					// we delay first sample enqueing in order to reduce the risk of buffering
+					// We only append if there is at most one audio buffer being currently played.
+					// This is required to handle time acceleration on the server.
+					s.append(audio.samples, audio.samplingRate);
+				}
+				else if (s.queuedCount == 0)
+				{
+					// we delay first sample enqueing in order to reduce the risk of stutter
 					Game.delay( ((audio, source) => {
-							source.append(audio.samples, audio.samplingRate);
+							// same safeguard for overbuffering
+							if (source.queuedCount == 0)
+								source.append(audio.samples, audio.samplingRate);
 						}) (audio, s),
 						msecs(250), null);
 				}
