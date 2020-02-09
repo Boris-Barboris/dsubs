@@ -87,4 +87,4 @@ ssh dsubsbionic "
 "
 rsync -v dsubsbionic:~/dsubs-linux-bionic-amd64.tar.gz ./dsubs-${COMMIT}-linux-bionic-amd64.tar.gz
 echo "Bionic build OK"
-sudo virsh shutdown ubuntu18.04
+sudo virsh destroy ubuntu18.04
