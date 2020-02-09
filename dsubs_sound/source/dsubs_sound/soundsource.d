@@ -32,13 +32,6 @@ abstract class SoundSource
 		onPreKinematics += &savePrevPos;
 	}
 
-	/// Rebuild transform's internal caches to prevent further recalculations
-	/// in threaded code.
-	final void refreshTransform()
-	{
-		m_transform.rebuild();
-	}
-
 	/// world-space position of emitter center
 	final @property vec2d position() { return m_transform.wposition; }
 
@@ -287,10 +280,11 @@ final class PropellerSound: SoundSource
 			}
 			if (needTds)
 			{
-				q.s_ispec.toTimeDomain(q, q.s_tds);
-				doModulate(q, q.s_tds, kavgScaled, freqCubeStart / pow(prevRange, 2),
+				Tds* tds = new Tds(q.ctx);
+				q.s_ispec.toTimeDomain(q, *tds);
+				doModulate(q, *tds, kavgScaled, freqCubeStart / pow(prevRange, 2),
 					freqCubeEnd / pow(range, 2));
-				onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
+				onTdsReady(null, &q.s_bandSumBuf, tds);
 			}
 			else
 				onTdsReady(null, &q.s_bandSumBuf, null);
@@ -314,10 +308,11 @@ final class PropellerSound: SoundSource
 			}
 			if (needTds)
 			{
-				q.s_ispec.toTimeDomain(q, q.s_tds);
-				doModulate(q, q.s_tds, kavgScaled, cavSqrStart / pow(prevRange, 2),
+				Tds* tds = new Tds(q.ctx);
+				q.s_ispec.toTimeDomain(q, *tds);
+				doModulate(q, *tds, kavgScaled, cavSqrStart / pow(prevRange, 2),
 					cavSqrEnd / pow(range, 2));
-				onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
+				onTdsReady(null, &q.s_bandSumBuf, tds);
 			}
 			else
 				onTdsReady(null, &q.s_bandSumBuf, null);
@@ -437,20 +432,21 @@ final class PrerecordedSoundSource: FixedLengthSoundSource
 				GLOBAL_SRATE - q.ctx.waterFilter.tapCount,
 				GLOBAL_SRATE - q.ctx.waterFilter.tapCount, q.s_vartds2sec2);
 		// second we apply water filter
+		Tds* tds = new Tds(q.ctx);
 		q.ctx.waterFilter.filter(q,
 			listenerFilter ? q.s_vartds2sec2 : q.s_vartds2sec,
-			GLOBAL_SRATE, q.s_tds, 0, prevRange, range, dissMod);
+			GLOBAL_SRATE, *tds, 0, prevRange, range, dissMod);
 		// now we apply the modulation, requested by range and the prototype.
 		IntensityLevel ilevel = getILatRange(1, IntensityLevel(0.0f), range, dissMod);
 		IntensityLevel prevIlevel = getILatRange(1, IntensityLevel(0.0f),
 			prevRange, dissMod);
-		modulateILevelInterp(q, q.s_tds,
+		modulateILevelInterp(q, *tds,
 			m_proto.addToIlevel + prevIlevel.val, m_proto.addToIlevel + ilevel.val);
 		// hydrophone contract
-		q.s_tds.reduceSumSquared(q, q.s_bandSumBuf,
+		tds.reduceSumSquared(q, q.s_bandSumBuf,
 			GLOBAL_SRATE / 2.0f, 0, GLOBAL_SRATE);
 		if (needTds)
-			onTdsReady(null, &q.s_bandSumBuf, &q.s_tds);
+			onTdsReady(null, &q.s_bandSumBuf, tds);
 		else
 			onTdsReady(null, &q.s_bandSumBuf, null);
 	}

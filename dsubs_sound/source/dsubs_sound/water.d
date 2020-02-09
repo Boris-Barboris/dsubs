@@ -53,6 +53,8 @@ IntensityLevel getILatRange2(int freq, IntensityLevel il, float range, float ran
 	return IntensityLevel(il - rangeDb - wrdk[freq - 1] * range * dissMod);
 }
 
+/*
+
 unittest
 {
 	IntensityLevel il = IntensityLevel(100.0f);
@@ -61,6 +63,8 @@ unittest
 	assert(!isInfinity(ilDamped.val));
 	assert(ilDamped < 100.0f);
 }
+
+*/
 
 /// band intensity level of flow noise
 IntensityLevel flowNoise(int freq, float kts)

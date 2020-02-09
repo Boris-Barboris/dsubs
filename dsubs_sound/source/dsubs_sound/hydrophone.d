@@ -105,7 +105,6 @@ final class Hydrophone
 		m_beamCount = p.beamCount;
 		m_beamAngle = m_span / p.beamCount;
 		m_listenToCellR = m_listenSpan / m_beamAngle;
-		m_sourceQueue = CircQueue!SourcePrecalc(32);
 		foreach (rot; p.antennaeRots)
 			m_ant ~= new Antennae(p.beamCount, rot);
 		onPreKinematics += &savePrevPos;
@@ -174,7 +173,6 @@ final class Hydrophone
 		Intensity m_totalOmni;
 		Buffer m_baseFlowNoiseStartBuf;
 		Buffer m_baseFlowNoiseEndBuf;
-		AsyncEvent m_waterNoiseReadyEvt;
 		AsyncEvent m_isotropicReadyEvt;
 
 		// when false, no calculations should be performed
@@ -348,7 +346,7 @@ final class Hydrophone
 		q.s_ispec.reduceSum(q, m_baseSeaNoiseBuf, m_minFreq, m_maxFreq);
 		// m_baseSeaNoiseBuf must contain sum of intensity bins
 		// !!don't forget to scale it's value by m_listenToCellR!!
-		m_waterNoiseReadyEvt = m_baseSeaNoiseBuf.enqueueFullRead(q, &m_baseSeaNoise, null);
+		m_baseSeaNoiseBuf.enqueueFullRead(q, &m_baseSeaNoise, null).release();
 		// if we have an active listener, we need to apply sea noise to it
 		if (m_listenDirValid)
 		{
@@ -387,8 +385,7 @@ final class Hydrophone
 		m_baseFlowNoiseStartBuf.enqueueFullRead(q, &m_baseFlowNoiseStart, null).release();
 
 		q.s_ispec2.reduceSum(q, m_baseFlowNoiseEndBuf, m_minFreq, m_maxFreq);
-		m_isotropicReadyEvt = m_baseFlowNoiseEndBuf.enqueueFullRead(q,
-			&m_baseFlowNoiseEnd, null);
+		m_baseFlowNoiseEndBuf.enqueueFullRead(q, &m_baseFlowNoiseEnd, null).release();
 
 		// if we have an active listener, we need to apply flow noise to it
 		if (m_listenDirValid)
@@ -438,6 +435,7 @@ final class Hydrophone
 		m_totalOmni = 0.0f;
 		startCalculateSeaNoise(q);
 		startCalculateFlowNoise(q);
+		m_isotropicReadyEvt = q.insertMarker();
 		foreach (a; m_ant)
 			a.reset();
 	}
@@ -445,11 +443,6 @@ final class Hydrophone
 	private void awaitIsotropicBuffers()
 	{
 		// if needed
-		if (m_waterNoiseReadyEvt !is AsyncEvent.init)
-		{
-			m_waterNoiseReadyEvt.waitFor();
-			m_waterNoiseReadyEvt = AsyncEvent.init;
-		}
 		if (m_isotropicReadyEvt !is AsyncEvent.init)
 		{
 			m_isotropicReadyEvt.waitFor();
@@ -495,14 +488,16 @@ final class Hydrophone
 
 		enum int MAX_COMPONENTS = 2;
 		Intensity[MAX_COMPONENTS] bandSum;	/// OpenCL writes here the sum of band intensities
-		AsyncEvent[MAX_COMPONENTS] evt;		/// set when bandSum is ready
+		Tds*[MAX_COMPONENTS] tds;			/// persistent prepared tds buffers
+		AsyncEvent evt;						/// marker that finishes when bandSum and tds
+			/// are ready.
 		int components = 0;
 	}
 
 	// Sound sources are enqueued and processed asynchronously by opencl.
 	// In order to generate broadband beam data on cpu we await band sums,
 	// calculated in opencl. That requires queuing in order to be efficient.
-	private CircQueue!SourcePrecalc m_sourceQueue;
+	private SourcePrecalc*[] m_sourceQueue;
 
 
 	/// precalculate world-space values and key gains for sound source.
@@ -538,51 +533,58 @@ final class Hydrophone
 		return pow(linGain, 2);
 	}
 
+	// thread-safe enqueuing of source calculation
 	void applySoundSource(CommandQueue q, SoundSource s)
 	{
-		SourcePrecalc prec = precalcForSource(s);
+		SourcePrecalc* prec = new SourcePrecalc();
+		*prec = precalcForSource(s);
 		bool isVisible = prec.omniFactorStart > 0.0f || prec.omniFactorEnd > 0.0f;
 		foreach (i, a; m_ant)
 		{
-			isVisible |= a.precalcForAntennae(i.to!int, prec);
+			isVisible |= a.precalcForAntennae(i.to!int, *prec);
 		}
 		if (!isVisible)
 			return;
-		// we need to make sure we have space in queue
-		if (m_sourceQueue.capacity == m_sourceQueue.length)
-		{
-			//trace("hydrophone queue full, popping early");
-			popSourceSignal();
-		}
 		// source is visible, let's issue sound rendering commands
-		startSourceCalc(q, s, &m_sourceQueue.pushBack(prec));
+		synchronized(this)
+		{
+			m_sourceQueue ~= prec;
+		}
+		startSourceCalc(q, s, prec);
 	}
 
-	/// Process leftovers in source queue
-	void flushSourceQueue()
+	/// Process source queue, enqueues tds summation and applies source intensities to
+	/// beams. m_curTds is not ready at the end of this call.
+	void flushSourceQueue(CommandQueue q)
 	{
-		while (m_sourceQueue.length > 0)
-			popSourceSignal();
+		foreach (SourcePrecalc* sp; m_sourceQueue)
+			popSourceSignal(q, sp);
+		m_sourceQueue.length = 0;
 	}
 
-	private void popSourceSignal()
+	private void popSourceSignal(CommandQueue q, SourcePrecalc* prec)
 	{
-		int compCount = m_sourceQueue.front.components;
+		int compCount = prec.components;
 		if (compCount > 0)
 		{
-			//trace("popping with evt: ", m_sourceQueue.front.evt);
+			if (prec.evt !is AsyncEvent.init)
+				prec.evt.waitFor();
 			for (int i = 0; i < compCount; i++)
 			{
-				AsyncEvent e = m_sourceQueue.front.evt[i];
-				if (e != AsyncEvent.init)
-					e.waitFor();
+				// if there is a tds buffer, we need to add it to m_curTds
+				if (prec.tds[i] !is null)
+				{
+					prec.tds[i].addTo(q, m_curTds);
+					// explicit destroy of buffer, can be made immediately after enqueue
+					// https://github.com/KhronosGroup/OpenCL-Docs/issues/45
+					destroy(*prec.tds[i]);
+				}
 			}
 			foreach (i, a; m_ant)
-				a.applyBuiltIntensity(i.to!int, m_sourceQueue.front);
+				a.applyBuiltIntensity(i.to!int, *prec);
 			if (m_maintainImprints)
-				appendToImprints(m_sourceQueue.front);
+				appendToImprints(*prec);
 		}
-		m_sourceQueue.popFront();
 	}
 
 	private void appendToImprints(ref SourcePrecalc sp)
@@ -611,7 +613,6 @@ final class Hydrophone
 			m_totalOmni += imprint.ownOmniIntensity;
 		}
 		// we replace noise floor by floor + 0.5 of variance
-		awaitIsotropicBuffers();
 		imprint.backgroundLevel = IntensityLevel(
 			0.5f * m_baseNoise + getIsotropicIntens().toDb);
 		imprint.signalLevel = Intensity(signalIntensity).toDb();
@@ -632,6 +633,7 @@ final class Hydrophone
 
 	private void startSourceCalc(CommandQueue q, SoundSource s, SourcePrecalc* p)
 	{
+		assert(p !is null);
 		bool needTds = m_listenDirValid;
 
 		PowerIntegr integr;
@@ -659,6 +661,7 @@ final class Hydrophone
 		}
 
 		bool logMore = false; // this.m_beamCount > 50;
+		bool needMarker;
 
 		void onTdsReady(Intensity* bandIntSum, Buffer* bandIntensitySumBuf, Tds* tds)
 		{
@@ -685,7 +688,10 @@ final class Hydrophone
 						", bandsum = ", p.bandSum[p.components]);
 				}
 				else
-					p.evt[p.components] = evt;
+				{
+					evt.release();
+					needMarker = true;
+				}
 			}
 			if (needTds && tds)
 			{
@@ -698,13 +704,18 @@ final class Hydrophone
 					omniImultEnd + (1.0f - omniImultEnd) * integr.endPart));
 				assert(intensEnd <= 0.0f, intensEnd.to!string);
 				modulateILevelInterp(q, *tds, intensStart, intensEnd);
-				tds.addTo(q, m_curTds);
+				p.tds[p.components] = tds;
+				needMarker = true;
 			}
 			p.components++;
 		}
 
 		s.buildSignals(q, m_transform.wposition, m_prevPos, &onTdsReady,
 			m_minFreq, m_maxFreq, needTds, m_dissMod, m_tdsFilter, logMore);
+
+		// insert marker if there are things to await for
+		if (needMarker)
+			p.evt = q.insertMarker();
 	}
 
 	private struct PowerIntegr
@@ -1007,7 +1018,7 @@ void hydrophoneVsPropellerBalancingPlot(CommandQueue q,
 				prop.postUpdate(shaftFreq, spd, 1.0f);
 				h.applySoundSource(q, prop);
 			}
-			h.flushSourceQueue();
+			h.flushSourceQueue(q);
 			h.endIsotropic();
 			h.m_ant[0].imprint(ilevels[i + k * rowCount]);
 			h.onPostKinematics();
@@ -1206,6 +1217,7 @@ unittest
 		samples, 0.8f / maxp, GLOBAL_SRATE);
 }
 
+*/
 
 unittest
 {
@@ -1256,7 +1268,7 @@ unittest
 		prop.postUpdate(shaftRotFreq, spd, 1.0f);
 		h.resetAndStartIsotropic(q);
 		h.applySoundSource(q, prop);
-		h.flushSourceQueue();
+		h.flushSourceQueue(q);
 		h.endIsotropic();
 		h.finalizeListenTds(q);
 		q.s_tds.enqueueRead(q,
@@ -1268,5 +1280,3 @@ unittest
 	writeWavFile("std_hydrophone_vs_current.wav",
 		samples, 0.8f / maxp, GLOBAL_SRATE);
 }
-
-*/

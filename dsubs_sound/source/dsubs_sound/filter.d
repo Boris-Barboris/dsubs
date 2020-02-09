@@ -199,6 +199,9 @@ struct WaterFIRFilter
 	}
 }
 
+
+/*
+
 unittest
 {
 	float[] noise = new float[GLOBAL_SRATE * 4];
@@ -212,6 +215,8 @@ unittest
 	destTds.read(q, noise);
 	writeWavFile("whitenoise_water_filtered.wav", noise, 1.0f);
 }
+
+*/
 
 // 8192 sampling rate filters:
 

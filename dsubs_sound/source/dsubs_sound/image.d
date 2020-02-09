@@ -64,6 +64,8 @@ ISpectrum* loadSpectrumFromImageAndWarp(CommandQueue q,
 	return spec;
 }
 
+/*
+
 unittest
 {
 	import std.array;
@@ -86,3 +88,5 @@ unittest
 	trace("loadSpectrumFromImageAndWarp maxp = ", maxp);
 	writeWavFile("std_propeller_bb.wav", samples[], 0.8f / maxp, GLOBAL_SRATE);
 }
+
+*/

@@ -217,6 +217,8 @@ private IntensityLevel pingAtRelBearing(const PingKernelParams params, const flo
 }
 
 
+/*
+
 unittest
 {
 	import imageformats: write_image, ColFmt;
@@ -387,6 +389,8 @@ unittest
 	write_image("active_sonar_" ~ maxRange ~ "km_sliced_30kts.png",
 		slicedSonar.w, slicedSonar.h, resBytes, ColFmt.Y);
 }
+
+*/
 
 immutable PingParameters g_stdPingParams = immutable PingParameters(
 		[Chirp(2100, 2300, 0.3f)], 3, 2200, "octaveBp1900_2500");
@@ -924,15 +928,15 @@ final class SonarPing: FixedLengthSoundSource
 		Intensity wholeSecondIntens = Intensity(intensActivePhase * energyRatio);
 		if (needTds && maxFreq >= m_freq && minFreq <= m_freq)
 		{
-			q.s_tds.fill(q, 0.0f);
-			m_prepTds.tds.copyTo(q, q.s_tds, m_sourceOffset, m_destOffset);
+			Tds* tds = new Tds(q, 0.0f);
+			m_prepTds.tds.copyTo(q, *tds, m_sourceOffset, m_destOffset);
 			float imultTds = intensActivePhase / m_prepTds.meanSqrActive;
 			// Remember the hydrophone energy contract: tds with mean square pressure
 			// value of 1.0 corresponds to GLOBAL_SRATE * GLOBAL_SRATE / 2 bandsum.
 			// This means that we need to scale tds's intensity by 1.0f / (GSR^2 * 0.5).
 			imultTds /= GLOBAL_SRATE * GLOBAL_SRATE / 2;
-			modulateIInterp(q, q.s_tds, imultTds, imultTds);
-			onTdsReady(&wholeSecondIntens, null, &q.s_tds);
+			modulateIInterp(q, *tds, imultTds, imultTds);
+			onTdsReady(&wholeSecondIntens, null, tds);
 		}
 		else
 			onTdsReady(&wholeSecondIntens, null, null);
@@ -992,6 +996,8 @@ private float[] getPingSamples(int lifeTime, const Chirp[] chirps,
 	return samples;
 }
 
+/*
+
 unittest
 {
 	auto mfParams = g_stdPingParams;
@@ -1007,3 +1013,5 @@ unittest
 	ptds.tds.read(s_clCtx.queue(0), samples);
 	writeWavFile("highfreq-chirp.wav", samples, 0.01f / ptds.meanSqrActive, GLOBAL_SRATE);
 }
+
+*/

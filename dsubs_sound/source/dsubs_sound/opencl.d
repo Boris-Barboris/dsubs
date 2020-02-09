@@ -540,7 +540,6 @@ final class CommandQueue
 		s_ilspec = ILevelSpectrum(ctx);
 		s_pcbBuf = Buffer(ctx, GLOBAL_SRATE * short.sizeof);
 		s_bandSumBuf = Buffer(ctx, float.sizeof);
-		s_reduceSumTempGlobalBuf = Buffer(ctx, GLOBAL_SRATE * float.sizeof);
 	}
 
 	private
@@ -594,8 +593,6 @@ final class CommandQueue
 		Buffer s_bandSumBuf;	/// 4-byte buffer for one float
 		/// short buffer for converted Tds
 		Buffer s_pcbBuf;
-		/// buffer to use in sum reductions
-		Buffer s_reduceSumTempGlobalBuf;
 	}
 
 	/// Context this queue belongs to
@@ -617,9 +614,9 @@ final class CommandQueue
 
 	AsyncEvent insertMarker()
 	{
-		AsyncEvent res;
-		clEnqueueMarker(m_q, &res.cl).clError;
-		return res;
+		AsyncEvent evt;
+		clEnqueueMarkerWithWaitList(m_q, 0, null, &evt.cl).clError;
+		return evt;
 	}
 
 	/// block until all commands in queue succeeded

@@ -1,5 +1,7 @@
 module dsubs_server.acoustics;
 
+import std.algorithm.setops: cartesianProduct;
+
 import dsubs_common.containers.array;
 
 import dsubs_sound.activesonar;
@@ -149,7 +151,31 @@ final class AcousticEnv
 	void applySourcesOnHydrophones()
 	{
 		foreach (source; m_sources)
-			source.refreshTransform();
+			source.transform.rebuild();
+
+		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
+		{
+			if (hydrophone.active)
+			{
+				size_t workerIdx = Globals.taskPool.workerIndex;
+				hydrophone.transform.rebuild();
+				auto q = Globals.sctx.queue(workerIdx);
+				hydrophone.resetAndStartIsotropic(q);
+			}
+		}
+
+		auto hydrophoneSourceRange = cartesianProduct(
+			m_hydrophones.filter!(h => h.active),
+			m_sources
+		);
+
+		// sources can be dispatched to one hydrophone in parallel
+		foreach (hpSourceTuple; Globals.taskPool.parallel(hydrophoneSourceRange, 1))
+		{
+			size_t workerIdx = Globals.taskPool.workerIndex;
+			auto q = Globals.sctx.queue(workerIdx);
+			hpSourceTuple[0].applySoundSource(q, hpSourceTuple[1]);
+		}
 
 		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
@@ -157,23 +183,14 @@ final class AcousticEnv
 			{
 				size_t workerIdx = Globals.taskPool.workerIndex;
 				auto q = Globals.sctx.queue(workerIdx);
-				hydrophone.resetAndStartIsotropic(q);
-				foreach (source; m_sources)
-					hydrophone.applySoundSource(q, source);
-				if (hydrophone.listenDirValid)
-					hydrophone.startFinalizePcbData(q);
-			}
-		}
-
-		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
-		{
-			if (hydrophone.active)
-			{
-				hydrophone.flushSourceQueue();
 				hydrophone.endIsotropic();
+				hydrophone.flushSourceQueue(q);
 				hydrophone.adjustImprintsToOmni();
 				if (hydrophone.listenDirValid)
+				{
+					hydrophone.startFinalizePcbData(q);
 					hydrophone.endFinalizePcbData();
+				}
 			}
 		}
 		/// wait for completion of all OpenCL operations
