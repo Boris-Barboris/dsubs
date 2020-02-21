@@ -827,8 +827,10 @@ final class AICaptain
 
 		override @property bool shouldBeRunning()
 		{
+			bool haveMinogaInRacks = m_crew.submarine.ammoRoomRange.any!(ar =>
+				ar.getWeaponCount("Minoga") > 0);
 			auto tubes = m_crew.submarine.tubeRange;
-			return tubes.any!(t =>
+			return haveMinogaInRacks && tubes.any!(t =>
 				t.state == TubeState.dry &&
 				t.type == TubeType.standard &&
 				t.loadedWeapon == null);
@@ -844,7 +846,6 @@ final class AICaptain
 				{
 					trace("AI captain requesting tube load for tube ", tube.id);
 					TubeOperationResult res = tube.processLoadRequest("Minoga");
-					assert(res.tubeChanged);
 				}
 			}
 			return ExecutionResult.success;
