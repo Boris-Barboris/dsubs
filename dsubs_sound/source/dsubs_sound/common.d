@@ -2,7 +2,7 @@ module dsubs_sound.common;
 
 public import std.conv: to;
 public import std.exception: enforce;
-public import std.experimental.logger: trace;
+public import std.experimental.logger: trace, error;
 public import std.numeric;
 public import std.complex;
 public import std.math;

@@ -1,5 +1,7 @@
 module dsubs_sound.hydrophone;
 
+import core.stdc.stdlib: abort;
+
 import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
 import std.algorithm: canFind, map;
@@ -909,9 +911,13 @@ final class Hydrophone
 			//trace("p.bandSum = ", p.bandSum);
 			for (int i = 0; i < p.components; i++)
 				bandSum += p.bandSum[i].val;
-			assert(!isNaN(bandSum), p.source.to!string ~
-				" has returned NaN bandSum, it's precalc: " ~
-				p.to!string);
+			if (isNaN(bandSum))
+			{
+				error(p.source.to!string ~
+					" has returned NaN bandSum, it's precalc: " ~
+					p.to!string);
+				abort();
+			}
 			// we actually draw average bin intensity
 			bandSum /= GLOBAL_SRATE / 2;
 			float omniMult = p.omniFactorEnd * m_directivity * m_omniNoiseMult;
