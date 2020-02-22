@@ -1,7 +1,5 @@
 module dsubs_sound.hydrophone;
 
-import core.stdc.stdlib: abort;
-
 import std.algorithm.comparison: min, max;
 import std.algorithm.iteration: sum;
 import std.algorithm: canFind, map;
@@ -288,6 +286,7 @@ final class Hydrophone
 	void startFinalizePcbData(CommandQueue q)
 	{
 		finalizeListenTds(q);
+		// this kernel swallows NaNs in tds: returns pcbMaxPressure array.
 		Kernel k = q.mk_toShortPcb;
 		k.setArg(0, q.s_tds.mem);
 		k.setArg(1, q.s_pcbBuf.mem);
@@ -595,7 +594,10 @@ final class Hydrophone
 		imprint.source = sp.source;
 		float signalIntensity = 0.0f;
 		for (int i = 0; i < sp.components; i++)
-			signalIntensity += sp.bandSum[i].val;
+		{
+			if (isNormal(sp.bandSum[i].val))
+				signalIntensity += sp.bandSum[i].val;
+		}
 		if (signalIntensity <= 0.0f)
 			return;
 		signalIntensity /= GLOBAL_SRATE / 2;
@@ -910,14 +912,17 @@ final class Hydrophone
 			float bandSum = 0.0f;
 			//trace("p.bandSum = ", p.bandSum);
 			for (int i = 0; i < p.components; i++)
-				bandSum += p.bandSum[i].val;
-			if (isNaN(bandSum))
 			{
-				error(p.source.to!string ~ " source with owner " ~
-					p.source.owner.to!string ~
-					" has returned NaN bandSum, it's precalc: " ~
-					p.to!string);
-				abort();
+				float addedValue = p.bandSum[i].val;
+				if (isNaN(addedValue))
+				{
+					error(p.source.to!string ~ " source with owner " ~
+						p.source.owner.to!string ~
+						" has returned NaN bandSum, it's precalc: " ~
+						p.to!string);
+				}
+				else
+					bandSum += addedValue;
 			}
 			// we actually draw average bin intensity
 			bandSum /= GLOBAL_SRATE / 2;
@@ -1278,8 +1283,11 @@ unittest
 		h.flushSourceQueue(q);
 		h.endIsotropic();
 		h.finalizeListenTds(q);
-		q.s_tds.enqueueRead(q,
-			samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
+		if (i < 4)
+		{
+			q.s_tds.enqueueRead(q,
+				samples[i * GLOBAL_SRATE .. (i + 1) * GLOBAL_SRATE]).release();
+		}
 	}
 	q.finish();
 	float maxp = samples.map!(a => a.abs).maxElement;
