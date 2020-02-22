@@ -153,7 +153,7 @@ final class AcousticEnv
 		foreach (source; m_sources)
 			source.transform.rebuild();
 
-		foreach (Hydrophone hydrophone; m_hydrophones)// Globals.taskPool.parallel(m_hydrophones, 1))
+		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
 			if (hydrophone.active)
 			{
@@ -170,14 +170,14 @@ final class AcousticEnv
 		);
 
 		// sources can be dispatched to one hydrophone in parallel
-		foreach (hpSourceTuple; hydrophoneSourceRange)// Globals.taskPool.parallel(hydrophoneSourceRange, 1))
+		foreach (hpSourceTuple; Globals.taskPool.parallel(hydrophoneSourceRange, 1))
 		{
 			size_t workerIdx = Globals.taskPool.workerIndex;
 			auto q = Globals.sctx.queue(workerIdx);
 			hpSourceTuple[0].applySoundSource(q, hpSourceTuple[1]);
 		}
 
-		foreach (Hydrophone hydrophone; m_hydrophones) //Globals.taskPool.parallel(m_hydrophones, 1))
+		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
 			if (hydrophone.active)
 			{
