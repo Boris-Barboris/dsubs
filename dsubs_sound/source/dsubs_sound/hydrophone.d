@@ -913,7 +913,8 @@ final class Hydrophone
 				bandSum += p.bandSum[i].val;
 			if (isNaN(bandSum))
 			{
-				error(p.source.to!string ~
+				error(p.source.to!string ~ " source with owner " ~
+					p.source.owner.to!string ~
 					" has returned NaN bandSum, it's precalc: " ~
 					p.to!string);
 				abort();
