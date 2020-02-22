@@ -798,6 +798,20 @@ Active sonars:
 		af.reflprot = ReflectorPrototype(vec2f(4.0f, 15.0f), [-20.0f, -20.0f, -20.0f]);
 		af.species = "humpback whale";
 		m_animals[af.species] = af;
+
+		af = new AnimalFactory();
+		af.randomSounds = [
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/big_iron_8192.wav"),
+				9.0f, 88.0f)
+		];
+		af.meanSoundPause = cast(usecs_t) 30 * 60 * 1000_000;
+		af.soundPauseVariance = cast(usecs_t) 3 * 60 * 1000_000;
+		af.mass = 30.0f;
+		af.maxSpeed = 6.0f;
+		af.reflprot = ReflectorPrototype(vec2f(4.5f, 15.0f), [-18.0f, -18.0f, -18.0f]);
+		af.species = "jukebox whale";
+		m_animals[af.species] = af;
 	}
 
 }

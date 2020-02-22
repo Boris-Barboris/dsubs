@@ -3,6 +3,7 @@ module dsubs_server.scenario;
 import std.algorithm;
 import std.array: array;
 import std.random: uniform, uniform01;
+import std.range: walkLength;
 import std.container.rbtree;
 import std.datetime.systime;
 
@@ -333,12 +334,29 @@ final class BattleRoyale: Scenario
 			}
 		}
 		// spawn animals if necessary
-		int whalesToSpawn = 1 - Globals.animals.entities.length.to!int;
+		int whalesToSpawn = 1 - Globals.animals.entities.filter!(
+			a => a.species == "humpback whale").walkLength.to!int;
 		while (whalesToSpawn-- > 0)
 		{
 			info("Spawning whale");
 			Animal animal = Globals.entityDb.getAnimalFactory("humpback whale").
 				build("Ahmed");
+			vec2d spawnPos;
+			double spawnRot;
+			getRandomSpawn(spawnPos, spawnRot);
+			animal.transform.position = spawnPos;
+			animal.transform.rotation = spawnRot;
+			animal.destination = getDistantPos(spawnPos);
+			animal.register();
+		}
+
+		int musicToSpawn = 1 - Globals.animals.entities.filter!(
+			a => a.species == "jukebox whale").walkLength.to!int;
+		while (musicToSpawn-- > 0)
+		{
+			info("Spawning jukebox whale");
+			Animal animal = Globals.entityDb.getAnimalFactory("jukebox whale").
+				build("Texas Red");
 			vec2d spawnPos;
 			double spawnRot;
 			getRandomSpawn(spawnPos, spawnRot);
