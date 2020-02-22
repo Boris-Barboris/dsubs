@@ -385,12 +385,15 @@ unittest
 	trace("4096 spectrum mean square pressure: ", sound[].map!(s => s * s).sum / GLOBAL_SRATE);
 }
 
+*/
+
 unittest
 {
 	import std.algorithm;
 
 	CommandQueue q = s_clCtx.queue(0);
-	ISpectrum source = ISpectrum(q, 2.0f);
+	ISpectrum source = ISpectrum(q, float.nan);
+	source.buf.enqueueFill(q, 2.0f, 249, GLOBAL_SRATE / 2 - 250, null).release();
 	Buffer dest = Buffer(s_clCtx, float.sizeof);
 	source.reduceSum(q, dest, 250, GLOBAL_SRATE / 2 - 10);
 	float res;
@@ -404,7 +407,8 @@ unittest
 	import std.algorithm;
 
 	CommandQueue q = s_clCtx.queue(0);
-	Tds source = Tds(q, 1.0f);
+	Tds source = Tds(q, float.nan);
+	source.buf.enqueueFill(q, 1.0f, 78, 255 - 79 + 1, null).release();
 	Buffer dest = Buffer(s_clCtx, float.sizeof);
 	source.reduceSumSquared(q, dest, 1.0f, 79, 255);
 	float res;
@@ -412,4 +416,3 @@ unittest
 	assert(fabs(res - (255 - 79)) < 1e-6, res.to!string);
 }
 
-*/

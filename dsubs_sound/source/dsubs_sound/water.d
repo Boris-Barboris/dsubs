@@ -28,6 +28,7 @@ private float waterRangeDissipationK(float freq)
 	return res;
 }
 
+// frequency of 1Hz is on offset 0
 package __gshared immutable(float)[] wrdk;
 
 void initializeWrdk()
