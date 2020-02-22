@@ -12,13 +12,6 @@ public import dsubs_common.math;
 
 public import dsubs_sound.units;
 
-private Xorshift64 rngen;
-
-static this()
-{
-	// let's use xorshift since it's much cheaper
-	rngen = Xorshift64();
-}
 
 pragma(inline)
 auto uniform(string boundaries = "[]", T1, T2)(T1 a, T2 b)
@@ -29,7 +22,7 @@ auto uniform(string boundaries = "[]", T1, T2)(T1 a, T2 b)
 pragma(inline)
 auto uniform01(T)()
 {
-	return std.random.uniform01!T(rndGen);
+	return uniform!("[]", T)(rndGen, 0.0, 1.0);
 }
 
 pragma(inline)

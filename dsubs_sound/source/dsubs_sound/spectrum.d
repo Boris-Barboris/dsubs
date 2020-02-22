@@ -246,6 +246,7 @@ struct EnergySpectrum(SpectrumType stype)
 
 	void patch(CommandQueue q, float value, size_t offset = 0, size_t count = BUF_LEN)
 	{
+		assert(offset < BUF_LEN);
 		count = min(BUF_LEN - offset, count);
 		buf.enqueueFill(q, value, offset, count, null).release();
 	}

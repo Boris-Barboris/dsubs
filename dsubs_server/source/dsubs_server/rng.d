@@ -17,8 +17,8 @@ F rngStdNormal(F = double)()
 		prev = F.nan;
 		return res;
 	}
-	F u1 = uniform01();
-	F u2 = uniform01();
+	F u1 = uniform!("[]", F)(0.0, 1.0);
+	F u2 = uniform!("[]", F)(0.0, 1.0);
 	// save one of the results for later
 	prev = sqrt(-2.0 * log(u1)) * sin(2.0 * PI * u2);
 	return sqrt(-2.0 * log(u1)) * cos(2.0 * PI * u2);
