@@ -622,9 +622,9 @@ final class AICaptain
 				}
 				ctc.solution.positionKnown = true;
 				ctc.solution.position = ctc.lastDataTruePosition +
-					uniform(0.0f, maxPosError) * courseVector(uniform(0, 2 * PI));
+					uniform!"[]"(0.0f, maxPosError) * courseVector(uniform(0, 2 * PI));
 				ctc.solution.velocity = trueVel +
-					uniform(0.0f, maxVelError) * courseVector(uniform(0, 2 * PI));
+					uniform!"[]"(0.0f, maxVelError) * courseVector(uniform(0, 2 * PI));
 				ctc.solution.atTime = ctc.lastData;
 				ctc.solution.set = true;
 			}
@@ -1132,13 +1132,13 @@ final class AICaptain
 			WeaponParamValue search = WeaponParamValue(WeaponParamType.searchPattern);
 			search.searchPattern = WeaponSearchPattern.snake;
 			WeaponParamValue speed = WeaponParamValue(WeaponParamType.activeSpeed);
-			speed.speed = uniform(factory.activeSpeedRange.min,
+			speed.speed = uniform!"[]"(factory.activeSpeedRange.min,
 				factory.activeSpeedRange.max);
 			WeaponParamValue[] res = [courseParam, activationRangeParam, search, speed];
 			if (m_difficulty != BOT_DIFFICULTY.easy)
 			{
 				// pasive torpedo is too dangerous, give it to medium or hard bots
-				if (uniform(0, 2) == 0)
+				if (uniform!"[]"(0, 2) == 0)
 				{
 					// 1 of 3 torps is passive
 					WeaponParamValue sensorMode = WeaponParamValue(
