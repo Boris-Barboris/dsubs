@@ -22,7 +22,7 @@ auto uniform(string boundaries = "[]", T1, T2)(T1 a, T2 b)
 pragma(inline)
 auto uniform01(T)()
 {
-	return uniform!("[]", T)(rndGen, 0.0, 1.0);
+	return uniform!("[]", T, T)(0.0, 1.0);
 }
 
 pragma(inline)

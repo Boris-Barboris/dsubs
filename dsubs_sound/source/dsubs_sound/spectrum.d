@@ -77,19 +77,37 @@ struct Tds
 		buf.enqueueFullFill(q, val, null).release();
 	}
 
+	// void reduceSumSquared(CommandQueue q, ref Buffer dest, float multiplier,
+	// 	uint startIndex, uint endIndex)
+	// {
+	// 	size_t globalSize = endIndex - startIndex;
+	// 	// globalSize must be divisible by workgroup size
+	// 	if (globalSize % 64)
+	// 		globalSize = globalSize + 64 - (globalSize % 64);
+	// 	assert(globalSize % 64 == 0);
+	// 	size_t groupCount = globalSize / 64;
+	// 	// Buffer globReduceBuf = Buffer(q.ctx, float.sizeof * groupCount);
+	// 	Kernel k = q.mk_reduceSumSquared;
+	// 	k.setArg(0, buf.mem);
+	// 	k.setArg(1, q.s_reduceBuf.mem);
+	// 	k.setArg(2, dest.mem);
+	// 	k.setArg(3, multiplier);
+	// 	k.setArg(4, endIndex);
+	// 	k.enqueue(q, 1, [startIndex.to!size_t], [globalSize], [cast(size_t) 64], null);
+	// }
+
 	void reduceSumSquared(CommandQueue q, ref Buffer dest, float multiplier,
 		uint startIndex, uint endIndex)
 	{
 		size_t globalSize = endIndex - startIndex;
-		// globalSize must be divisible by workgroup size
-		if (globalSize % 64)
-			globalSize = globalSize + 64 - (globalSize % 64);
-		assert(globalSize % 64 == 0);
-		size_t groupCount = globalSize / 64;
-		Buffer globReduceBuf = Buffer(q.ctx, float.sizeof * groupCount);
+		if (globalSize % 16)
+			globalSize = (globalSize + 16 - globalSize % 16) / 16;
+		else
+			globalSize = globalSize / 16;
+		// Buffer globReduceBuf = Buffer(q.ctx, float.sizeof * groupCount);
 		Kernel k = q.mk_reduceSumSquared;
 		k.setArg(0, buf.mem);
-		k.setArg(1, globReduceBuf.mem);
+		k.setArg(1, q.s_reduceBuf.mem);
 		k.setArg(2, dest.mem);
 		k.setArg(3, multiplier);
 		k.setArg(4, endIndex);
@@ -296,26 +314,49 @@ struct EnergySpectrum(SpectrumType stype)
 
 	/// Sum bins of frequencies from startFreq to endFreq and write result to dest
 	/// buffer.
+	// void reduceSum(CommandQueue q, ref Buffer dest,
+	// 	int minFreq = 1, int endFreq = MAX_FREQ)
+	// {
+	// 	assert(minFreq >= 1);
+	// 	assert(endFreq <= MAX_FREQ);
+	// 	size_t offset = minFreq.to!uint - 1;
+	// 	size_t globalSize = endFreq.to!size_t - offset;
+	// 	// globalSize must be divisible by workgroup size
+	// 	if (globalSize % 64)
+	// 		globalSize = globalSize + 64 - (globalSize % 64);
+	// 	assert(globalSize % 64 == 0);
+	// 	size_t groupCount = globalSize / 64;
+	// 	// Buffer globReduceBuf = Buffer(q.ctx, float.sizeof * groupCount);
+	// 	Kernel k = q.mk_reduceSum;
+	// 	trace(offset, " ", globalSize, " ", groupCount, " ", endFreq);
+	// 	// 2133 448 7 2533
+	// 	k.setArg(0, buf.mem);
+	// 	k.setArg(1, q.s_reduceBuf.mem); // globReduceBuf.mem);
+	// 	k.setArg(2, dest.mem);
+	// 	k.setArg(3, endFreq.to!uint);
+	// 	k.enqueue(q, 1, [offset], [globalSize], [cast(size_t) 64], null);
+	// }
+
 	void reduceSum(CommandQueue q, ref Buffer dest,
-		int startFreq = 1, int endFreq = MAX_FREQ)
+		int minFreq = 1, int endFreq = MAX_FREQ)
 	{
-		assert(startFreq >= 1);
+		assert(minFreq >= 1);
 		assert(endFreq <= MAX_FREQ);
-		size_t offset = startFreq.to!uint - 1;
+		size_t offset = minFreq.to!uint - 1;
 		size_t globalSize = endFreq.to!size_t - offset;
-		// globalSize must be divisible by workgroup size
-		if (globalSize % 64)
-			globalSize = globalSize + 64 - (globalSize % 64);
-		assert(globalSize % 64 == 0);
-		size_t groupCount = globalSize / 64;
-		Buffer globReduceBuf = Buffer(q.ctx, float.sizeof * groupCount);
+		if (globalSize % 16)
+			globalSize = (globalSize + 16 - globalSize % 16) / 16;
+		else
+			globalSize = globalSize / 16;
+		// Buffer globReduceBuf = Buffer(q.ctx, float.sizeof * groupCount);
 		Kernel k = q.mk_reduceSum;
 		k.setArg(0, buf.mem);
-		k.setArg(1, globReduceBuf.mem);
+		k.setArg(1, q.s_reduceBuf.mem);
 		k.setArg(2, dest.mem);
 		k.setArg(3, endFreq.to!uint);
-		k.enqueue(q, 1, [offset], [globalSize], [cast(size_t) 64], null);
+		k.enqueue(q, 1, [offset], [globalSize], null, null);
 	}
+
 
 	// void reduceSum(CommandQueue q, ref Buffer dest,
 	// 	int startFreq = 1, int endFreq = MAX_FREQ)
@@ -417,3 +458,39 @@ unittest
 	assert(fabs(res - (255 - 79)) < 1e-6, res.to!string);
 }
 
+// __unittest_L423_C1 iter 365 1998 3666
+// 2020-02-22T14:18:57.019 [trace] spectrum.d:313:reduceSum 1997 1728 27 3666
+
+unittest
+{
+	import std.algorithm;
+
+	CommandQueue q = s_clCtx.queue(0);
+	ISpectrum source = ISpectrum(s_clCtx);
+	float[] desiredArr;
+	float[] actualArr;
+	enum int ITER = 1000;
+	actualArr.length = ITER;
+	foreach(iter; 0..ITER)
+	{
+		source.patch(q, float.nan);
+		float desired = uniform01!float();
+		int start = uniform(1, GLOBAL_SRATE/2);
+		int end = uniform(start, GLOBAL_SRATE/2);
+		desiredArr ~= desired * (end - start + 1);
+		source.buf.enqueueFill(q, desired, start - 1, end - start + 1, null).release();
+		// trace("iter ", iter, " ", start, " ", end);
+		Buffer dest = Buffer(s_clCtx, float.sizeof);
+		source.reduceSum(q, dest, start, end);
+		dest.enqueueFullRead(q, &actualArr[iter], null).release();
+	}
+	q.finish();
+	foreach(iter; 0..ITER)
+	{
+		float res = actualArr[iter];
+		float desired = desiredArr[iter];
+		assert(fabs(res - desired) < 1.0f,
+			res.to!string ~ " != " ~ desired.to!string ~
+			" on iter " ~ iter.to!string);
+	}
+}

@@ -188,102 +188,167 @@ void __kernel sumSquaredBuf(
 
 
 // https://github.com/ekondis/cl2-reduce-bench/blob/master/reduction_kernels.cl
+// void __kernel reduceSum(
+// 	__global const float* what,
+// 	__global float* tempGlobal,
+// 	__global float* result,
+// 	uint end)
+// {
+// 	__local float localBuffer[64];
+// 	const uint id = get_global_id(0);
+// 	const uint lid = get_local_id(0);
+// 	const uint group_size = get_local_size(0);
+// 	const uint group_id = get_group_id(0);
+// 	const uint numgroups = get_num_groups(0);
+
+// 	// initialize shared memory contents
+// 	float res = 0.0f;
+// 	if (id < end)
+// 		res = what[id];
+// 	localBuffer[lid] = res;
+
+// 	if (id >= end)
+// 		return;
+
+// 	barrier(CLK_LOCAL_MEM_FENCE);
+
+// 	// local memory reduction
+// 	int i = group_size / 2;
+// 	for (; i > 0; i >>= 1)
+// 	{
+// 		if (lid < i)
+// 		{
+// 			res = res + localBuffer[lid + i];
+// 			localBuffer[lid] = res;
+// 		}
+// 		barrier(CLK_LOCAL_MEM_FENCE);
+// 	}
+// 	// assign local result to global buffer
+// 	if (lid == 0)
+// 		tempGlobal[group_id] = res;
+// 	else
+// 		return;
+// 	barrier(CLK_GLOBAL_MEM_FENCE);
+// 	// reduce in global memory
+// 	if (group_id == 0)
+// 	{
+// 		for (i = 1; i < numgroups; i++)
+// 			res += tempGlobal[i];
+// 		*result = res;
+// 	}
+// }
+
+
 void __kernel reduceSum(
 	__global const float* what,
 	__global float* tempGlobal,
 	__global float* result,
-	uint end)
+	const uint end)
 {
-	__local volatile float localBuffer[64];
 	const uint id = get_global_id(0);
-
-	const uint lid = get_local_id(0);
-	const uint group_size = get_local_size(0);
-	const uint group_id = get_group_id(0);
-	const uint numgroups = get_num_groups(0);
-
-	// initialize shared memory contents
+	const uint g_offset = get_global_offset(0);
+	const uint g_size = get_global_size(0);
+	const uint frame_id = id - g_offset;
+	uint frame_start = g_offset + frame_id * 16;
+	uint frame_end = min(frame_start + 16, end);
+	uint frame_size = frame_end - frame_start;
 	float res = 0.0f;
-	if (id < end)
-		res = what[id];
-	localBuffer[lid] = res;
 
-	if (id >= end)
-		return;
-
-	barrier(CLK_LOCAL_MEM_FENCE);
+	prefetch(what + frame_start, frame_size);
 
 	// local memory reduction
-	int i = group_size / 2;
-	for (; i > 0; i >>= 1)
-	{
-		if (lid < i)
-		{
-			res = res + localBuffer[lid + i];
-			localBuffer[lid] = res;
-		}
-		barrier(CLK_LOCAL_MEM_FENCE);
-	}
-	// assign local result to global buffer
-	if (lid == 0)
-		tempGlobal[group_id] = res;
+	for (int i = frame_start; i < frame_end; i++)
+		res += what[i];
+	tempGlobal[id - g_offset] = res;
 	barrier(CLK_GLOBAL_MEM_FENCE);
 	// reduce in global memory
-	if (lid == 0 && group_id == 0)
+	if (id == g_offset)
 	{
-		for (i = 1; i < numgroups; i++)
+		for (int i = 1; i < g_size; i++)
 			res += tempGlobal[i];
 		*result = res;
 	}
 }
 
 
+// void __kernel reduceSumSquared(
+// 	__global const float* what,
+// 	__global float* tempGlobal,
+// 	__global float * result,
+// 	const float multiplier,
+// 	uint end)
+// {
+// 	__local float localBuffer[64];
+// 	const uint id = get_global_id(0);
+// 	const uint lid = get_local_id(0);
+// 	const uint group_size = get_local_size(0);
+// 	const uint group_id = get_group_id(0);
+// 	const uint numgroups = get_num_groups(0);
+
+// 	// initialize shared memory contents
+// 	float res = 0.0f;
+// 	if (id < end)
+// 		res = what[id];
+// 	res *= res;
+// 	localBuffer[lid] = res;
+
+// 	if (id >= end)
+// 		return;
+
+// 	barrier(CLK_LOCAL_MEM_FENCE);
+
+// 	// local memory reduction
+// 	int i = group_size / 2;
+// 	for (; i > 0; i >>= 1)
+// 	{
+// 		if (lid < i)
+// 		{
+// 			res = res + localBuffer[lid + i];
+// 			localBuffer[lid] = res;
+// 		}
+// 		barrier(CLK_LOCAL_MEM_FENCE);
+// 	}
+// 	// assign local result to global buffer
+// 	if (lid == 0)
+// 		tempGlobal[group_id] = res;
+// 	barrier(CLK_GLOBAL_MEM_FENCE);
+// 	// reduce in global memory
+// 	if (lid == 0 && group_id == 0)
+// 	{
+// 		for (i = 1; i < numgroups; i++)
+// 			res += tempGlobal[i];
+// 		*result = multiplier * res;
+// 	}
+// }
+
+
 void __kernel reduceSumSquared(
 	__global const float* what,
 	__global float* tempGlobal,
-	__global float * result,
+	__global float* result,
 	const float multiplier,
-	uint end)
+	const uint end)
 {
-	__local volatile float localBuffer[64];
 	const uint id = get_global_id(0);
-
-	const uint lid = get_local_id(0);
-	const uint group_size = get_local_size(0);
-	const uint group_id = get_group_id(0);
-	const uint numgroups = get_num_groups(0);
-
-	// initialize shared memory contents
+	const uint g_offset = get_global_offset(0);
+	const uint g_size = get_global_size(0);
+	const uint frame_id = id - g_offset;
+	uint frame_start = g_offset + frame_id * 16;
+	uint frame_end = min(frame_start + 16, end);
+	uint frame_size = frame_end - frame_start;
 	float res = 0.0f;
-	if (id < end)
-		res = what[id];
-	res *= res;
-	localBuffer[lid] = res;
 
-	if (id >= end)
-		return;
-
-	barrier(CLK_LOCAL_MEM_FENCE);
+	prefetch(what + frame_start, frame_size);
 
 	// local memory reduction
-	int i = group_size / 2;
-	for (; i > 0; i >>= 1)
-	{
-		if (lid < i)
-		{
-			res = res + localBuffer[lid + i];
-			localBuffer[lid] = res;
-		}
-		barrier(CLK_LOCAL_MEM_FENCE);
-	}
-	// assign local result to global buffer
-	if (lid == 0)
-		tempGlobal[group_id] = res;
+	for (int i = frame_start; i < frame_end; i++)
+		res += (what[i] * what[i]);
+	tempGlobal[id - g_offset] = res;
 	barrier(CLK_GLOBAL_MEM_FENCE);
 	// reduce in global memory
-	if (lid == 0 && group_id == 0)
+	if (id == g_offset)
 	{
-		for (i = 1; i < numgroups; i++)
+		for (int i = 1; i < g_size; i++)
 			res += tempGlobal[i];
 		*result = multiplier * res;
 	}

@@ -520,6 +520,7 @@ final class CommandQueue
 		mk_sumBuf = new Kernel(prog, "sumBuf");
 		mk_sumSquaredBuf = new Kernel(prog, "sumSquaredBuf");
 		mk_reduceSum = new Kernel(prog, "reduceSum");
+		// mk_reduceSum2 = new Kernel(prog, "reduceSum2");
 		mk_reduceSumSquared = new Kernel(prog, "reduceSumSquared");
 		mk_generateSeaNoise = new Kernel(prog, "generateSeaNoise");
 		mk_generateFlowNoise = new Kernel(prog, "generateFlowNoise");
@@ -540,6 +541,7 @@ final class CommandQueue
 		s_ilspec = ILevelSpectrum(ctx);
 		s_pcbBuf = Buffer(ctx, GLOBAL_SRATE * short.sizeof);
 		s_bandSumBuf = Buffer(ctx, float.sizeof);
+		s_reduceBuf = Buffer(ctx, float.sizeof * GLOBAL_SRATE * 2 / 16);
 	}
 
 	private
@@ -570,6 +572,7 @@ final class CommandQueue
 		Kernel mk_toShortPcb;
 		Kernel mk_sumBuf;
 		Kernel mk_reduceSum;
+		// Kernel mk_reduceSum2;
 		Kernel mk_reduceSumSquared;
 		Kernel mk_sumSquaredBuf;
 		Kernel mk_generateSeaNoise;
@@ -593,6 +596,7 @@ final class CommandQueue
 		Buffer s_bandSumBuf;	/// 4-byte buffer for one float
 		/// short buffer for converted Tds
 		Buffer s_pcbBuf;
+		Buffer s_reduceBuf;
 	}
 
 	/// Context this queue belongs to
