@@ -1,6 +1,8 @@
 module dsubs_server.connections.metrics;
 
 import std.range: replace;
+import std.base64: Base64;
+import std.string: representation;
 import std.array: Appender, appender;
 
 import requests;
@@ -86,9 +88,11 @@ final class MetricsService
 					Submarine sub = cast(Submarine) v;
 					Weapon wpn = cast(Weapon) v;
 					if (sub && sub.captain)
-						strBuf ~= ",captain_name=" ~ quote(sub.captain.name);
+						strBuf ~= ",captain_name=" ~ quote(Base64.encode(
+							representation(sub.captain.name)));
 					else if (wpn && wpn.shooterCaptain)
-						strBuf ~= ",captain_name=" ~ quote(wpn.shooterCaptain.name);
+						strBuf ~= ",captain_name=" ~ quote(Base64.encode(
+							representation(wpn.shooterCaptain.name)));
 					else
 						strBuf ~= ",captain_name=" ~ quote("__null__");
 					// transform
