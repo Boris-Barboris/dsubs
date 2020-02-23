@@ -137,13 +137,15 @@ final class BattleRoyale: Scenario
 
 		/// we despawn combat bots after this time of zero active
 		/// players.
-		enum usecs_t DESPAWN_COMBAT_BOTS = cast(usecs_t) 60 * 60 * 1000_000;
+		enum usecs_t DESPAWN_COMBAT_BOTS = cast(usecs_t) 45 * 60 * 1000_000;
 		usecs_t m_lastSeenPlayer;
 
 		bool[Submarine] m_civilianBots;
 		bool[Submarine] m_easyBots;
 		bool[Submarine] m_mediumBots;
 	}
+
+	@property usecs_t lastSeenPlayer() const { return m_lastSeenPlayer; }
 
 	this()
 	{
