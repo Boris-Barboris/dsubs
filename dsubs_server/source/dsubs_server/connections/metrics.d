@@ -11,6 +11,7 @@ import dsubs_server.animal;
 import dsubs_server.vessel;
 import dsubs_server.submarine;
 import dsubs_server.player;
+import dsubs_server.torpedo: Weapon;
 import dsubs_server.scenario;
 import dsubs_common.proftimer;
 
@@ -83,12 +84,13 @@ final class MetricsService
 					strBuf ~= " dead=" ~ v.dead.to!string;
 					// captain name
 					Submarine sub = cast(Submarine) v;
+					Weapon wpn = cast(Weapon) v;
 					if (sub && sub.captain)
-					{
 						strBuf ~= ",captain_name=" ~ quote(sub.captain.name);
-					}
+					else if (wpn && wpn.shooterCaptain)
+						strBuf ~= ",captain_name=" ~ quote(wpn.shooterCaptain.name);
 					else
-						strBuf ~= ",captain_name=null";
+						strBuf ~= ",captain_name=" ~ quote("__null__");
 					// transform
 					strBuf ~= ",pos_x=" ~ v.transform.wposition.x.to!string ~
 						",pos_y=" ~ v.transform.wposition.y.to!string;
