@@ -72,7 +72,7 @@ final class MetricsService
 			{
 				foreach (Vessel v; Globals.vessels.entities)
 				{
-					strBuf ~= "replay_data2,simulator_instance=main_arena";
+					strBuf ~= "replay_data_vessels,simulator_instance=main_arena";
 					strBuf ~= ",object_class_name=" ~ escape(typeid(v).name);
 					// prototype name
 					strBuf ~= ",prototype_name=" ~ escape(v.prototypeName);
@@ -101,17 +101,17 @@ final class MetricsService
 				// write animals
 				foreach (Animal a; Globals.animals.entities)
 				{
-					strBuf ~= "replay_data2,simulator_instance=main_arena";
+					strBuf ~= "replay_data_animals,simulator_instance=main_arena";
 					strBuf ~= ",object_class_name=" ~ escape(typeid(a).name);
 					// prototype name
-					strBuf ~= ",prototype_name=" ~ escape(a.species);
+					strBuf ~= ",species=" ~ escape(a.species);
 					// pointer value
 					strBuf ~= ",ptr=" ~ (cast (size_t) (cast (void*) a)).to!string;
 
 					// alive/dead
 					strBuf ~= " dead=" ~ a.dead.to!string;
 					// name
-					strBuf ~= ",captain_name=" ~ quote(a.name);
+					strBuf ~= ",name=" ~ quote(a.name);
 					// transform
 					strBuf ~= ",pos_x=" ~ a.transform.wposition.x.to!string ~
 						",pos_y=" ~ a.transform.wposition.y.to!string;
