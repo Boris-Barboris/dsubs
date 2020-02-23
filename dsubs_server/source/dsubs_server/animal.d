@@ -12,9 +12,10 @@ import dsubs_sound.activesonar: Reflector, ReflectorPrototype;
 import dsubs_server.common;
 import dsubs_server.dynamics;
 import dsubs_server.acoustics;
+import dsubs_server.vessel;
 
 
-final class Animal
+final class Animal: Killable
 {
 	private
 	{
@@ -28,6 +29,8 @@ final class Animal
 		vec2d m_velocity = vec2d(0, 0);
 		PrerecordedSoundSource m_currentSoundSource;
 	}
+
+	@property RigidBody rigidBody() { return m_rigidBody; }
 
 	@property string name() const { return m_name; }
 
@@ -131,6 +134,18 @@ final class AnimalCollection
 		foreach(e; entities)
 			e.shutdown();
 		assert(m_entities.length == 0, "animal leak");
+	}
+
+	void collectDeadAnimals()
+	{
+		Animal[] deadAnimals;
+		foreach (animal; m_entities)
+		{
+			if (animal.dead)
+				deadAnimals ~= animal;
+		}
+		foreach (a; deadAnimals)
+			a.shutdown();
 	}
 }
 

@@ -399,12 +399,12 @@ final class TorpedoGuidance: IGuidance
 
 		void chooseKilledAndDetonate()
 		{
-			Vessel[] inKillRadius;
+			Killable[] inKillRadius;
 			foreach (RigidBody rb; closeBodies)
 			{
 				double dist = (m_torpedo.transform.wposition - rb.transform.wposition).length;
-				if (rb.vesselOwner && dist <= m_blastRadius)
-					inKillRadius ~= rb.vesselOwner;
+				if (rb.owner && dist <= m_blastRadius)
+					inKillRadius ~= rb.owner;
 			}
 			detonate(inKillRadius);
 		}
@@ -427,7 +427,7 @@ final class TorpedoGuidance: IGuidance
 		return false;
 	}
 
-	private void detonate(Vessel[] inKillRadius)
+	private void detonate(Killable[] inKillRadius)
 	{
 		trace("Torpedo detonated!!!");
 		m_torpedo.m_detonated = true;

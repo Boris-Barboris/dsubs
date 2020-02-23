@@ -14,6 +14,7 @@ import dsubs_common.containers.quadtree;
 import dsubs_common.event;
 
 import dsubs_server.common;
+import dsubs_server.animal;
 import dsubs_server.vessel;
 
 
@@ -506,9 +507,13 @@ final class RigidBody: PhysicalEntity
 	double moi;
 	double mass;
 	HydroForceModel hydroModel;
-	Vessel vesselOwner;	/// may be null
+	Killable owner;		/// may be null
 	/// wires that are attached to this body
 	AttachedWire[] wires;
+
+	// convenience downcasts
+	@property Vessel vesselOwner() { return cast(Vessel) owner; }
+	@property Animal animalOwner() { return cast(Animal) owner; }
 
 	// TODO: maybe tree needs double precision as well.
 	private QuadTree!(RigidBody).LeafNode* spacialTreeNode;

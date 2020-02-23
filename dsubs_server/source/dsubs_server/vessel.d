@@ -14,8 +14,41 @@ import dsubs_server.dynamics;
 import dsubs_server.propulsion;
 
 
+abstract class Killable
+{
+	private
+	{
+		bool m_dead;
+		usecs_t m_deathTime;
+		string m_causeOfDeath;
+	}
+
+	final
+	{
+		@property bool dead() const { return m_dead; }
+		@property usecs_t deathTime() const { return m_deathTime; }
+		@property string causeOfDeath() const { return m_causeOfDeath; }
+	}
+
+	/// Ensure that the vessel is dead. Returns true if it was killed first time.
+	bool kill(string cause)
+	{
+		synchronized(this)
+		{
+			if (!m_dead)
+				m_dead = true;
+			else
+				return false;
+		}
+		m_deathTime = Globals.sim.worldTime;
+		m_causeOfDeath = cause;
+		return true;
+	}
+}
+
+
 /// Physically-simulated vessel with propulsor, rudder and reflector components
-class Vessel
+class Vessel: Killable
 {
 	protected
 	{
@@ -25,10 +58,7 @@ class Vessel
 		Propulsor m_propulsor;
 		Reflector m_reflector;
 		string m_prototypeName;
-		bool m_dead;
-		usecs_t m_deathTime;
 		usecs_t m_reapTime;
-		string m_causeOfDeath;
 	}
 
 	final
@@ -45,10 +75,7 @@ class Vessel
 		@property inout(Propulsor) propulsor() inout { return m_propulsor; }
 		@property inout(BasicRudder) rudder() inout { return m_rudder; }
 		@property string prototypeName() const { return m_prototypeName; }
-		@property bool dead() const { return m_dead; }
-		@property usecs_t deathTime() const { return m_deathTime; }
 		@property usecs_t reapTime() const { return m_reapTime; }
-		@property string causeOfDeath() const { return m_causeOfDeath; }
 	}
 
 	this(string prototypeName)
@@ -56,7 +83,7 @@ class Vessel
 		m_prototypeName = prototypeName;
 		m_transform = new Transform2D();
 		m_rigidBody = new RigidBody(m_transform);
-		m_rigidBody.vesselOwner = this;
+		m_rigidBody.owner = this;
 	}
 
 	Event!(void delegate()) onPreKinematics;
@@ -106,25 +133,20 @@ class Vessel
 	}
 
 	/// Ensure that the vessel is dead. Returns true if it was killed first time.
-	bool kill(string cause)
+	override bool kill(string cause)
 	{
-		synchronized(this)
+		bool res = super.kill(cause);
+		if (res)
 		{
-			if (!m_dead)
-				m_dead = true;
-			else
-				return false;
+			m_reapTime = m_deathTime + uniform!("[]", usecs_t, usecs_t)(240, 360) *
+				1000_000L;
+			if (m_propulsor)
+				targetThrottle = 0.0f;
+			// optimization: do not simulate wires of dead vessels
+			if (m_rigidBody)
+				m_rigidBody.wires.length = 0;
 		}
-		m_deathTime = Globals.sim.worldTime;
-		m_reapTime = m_deathTime + uniform!("[]", usecs_t, usecs_t)(240, 360) *
-			1000_000L;
-		if (m_propulsor)
-			targetThrottle = 0.0f;
-		m_causeOfDeath = cause;
-		// optimization: do not simulate wires of dead vessels
-		if (m_rigidBody)
-			m_rigidBody.wires.length = 0;
-		return true;
+		return res;
 	}
 }
 

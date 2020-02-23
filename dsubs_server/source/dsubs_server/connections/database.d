@@ -18,7 +18,7 @@ import dsubs_server.common;
 
 import dsubs_server.player: Captain, Player;
 import dsubs_server.bots: BotCaptain;
-import dsubs_server.vessel: Vessel;
+import dsubs_server.vessel: Vessel, Killable;
 import dsubs_server.animal: Animal;
 import dsubs_server.submarine;
 import dsubs_server.torpedo;
@@ -142,7 +142,7 @@ final class DatabaseService
 			return null;
 	}
 
-	void insertKillRecord(Captain shooter, Submarine shooterSub, Vessel deadVessel,
+	void insertKillRecord(Captain shooter, Submarine shooterSub, Killable deadVessel,
 		Torpedo weapon)
 	{
 		Submarine deadSub = cast(Submarine) deadVessel;
