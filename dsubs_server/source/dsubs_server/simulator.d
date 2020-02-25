@@ -13,7 +13,6 @@ import dsubs_common.event;
 import dsubs_server.common;
 import dsubs_server.player: Player;
 import dsubs_server.dynamics;
-import dsubs_server.scenario;
 
 
 /// Simulation thread wrapper
@@ -154,8 +153,7 @@ final class Simulator
 						task(&Globals.metrics.writeMetrics,
 							profiler, Player.getPlayersOnline()));
 					// do not send data to influx when no-one is here
-					if (m_worldTime - (cast(BattleRoyale) Globals.scenario).lastSeenPlayer <
-						cast(usecs_t) 60 * 60 * 1000_000)
+					if (Player.getPlayersOnline)
 					{
 						Globals.auxTaskPool.put(
 							task(&Globals.metrics.writeReplayData));
