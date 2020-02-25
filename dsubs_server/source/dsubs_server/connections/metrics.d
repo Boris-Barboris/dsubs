@@ -173,22 +173,36 @@ final class MetricsService
 		string simulatorInstance, DateTime from, DateTime until)
 	{
 		enforce(simulatorInstance == "main_arena");
+		long fromUnix = SysTime(from, UTC()).toUnixTime!long;
+		long untilUnix = SysTime(until, UTC()).toUnixTime!long;
 		string queryVessels = "SELECT time, " ~
 			"object_class_name, dead, prototype_name, captain_name, " ~
 			"pos_x, pos_y, vel_x, vel_y FROM replay_data_vessels WHERE " ~
 			`simulator_instance = "` ~ simulatorInstance ~ `" AND ` ~
-			`time < now() - 60m AND time >= "` ~ from.toISOExtString() ~
-			`" AND time < "` ~ until.toISOExtString() ~ `"`;
+			`time < now() - 60m AND time >= ` ~ fromUnix.to!string ~
+			` AND time < ` ~ untilUnix.to!string;
+		//trace(queryVessels);
 		string queryAnimals = "SELECT time, " ~
-			"object_class_name, dead, species, name, " ~
+			`object_class_name, dead, species, "name", ` ~
 			"pos_x, pos_y, vel_x, vel_y FROM replay_data_animals WHERE " ~
 			`simulator_instance = "` ~ simulatorInstance ~ `" AND ` ~
-			`time < now() - 60m AND time >= "` ~ from.toISOExtString() ~
-			`" AND time < "` ~ until.toISOExtString() ~ `"`;
+			`time < now() - 60m AND time >= ` ~ fromUnix.to!string ~
+			` AND time < ` ~ untilUnix.to!string;
+		//trace(queryAnimals);
 		auto vesselContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryVessels));
+		//trace(vesselContent);
 		auto animalContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryAnimals));
-		JSONValue vesselJson = parseJSON(cast(string) vesselContent.data)["results"][0]["series"][0]["values"];
-		JSONValue animalJson = parseJSON(cast(string) animalContent.data)["results"][0]["series"][0]["values"];
+		//trace(animalContent);
+		JSONValue vesselJson = parseJSON(cast(string) vesselContent.data)["results"][0]; // ["series"][0]["values"];
+		if ("series" in vesselJson.object)
+			vesselJson = vesselJson["series"][0]["values"];
+		else
+			vesselJson = JSONValue(string[].init);
+		JSONValue animalJson = parseJSON(cast(string) animalContent.data)["results"][0]; // ["series"][0]["values"];
+		if ("series" in animalJson.object)
+			animalJson = animalJson["series"][0]["values"];
+		else
+			animalJson = JSONValue(string[].init);
 
 		static struct UnifiedReplayObject
 		{

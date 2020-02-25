@@ -222,6 +222,7 @@ final class MainMenuState: GameState
 		}
 		canLogin = true;
 		infoLabel.content = res.playersOnline.to!string ~ " players online";
+		Game.bconm.con.sendMessage(immutable ReplayGetDataReq("main_arena", "2020-02-25"));
 	}
 
 	void handleLogin(LoginRes res)
