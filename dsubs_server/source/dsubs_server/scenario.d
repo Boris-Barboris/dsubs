@@ -494,7 +494,7 @@ final class BattleRoyale: Scenario
 				m_nextRadius = DEFAULT_RADIUS + PER_PLAYER_EXPANSION *
 					max(0, Player.getPlayersOnline() - 1);
 				m_nextCenter = m_currentCenter + rotateVector(
-					vec2d(0, m_currentRadius + m_nextRadius),
+					vec2d(0, m_nextRadius),
 					uniform(0, 2 * PI));
 				usecs_t transitionTime = cast(usecs_t)
 					((m_currentRadius + m_nextRadius) / ESTIMATE_SPD) * 1000_000;
