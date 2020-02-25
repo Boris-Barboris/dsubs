@@ -1,13 +1,18 @@
 module dsubs_server.connections.playercon;
 
 import std.socket;
+import std.zlib;
+import std.datetime;
 
 import core.atomic;
 import core.thread;
+import core.time: days;
 
 import dsubs_common.api;
+import dsubs_common.api.entities;
 import dsubs_common.api.messages;
 import dsubs_common.api.encryption;
+import dsubs_common.api.marshalling: marshalArray, getArrayMarshLen;
 import dsubs_common.network.connection;
 
 import dsubs_server.common;
@@ -166,5 +171,27 @@ private:
 		Player p = m_player;
 		enforceAuthAndSim(p);
 		p.handleWireDesiredLengthReq(req);
+	}
+
+	void h_replayGetDataReq(ReplayGetDataReq req)
+	{
+		if (Globals.metrics)
+		{
+			// process request
+			Date day = Date.fromISOExtString(req.metricsDate);
+			DateTime from = DateTime(day);
+			DateTime until = DateTime(day + days(1));
+			immutable (ReplaySlice[]) slices = cast(immutable)
+				Globals.metrics.queryReplaySlices(req.simulatorInstance, from, until);
+			ReplayDataRes res;
+			int byteCount;
+			getArrayMarshLen(slices, byteCount);
+			ubyte[] buf;
+			buf.length = byteCount;
+			ubyte[] bufSlice = buf;
+			marshalArray(slices, bufSlice);
+			res.compressedReplaySlices = compress(buf);
+			sendMessage(cast(immutable) res);
+		}
 	}
 }

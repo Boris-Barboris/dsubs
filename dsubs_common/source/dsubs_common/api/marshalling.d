@@ -43,9 +43,6 @@ immutable(ubyte)[] marshalMessage(MsgT)(immutable(MsgT)* msg)
 }
 
 
-
-private:
-
 void getArrayMarshLen(ArrayT)(immutable ref ArrayT arr, ref int byteCount)
 {
 	static if (!isStaticArray!ArrayT)

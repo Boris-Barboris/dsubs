@@ -21,7 +21,7 @@ struct ServerStatusRes
 {
 	__gshared const int g_marshIdx;
 	int playersOnline;
-	int apiVersion = 10;
+	int apiVersion = 11;
 }
 
 /** This message requests authorization from the server.
@@ -265,4 +265,29 @@ struct WireDesiredLengthReq
 	__gshared const int g_marshIdx;
 	int wireIdx;
 	float desiredLength = 0.0f;
+}
+
+
+
+//
+// Replay-related messages
+//
+
+/// Request to get replay data from the server for a given day.
+struct ReplayGetDataReq
+{
+	__gshared const int g_marshIdx;
+	/// "main_arena" for default pvp scenario.
+	@MaxLenAttr(256) string simulatorInstance;
+	/// Some scenarios run for days or weeks. We do not give more than 1 day
+	/// worth of data. YYYY-MM-DD format.
+	@MaxLenAttr(256) string metricsDate;
+}
+
+/// server's response to ReplayGetDataReq.
+struct ReplayDataRes
+{
+	__gshared const int g_marshIdx;
+	/// DEFLATE-compressed (phobos std.zlib) serialized array of ReplaySlice-s.
+	ubyte[] compressedReplaySlices;
 }

@@ -460,3 +460,34 @@ struct WireSnapshot
 	vec2d attachPosition;
 	WirePointSnapshot[] points;
 }
+
+
+// replay-related
+
+enum ReplayObjectType: ubyte
+{
+	unknown,
+	submarine,
+	weapon,
+	decoy,
+	animal
+}
+
+struct ReplayObjectRecord
+{
+	ReplayObjectType type;
+	bool dead;
+	/// hull/species name.
+	string prototype;
+	/// captain name or animal name.
+	string name;
+	vec2d position;
+	vec2f velocity;
+}
+
+struct ReplaySlice
+{
+	/// unix timestamp in seconds
+	long unixTime;
+	ReplayObjectRecord[] objects;
+}
