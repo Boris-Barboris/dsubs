@@ -25,6 +25,7 @@ import dsubs_client.game.entities;
 import dsubs_client.game.cic.server;
 import dsubs_client.game.states.mainmenu;
 import dsubs_client.game.states.loadout;
+import dsubs_client.game.states.replay;
 import dsubs_client.game.states.simulation;
 
 
@@ -98,6 +99,14 @@ __gshared:
 		SimulatorState resState = cast(SimulatorState) m_activeState;
 		enforce(resState !is null,
 			"game is not in simulator state, but in " ~ m_activeState.classinfo.name);
+		return resState;
+	}
+
+	static @property ReplayState replayState()
+	{
+		ReplayState resState = cast(ReplayState) m_activeState;
+		enforce(resState !is null,
+			"game is not in replay state, but in " ~ m_activeState.classinfo.name);
 		return resState;
 	}
 

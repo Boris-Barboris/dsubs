@@ -139,6 +139,17 @@ class Overlay: GuiElement
 		el.m_owner = null;
 	}
 
+	void clear()
+	{
+		foreach (el; m_elements.byKey)
+		{
+			if (!el.hidden)
+				el.onHide();
+			el.m_owner = null;
+		}
+		m_elements.clear();
+	}
+
 	void add(OverlayElement el)
 	{
 		m_elements[el] = true;

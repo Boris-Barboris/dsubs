@@ -85,6 +85,9 @@ final class Slider: GuiElement
 	mixin FinalGetSet!(sfColor, "railColor",
 		"sfRectangleShape_setFillColor(m_rail, rhs);");
 
+	mixin FinalGetSet!(int, "handleLength", "updateRail(); updateHandle();");
+	mixin FinalGetSet!(int, "handleWidth", "updateRail(); updateHandle();");
+
 	override void updateSize()
 	{
 		super.updateSize();
