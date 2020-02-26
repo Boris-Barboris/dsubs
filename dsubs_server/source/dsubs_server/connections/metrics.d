@@ -232,7 +232,7 @@ final class MetricsService
 					jv[2].boolean,
 					jv[3].str,
 					decodeName ? cast(string) Base64.decode(jv[4].str) : jv[4].str,
-					vec2d(j2d(jv[5]), j2d(jv[6])),
+					vec2f(j2d(jv[5]), j2d(jv[6])),
 					vec2f(j2d(jv[7]), j2d(jv[8]))
 				));
 		}

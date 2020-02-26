@@ -481,7 +481,7 @@ struct ReplayObjectRecord
 	string prototype;
 	/// captain name or animal name.
 	string name;
-	vec2d position;
+	vec2f position;
 	vec2f velocity;
 }
 

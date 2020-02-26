@@ -54,7 +54,7 @@ final class ReplayState: GameState
 		trace("got ", m_slices.length, " replay slices for date: ", m_day);
 		// set up camera
 		if (m_slices)
-			Game.worldManager.camCtx.camera.center = m_slices[0].objects[0].position;
+			Game.worldManager.camCtx.camera.center = cast(vec2d) m_slices[0].objects[0].position;
 		Game.worldManager.camCtx.camera.zoom = 0.02;
 		m_camController = new CameraController(Game.worldManager.camCtx.camera);
 		m_overlay = new ReplayOverlay(m_camController);
@@ -182,7 +182,7 @@ final class ReplayOverlayEl: OverlayElement
 
 	override void onPreDraw()
 	{
-		vec2d worldPos = m_record.position;
+		vec2d worldPos = cast(vec2d) m_record.position;
 		vec2d screenPos = owner.world2screenPos(worldPos);
 		assert(!isNaN(screenPos.x));
 		assert(!isNaN(screenPos.y));
