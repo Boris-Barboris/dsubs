@@ -30,7 +30,7 @@ final class Slider: GuiElement
 		sfColor m_handleColor = sfColor(255, 255, 255, 255);
 		sfColor m_handlePressedColor = sfColor(255, 150, 150, 255);
 
-		enum float WHEEL_GAIN = 0.05f;
+		float m_wheelGain = 0.05f;
 
 		// dynamically calculated values
 		float m_value = 0.0f;
@@ -87,6 +87,8 @@ final class Slider: GuiElement
 
 	mixin FinalGetSet!(int, "handleLength", "updateRail(); updateHandle();");
 	mixin FinalGetSet!(int, "handleWidth", "updateRail(); updateHandle();");
+
+	mixin FinalGetSet!(float, "wheelGain", "");
 
 	override void updateSize()
 	{
@@ -168,6 +170,8 @@ final class Slider: GuiElement
 		if (btn != sfMouseLeft)
 			return;
 		/// transform x and y to local
+		int origx = x;
+		int origy = y;
 		x -= position.x;
 		y -= position.y;
 		sfVector2f hpos = sfRectangleShape_getPosition(m_handle);
@@ -178,11 +182,27 @@ final class Slider: GuiElement
 			m_prevMousePos = (m_axis == Axis.X ? x : y);
 			dragging = true;
 		}
+		else
+		{
+			sfVector2f rpos = sfRectangleShape_getPosition(m_rail);
+			sfVector2f rsize = sfRectangleShape_getSize(m_rail);
+			// direct move to the position
+			if (m_axis == Axis.X)
+			{
+				x = origx - rpos.x.to!int;
+				value = max(0.0f, min(1.0f, x / rsize.x));
+			}
+			else
+			{
+				y = origy - rpos.y.to!int;
+				value = max(0.0f, min(1.0f, y / rsize.y));
+			}
+		}
 	}
 
 	private void handleMouseScroll(int x, int y, float delta)
 	{
-		value = max(0.0f, min(1.0f, m_value + WHEEL_GAIN * delta));
+		value = max(0.0f, min(1.0f, m_value + m_wheelGain * delta));
 		onDragEnd(m_value);
 	}
 

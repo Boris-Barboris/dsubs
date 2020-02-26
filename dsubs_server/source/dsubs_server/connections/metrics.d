@@ -203,18 +203,18 @@ final class MetricsService
 		// trace(queryAnimals);
 		auto vesselContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryVessels));
 		//trace(vesselContent);
-		auto animalContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryAnimals));
+		// auto animalContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryAnimals));
 		//trace(animalContent);
 		JSONValue vesselJson = parseJSON(cast(string) vesselContent.data)["results"][0]; // ["series"][0]["values"];
 		if ("series" in vesselJson.object)
 			vesselJson = vesselJson["series"][0]["values"];
 		else
 			vesselJson = JSONValue(string[].init);
-		JSONValue animalJson = parseJSON(cast(string) animalContent.data)["results"][0]; // ["series"][0]["values"];
-		if ("series" in animalJson.object)
-			animalJson = animalJson["series"][0]["values"];
-		else
-			animalJson = JSONValue(string[].init);
+		// JSONValue animalJson = parseJSON(cast(string) animalContent.data)["results"][0]; // ["series"][0]["values"];
+		// if ("series" in animalJson.object)
+		// 	animalJson = animalJson["series"][0]["values"];
+		// else
+		// 	animalJson = JSONValue(string[].init);
 
 		static struct UnifiedReplayObject
 		{
@@ -238,9 +238,10 @@ final class MetricsService
 		}
 
 		/// globally-sorted merged arrays of entities
-		auto sortedUROs = multiwayMerge!((a, b) => a.unixTime < b.unixTime)(
- 				[vesselJson.array.map!(vj => json2URO(vj)).array,
-				animalJson.array.map!(aj => json2URO(aj, false)).array]);
+		// auto sortedUROs = multiwayMerge!((a, b) => a.unixTime < b.unixTime)(
+ 		// 		[vesselJson.array.map!(vj => json2URO(vj)).array,
+		// 		animalJson.array.map!(aj => json2URO(aj, false)).array]);
+		auto sortedUROs = vesselJson.array.map!(vj => json2URO(vj));
 
 		ReplaySlice[] res;
 		// slice being formed now

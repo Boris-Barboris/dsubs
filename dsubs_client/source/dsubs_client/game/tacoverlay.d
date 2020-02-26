@@ -40,16 +40,11 @@ final class ContactOverlayShapeCahe
 {
 	this()
 	{
-		m_shapes[ContactType.unknown] =
-			new CircleShape(8.0f, 4, sfColor(244, 241, 66, 255), 2);
-		m_shapes[ContactType.environment] =
-			new CircleShape(7.0f, 6, sfColor(107, 244, 65, 255), 2);
-		m_shapes[ContactType.submarine] =
-			new CircleShape(8.0f, 12, sfColor(255, 132, 10, 255), 2);
-		m_shapes[ContactType.weapon] =
-			new CircleShape(5.0f, 3, sfRed, 2);
-		m_shapes[ContactType.decoy] =
-			new CircleShape(5.0f, 5, sfColor(152, 9, 255, 255), 2);
+		m_shapes[ContactType.unknown] = forContactTypeNew(ContactType.unknown);
+		m_shapes[ContactType.environment] = forContactTypeNew(ContactType.environment);
+		m_shapes[ContactType.submarine] = forContactTypeNew(ContactType.submarine);
+		m_shapes[ContactType.weapon] = forContactTypeNew(ContactType.weapon);
+		m_shapes[ContactType.decoy] = forContactTypeNew(ContactType.decoy);
 		m_onHoverRect = new RectangleShape(vec2f(22.0f, 22.0f), sfWhite);
 		m_onHoverRect.position = -vec2f(1, 1);
 		m_posDataMainShape = new RectangleShape(vec2f(5, 5), sfRed);
@@ -117,9 +112,28 @@ final class ContactOverlayShapeCahe
 			WeaponProjectionTrace.ACTIVE_COLOR, 2);
 	}
 
+	/// returns shared shape
 	CircleShape forContactType(ContactType t)
 	{
 		return m_shapes[t];
+	}
+
+	/// builds new shape
+	CircleShape forContactTypeNew(ContactType t)
+	{
+		final switch (t)
+		{
+			case ContactType.unknown:
+				return new CircleShape(8.0f, 4, sfColor(244, 241, 66, 255), 2);
+			case ContactType.environment:
+				return new CircleShape(7.0f, 6, sfColor(107, 244, 65, 255), 2);
+			case ContactType.submarine:
+				return new CircleShape(8.0f, 12, sfColor(255, 132, 10, 255), 2);
+			case ContactType.weapon:
+				return new CircleShape(5.0f, 3, sfRed, 2);
+			case ContactType.decoy:
+				return new CircleShape(5.0f, 5, sfColor(152, 9, 255, 255), 2);
+		}
 	}
 }
 

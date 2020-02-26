@@ -39,6 +39,7 @@ final class ReplayState: GameState
 		ReplayOverlay m_overlay;
 		ContactOverlayShapeCahe m_shapeCache;
 		Slider m_timeSlider;
+		Label m_curTimeLabel;
 		size_t m_curSlice = 0;
 	}
 
@@ -55,7 +56,7 @@ final class ReplayState: GameState
 		// set up camera
 		if (m_slices)
 			Game.worldManager.camCtx.camera.center = cast(vec2d) m_slices[0].objects[0].position;
-		Game.worldManager.camCtx.camera.zoom = 0.02;
+		Game.worldManager.camCtx.camera.zoom = 0.01;
 		m_camController = new CameraController(Game.worldManager.camCtx.camera);
 		m_overlay = new ReplayOverlay(m_camController);
 		Game.guiManager.addPanel(new Panel(m_overlay));
@@ -73,6 +74,9 @@ final class ReplayState: GameState
 			return false;
 		}
 
+		m_curTimeLabel = builder(new Label()).fixedSize(vec2i(220, 10)).fontSize(BTN_FONT - 5).build;
+
+		m_timeSlider.wheelGain = 1.0f / m_slices.length;
 		m_timeSlider.onValueChanged += (float newVal)
 		{
 			if (m_slices.length == 0)
@@ -83,13 +87,14 @@ final class ReplayState: GameState
 			{
 				m_curSlice = newSlice;
 				m_overlay.rebuildFromSlice(m_slices[m_curSlice]);
+				m_curTimeLabel.content = SysTime.fromUnixTime(m_slices[m_curSlice].unixTime).to!string;
 			}
 		};
 
 		TextField dateField = builder(new TextField()).content(
 			m_day.toISOExtString()).symbolFilter(&numericSymbFilter).
 			fixedSize(vec2i(200, 10)).fontSize(BTN_FONT).build;
-		Button changeDateBtn = builder(new Button(ButtonType.ASYNC)).content("change day").
+		Button changeDateBtn = builder(new Button(ButtonType.ASYNC)).content("load day").
 			fontSize(BTN_FONT).fixedSize(vec2i(150, 10)).build;
 
 		changeDateBtn.onClick += ()
@@ -107,7 +112,7 @@ final class ReplayState: GameState
 		};
 
 		Div mainDiv = vDiv([
-			builder(hDiv([dateField, changeDateBtn, filler()])).fixedSize(
+			builder(hDiv([dateField, changeDateBtn, filler(), m_curTimeLabel])).fixedSize(
 				vec2i(10, BTN_FONT + 5)).backgroundColor(COLORS.simPanelBgnd).build,
 			filler(),
 			m_timeSlider]);
@@ -147,27 +152,29 @@ final class ReplayOverlayEl: OverlayElement
 		final switch (record.type)
 		{
 			case ReplayObjectType.unknown:
-				m_shape = Game.replayState.m_shapeCache.forContactType(ContactType.unknown);
+				m_shape = Game.replayState.m_shapeCache.forContactTypeNew(ContactType.unknown);
 				break;
 			case ReplayObjectType.submarine:
-				m_shape = Game.replayState.m_shapeCache.forContactType(ContactType.submarine);
+				m_shape = Game.replayState.m_shapeCache.forContactTypeNew(ContactType.submarine);
 				break;
 			case ReplayObjectType.weapon:
-				m_shape = Game.replayState.m_shapeCache.forContactType(ContactType.weapon);
+				m_shape = Game.replayState.m_shapeCache.forContactTypeNew(ContactType.weapon);
 				break;
 			case ReplayObjectType.decoy:
-				m_shape = Game.replayState.m_shapeCache.forContactType(ContactType.decoy);
+				m_shape = Game.replayState.m_shapeCache.forContactTypeNew(ContactType.decoy);
 				break;
 			case ReplayObjectType.animal:
-				m_shape = Game.replayState.m_shapeCache.forContactType(ContactType.environment);
+				m_shape = Game.replayState.m_shapeCache.forContactTypeNew(ContactType.environment);
 				break;
 		}
+		if (m_record.dead)
+			m_shape.borderColor = sfColor(100, 100, 100, 255);
 		m_velLine = new LineShape(vec2d(5.0f, 5.0f), vec2d(6.0f, 5.0f), m_shape.borderColor, 2.0f);
 
-		m_prototypeLabel = builder(new Label()).fontSize(14).fontColor(sfColor(200, 200, 200, 150)).
+		m_prototypeLabel = builder(new Label()).fontSize(12).fontColor(sfColor(200, 200, 200, 150)).
 			enableScissorTest(false).htextAlign(HTextAlign.CENTER).vtextAlign(VTextAlign.CENTER).
 			mouseTransparent(true).build();
-		m_nameLabel = builder(new Label()).fontSize(16).fontColor(sfWhite).
+		m_nameLabel = builder(new Label()).fontSize(14).fontColor(sfWhite).
 			enableScissorTest(false).htextAlign(HTextAlign.CENTER).vtextAlign(VTextAlign.CENTER).
 			mouseTransparent(true).build();
 
