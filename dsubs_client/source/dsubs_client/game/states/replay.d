@@ -23,6 +23,12 @@ import dsubs_client.game.states.mainmenu;
 import dsubs_client.gui;
 
 
+private
+{
+	enum int BTN_FONT = 25;
+}
+
+
 final class ReplayState: GameState
 {
 	private
@@ -47,7 +53,8 @@ final class ReplayState: GameState
 	{
 		trace("got ", m_slices.length, " replay slices for date: ", m_day);
 		// set up camera
-		Game.worldManager.camCtx.camera.center = m_slices[0].objects[0].position;
+		if (m_slices)
+			Game.worldManager.camCtx.camera.center = m_slices[0].objects[0].position;
 		Game.worldManager.camCtx.camera.zoom = 0.02;
 		m_camController = new CameraController(Game.worldManager.camCtx.camera);
 		m_overlay = new ReplayOverlay(m_camController);
@@ -58,6 +65,13 @@ final class ReplayState: GameState
 		m_timeSlider.backgroundColor = COLORS.simPanelBgnd;
 		m_timeSlider.handleLength = 15;
 		m_timeSlider.handleWidth = 40;
+
+		static bool numericSymbFilter(dchar c)
+		{
+			if (c >= '0' && c <= '9' || c == '-')
+				return true;
+			return false;
+		}
 
 		m_timeSlider.onValueChanged += (float newVal)
 		{
@@ -72,7 +86,31 @@ final class ReplayState: GameState
 			}
 		};
 
-		Div mainDiv = vDiv([filler(), m_timeSlider]);
+		TextField dateField = builder(new TextField()).content(
+			m_day.toISOExtString()).symbolFilter(&numericSymbFilter).
+			fixedSize(vec2i(200, 10)).fontSize(BTN_FONT).build;
+		Button changeDateBtn = builder(new Button(ButtonType.ASYNC)).content("change day").
+			fontSize(BTN_FONT).fixedSize(vec2i(150, 10)).build;
+
+		changeDateBtn.onClick += ()
+		{
+			try
+			{
+				Game.bconm.con.sendMessage(immutable ReplayGetDataReq("main_arena",
+					Date.fromISOExtString(dateField.content.str).toISOExtString()));
+			}
+			catch (Exception ex)
+			{
+				error(ex.msg);
+				changeDateBtn.signalClickEnd();
+			}
+		};
+
+		Div mainDiv = vDiv([
+			builder(hDiv([dateField, changeDateBtn, filler()])).fixedSize(
+				vec2i(10, BTN_FONT + 5)).backgroundColor(COLORS.simPanelBgnd).build,
+			filler(),
+			m_timeSlider]);
 		Game.guiManager.addPanel(new Panel(mainDiv));
 		if (m_slices)
 			m_overlay.rebuildFromSlice(m_slices[0]);
