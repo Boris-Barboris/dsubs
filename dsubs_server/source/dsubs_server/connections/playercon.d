@@ -190,7 +190,7 @@ private:
 			ubyte[] bufSlice = buf;
 			marshalArray(slices, bufSlice);
 			res.compressedReplaySlices = compress(buf, 6);
-			trace("compressed ", res.uncompressedLength, " replay bytes to ", buf.length);
+			trace("compressed ", res.uncompressedLength, " replay bytes to ", res.compressedReplaySlices.length);
 			sendMessage(cast(immutable) res);
 		}
 	}

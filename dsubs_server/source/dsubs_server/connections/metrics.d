@@ -1,8 +1,9 @@
 module dsubs_server.connections.metrics;
 
-import std.algorithm: map, merge;
-import std.range: replace;
+import std.algorithm: map, merge, multiwayMerge;
+import std.range: replace, assumeSorted;
 import std.base64: Base64;
+import std.array: array;
 import std.string: representation;
 import std.array: Appender, appender;
 import std.zlib;
@@ -221,24 +222,25 @@ final class MetricsService
 			ReplayObjectRecord record;
 		}
 
-		static UnifiedReplayObject json2URO(JSONValue jv)
+		static UnifiedReplayObject json2URO(JSONValue jv, bool decodeName = true)
 		{
+                        //trace(jv);
 			return UnifiedReplayObject(
 				jv[0].integer,
 				ReplayObjectRecord(
 					classNameToROT(jv[1].str),
 					jv[2].boolean,
 					jv[3].str,
-					jv[4].str,
-					vec2d(jv[5].j2d, jv[6].j2d),
-					vec2f(jv[7].j2d, jv[8].j2d)
+					decodeName ? cast(string) Base64.decode(jv[4].str) : jv[4].str,
+					vec2d(j2d(jv[5]), j2d(jv[6])),
+					vec2f(j2d(jv[7]), j2d(jv[8]))
 				));
 		}
 
 		/// globally-sorted merged arrays of entities
-		auto sortedUROs = merge!((a, b) => a.unixTime < b.unixTime)(
-				vesselJson.arrayNoRef.map!(vj => json2URO(vj)),
-				animalJson.arrayNoRef.map!(aj => json2URO(aj)));
+		auto sortedUROs = multiwayMerge!((a, b) => a.unixTime < b.unixTime)(
+ 				[vesselJson.array.map!(vj => json2URO(vj)).array,
+				animalJson.array.map!(aj => json2URO(aj, false)).array ]);
 
 		ReplaySlice[] res;
 		// slice being formed now
