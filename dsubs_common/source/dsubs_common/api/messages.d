@@ -288,6 +288,8 @@ struct ReplayGetDataReq
 struct ReplayDataRes
 {
 	__gshared const int g_marshIdx;
+	/// Slices are generated for this date. YYYY-MM-DD format.
+	string metricsDate;
 	/// length of uncompressed compressedReplaySlices array.
 	int uncompressedLength;
 	/// DEFLATE-compressed (phobos std.zlib) serialized array of ReplaySlice-s.

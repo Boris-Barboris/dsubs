@@ -2,6 +2,8 @@ module dsubs_client.game.connections.backend;
 
 import std.socket;
 import std.process;
+import std.datetime: Date;
+import std.zlib;
 
 import core.atomic;
 import core.thread;
@@ -9,12 +11,14 @@ import core.thread;
 import dsubs_common.api;
 import dsubs_common.api.protocol;
 import dsubs_common.api.messages;
+import dsubs_common.api.marshalling;
 import dsubs_common.network.connection;
 
 import dsubs_client.common;
 import dsubs_client.game;
 import dsubs_client.game.gamestate: GameState;
 import dsubs_client.game.states.mainmenu: MainMenuState;
+import dsubs_client.game.states.replay: ReplayState;
 import dsubs_client.game.entities;
 
 
@@ -44,6 +48,19 @@ private:
 			GameState activeState = Game.activeState;
 			if (cast(MainMenuState) activeState)
 				Game.mainMenuState.handleServerStatus(res);
+		}
+	}
+
+	void h_replayDataRes(ReplayDataRes res)
+	{
+		ReplaySlice[] slices;
+		const(ubyte)[] uncompressed = cast(const(ubyte)[]) uncompress(
+			res.compressedReplaySlices, res.uncompressedLength);
+		demarshalArray!(ReplaySlice[])(slices, uncompressed);
+		Date date = Date.fromISOExtString(res.metricsDate);
+		synchronized(Game.mainMutex)
+		{
+			Game.activeState = new ReplayState(date, slices);
 		}
 	}
 

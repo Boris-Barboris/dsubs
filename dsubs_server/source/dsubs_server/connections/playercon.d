@@ -183,7 +183,7 @@ private:
 			DateTime until = DateTime(day + days(1));
 			immutable (ReplaySlice[]) slices = cast(immutable)
 				Globals.metrics.queryReplaySlices(req.simulatorInstance, from, until);
-			ReplayDataRes res;
+			ReplayDataRes res = ReplayDataRes(req.metricsDate);
 			getArrayMarshLen(slices, res.uncompressedLength);
 			ubyte[] buf;
 			buf.length = res.uncompressedLength.to!size_t;

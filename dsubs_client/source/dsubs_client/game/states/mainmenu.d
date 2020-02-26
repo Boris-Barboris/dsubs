@@ -2,6 +2,7 @@ module dsubs_client.game.states.mainmenu;
 
 import std.utf;
 import std.process: browse;
+import std.datetime;
 
 import core.thread;
 
@@ -39,7 +40,7 @@ final class MainMenuState: GameState
 	{
 		bool canLogin, alreadySpawned;
 		Label infoLabel;
-		Button connectButton, cicConnectButton;
+		Button connectButton, cicConnectButton, replayButton;
 		void delegate() cicConnectCancellator;
 	}
 
@@ -53,6 +54,10 @@ final class MainMenuState: GameState
 		connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").
 			backgroundColor(COLORS.simButtonBgnd).
 			fontSize(MENU_BUTTON_FONTSIZE).build();
+
+		replayButton = builder(new Button(ButtonType.ASYNC)).content("server replay").
+			backgroundColor(COLORS.simButtonBgnd).
+			fontSize(LOGIN_FONT_SIZE).build();
 
 		infoLabel = builder(new Label()).content("Connecting to server...").
 			fontSize(INFO_FONT_SIZE).fixedSize(vec2i(400, INFO_FONT_SIZE + 10)).
@@ -111,6 +116,12 @@ final class MainMenuState: GameState
 			infoLabel.content = "Authorizing...";
 			writeConfigField("login", loginField.content.str);
 			writeConfigField("password", pwField.content.str);
+		};
+
+		replayButton.onClick += ()
+		{
+			Game.bconm.con.sendMessage(immutable ReplayGetDataReq("main_arena",
+				(cast(Date) Clock.currTime).toISOExtString()));
 		};
 
 		Label cicIpLabel = builder(new Label()).content("coop IP:").
@@ -174,6 +185,7 @@ final class MainMenuState: GameState
 				fixedSize(vec2i(10, btnSize)).build(),
 			filler(10),
 			infoLabel,
+			replayButton,
 			filler(40),
 			orLabel,
 			filler(40),
@@ -222,7 +234,7 @@ final class MainMenuState: GameState
 		}
 		canLogin = true;
 		infoLabel.content = res.playersOnline.to!string ~ " players online";
-		Game.bconm.con.sendMessage(immutable ReplayGetDataReq("main_arena", "2020-02-25"));
+		// Game.bconm.con.sendMessage(immutable ReplayGetDataReq("main_arena", "2020-02-25"));
 	}
 
 	void handleLogin(LoginRes res)
