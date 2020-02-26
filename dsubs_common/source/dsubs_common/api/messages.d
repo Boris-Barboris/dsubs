@@ -288,6 +288,8 @@ struct ReplayGetDataReq
 struct ReplayDataRes
 {
 	__gshared const int g_marshIdx;
+	/// length of uncompressed compressedReplaySlices array.
+	int uncompressedLength;
 	/// DEFLATE-compressed (phobos std.zlib) serialized array of ReplaySlice-s.
 	ubyte[] compressedReplaySlices;
 }

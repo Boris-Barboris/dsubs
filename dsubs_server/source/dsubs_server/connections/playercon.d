@@ -184,13 +184,13 @@ private:
 			immutable (ReplaySlice[]) slices = cast(immutable)
 				Globals.metrics.queryReplaySlices(req.simulatorInstance, from, until);
 			ReplayDataRes res;
-			int byteCount;
-			getArrayMarshLen(slices, byteCount);
+			getArrayMarshLen(slices, res.uncompressedLength);
 			ubyte[] buf;
-			buf.length = byteCount;
+			buf.length = res.uncompressedLength.to!size_t;
 			ubyte[] bufSlice = buf;
 			marshalArray(slices, bufSlice);
-			res.compressedReplaySlices = compress(buf);
+			res.compressedReplaySlices = compress(buf, 6);
+			trace("compressed ", res.uncompressedLength, " replay bytes to ", buf.length);
 			sendMessage(cast(immutable) res);
 		}
 	}

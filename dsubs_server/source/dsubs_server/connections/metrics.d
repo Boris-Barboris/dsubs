@@ -169,6 +169,8 @@ final class MetricsService
 		}
 	}
 
+	private enum string NANOS = "000000000";
+
 	ReplaySlice[] queryReplaySlices(
 		string simulatorInstance, DateTime from, DateTime until)
 	{
@@ -179,15 +181,15 @@ final class MetricsService
 			"object_class_name, dead, prototype_name, captain_name, " ~
 			"pos_x, pos_y, vel_x, vel_y FROM replay_data_vessels WHERE " ~
 			`simulator_instance = "` ~ simulatorInstance ~ `" AND ` ~
-			`time < now() - 60m AND time >= ` ~ fromUnix.to!string ~
-			` AND time < ` ~ untilUnix.to!string;
+			`time < now() - 60m AND time >= ` ~ fromUnix.to!string ~ NANOS ~
+			` AND time < ` ~ untilUnix.to!string ~ NANOS;
 		//trace(queryVessels);
 		string queryAnimals = "SELECT time, " ~
 			`object_class_name, dead, species, "name", ` ~
 			"pos_x, pos_y, vel_x, vel_y FROM replay_data_animals WHERE " ~
 			`simulator_instance = "` ~ simulatorInstance ~ `" AND ` ~
-			`time < now() - 60m AND time >= ` ~ fromUnix.to!string ~
-			` AND time < ` ~ untilUnix.to!string;
+			`time < now() - 60m AND time >= ` ~ fromUnix.to!string ~ NANOS ~
+			` AND time < ` ~ untilUnix.to!string ~ NANOS;
 		//trace(queryAnimals);
 		auto vesselContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryVessels));
 		//trace(vesselContent);
