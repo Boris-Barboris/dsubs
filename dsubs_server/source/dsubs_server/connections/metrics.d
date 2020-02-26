@@ -224,7 +224,7 @@ final class MetricsService
 
 		static UnifiedReplayObject json2URO(JSONValue jv, bool decodeName = true)
 		{
-                        //trace(jv);
+			// trace(jv);
 			return UnifiedReplayObject(
 				jv[0].integer,
 				ReplayObjectRecord(
@@ -240,7 +240,7 @@ final class MetricsService
 		/// globally-sorted merged arrays of entities
 		auto sortedUROs = multiwayMerge!((a, b) => a.unixTime < b.unixTime)(
  				[vesselJson.array.map!(vj => json2URO(vj)).array,
-				animalJson.array.map!(aj => json2URO(aj, false)).array ]);
+				animalJson.array.map!(aj => json2URO(aj, false)).array]);
 
 		ReplaySlice[] res;
 		// slice being formed now

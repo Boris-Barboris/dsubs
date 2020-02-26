@@ -32,7 +32,11 @@ final class ReplayState: GameState
 
 	override void setup()
 	{
-		trace("got ", slices.length, " slices");
+		trace("got ", slices.length, " replay slices for date: ", day);
+		// set up camera
+		Game.worldManager.camCtx.camera.center = rawRecState.subSnap.position;
+		Game.worldManager.camCtx.camera.zoom = 10.0;
+		m_camController = new CameraController(Game.worldManager.camCtx.camera);
 	}
 
 	override void handleBackendDisconnect()
