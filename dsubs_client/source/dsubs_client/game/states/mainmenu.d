@@ -55,7 +55,7 @@ final class MainMenuState: GameState
 			backgroundColor(COLORS.simButtonBgnd).
 			fontSize(MENU_BUTTON_FONTSIZE).build();
 
-		replayButton = builder(new Button(ButtonType.ASYNC)).content("server replay").
+		replayButton = builder(new Button(ButtonType.ASYNC)).content("watch replay").
 			backgroundColor(COLORS.simButtonBgnd).
 			fontSize(LOGIN_FONT_SIZE).build();
 
@@ -185,7 +185,9 @@ final class MainMenuState: GameState
 				fixedSize(vec2i(10, btnSize)).build(),
 			filler(10),
 			infoLabel,
-			replayButton,
+			filler(10),
+			builder(hDiv([filler(100), replayButton, filler(100)])).
+				fixedSize(vec2i(10, 30)).build(),
 			filler(40),
 			orLabel,
 			filler(40),
