@@ -171,6 +171,15 @@ final class MetricsService
 
 	private enum string NANOS = "000000000";
 
+	static double j2d(const JSONValue jv)
+	{
+		if (jv.type == JSONType.INTEGER)
+			return jv.integer.to!double;
+		if (jv.type == JSONType.FLOAT)
+			return jv.floating;
+		return double.nan;
+	}
+
 	ReplaySlice[] queryReplaySlices(
 		string simulatorInstance, DateTime from, DateTime until)
 	{
@@ -221,8 +230,8 @@ final class MetricsService
 					jv[2].boolean,
 					jv[3].str,
 					jv[4].str,
-					vec2d(jv[5].floating, jv[6].floating),
-					vec2f(jv[7].floating, jv[8].floating)
+					vec2d(jv[5].j2d, jv[6].j2d),
+					vec2f(jv[7].j2d, jv[8].j2d)
 				));
 		}
 
