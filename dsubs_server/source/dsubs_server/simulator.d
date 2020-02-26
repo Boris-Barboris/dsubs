@@ -149,9 +149,9 @@ final class Simulator
 					profiler.printResult();
 				if (Globals.metrics && (m_worldTime % 10_000_000 == 0))
 				{
-					//Globals.auxTaskPool.put(
-					//	task(&Globals.metrics.writeMetrics,
-					//		profiler, Player.getPlayersOnline()));
+					Globals.auxTaskPool.put(
+						task(&Globals.metrics.writeMetrics,
+						     profiler, Player.getPlayersOnline()));
 					// do not send data to influx when no-one is here
 					if (Player.getPlayersOnline)
 					{
