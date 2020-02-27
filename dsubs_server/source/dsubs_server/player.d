@@ -155,6 +155,8 @@ final class Player: Captain
 			{
 				if (m_connection is oldCon)
 				{
+					// if there is a submarine we deactivate it's sensors
+					// to save computational resources.
 					if (m_submarine)
 					{
 						foreach (h; m_submarine.hydrophones)
@@ -181,7 +183,8 @@ final class Player: Captain
 		return false;
 	}
 
-	/// set current
+	/// Set current m_connection to new value. Simulator's reader lock
+	/// must be held.
 	private void emplaceConnection(PlayerConnection con)
 	{
 		synchronized(this)

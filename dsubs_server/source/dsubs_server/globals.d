@@ -135,19 +135,3 @@ __gshared:
 		}
 	}
 }
-
-
-struct WorldTimer
-{
-	usecs_t alarmTime;
-
-	static WorldTimer delay(usecs_t after)
-	{
-		return WorldTimer(Globals.sim.worldTime + after);
-	}
-
-	@property bool isRaised() const
-	{
-		return Globals.sim.worldTime >= alarmTime;
-	}
-}
