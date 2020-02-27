@@ -5,6 +5,7 @@ import std.parallelism: task;
 
 import core.thread;
 import core.memory;
+import core.sync.rwmutex;
 import core.stdc.stdlib;
 
 import dsubs_common.proftimer;
@@ -15,23 +16,28 @@ import dsubs_server.player: Player;
 import dsubs_server.dynamics;
 
 
-/// Simulation thread wrapper
-final class Simulator
+
+/// Collection of simulators that can be ran in time-sharing manner.
+final class SimulatorScheduler
 {
-	private Thread m_thread;
+	private
+	{
+		/// main simulation thread. Simulators fork-n-join inside a lot, so there is
+		/// little incentive to run a thread per simulator. One main thread is enough.
+		Thread m_thread;
+		bool m_stopFlag;
+		bool m_joined;
+	}
 
 	this()
 	{
-		m_thread = new Thread(&simulationLoop);
+		m_thread = new Thread(&schedulingLoop);
 	}
 
 	void start()
 	{
 		m_thread.start();
 	}
-
-	private bool m_stopFlag;
-	private bool m_joined;
 
 	@property bool joined() const { return m_joined; }
 
@@ -47,14 +53,23 @@ final class Simulator
 		m_thread.join();
 		m_joined = true;
 	}
+}
 
+
+/// Simulator instance, that constitutes one particular game world.
+final class Simulator
+{
 	private usecs_t m_worldTime = 0;
 	@property usecs_t worldTime() const { return m_worldTime; }
 
 	usecs_t worldTimeLimit = usecs_t.max;
 
+	/// print stage timings to log or not
 	bool printTimings = false;
+	/// if false, this is a greedy simulator that does not need periodic
+	/// scheduling and wants to be ran as often as possible and fair.
 	bool doSleep = true;
+	/// time acceleration factor of this simulator.
 	float acceleration = 1.0f;
 
 	Event!(void delegate(usecs_t now)) onSimulationPassStart;
