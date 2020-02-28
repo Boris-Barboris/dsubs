@@ -16,7 +16,7 @@ import dsubs_server.vessel: VesselCollection;
 import dsubs_server.animal: AnimalCollection;
 import dsubs_server.torpedo: WeaponCollection;
 import dsubs_server.entitydb: EntityDb;
-import dsubs_server.simulator: Simulator;
+import dsubs_server.simulator: Simulator, SimulatorScheduler;
 import dsubs_server.scenario: Scenario;
 import dsubs_server.connections.listener: ConListener;
 
@@ -26,41 +26,26 @@ import dsubs_server.connections.listener: ConListener;
 final abstract class Globals
 {
 __gshared:
-	/// Main simulation RW-mutex that guards game state. Write-lock is taken
-	/// by the server when the world needs to freeze.
-	ReadWriteMutex simMut;
 	/// Global task pool that is used during simulation.
 	TaskPool taskPool;
-	/// Auxiliarry tasks are put to this pool queue
+	/// Auxiliarry non-simulation-critical asynchronous tasks are put to this pool queue.
 	TaskPool auxTaskPool;
-
-	/// Library of submarine types, propulsors and other unit types
+	/// Library of all existing submarine types, propulsors and other unit types,
+	/// irrespective of the scenatio.
 	EntityDb entityDb;
-	/// players that were authorized at least once.
+	/// Players that were authorized at least once.
 	PlayerCollection players;
 	/// TCP listeners
 	ConListener cons;
-	/// Physics engine
-	PhysicalEnv phys;
-	/// Acoustics engine
-	AcousticEnv acous;
-	/// Active vessels
-	VesselCollection vessels;
-	/// Active animals
-	AnimalCollection animals;
-	/// Active weapons
-	WeaponCollection weapons;
-	/// Simulator
-	Simulator sim;
-	/// OpenCL context
+	/// Collection of simulators.
+	SimulatorScheduler simulators;
+	/// OpenCL context. The point of multiplexed dsubs_server is to give
+	/// the game more control over the resource allocation and keep it
+	/// monolithic. Shared opencl context reduces VRAM usage and GPU overhead.
 	DsubsSoundOpenclCtx sctx;
-	/// Scenario object
-	Scenario scenario;
-	/// All active bots
-	BotCollection bots;
-	/// Database connector
+	/// Database (MariaDB) connector
 	DatabaseService database;
-	/// Metric collector connector
+	/// Metrics (InfluxDB) connector
 	MetricsService metrics;
 
 	static void build()
