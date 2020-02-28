@@ -87,7 +87,7 @@ final class ReplayState: GameState
 			{
 				m_curSlice = newSlice;
 				m_overlay.rebuildFromSlice(m_slices[m_curSlice]);
-				m_curTimeLabel.content = SysTime.fromUnixTime(m_slices[m_curSlice].unixTime).to!string;
+				m_curTimeLabel.content = SysTime.fromUnixTime(m_slices[m_curSlice].unixTime, UTC()).to!string;
 			}
 		};
 
