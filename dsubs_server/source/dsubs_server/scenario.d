@@ -137,7 +137,7 @@ final class BattleRoyale: Scenario
 
 		/// we despawn combat bots after this time of zero active
 		/// players.
-		enum usecs_t DESPAWN_COMBAT_BOTS = cast(usecs_t) 45 * 60 * 1000_000;
+		enum usecs_t DESPAWN_IDLE_INTERVAL = cast(usecs_t) 45 * 60 * 1000_000;
 		usecs_t m_lastSeenPlayer;
 
 		bool[Submarine] m_civilianBots;
@@ -306,7 +306,7 @@ final class BattleRoyale: Scenario
 		// difficulty.
 		if (Player.getPlayersOnline)
 			m_lastSeenPlayer = Globals.sim.worldTime;
-		else if (Globals.sim.worldTime - m_lastSeenPlayer > DESPAWN_COMBAT_BOTS)
+		else if (Globals.sim.worldTime - m_lastSeenPlayer > DESPAWN_IDLE_INTERVAL)
 		{
 			// we don't run this code every frame, so we update m_lastSeenPlayer
 			m_lastSeenPlayer = Globals.sim.worldTime;
@@ -315,9 +315,16 @@ final class BattleRoyale: Scenario
 				subsToKill ~= sub;
 			foreach (Submarine sub; m_mediumBots.byKey)
 				subsToKill ~= sub;
+			foreach (Submarine sub; Globals.vessels.entities.
+				filter!(v => !v.dead).filter!(v => (cast(Submarine) v)).
+				map!(v => cast(Submarine) v))
+			{
+				if (cast(Player) sub.captain)
+					subsToKill ~= sub;
+			}
 			foreach (Submarine sub; subsToKill)
 			{
-				trace("Killing bot because of player inactivily: ", sub);
+				trace("Killing submarine because of player inactivily: ", sub);
 				sub.kill("No players");
 			}
 			m_easyBots.clear();
