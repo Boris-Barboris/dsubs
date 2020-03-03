@@ -1,12 +1,16 @@
 module dsubs_server.simulator;
 
+import std.container.rbtree: RedBlackTree;
 import std.datetime;
 import std.parallelism: task;
 import std.uuid;
 
+import core.time: MonoTime;
 import core.thread;
 import core.memory;
 import core.sync.rwmutex;
+import core.sync.condition: Condition;
+import core.sync.mutex: Mutex;
 import core.stdc.stdlib;
 
 import dsubs_common.proftimer;
@@ -28,12 +32,35 @@ final class SimulatorScheduler
 		/// main simulation thread. Simulators fork-n-join inside a lot, so there is
 		/// little incentive to run a thread per simulator. One main thread is enough.
 		Thread m_thread;
+		/// Condition to block on when there is no simulator to run.
+		Condition m_cond;
 		bool m_stopFlag;
 		bool m_joined;
+
+		alias SimulatorStartTree = RedBlackTree!(Simulator,
+			"a.nextStart < b.nextStart || (a.nextStart == b.nextStart && a.id < b.id)", false);
+		// warning: rbtree assumes that the key is immutable. When we change nextStart
+		// we must remove the sim from the tree, update it and re-insert it back.
+		SimulatorStartTree m_simulators;
+	}
+
+	/// Thread-safe addition of a simulator instance to scheduling queue.
+	/// Simulator is scheduled immediately.
+	void add(Simulator s)
+	{
+		assert(!s.finished);
+		s.nextStart = MonoTime.currTime();
+		synchronized(m_cond.mutex)
+		{
+			m_simulators.stableInsert(s);
+			m_cond.notify();
+		}
 	}
 
 	this()
 	{
+		m_simulators = new SimulatorStartTree();
+		m_cond = new Condition(new Mutex());
 		m_thread = new Thread(&schedulingLoop);
 	}
 
@@ -48,6 +75,8 @@ final class SimulatorScheduler
 	void stop()
 	{
 		m_stopFlag = true;
+		synchronized(m_cond.mutex)
+			m_cond.notify();
 	}
 
 	void join()
@@ -56,26 +85,69 @@ final class SimulatorScheduler
 		m_thread.join();
 		m_joined = true;
 	}
+
+	private void schedulingLoop()
+	{
+		ProfTimer profiler = new ProfTimer();
+		while (!m_stopFlag)
+		{
+			Simulator simToRun;
+			synchronized(m_cond.mutex)
+			{
+				if (m_simulators.length)
+					simToRun = m_simulators.front();
+				else
+				{
+					// wait for at least one simulator in the tree or a stop signal.
+					m_cond.wait();
+					continue;
+				}
+			}
+			assert(simToRun);
+			MonoTime now = MonoTime.currTime();
+			if (now < simToRun.nextStart)
+			{
+				// we woke up too early
+				Duration toSleep = simToRun.nextStart - now;
+				synchronized(m_cond.mutex)
+				{
+					if (m_cond.wait(toSleep))
+						continue;	// new simulator has arrived or the stop signal
+				}
+			}
+			// the time has come
+			simToRun.runOnce(profiler);
+			// now we calculate the next wakeup or remove the sim from tree
+			if (simToRun.finished)
+			{
+				synchronized(m_cond.mutex)
+					m_simulators.removeKey(simToRun);
+			}
+			else
+			{
+				MonoTime newNextStart;
+				if (simToRun.doSleep)
+				{
+					newNextStart = simToRun.nextStart + msecs((1000 / simToRun.acceleration).to!uint);
+					if (newNextStart <= MonoTime.currTime)
+					{
+						warning("Simulator loop stalling");
+						newNextStart = MonoTime.currTime + msecs(50);
+					}
+				}
+				else
+					newNextStart = MonoTime.currTime;
+				synchronized(m_cond.mutex)
+				{
+					// rebuild the tree
+					m_simulators.removeKey(simToRun);
+					simToRun.nextStart = newNextStart;
+					m_simulators.stableInsert(simToRun);
+				}
+			}
+		}
+	}
 }
-
-
-// MonoTime loopStart = MonoTime.currTime();
-// loopStart = loopStart + msecs((1000 / acceleration).to!uint);
-// now = MonoTime.currTime();
-// Duration toSleep = loopStart - now;
-// if (toSleep < msecs(100))
-// {
-// 	warning("simulator loop stalling");
-// 	loopStart = now + msecs(100);
-// 	toSleep = msecs(100);
-// }
-// if (doSleep)
-// 	Thread.sleep(toSleep);
-// else
-// {
-// 	loopStart = now;
-// 	Thread.yield();
-// }
 
 
 /// Simulator instance, that constitutes one particular game world.
