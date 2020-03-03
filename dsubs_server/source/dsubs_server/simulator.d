@@ -45,10 +45,9 @@ final class SimulatorScheduler
 	}
 
 	/// Thread-safe addition of a simulator instance to scheduling queue.
-	/// Simulator is scheduled immediately.
+	/// Simulator is scheduled to run immediately.
 	void add(Simulator s)
 	{
-		assert(!s.finished);
 		s.nextStart = MonoTime.currTime();
 		synchronized(m_cond.mutex)
 		{
@@ -57,17 +56,33 @@ final class SimulatorScheduler
 		}
 	}
 
-	this()
+	/// Thread-safe removal of the simulator.
+	void remove(Simulator s)
 	{
+		synchronized(m_cond.mutex)
+		{
+			if (m_simulators.removeKey(s))
+				m_cond.notify();
+		}
+	}
+
+	this(bool exitOnEmpty = false)
+	{
+		m_exitOnEmpty = exitOnEmpty;
 		m_simulators = new SimulatorStartTree();
 		m_cond = new Condition(new Mutex());
 		m_thread = new Thread(&schedulingLoop);
 	}
 
+	/// start the main thread
 	void start()
 	{
 		m_thread.start();
 	}
+
+	/// Set to true if the sim thread should exit when there is
+	/// no simulator to run.
+	private bool m_exitOnEmpty;
 
 	@property bool joined() const { return m_joined; }
 
@@ -98,7 +113,9 @@ final class SimulatorScheduler
 					simToRun = m_simulators.front();
 				else
 				{
-					// wait for at least one simulator in the tree or a stop signal.
+					if (m_exitOnEmpty)
+						return;
+					// wait for tree change or a stop signal.
 					m_cond.wait();
 					continue;
 				}
@@ -112,7 +129,7 @@ final class SimulatorScheduler
 				synchronized(m_cond.mutex)
 				{
 					if (m_cond.wait(toSleep))
-						continue;	// new simulator has arrived or the stop signal
+						continue;	// tree has changed or the stop signal
 				}
 			}
 			// the time has come
