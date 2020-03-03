@@ -19,6 +19,7 @@ import dsubs_server.submarine: Submarine;
 import dsubs_server.connections.playercon: PlayerConnection;
 import dsubs_server.player;
 import dsubs_server.bots;
+import dsubs_server.simulator;
 import dsubs_server.ai.captain;
 import dsubs_server.ai.common;
 
@@ -33,10 +34,15 @@ alias DelayedEventCollection = RedBlackTree!(DelayedEvent, "a.when < b.when", tr
 
 struct CallbackDelayer
 {
-	private DelayedEventCollection m_events;
-
-	void initialize()
+	private
 	{
+		DelayedEventCollection m_events;
+		Simulator m_simulator;
+	}
+
+	void initialize(Simulator sim)
+	{
+		m_simulator = sim;
 		m_events = new DelayedEventCollection();
 	}
 
@@ -47,7 +53,7 @@ struct CallbackDelayer
 
 	void runCallbacks()
 	{
-		auto toRun = m_events.lowerBound(DelayedEvent(Globals.sim.worldTime));
+		auto toRun = m_events.lowerBound(DelayedEvent(m_simulator.worldTime));
 		foreach (DelayedEvent evt; toRun)
 			evt.operation();
 		m_events.remove(toRun);
@@ -57,6 +63,19 @@ struct CallbackDelayer
 
 abstract class Scenario
 {
+	protected Simulator m_simulator;
+
+	final @property Simulator simulator() { return m_simulator; }
+
+	/// binds this scenario to the simulator.
+	final @property void simulator(Simulator rhs)
+	{
+		assert(m_simulator is null);
+		assert(rhs.scenario is null);
+		m_simulator = rhs;
+		m_simulator.scenario = this;
+	}
+
 	@property string name() const
 	{
 		return this.classinfo.name;
@@ -147,17 +166,18 @@ final class BattleRoyale: Scenario
 
 	@property usecs_t lastSeenPlayer() const { return m_lastSeenPlayer; }
 
-	this()
+	this(Simulator sim)
 	{
-		m_delayer.initialize();
+		simulator = sim;
+		m_delayer.initialize(m_simulator);
 		m_currentRadius = DEFAULT_RADIUS;
 		m_currentCenter = vec2d(
 			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)),
 			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)));
 		m_nextCenter = m_currentCenter;
 		m_nextRadius = m_currentRadius;
-		//m_nextTransitionTime = Globals.sim.worldTime + 120_000_000;
-		m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
+		//m_nextTransitionTime = m_simulator.worldTime + 120_000_000;
+		m_nextTransitionTime = m_simulator.worldTime + STABLE_TIME;
 		m_botSide = new SideOfConflict("bots");
 	}
 
@@ -168,7 +188,7 @@ final class BattleRoyale: Scenario
 			// we need to force all played submarines to stay in circle.
 			// we are doing it my making them go flank and setting rudder's
 			// target course to the center of the circle.
-			foreach (Vessel v; Globals.vessels.entities)
+			foreach (Vessel v; m_simulator.vessels.entities)
 			{
 				Submarine sub = cast(Submarine) v;
 				if (sub is null)
@@ -188,12 +208,12 @@ final class BattleRoyale: Scenario
 		m_delayer.runCallbacks();
 		// trader bots
 		int botsToSpawn = ACTIVE_CIVILIAN_BOTS - m_civBotSpawnRequests -
-			Globals.bots.captains.filter!(b => b.submarine.prototypeName == "Bot trader").
+			m_simulator.bots.captains.filter!(b => b.submarine.prototypeName == "Bot trader").
 			count.to!int;
 
 		void delayCivilianBotSpawn(usecs_t delay)
 		{
-			m_delayer.put(DelayedEvent(Globals.sim.worldTime + delay,
+			m_delayer.put(DelayedEvent(m_simulator.worldTime + delay,
 				{
 					info("Spawning new trader bot");
 					m_civBotSpawnRequests--;
@@ -209,7 +229,7 @@ final class BattleRoyale: Scenario
 					m_civilianBots[botSub] = true;
 					foreach (h; botSub.hydrophones)
 						h.shouldBeActive = false;
-					Globals.bots.registerEntity(crew);
+					m_simulator.bots.registerEntity(crew);
 					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
 					botSub.register();
 				}));
@@ -226,7 +246,7 @@ final class BattleRoyale: Scenario
 		// for each dead civilian bot spawn easy bot
 		void delayEasyBotSpawn(usecs_t delay)
 		{
-			m_delayer.put(DelayedEvent(Globals.sim.worldTime + delay,
+			m_delayer.put(DelayedEvent(m_simulator.worldTime + delay,
 				{
 					info("Spawning new easy combat bot");
 					AICrew crew = new AICrew(BOT_DIFFICULTY.easy);
@@ -238,7 +258,7 @@ final class BattleRoyale: Scenario
 					getRandomSpawn(spawnPos, spawnRot);
 					botSub.transform.position = spawnPos;
 					botSub.transform.rotation = spawnRot;
-					Globals.bots.registerEntity(crew);
+					m_simulator.bots.registerEntity(crew);
 					m_easyBots[botSub] = true;
 					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
 					botSub.register();
@@ -260,7 +280,7 @@ final class BattleRoyale: Scenario
 		// for each dead easy bot spawn medium bot
 		void delayMediumBotSpawn(usecs_t delay)
 		{
-			m_delayer.put(DelayedEvent(Globals.sim.worldTime + delay,
+			m_delayer.put(DelayedEvent(m_simulator.worldTime + delay,
 				{
 					info("Spawning new medium combat bot");
 					AICrew crew = new AICrew(BOT_DIFFICULTY.medium);
@@ -272,7 +292,7 @@ final class BattleRoyale: Scenario
 					getRandomSpawn(spawnPos, spawnRot);
 					botSub.transform.position = spawnPos;
 					botSub.transform.rotation = spawnRot;
-					Globals.bots.registerEntity(crew);
+					m_simulator.bots.registerEntity(crew);
 					m_mediumBots[botSub] = true;
 					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
 					botSub.register();
@@ -305,17 +325,17 @@ final class BattleRoyale: Scenario
 		// Despawn bots when players are long gone. Saves electricity and resets
 		// difficulty.
 		if (Player.getPlayersOnline)
-			m_lastSeenPlayer = Globals.sim.worldTime;
-		else if (Globals.sim.worldTime - m_lastSeenPlayer > DESPAWN_IDLE_INTERVAL)
+			m_lastSeenPlayer = m_simulator.worldTime;
+		else if (m_simulator.worldTime - m_lastSeenPlayer > DESPAWN_IDLE_INTERVAL)
 		{
 			// we don't run this code every frame, so we update m_lastSeenPlayer
-			m_lastSeenPlayer = Globals.sim.worldTime;
+			m_lastSeenPlayer = m_simulator.worldTime;
 			Submarine[] subsToKill;
 			foreach (Submarine sub; m_easyBots.byKey)
 				subsToKill ~= sub;
 			foreach (Submarine sub; m_mediumBots.byKey)
 				subsToKill ~= sub;
-			foreach (Submarine sub; Globals.vessels.entities.
+			foreach (Submarine sub; m_simulator.vessels.entities.
 				filter!(v => !v.dead).filter!(v => (cast(Submarine) v)).
 				map!(v => cast(Submarine) v))
 			{
@@ -332,7 +352,7 @@ final class BattleRoyale: Scenario
 		}
 
 		// give new destinations to bots that have arrived
-		foreach (AICrewTemp crewTemp; Globals.bots.captains)
+		foreach (AICrewTemp crewTemp; m_simulator.bots.captains)
 		{
 			AICrew crew = cast(AICrew) crewTemp;
 			assert(crew);
@@ -343,7 +363,7 @@ final class BattleRoyale: Scenario
 			}
 		}
 		// spawn animals if necessary
-		int whalesToSpawn = 1 - Globals.animals.entities.filter!(
+		int whalesToSpawn = 1 - m_simulator.animals.entities.filter!(
 			a => a.species == "humpback whale").walkLength.to!int;
 		while (whalesToSpawn-- > 0)
 		{
@@ -359,7 +379,7 @@ final class BattleRoyale: Scenario
 			animal.register();
 		}
 
-		int musicToSpawn = 1 - Globals.animals.entities.filter!(
+		int musicToSpawn = 1 - m_simulator.animals.entities.filter!(
 			a => a.species == "jukebox whale").walkLength.to!int;
 		while (musicToSpawn-- > 0)
 		{
@@ -487,14 +507,14 @@ final class BattleRoyale: Scenario
 		synchronizeReloadCircles();
 		triggerReloadCircles();
 		// check if it's time for transition
-		if (Globals.sim.worldTime >= m_nextTransitionTime)
+		if (m_simulator.worldTime >= m_nextTransitionTime)
 		{
 			if (m_inTransition)
 			{
 				m_currentCenter = m_nextCenter;
 				m_currentRadius = m_nextRadius;
-				m_nextTransitionTime = Globals.sim.worldTime + STABLE_TIME;
-				info("Scenario arena transition has finished: ", Globals.sim.worldTime);
+				m_nextTransitionTime = m_simulator.worldTime + STABLE_TIME;
+				info("Scenario arena transition has finished: ", m_simulator.worldTime);
 			}
 			else
 			{
@@ -505,8 +525,8 @@ final class BattleRoyale: Scenario
 					uniform(0, 2 * PI));
 				usecs_t transitionTime = cast(usecs_t)
 					((m_currentRadius + m_nextRadius) / ESTIMATE_SPD) * 1000_000;
-				m_nextTransitionTime = Globals.sim.worldTime + transitionTime;
-				info("Scenario arena transition has started: ", Globals.sim.worldTime);
+				m_nextTransitionTime = m_simulator.worldTime + transitionTime;
+				info("Scenario arena transition has started: ", m_simulator.worldTime);
 				// regenerate reload circles
 				m_playerReloadCircles.clear();
 				synchronizeReloadCircles();
@@ -523,14 +543,14 @@ final class BattleRoyale: Scenario
 					pcon.sendMessage(cast(immutable) mapBcst);
 				});
 			// give new destinations to bots
-			foreach (AICrewTemp crwTemp; Globals.bots.captains)
+			foreach (AICrewTemp crwTemp; m_simulator.bots.captains)
 			{
 				AICrew crew = cast(AICrew) crwTemp;
 				assert(crew);
 				crew.goal = new SwimToDestinationGoal(crew,
 					getDistantPos(getDistantPos(crew.submarine.transform.wposition)));
 			}
-			foreach (Animal an; Globals.animals.entities)
+			foreach (Animal an; m_simulator.animals.entities)
 				an.destination = getDistantPos(an.transform.wposition);
 		}
 	}
@@ -554,7 +574,7 @@ final class BattleRoyale: Scenario
 				unixTime,
 				"New arena position, hurry to the dark-blue circle! " ~
 				"Time until forced navigation: " ~
-				((m_nextTransitionTime - Globals.sim.worldTime) / 1000_000).
+				((m_nextTransitionTime - m_simulator.worldTime) / 1000_000).
 					to!string ~ " seconds.");
 		}
 		else

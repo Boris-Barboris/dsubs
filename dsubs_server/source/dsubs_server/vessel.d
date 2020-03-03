@@ -12,6 +12,7 @@ import dsubs_sound.activesonar: Reflector, ReflectorPrototype;
 import dsubs_server.common;
 import dsubs_server.dynamics;
 import dsubs_server.propulsion;
+import dsubs_server.simulator;
 
 
 abstract class Killable
@@ -21,6 +22,7 @@ abstract class Killable
 		bool m_dead;
 		usecs_t m_deathTime;
 		string m_causeOfDeath;
+		Simulator m_simulator;
 	}
 
 	final
@@ -28,6 +30,12 @@ abstract class Killable
 		@property bool dead() const { return m_dead; }
 		@property usecs_t deathTime() const { return m_deathTime; }
 		@property string causeOfDeath() const { return m_causeOfDeath; }
+		@property Simulator simulator() { return m_simulator; }
+	}
+
+	final protected void registerSimulator(Simulator sim)
+	{
+		m_simulator = sim;
 	}
 
 	/// Ensure that the vessel is dead. Returns true if it was killed first time.
@@ -40,7 +48,7 @@ abstract class Killable
 			else
 				return false;
 		}
-		m_deathTime = Globals.sim.worldTime;
+		m_deathTime = m_simulator.worldTime;
 		m_causeOfDeath = cause;
 		return true;
 	}
@@ -90,23 +98,24 @@ class Vessel: Killable
 	Event!(void delegate(usecs_t dt)) onPostKinematics;
 
 	/// register the vessel in global component systems
-	void register()
+	void register(Simulator sim)
 	{
+		registerSimulator(sim);
 		m_rigidBody.updateFromTransform();
-		Globals.vessels.registerEntity(this);
-		Globals.phys.registerEntity(m_rigidBody);
-		Globals.acous.registerReflector(m_reflector);
+		sim.vessels.registerEntity(this);
+		sim.phys.registerEntity(m_rigidBody);
+		sim.acous.registerReflector(m_reflector);
 		if (m_propulsor)
-			m_propulsor.register();
+			m_propulsor.register(sim);
 	}
 
 	/// call this when removing this submarine from the physical world to
 	/// unregister components and dispose of resources
 	void shutdown()
 	{
-		Globals.vessels.unregisterEntity(this);
-		Globals.acous.unregisterReflector(m_reflector);
-		Globals.phys.unregisterEntity(m_rigidBody);
+		sim.vessels.unregisterEntity(this);
+		sim.acous.unregisterReflector(m_reflector);
+		sim.phys.unregisterEntity(m_rigidBody);
 		if (m_propulsor)
 			m_propulsor.shutdown();
 	}
@@ -189,12 +198,12 @@ final class VesselCollection
 			vessel.onPostKinematics(dt);
 	}
 
-	void collectDeadVessels()
+	void collectDeadVessels(usecs_t currentWorldTime)
 	{
 		Vessel[] deadVessels;
 		foreach (vessel; m_entities)
 		{
-			if (vessel.dead && vessel.reapTime < Globals.sim.worldTime)
+			if (vessel.dead && vessel.reapTime < currentWorldTime)
 				deadVessels ~= vessel;
 		}
 		foreach (v; deadVessels)

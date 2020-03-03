@@ -7,6 +7,7 @@ import dsubs_sound.soundsource;
 
 import dsubs_server.common;
 import dsubs_server.dynamics;
+import dsubs_server.simulator;
 import dsubs_server.vessel: Vessel;
 
 
@@ -20,6 +21,8 @@ abstract class Propulsor: IForce
 		/// mass that is added to the hull
 		float m_mass = 0.0f;
 	}
+
+	protected Simulator m_simulator;
 
 	private this()
 	{
@@ -112,14 +115,15 @@ final class BasicPropulsor: Propulsor
 		};
 	}
 
-	override void register()
+	override void register(Simulator sim)
 	{
-		Globals.acous.registerSource(m_sound);
+		m_simulator = sim;
+		m_simulator.acous.registerSource(m_sound);
 	}
 
 	override void shutdown()
 	{
-		Globals.acous.unregisterSource(m_sound);
+		m_simulator.acous.unregisterSource(m_sound);
 	}
 }
 

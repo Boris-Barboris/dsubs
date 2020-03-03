@@ -23,6 +23,7 @@ import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.dynamics;
 import dsubs_server.propulsion;
+import dsubs_server.simulator;
 import dsubs_server.player: Captain;
 import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
@@ -65,20 +66,21 @@ abstract class Weapon: Vessel
 			m_shooterCaptain = shooter.captain;
 	}
 
-	override void register()
+	override void register(Simulator sim)
 	{
-		super.register();
+		super.register(sim);
 		m_guidance.setUnassignedParams();
-		Globals.weapons.registerEntity(this);
+		simulator.weapons.registerEntity(this);
 	}
 
 	override void shutdown()
 	{
 		super.shutdown();
 		m_guidance.shutdown();
-		Globals.weapons.unregisterEntity(this);
+		simulator.weapons.unregisterEntity(this);
 	}
 }
+
 
 final class StaticDecoy: Weapon
 {
@@ -90,6 +92,7 @@ final class StaticDecoy: Weapon
 
 	override @property bool detonated() const { return false; }
 }
+
 
 final class ActiveDecoyGuidance: IGuidance
 {
@@ -113,7 +116,7 @@ final class ActiveDecoyGuidance: IGuidance
 				m_active = true;
 				m_activeReflector = new Reflector(m_decoy.transform,
 					m_activeReflectorProto);
-				Globals.acous.registerReflector(m_activeReflector);
+				m_decoy.simulator.acous.registerReflector(m_activeReflector);
 			}
 		}
 		else
@@ -124,7 +127,7 @@ final class ActiveDecoyGuidance: IGuidance
 				m_decoy.kill("fuel exhausted");
 				if (m_activeReflector)
 				{
-					Globals.acous.unregisterReflector(m_activeReflector);
+					m_decoy.simulator.acous.unregisterReflector(m_activeReflector);
 					m_activeReflector = null;
 				}
 			}
@@ -134,7 +137,7 @@ final class ActiveDecoyGuidance: IGuidance
 	void shutdown()
 	{
 		if (m_activeReflector)
-			Globals.acous.unregisterReflector(m_activeReflector);
+			m_decoy.simulator.acous.unregisterReflector(m_activeReflector);
 	}
 
 	void setUnassignedParams() {}
@@ -165,16 +168,16 @@ final class Torpedo: Weapon
 		m_guidance = new TorpedoGuidance(this);
 	}
 
-	override void register()
+	override void register(Simulator sim)
 	{
-		super.register();
+		super.register(sim);
 		guidance.m_lastPos = transform.position;
 		if (m_hydrophone)
-			Globals.acous.registerHydrophone(m_hydrophone);
+			simulator.acous.registerHydrophone(m_hydrophone);
 		if (m_sonar)
 		{
 			m_sonar.active = true;
-			Globals.acous.registerSonar(m_sonar);
+			simulator.acous.registerSonar(m_sonar);
 		}
 	}
 
@@ -183,12 +186,12 @@ final class Torpedo: Weapon
 		super.shutdown();
 		if (m_hydrophone)
 		{
-			Globals.acous.unregisterHydrophone(m_hydrophone);
+			simulator.acous.unregisterHydrophone(m_hydrophone);
 			m_hydrophone.release();
 		}
 		if (m_sonar)
 		{
-			Globals.acous.unregisterSonar(m_sonar);
+			simulator.acous.unregisterSonar(m_sonar);
 			m_sonar.release();
 		}
 	}
@@ -301,9 +304,10 @@ final class TorpedoGuidance: IGuidance
 		{
 			// first we check if we should detonate.
 			{
-				RigidBody[] inSearchRadius = Globals.phys.findRigidBodiesInCirlce(
-					m_torpedo.transform.wposition.to!vec2f,
-					m_detonationSearchRadius);
+				RigidBody[] inSearchRadius = m_torpedo.simulator.phys.
+					findRigidBodiesInCirlce(
+						m_torpedo.transform.wposition.to!vec2f,
+						m_detonationSearchRadius);
 				removeFirstUnstable(inSearchRadius, m_torpedo.rigidBody);
 				if (inSearchRadius.length > 0)
 				{
@@ -461,7 +465,7 @@ final class TorpedoGuidance: IGuidance
 		SoundSource detonationSoundSource = new PrerecordedSoundSource(
 			new Transform2D(m_torpedo.transform.wposition),
 			m_detonationSoundProto, null);
-		Globals.acous.registerSource(detonationSoundSource);
+		m_torpedo.simulator.acous.registerSource(detonationSoundSource);
 	}
 
 	Event!(void delegate(ubyte[] image, int w, int h)) onSonarImageReady;
@@ -508,7 +512,7 @@ final class TorpedoGuidance: IGuidance
 					m_currentPing = sonar.startPing(
 						sonar.proto.maxPeakIlevel, &m_pingTdsOffset);
 					assert(m_currentPing);
-					Globals.acous.registerSource(m_currentPing);
+					m_torpedo.simulator.acous.registerSource(m_currentPing);
 					m_sliceByteSize =
 						sonar.proto.getSliceXResol() * sonar.proto.radialRes;
 					m_sonarImage.length = m_sliceByteSize * sonar.secDur;
@@ -581,7 +585,7 @@ final class TorpedoGuidance: IGuidance
 			m_targetTracked = true;
 			m_prevTargetDir = double.nan;
 			m_curTargetAngVel = double.nan;
-			m_prevTargetTime = Globals.sim.worldTime;
+			m_prevTargetTime = m_torpedo.simulator.worldTime;
 			m_targetPingId = sonar.pingCounter;
 			m_targetSliceId = sliceId;
 			m_curTargetDir = sonarColumnToRotation(
@@ -601,8 +605,8 @@ final class TorpedoGuidance: IGuidance
 					angleDist(b, m_prevTargetDir).fabs)();
 			m_curTargetDir = sliceTargetWrots[0];
 			m_curTargetAngVel = angleDist(m_curTargetDir, m_prevTargetDir) * 1e6 /
-				(Globals.sim.worldTime - m_prevTargetTime);
-			m_prevTargetTime = Globals.sim.worldTime;
+				(m_torpedo.simulator.worldTime - m_prevTargetTime);
+			m_prevTargetTime = m_torpedo.simulator.worldTime;
 		}
 	}
 
@@ -631,7 +635,7 @@ final class TorpedoGuidance: IGuidance
 			m_targetTracked = true;
 			m_prevTargetDir = double.nan;
 			m_curTargetAngVel = double.nan;
-			m_prevTargetTime = Globals.sim.worldTime;
+			m_prevTargetTime = m_torpedo.simulator.worldTime;
 			m_curTargetDir = hydrphoneColumnToRotation(
 				peakColumns[uniform!"[)"(0, peakColumns.length)]);
 		}
@@ -647,8 +651,8 @@ final class TorpedoGuidance: IGuidance
 					angleDist(b, m_prevTargetDir).fabs)();
 			m_curTargetDir = sliceTargetWrots[0];
 			m_curTargetAngVel = angleDist(m_curTargetDir, m_prevTargetDir) * 1e6 /
-				(Globals.sim.worldTime - m_prevTargetTime);
-			m_prevTargetTime = Globals.sim.worldTime;
+				(m_torpedo.simulator.worldTime - m_prevTargetTime);
+			m_prevTargetTime = m_torpedo.simulator.worldTime;
 		}
 	}
 

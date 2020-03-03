@@ -9,6 +9,7 @@ import dsubs_sound.hydrophone;
 import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.sensors;
+import dsubs_server.simulator;
 import dsubs_server.weaponry;
 import dsubs_server.dynamics: AttachedWire, AttachedWirePrototype;
 import dsubs_server.propulsion: Propulsor;
@@ -77,13 +78,13 @@ final class Submarine: Vessel
 	// dmd bug forces to duplicate
 	auto ammoRoomRange() { return m_rooms.byValue; }
 
-	override void register()
+	override void register(Simulator sim)
 	{
-		super.register();
+		super.register(sim);
 		foreach (h; m_hydrophones)
-			Globals.acous.registerHydrophone(h);
+			sim.acous.registerHydrophone(h);
 		if (m_sonar)
-			Globals.acous.registerSonar(m_sonar);
+			sim.acous.registerSonar(m_sonar);
 	}
 
 	override void shutdown()
@@ -91,12 +92,12 @@ final class Submarine: Vessel
 		super.shutdown();
 		foreach (h; m_hydrophones)
 		{
-			Globals.acous.unregisterHydrophone(h);
+			simulator.acous.unregisterHydrophone(h);
 			h.release();
 		}
 		if (m_sonar)
 		{
-			Globals.acous.unregisterSonar(m_sonar);
+			simulator.acous.unregisterSonar(m_sonar);
 			m_sonar.release();
 		}
 		if (m_captain)

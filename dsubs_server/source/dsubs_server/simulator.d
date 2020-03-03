@@ -17,6 +17,7 @@ import dsubs_common.proftimer;
 import dsubs_common.event;
 
 import dsubs_server.common;
+import dsubs_server.acoustics;
 import dsubs_server.player: Player;
 import dsubs_server.dynamics;
 import dsubs_server.globals;
@@ -94,6 +95,7 @@ final class SimulatorScheduler
 			m_cond.notify();
 	}
 
+	/// rethrows the exception.
 	void join()
 	{
 		assert(!m_joined, "already joined");
@@ -104,6 +106,7 @@ final class SimulatorScheduler
 	private void schedulingLoop()
 	{
 		ProfTimer profiler = new ProfTimer();
+		scope(success) info("simulator thread exiting");
 		while (!m_stopFlag)
 		{
 			Simulator simToRun;
@@ -131,7 +134,9 @@ final class SimulatorScheduler
 					if (m_cond.wait(toSleep))
 						continue;	// tree has changed or the stop signal
 				}
+				now = MonoTime.currTime();
 			}
+			Duration late = now - simToRun.nextStart;
 			// the time has come
 			simToRun.runOnce(profiler);
 			// now we calculate the next wakeup or remove the sim from tree
@@ -145,18 +150,21 @@ final class SimulatorScheduler
 				MonoTime newNextStart;
 				if (simToRun.doSleep)
 				{
-					newNextStart = simToRun.nextStart + msecs((1000 / simToRun.acceleration).to!uint);
-					if (newNextStart <= MonoTime.currTime)
+					if (late > msecs(20))
 					{
 						warning("Simulator loop stalling");
-						newNextStart = MonoTime.currTime + msecs(50);
+						// self-distributing
+						newNextStart = now + msecs(uniform!"[]"(0, 10));
 					}
+					else
+						newNextStart = simToRun.nextStart +
+							msecs((1000 / simToRun.acceleration).to!uint);
 				}
 				else
 					newNextStart = MonoTime.currTime;
 				synchronized(m_cond.mutex)
 				{
-					// rebuild the tree
+					// reinsert the sim
 					m_simulators.removeKey(simToRun);
 					simToRun.nextStart = newNextStart;
 					m_simulators.stableInsert(simToRun);
@@ -180,7 +188,7 @@ final class Simulator
 		ReadWriteMutex simMut;
 		/// Physics system with rigid modies
 		PhysicalEnv phys;
-		/// Acoustics engine
+		/// Acoustics entity collection
 		AcousticEnv acous;
 		/// Active vessels
 		VesselCollection vessels;
@@ -188,10 +196,11 @@ final class Simulator
 		AnimalCollection animals;
 		/// Active weapons
 		WeaponCollection weapons;
-		/// Scenario object
-		Scenario scenario;
 		/// All active bots
 		BotCollection bots;
+
+		/// Scenario object, should be constructed by the external code.
+		Scenario scenario;
 	}
 
 	/// id will be a random UUID string if not specified.
@@ -201,6 +210,12 @@ final class Simulator
 			id = randomUUID().toString();
 		m_id = id;
 		simMut = new ReadWriteMutex();
+		phys = new PhysicalEnv();
+		acous = new AcousticEnv();
+		vessels = new VesselCollection();
+		animals = new AnimalCollection();
+		weapons = new WeaponCollection();
+		bots = new BotCollection();
 	}
 
 	private usecs_t m_worldTime = 0;
@@ -245,47 +260,47 @@ final class Simulator
 				profiler.stopLast();
 			}
 			profiler.start("vessels.preKinematics");
-			Globals.vessels.preKinematics();
+			vessels.preKinematics();
 			profiler.stopLast();
 			profiler.start("acous.preKinematics");
-			Globals.acous.preKinematics();
+			acous.preKinematics();
 			profiler.stopLast();
 			// physics integration. All rigid bodies are moved.
 			profiler.start("phys.integratePBodies");
-			Globals.phys.integratePBodies(1.0f, 0.25f);
+			phys.integratePBodies(1.0f, 0.25f);
 			profiler.stopLast();
 			m_worldTime += 1000_000;
 			profiler.start("acous.postKinematics");
-			Globals.acous.postKinematics(1.0f);
+			acous.postKinematics(1.0f);
 			profiler.stopLast();
 			profiler.start("acous.processActiveSonars");
-			Globals.acous.processActiveSonars();
+			acous.processActiveSonars();
 			profiler.stopLast();
 			profiler.start("acous.applySourcesOnHydrophones");
-			Globals.acous.applySourcesOnHydrophones();
+			acous.applySourcesOnHydrophones();
 			profiler.stopLast();
 			profiler.start("acous.postAcousticsUpdate");
-			Globals.acous.postAcousticsUpdate();
+			acous.postAcousticsUpdate();
 			profiler.stopLast();
 			profiler.start("weapons.updateGuidances");
-			Globals.weapons.updateGuidances(1000_000);
+			weapons.updateGuidances(1000_000);
 			profiler.stopLast();
 			profiler.start("vessels.postKinematics");
-			Globals.vessels.postKinematics(1000_000);
+			vessels.postKinematics(1000_000);
 			profiler.stopLast();
 			profiler.start("animals.postKinematics");
-			Globals.animals.postKinematics(1000_000);
+			animals.postKinematics(1000_000);
 			profiler.stopLast();
 			profiler.start("vessels.collectDeadVessels");
-			Globals.vessels.collectDeadVessels();
+			vessels.collectDeadVessels();
 			profiler.stopLast();
 			profiler.start("bots.onAfterSimulation");
-			Globals.bots.onAfterSimulation();
+			bots.onAfterSimulation();
 			profiler.stopLast();
-			if (Globals.scenario)
+			if (scenario)
 			{
 				profiler.start("scenario.onAfterSimulation");
-				Globals.scenario.onAfterSimulation();
+				scenario.onAfterSimulation();
 				profiler.stopLast();
 			}
 			if (Globals.players)

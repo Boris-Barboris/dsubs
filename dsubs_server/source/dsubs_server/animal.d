@@ -11,6 +11,7 @@ import dsubs_sound.activesonar: Reflector, ReflectorPrototype;
 
 import dsubs_server.common;
 import dsubs_server.dynamics;
+import dsubs_server.simulator;
 import dsubs_server.acoustics;
 import dsubs_server.vessel;
 
@@ -55,43 +56,44 @@ final class Animal: Killable
 
 	usecs_t generateNextSoundStart()
 	{
-		return Globals.sim.worldTime + max(0, uniform!"[]"(
+		return simulator.worldTime + max(0, uniform!"[]"(
 			m_factory.meanSoundPause - m_factory.soundPauseVariance,
 			m_factory.meanSoundPause + m_factory.soundPauseVariance));
 	}
 
 	void onPostKinematics(usecs_t dt)
 	{
-		if (Globals.sim.worldTime >= m_nextSoundStart)
+		if (simulator.worldTime >= m_nextSoundStart)
 		{
 			// spawn new sound source
 			size_t sourceIdx = uniform!"[)"(0, m_factory.randomSounds.length);
 			// info("starting whale song");
 			m_currentSoundSource = new PrerecordedSoundSource(m_transform,
 				m_factory.randomSounds[sourceIdx]);
-			Globals.acous.registerSource(m_currentSoundSource);
+			simulator.acous.registerSource(m_currentSoundSource);
 			m_nextSoundStart =
 				(1e6 * m_currentSoundSource.totalSamples / GLOBAL_SRATE).to!usecs_t +
 				generateNextSoundStart();
 		}
 	}
 
-	void register()
+	void register(Simulator sim)
 	{
-		Globals.animals.registerEntity(this);
+		registerSimulator(sim);
+		sim.animals.registerEntity(this);
 		m_rigidBody.updateFromTransform();
 		m_nextSoundStart = generateNextSoundStart();
-		Globals.phys.registerEntity(m_rigidBody);
-		Globals.acous.registerReflector(m_reflector);
+		sim.phys.registerEntity(m_rigidBody);
+		sim.acous.registerReflector(m_reflector);
 	}
 
 	void shutdown()
 	{
-		Globals.acous.unregisterReflector(m_reflector);
-		Globals.phys.unregisterEntity(m_rigidBody);
+		simulator.acous.unregisterReflector(m_reflector);
+		simulator.phys.unregisterEntity(m_rigidBody);
 		if (m_currentSoundSource && !m_currentSoundSource.finished)
-			Globals.acous.unregisterSource(m_currentSoundSource);
-		Globals.animals.unregisterEntity(this);
+			simulator.acous.unregisterSource(m_currentSoundSource);
+		simulator.animals.unregisterEntity(this);
 	}
 
 }
