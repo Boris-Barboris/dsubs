@@ -10,6 +10,7 @@ import dsubs_common.math;
 import dsubs_server.common;
 import dsubs_server.entitydb;
 import dsubs_server.submarine;
+import dsubs_server.simulator;
 import dsubs_server.propulsion;
 import dsubs_server.torpedo;
 import dsubs_sound.activesonar;
@@ -17,11 +18,11 @@ import dsubs_sound.activesonar;
 import dsubs_server.tests.common;
 
 
-/*
+
 
 unittest
 {
-	Globals.buildForTests();
+	auto sim = Globals.buildForTests();
 	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
@@ -38,14 +39,16 @@ unittest
 
 
 	Torpedo t = tf.build(null, pvs);
-	t.register();
+	t.register(sim);
 	File* file = writeRbodyCsvHeader("guidance", "minoga_turning", "minoga");
-	Globals.sim.onSimulationPassStart += captureVesselRbCsv(file, t);
-	Globals.sim.worldTimeLimit = 40 * cast(ulong)1e6;
+	sim.onSimulationPassStart += captureVesselRbCsv(file, t);
+	sim.worldTimeLimit = 40 * cast(ulong)1e6;
 	scope(exit) Globals.resetForTests();
-	Globals.sim.start();
-	Globals.sim.join();
+	Globals.simulators.start();
+	Globals.simulators.join();
 }
+
+/*
 
 unittest
 {

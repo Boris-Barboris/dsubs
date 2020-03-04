@@ -61,7 +61,8 @@ __gshared:
 	}
 
 	/// helper method for idempotent preparation of globals
-	/// for a test run.
+	/// for a test run. Returns a new empty simulator that is added
+	/// to simulators tree.
 	static Simulator buildForTests()
 	{
 		taskPool = new TaskPool(0);//totalCPUs - 1);
@@ -77,30 +78,20 @@ __gshared:
 		Simulator sim = new Simulator();
 		sim.printTimings = false;
 		sim.doSleep = false;
+		simulators.add(sim);
 		return sim;
 	}
 
 	static void resetForTests()
 	{
-		if (!sim.joined)
+		if (!simulators.joined)
 		{
-			sim.stop();
-			sim.join();
+			simulators.stop();
+			simulators.join();
 		}
-		sim = null;
 		taskPool.finish(true);
 		auxTaskPool.finish(true);
-		cleanCollectionsForTests();
-	}
-
-	static void cleanCollectionsForTests()
-	{
-		vessels.clean();
-		animals.clean();
-		bots.clean();
-		weapons.clean();
-		acous.clean();
-		phys.clean();
+		simulators = null;
 	}
 
 	shared static ~this()
@@ -108,7 +99,6 @@ __gshared:
 		if (sctx)
 		{
 			sctx.release();
-			cleanCollectionsForTests();
 		}
 	}
 }

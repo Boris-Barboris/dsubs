@@ -11,6 +11,7 @@ import dsubs_server.connections.database;
 import dsubs_server.connections.metrics;
 import dsubs_server.globals;
 import dsubs_server.scenario;
+import dsubs_server.simulator;
 
 version(Windows)
 {
@@ -23,6 +24,8 @@ version(Posix)
 {
 	extern(C) __gshared string[] rt_options = ["gcopt=gc:precise cleanup:finalize"];
 }
+
+__gshared Simulator mainArenaSim;
 
 void main(string[] argv)
 {
@@ -45,12 +48,14 @@ void main(string[] argv)
 			Globals.metrics = new MetricsService(influxUrl);
 		}
 		Globals.build();
-		Globals.scenario = new BattleRoyale();
+		mainArenaSim = new Simulator("main_arena");
+		auto scenario = new BattleRoyale(mainArenaSim);
 		Globals.cons.bindSockets();
-		Globals.sim.start();
+		Globals.simulators.add(mainArenaSim);
+		Globals.simulators.start();
 		Globals.cons.startListeners();
 		auto livenessThread = new Thread(&livenessWatchdog).start();
-		Globals.sim.join();		// blocks forever
+		Globals.simulators.join();		// blocks forever
 	}
 	catch (Throwable e)
 	{
@@ -62,12 +67,12 @@ void main(string[] argv)
 
 void livenessWatchdog()
 {
-	usecs_t lastWorldTime = Globals.sim.worldTime;
+	usecs_t lastWorldTime = mainArenaSim.worldTime;
 	while (true)
 	{
 		Thread.sleep(seconds(10));
-		if (Globals.sim.worldTime == lastWorldTime)
+		if (mainArenaSim.worldTime == lastWorldTime)
 			abort();
-		lastWorldTime = Globals.sim.worldTime;
+		lastWorldTime = mainArenaSim.worldTime;
 	}
 }
