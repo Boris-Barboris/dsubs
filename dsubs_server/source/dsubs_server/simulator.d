@@ -38,11 +38,11 @@ final class SimulatorScheduler
 		bool m_stopFlag;
 		bool m_joined;
 
-		alias SimulatorStartTree = RedBlackTree!(Simulator,
-			"a.nextStart < b.nextStart || (a.nextStart == b.nextStart && a.id < b.id)", false);
+		alias SimulatorSchedTree = RedBlackTree!(Simulator,
+			(a, b) => (a.nextStart < b.nextStart) || (a.nextStart == b.nextStart && a.id < b.id), false);
 		// warning: rbtree assumes that the key is immutable. When we change nextStart
 		// we must remove the sim from the tree, update it and re-insert it back.
-		SimulatorStartTree m_simulators;
+		SimulatorSchedTree m_simulators;
 	}
 
 	/// Thread-safe addition of a simulator instance to scheduling queue.
@@ -79,6 +79,16 @@ final class SimulatorScheduler
 	void start()
 	{
 		m_thread.start();
+	}
+
+	/// remove all simulators from the tree
+	void clear()
+	{
+		synchronized(m_cond.mutex)
+		{
+			m_simulators.clear();
+			m_cond.notify();
+		}
 	}
 
 	/// Set to true if the sim thread should exit when there is

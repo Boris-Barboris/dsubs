@@ -12,6 +12,7 @@ import dsubs_server.common;
 import dsubs_server.globals;
 import dsubs_server.vessel;
 import dsubs_server.player;
+import dsubs_server.simulator;
 import dsubs_server.submarine;
 import dsubs_server.torpedo;
 import dsubs_server.ai.common;
@@ -28,6 +29,8 @@ final class AIAcoustic
 		m_ticksPerExecute = ticksPerDifficulty(m_difficulty);
 		m_btRoot = buildEasyBt();
 	}
+
+	pragma(inline) Simulator simulator() { return m_crew.simulator; }
 
 	private
 	{
@@ -135,10 +138,10 @@ final class AIAcoustic
 
 		private void applyToContact(Contact* ctc, Vessel v, bool isPing)
 		{
-			ctc.createdAt = Globals.sim.worldTime;
+			ctc.createdAt = simulator.worldTime;
 			if (m_imprintToReport.directionAvailable || isPing)
 			{
-				ctc.lastHydrophoneData = Globals.sim.worldTime;
+				ctc.lastHydrophoneData = simulator.worldTime;
 				// we boost sonar ping points
 				ctc.passiveSonarPoints += max(
 					m_imprintToReport.signalLevel.val - m_imprintToReport.backgroundLevel.val,
@@ -231,7 +234,7 @@ final class AIAcoustic
 				bool isPing = (cast(SonarPing) si.source !is null);
 				if (!si.directionAvailable && !isPing)
 					continue;
-				ctc.lastHydrophoneData = Globals.sim.worldTime;
+				ctc.lastHydrophoneData = simulator.worldTime;
 				ctc.passiveSonarPoints += max(
 					si.signalLevel.val - si.backgroundLevel.val,
 					isPing ? CLASSIFICATION_MARGIN : 0.0f);

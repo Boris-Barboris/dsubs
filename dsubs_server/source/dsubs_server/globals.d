@@ -50,42 +50,34 @@ __gshared:
 
 	static void build()
 	{
-		simMut = new ReadWriteMutex();
 		taskPool = new TaskPool(totalCPUs - 1);
 		auxTaskPool = new TaskPool(totalCPUs - 1);
 		trace("totalCPUs = ", totalCPUs);
 		sctx = new DsubsSoundOpenclCtx(totalCPUs);
 		entityDb = new EntityDb();
 		players = new PlayerCollection();
-		bots = new BotCollection();
-		vessels = new VesselCollection();
-		animals = new AnimalCollection();
-		weapons = new WeaponCollection();
 		cons = new ConListener();
-		phys = new PhysicalEnv();
-		acous = new AcousticEnv();
-		sim = new Simulator();
+		simulators = new SimulatorScheduler(false);
 	}
 
-	static void buildForTests()
+	/// helper method for idempotent preparation of globals
+	/// for a test run.
+	static Simulator buildForTests()
 	{
-		if (simMut is null)
-			simMut = new ReadWriteMutex();
 		taskPool = new TaskPool(0);//totalCPUs - 1);
 		auxTaskPool = new TaskPool(1);
 		if (sctx is null)
 			sctx = new DsubsSoundOpenclCtx(1);
 		if (entityDb is null)
 			entityDb = new EntityDb();
-		vessels = new VesselCollection();
-		animals = new AnimalCollection();
-		bots = new BotCollection();
-		weapons = new WeaponCollection();
-		phys = new PhysicalEnv();
-		acous = new AcousticEnv();
-		sim = new Simulator();
+		if (simulators is null)
+			simulators = new SimulatorScheduler(true);
+		else
+			simulators.clear();
+		Simulator sim = new Simulator();
 		sim.printTimings = false;
 		sim.doSleep = false;
+		return sim;
 	}
 
 	static void resetForTests()

@@ -15,6 +15,7 @@ import dsubs_server.weaponry;
 import dsubs_server.torpedo;
 import dsubs_server.vessel;
 import dsubs_server.player;
+import dsubs_server.simulator;
 import dsubs_server.submarine;
 import dsubs_server.ai.common;
 import dsubs_server.ai.helmsman;
@@ -51,6 +52,13 @@ final class AICrew: AICrewTemp
 		BOT_DIFFICULTY m_difficulty;
 		CrewState m_state;
 		CrewGoal m_goal;
+	}
+
+	@property Simulator simulator()
+	{
+		if (submarine)
+			return submarine.simulator;
+		return null;
 	}
 
 	@property BOT_DIFFICULTY difficulty() const { return m_difficulty; }
@@ -213,11 +221,6 @@ struct Solution
 		assert(positionKnown);
 		return position + velocity * (timePoint - atTime) / 1e6f;
 	}
-
-	@property vec2d currentPos() const
-	{
-		return extrapolatedPos(Globals.sim.worldTime);
-	}
 }
 
 /// CIC of bot crew tracks contacts
@@ -277,26 +280,26 @@ struct Contact
 	/// Age in seconds
 	@property float age() const
 	{
-		return (Globals.sim.worldTime - createdAt) / 1000_000L;
+		return (vessel.simulator.worldTime - createdAt) / 1000_000L;
 	}
 
 	/// Solution age in seconds
 	@property float solutionAge() const
 	{
 		assert(solution.set);
-		return (Globals.sim.worldTime - solution.atTime) / 1000_000L;
+		return (vessel.simulator.worldTime - solution.atTime) / 1000_000L;
 	}
 
 	// 1.0f + is to prevent division by zero
 
 	@property float hydrophoneDataAge() const
 	{
-		return 1.0f + (Globals.sim.worldTime - m_lastHydrophoneData) / 1000_000L;
+		return 1.0f + (vessel.simulator.worldTime - m_lastHydrophoneData) / 1000_000L;
 	}
 
 	@property float activeSonarDataAge() const
 	{
-		return 1.0f + (Globals.sim.worldTime - m_lastActiveSonarData) / 1000_000L;
+		return 1.0f + (vessel.simulator.worldTime - m_lastActiveSonarData) / 1000_000L;
 	}
 }
 
@@ -365,6 +368,8 @@ final class AICaptain
 		captainOrder = OrderQueue!CrewGoal(1);
 	}
 
+	pragma(inline) @property Simulator simulator() { return m_crew.simulator; }
+
 	private
 	{
 		AICrew m_crew;
@@ -379,7 +384,7 @@ final class AICaptain
 
 	private @property bool helmsmanOrderOnCooldown()
 	{
-		return (Globals.sim.worldTime - m_lastOrderToHelmsman) < 15_000_000L;
+		return (simulator.worldTime - m_lastOrderToHelmsman) < 15_000_000L;
 	}
 
 	private void giveOrdersToHelmsman(WhereToSwim whereToSwim, NavigationSpeed navSpeed,
@@ -388,7 +393,7 @@ final class AICaptain
 		m_crew.m_helmsman.whereToSwimOrder.pushBack(whereToSwim);
 		m_crew.m_helmsman.navigationSpeedOrder.pushBack(navSpeed);
 		m_helmsmansOrderGoal = goal;
-		m_lastOrderToHelmsman = Globals.sim.worldTime;
+		m_lastOrderToHelmsman = simulator.worldTime;
 	}
 
 	private enum HelmsmanOrderGoal: byte
@@ -520,7 +525,8 @@ final class AICaptain
 
 	double rangeFromContact(Contact* ctc)
 	{
-		return (ctc.solution.currentPos - m_crew.submarine.transform.wposition).length;
+		return (ctc.solution.extrapolatedPos(simulator.worldTime) -
+			m_crew.submarine.transform.wposition).length;
 	}
 
 	private final class UpdateSolutions: FixedCostActionNode
@@ -549,7 +555,7 @@ final class AICaptain
 					continue;
 				}
 				// do not update solutions too often
-				if (Globals.sim.worldTime - ctc.solution.atTime < SOLUTION_CONST_PERIOD)
+				if (simulator.worldTime - ctc.solution.atTime < SOLUTION_CONST_PERIOD)
 					continue;
 				// do not update solution if no new data has arrived
 				if (ctc.solution.atTime >= ctc.lastData)
@@ -663,7 +669,7 @@ final class AICaptain
 					c.classification == ContactClass.submarine &&
 					c.solution.positionKnown).
 				map!(c => VesselAndRange(
-					c.vessel, (c.solution.currentPos - curPos).length)).array;
+					c.vessel, (c.solution.extrapolatedPos(simulator.worldTime) - curPos).length)).array;
 			if (enemyVessels.length == 0)
 				return ExecutionResult.failure;
 			enemyVessels.sort!((a, b) => a.range < b.range);
@@ -691,7 +697,7 @@ final class AICaptain
 		private vec2d getEvasionDirection()
 		{
 			Solution torpSol = mainDanger.solution;
-			vec2d relPos = torpSol.currentPos - m_crew.submarine.transform.wposition;
+			vec2d relPos = torpSol.extrapolatedPos(simulator.worldTime) - m_crew.submarine.transform.wposition;
 			// we do not account for our speed here
 			vec2d evadeVector = vec2d(torpSol.velocity.y, -torpSol.velocity.x);
 			if (dot(evadeVector, relPos) >= 0.0)
@@ -736,7 +742,7 @@ final class AICaptain
 			assert(torpSol.set);
 			assert(torpSol.positionKnown);
 			vec2d relVel = torpSol.velocity - m_crew.submarine.rigidBody.kinet.vel;
-			vec2d relPos = torpSol.currentPos - m_crew.submarine.transform.wposition;
+			vec2d relPos = torpSol.extrapolatedPos(simulator.worldTime) - m_crew.submarine.transform.wposition;
 			// if torp swims perfectly on us, relVel is parallel to -relPos.
 			if (dot(relVel.normalizedz, relPos.normalizedz) >= 0.0)
 				return 0.0;
@@ -941,7 +947,7 @@ final class AICaptain
 			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal != HelmsmanOrderGoal.attack)
 				return ExecutionResult.success;
 			double firingRange = effectiveFiringRange(m_crew.submarine);
-			vec2d posDiff = mainContact.solution.currentPos -
+			vec2d posDiff = mainContact.solution.extrapolatedPos(simulator.worldTime) -
 				m_crew.submarine.transform.wposition;
 			double currentRange = posDiff.length;
 			bool needToSwimFast;
@@ -955,7 +961,7 @@ final class AICaptain
 			// trace("Giving order to approach main target's solution");
 			WhereToSwim whereToSwim;
 			whereToSwim.type = WhereToSwimType.destination;
-			whereToSwim.destination = mainContact.solution.currentPos;
+			whereToSwim.destination = mainContact.solution.extrapolatedPos(simulator.worldTime);
 			NavigationSpeed speed = needToSwimFast ?
 				NavigationSpeed.tactical : NavigationSpeed.silent;
 			giveOrdersToHelmsman(whereToSwim, speed, HelmsmanOrderGoal.attack);
@@ -994,12 +1000,12 @@ final class AICaptain
 
 		override ExecutionResult onTicksConsumed()
 		{
-			m_lastPing = Globals.sim.worldTime;
+			m_lastPing = simulator.worldTime;
 			ActiveSonar sonar = m_crew.submarine.sonar;
 			float maxIlevel = sonar.proto.maxPeakIlevel;
 			SonarPing ping = sonar.startPing(maxIlevel);
-			Globals.acous.registerSource(ping);
-			ReflectorImprint[] imprints = sonar.estimateReflectors(Globals.acous.reflectors);
+			simulator.acous.registerSource(ping);
+			ReflectorImprint[] imprints = sonar.estimateReflectors(simulator.acous.reflectors);
 			// ping returned imprints
 			trace("AI ping resulted in imprints: ", imprints);
 			// we go through all imprints and provide position data to CIC (crew state)
@@ -1017,7 +1023,7 @@ final class AICaptain
 					m_crew.state.contacts[v] = newCtc;
 				}
 				Contact* ctc = m_crew.state.contacts[v];
-				ctc.lastActiveSonarData = Globals.sim.worldTime;
+				ctc.lastActiveSonarData = simulator.worldTime;
 				ctc.activeSonarPoints += ri.signalLevel - ri.noiseLevel;
 				if (ctc.classification == ContactClass.unknown &&
 					ctc.activeSonarPoints > CLASSIFICATION_MARGIN)
@@ -1067,7 +1073,7 @@ final class AICaptain
 			trace("AI launching active decoy");
 			TubeOperationResult res = chosenTube.processLaunchRequest("Decoy(active)", null);
 			assert(res.tubeChanged);
-			m_lastDecoyFire = Globals.sim.worldTime;
+			m_lastDecoyFire = simulator.worldTime;
 			return ExecutionResult.success;
 		}
 	}
@@ -1082,7 +1088,7 @@ final class AICaptain
 
 		protected vec2d getTargetContactPos()
 		{
-			return mainContact().solution.currentPos;
+			return mainContact().solution.extrapolatedPos(simulator.worldTime);
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -1113,7 +1119,7 @@ final class AICaptain
 			trace("AI launching Minoga torp with parameters ", wpValues);
 			TubeOperationResult res = chosenTube.processLaunchRequest("Minoga", wpValues);
 			assert(res.tubeChanged);
-			m_lastFire = Globals.sim.worldTime;
+			m_lastFire = simulator.worldTime;
 			return ExecutionResult.success;
 		}
 
@@ -1167,7 +1173,7 @@ final class AICaptain
 		protected override vec2d getTargetContactPos()
 		{
 			// fire at the point of danger's origin
-			return mainDanger().solution.extrapolatedPos(Globals.sim.worldTime -
+			return mainDanger().solution.extrapolatedPos(simulator.worldTime -
 				mainDanger.age.to!usecs_t * 1_000_000L);
 		}
 
@@ -1197,7 +1203,7 @@ final class AICaptain
 							rangeFromContact(mainContact) <=
 								effectiveFiringRange(m_crew.submarine)),
 						new ConditionNode("Haven't fired in the last 90 seconds", () =>
-							Globals.sim.worldTime - m_lastFire > 90_000_000L),
+							simulator.worldTime - m_lastFire > 90_000_000L),
 						new FireOneTorpedo()
 					]),
 				], 0)
@@ -1224,21 +1230,21 @@ final class AICaptain
 					new ConditionNode("There is main danger", () =>
 						m_mainDanger !is null),
 					new ConditionNode("Haven't fired in the last 90 seconds", () =>
-						Globals.sim.worldTime - m_lastDecoyFire > 90_000_000L),
+						simulator.worldTime - m_lastDecoyFire > 90_000_000L),
 					new FireOneDecoy()
 				]),
 				new SequenceNode("Fire torpedo snapshot towards the main danger", [
 					new ConditionNode("There is an enemy main danger", () =>
 						m_mainDanger !is null && mainDanger.relation == ContactRelation.enemy),
 					new ConditionNode("Haven't fired in the last 90 seconds", () =>
-						Globals.sim.worldTime - m_lastFire > 90_000_000L),
+						simulator.worldTime - m_lastFire > 90_000_000L),
 					new FireOneTorpedoOnDanger()
 				]),
 				new SequenceNode("Rare active ping when in combat", [
 					new ConditionNode("There is danger", () =>
 						m_mainDanger !is null),
 					new ConditionNode("Ping not more than once in 3 minutes", () =>
-						Globals.sim.worldTime - m_lastPing > 180_000_000L),
+						simulator.worldTime - m_lastPing > 180_000_000L),
 					new RequestPing()
 				]),
 				new SequenceNode("General attack sequence", [
@@ -1255,7 +1261,7 @@ final class AICaptain
 							rangeFromContact(mainContact) <=
 								effectiveFiringRange(m_crew.submarine)),
 						new ConditionNode("Haven't fired in the last 90 seconds", () =>
-							Globals.sim.worldTime - m_lastFire > 90_000_000L),
+							simulator.worldTime - m_lastFire > 90_000_000L),
 						new FireOneTorpedo()
 					])
 				])

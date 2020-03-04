@@ -20,9 +20,10 @@ abstract class Propulsor: IForce
 		string m_prototypeName;
 		/// mass that is added to the hull
 		float m_mass = 0.0f;
+		Simulator m_simulator;
 	}
 
-	protected Simulator m_simulator;
+	final @property Simulator simulator() { return m_simulator; }
 
 	private this()
 	{
@@ -43,8 +44,13 @@ abstract class Propulsor: IForce
 	float targetThrottle = 0.0f;
 
 	void bootstrap(RigidBody vesselRb);
+
 	/// call to register stuff in component managers (sound)
-	void register();
+	void register(Simulator sim)
+	{
+		m_simulator = sim;
+	}
+
 	/// call to unregister from component managers and dispose of resources
 	void shutdown();
 
@@ -117,13 +123,13 @@ final class BasicPropulsor: Propulsor
 
 	override void register(Simulator sim)
 	{
-		m_simulator = sim;
-		m_simulator.acous.registerSource(m_sound);
+		super.register(sim);
+		simulator.acous.registerSource(m_sound);
 	}
 
 	override void shutdown()
 	{
-		m_simulator.acous.unregisterSource(m_sound);
+		simulator.acous.unregisterSource(m_sound);
 	}
 }
 

@@ -30,7 +30,7 @@ abstract class Killable
 		@property bool dead() const { return m_dead; }
 		@property usecs_t deathTime() const { return m_deathTime; }
 		@property string causeOfDeath() const { return m_causeOfDeath; }
-		@property Simulator simulator() { return m_simulator; }
+		@property inout(Simulator) simulator() inout { return m_simulator; }
 	}
 
 	final protected void registerSimulator(Simulator sim)
