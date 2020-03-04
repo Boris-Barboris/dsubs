@@ -567,8 +567,7 @@ final class PlayerCollection
 			if (emailDest)
 			{
 				info("sending mail");
-				string mailToSend = "user " ~ username ~
-					" has authenticated";
+				string mailToSend = "user " ~ username ~ " has authenticated";
 				void doSend()
 				{
 					auto pipes = pipeProcess(["/usr/bin/sendmail", "-t"], Redirect.stdin);

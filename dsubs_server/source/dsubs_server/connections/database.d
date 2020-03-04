@@ -70,6 +70,7 @@ final class DatabaseService
 		return res;
 	}
 
+	/// always new connection is opened, no pooling. Simple and robust on localhost.
 	private auto wrapTsac(DlgT)(DlgT dlg)
 	{
 		try

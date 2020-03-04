@@ -336,7 +336,7 @@ final class Simulator
 			if (Player.getPlayersOnline)
 			{
 				Globals.auxTaskPool.put(
-					task(&Globals.metrics.writeReplayData));
+					task(&Globals.metrics.writeReplayData, this));
 			}
 		}
 	}

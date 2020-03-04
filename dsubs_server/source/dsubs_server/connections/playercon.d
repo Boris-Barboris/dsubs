@@ -21,6 +21,8 @@ import dsubs_server.player;
 private immutable string backendPrivKey = `AAAAQIhNNOl1mtHa10rEmT2cNlHRPpPnRZjbcKDVkxQ632xXvalu5FR+TBVntVprWNSWdU8+8eU9NEZTQM2J2+XCzwGFDL8MsqmcEiIcX75poV2js3UKvpoV7l8aQ/i7mWSg+Z0nLrhqJOk9Jc4gU7gUmUOkF5lECIoUC8QUm496M5Xz`;
 
 
+/// Backend side of a protocol connection. Cannot be authorized
+/// twice, and the player can have at most one connection open.
 final class PlayerConnection: ProtocolConnection!BackendProtocol
 {
 	private

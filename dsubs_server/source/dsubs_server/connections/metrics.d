@@ -20,6 +20,7 @@ import dsubs_server.submarine;
 import dsubs_server.player;
 import dsubs_server.torpedo: Weapon;
 import dsubs_server.scenario;
+import dsubs_server.simulator;
 
 import dsubs_common.proftimer;
 import dsubs_common.api.messages;
@@ -74,18 +75,18 @@ final class MetricsService
 		return `"` ~ s ~ `"`;
 	}
 
-	void writeReplayData()
+	void writeReplayData(Simulator sim)
 	{
 		try
 		{
 			auto strBuf = appender!string();
 			// write vessel states
 			int counter = 0;
-			synchronized(Globals.simMut.writer)
+			synchronized(sim.simMut.writer)
 			{
-				foreach (Vessel v; Globals.vessels.entities)
+				foreach (Vessel v; sim.vessels.entities)
 				{
-					strBuf ~= "replay_data_vessels,simulator_instance=main_arena";
+					strBuf ~= "replay_data_vessels,simulator_instance=" ~ sim.id;
 					strBuf ~= ",object_class_name=" ~ escape(typeid(v).name);
 					// prototype name
 					strBuf ~= ",prototype_name=" ~ escape(v.prototypeName);
@@ -115,7 +116,7 @@ final class MetricsService
 					counter++;
 				}
 				// write animals
-				foreach (Animal a; Globals.animals.entities)
+				foreach (Animal a; sim.animals.entities)
 				{
 					strBuf ~= "replay_data_animals,simulator_instance=main_arena";
 					strBuf ~= ",object_class_name=" ~ escape(typeid(a).name);
