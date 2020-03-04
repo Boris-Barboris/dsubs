@@ -8,6 +8,8 @@
 *.sln.docstates
 .directory
 *.prod
+*.trail
+pan
 build/*tar.gz
 build/*zip
 build/dsubs

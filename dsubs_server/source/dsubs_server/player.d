@@ -149,23 +149,25 @@ final class Player: Captain
 	{
 		assert(oldCon && !oldCon.isOpen);
 		oldCon.player = null;
-		synchronized(Globals.simMut.reader)
+		synchronized(this)
 		{
-			synchronized(this)
+			if (m_connection is oldCon)
 			{
-				if (m_connection is oldCon)
+				Submarine sub = m_submarine;
+				// if there is a submarine we deactivate it's sensors
+				// to save computational resources.
+				if (sub)
 				{
-					// if there is a submarine we deactivate it's sensors
-					// to save computational resources.
-					if (m_submarine)
+					synchronized(sub.simulator.simMut.reader)
 					{
-						foreach (h; m_submarine.hydrophones)
+						foreach (h; sub.hydrophones)
 							h.shouldBeActive = false;
-						m_submarine.sonar.active = false;
+						sub.sonar.active = false;
+						m_connection = null;
 					}
-					m_connection = null;
-					atomicOp!"-="(s_playerCount, 1);
 				}
+				m_connection = null;
+				atomicOp!"-="(s_playerCount, 1);
 			}
 		}
 	}
