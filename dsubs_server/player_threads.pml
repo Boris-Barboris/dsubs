@@ -55,6 +55,7 @@ active proctype SimSchedulerThread()
 {
     bit first_death_iter = 0;
     byte cached_active_con_idx = UNSET;
+end:
     do
     ::  // take simulator's writer lock
         d_step
