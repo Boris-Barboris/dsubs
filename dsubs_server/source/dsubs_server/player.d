@@ -216,6 +216,7 @@ final class Player: Captain
 	{
 		Submarine s = m_submarine;
 		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
+		enforce(!s.dead, "user has a submarine, but it is dead");
 		ReconnectStateRes recState = ReconnectStateRes(
 			s.spawnId, s.prototypeName, s.propulsor.prototypeName,
 			genSubSnapshot(), genSubWireSnapshots(),
