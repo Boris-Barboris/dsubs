@@ -153,7 +153,7 @@ inline onConnectionClose()
 
 active [CON_COUNT] proctype PlayerConThread()
 {
-    bit taken_lock = 0;
+    bit taken_sim_lock = 0;
     // synchronized(PlayerCollection)
     d_step
     {
@@ -169,7 +169,7 @@ active [CON_COUNT] proctype PlayerConThread()
         // we assume that the connection auth always succeeds. There are no
         // important races during login check, and no locks are taken.
         player_created = 1;
-    ::  active_con_idx != UNSET;
+    ::  else;   // player exists
         assert(player_created == 1);
         // or there already is the connection there
         assert(active_con_idx != _pid - 1);
@@ -178,54 +178,30 @@ active [CON_COUNT] proctype PlayerConThread()
         take_player_recursive(_pid);
 
         // previous connection is closed
-        onConnectionClose();
+        if
+        ::  active_con_idx != UNSET;
+            onConnectionClose();
+        ::  else -> skip;
+        fi
 
-        // now we take sim read lock to enable submarine sensors and
-        // verify that we are alive
-        d_step
-        {
-            sim_wr_lock == 0;
-            sim_r_lock++;
-        }
-
-        // m_connection = con;
-        active_con_idx = _pid - 1;
-
-        // Appears to be unreachable, because under sim lock
-        // if
-        // ::  subState == DEAD;  // if sub is dead connection is closed
-        //     sim_r_lock--;
-        //     playercoll_lock = 0;
-        //     goto ON_CLOSE;
-        // ::  else -> skip;
-        // fi
-
-        sim_r_lock--;
-
-        // emplaceConnection synchronized(Player)
-        release_player_recursive();
-    ::  // there was a player but he disconnected completely.
-        else;
-        assert(active_con_idx == UNSET);
-
-        // emplaceConnection synchronized(Player)
-        take_player_recursive(_pid);
-
-        // he may still have the submarine active, so we need to take the lock
         if
         ::  player_m_submarine == 1;
+            // now we take sim read lock to enable submarine sensors and
+            // verify that we are alive
             d_step
             {
                 sim_wr_lock == 0;
                 sim_r_lock++;
             }
-            taken_lock = 1;
+            taken_sim_lock = 1;
         ::  else -> skip;
         fi
+
+        // m_connection = con;
         active_con_idx = _pid - 1;
+
         if
-        ::  taken_lock == 1;
-            taken_lock = 0;
+        ::  taken_sim_lock == 1;
             sim_r_lock--;
         ::  else -> skip;
         fi
