@@ -311,10 +311,11 @@ final class Tube: IFlowNoiseMultiplier
 		w.rigidBody.kinet.vel = m_sub.rigidBody.fixedPointVelocity(m_transform.wposition) +
 			m_pushSpeed * m_transform.wforward;
 		w.rigidBody.kinet.angVel = m_sub.rigidBody.kinet.angVel;
-		w.register();
+		w.register(m_sub.simulator);
 		m_desiredWeapon = m_loadedWeapon = null;
 		m_state = TubeState.firing;
-		size_t soundOffset = dsubs_sound.common.uniform!("[]", size_t, size_t)(0, GLOBAL_SRATE / 8);
+		size_t soundOffset = dsubs_sound.common.uniform!("[]", size_t, size_t)(
+			0, GLOBAL_SRATE / 8);
 		startPlayingSound(&m_proto.firingSoundProto, &soundOffset);
 		return TubeOperationResult(true, false);
 	}

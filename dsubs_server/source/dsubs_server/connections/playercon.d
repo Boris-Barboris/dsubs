@@ -106,13 +106,13 @@ private:
 		info("Sending reconnect state to ", p.name);
 		auto sub = p.submarine;
 		enforce(sub !is null, "Player does not have a sub");
-		immutable(ReconnectStateRes) res;
+		ReconnectStateRes res;
 		synchronized(sub.simulator.simMut.reader)
 		{
-			res = p.getReconnectState();
+			res = cast() p.getReconnectState();
 			m_simulatorFlow = true;
 		}
-		sendMessage(res);
+		sendMessage(cast(immutable) res);
 	}
 
 	void enforceAuthAndSim(Player p)

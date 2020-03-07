@@ -113,9 +113,9 @@ class Vessel: Killable
 	/// unregister components and dispose of resources
 	void shutdown()
 	{
-		sim.vessels.unregisterEntity(this);
-		sim.acous.unregisterReflector(m_reflector);
-		sim.phys.unregisterEntity(m_rigidBody);
+		simulator.vessels.unregisterEntity(this);
+		simulator.acous.unregisterReflector(m_reflector);
+		simulator.phys.unregisterEntity(m_rigidBody);
 		if (m_propulsor)
 			m_propulsor.shutdown();
 	}

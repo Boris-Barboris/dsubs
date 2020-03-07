@@ -10,6 +10,7 @@ import dsubs_common.math;
 
 import dsubs_server.common;
 import dsubs_server.vessel: Vessel;
+import dsubs_server.simulator: Simulator;
 import dsubs_server.dynamics: RigidBody, WirePoint, AttachedWire;
 
 
@@ -43,7 +44,7 @@ void writeWireCsvRow(File* file, usecs_t worldTime, AttachedWire aw)
 
 auto captureVesselRbCsv(File* f, Vessel s, usecs_t shutdownOn = -1)
 {
-	return (usecs_t worldTime) {
+	return (Simulator sim, usecs_t worldTime) {
 		writeRbodyCsvRow(f, worldTime, s.rigidBody);
 		if (worldTime == shutdownOn)
 			s.shutdown();
@@ -94,7 +95,7 @@ struct AllVesselCvsWriter
 	}
 
 	/// WARNING: this cleans the directory
-	void initialize()
+	void initialize(Simulator sim)
 	{
 		try
 		{
@@ -102,12 +103,12 @@ struct AllVesselCvsWriter
 		}
 		catch(Exception) {}
 		initialized = true;
-		Globals.sim.onSimulationPassStart += &callback;
+		sim.onSimulationPassStart += &callback;
 	}
 
-	void callback(usecs_t worldTime)
+	void callback(Simulator sim, usecs_t worldTime)
 	{
-		foreach (Vessel v; Globals.vessels.entities)
+		foreach (Vessel v; sim.vessels.entities)
 		{
 			if (v.dead)
 				continue;

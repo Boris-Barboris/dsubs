@@ -40,7 +40,7 @@ __gshared:
 	/// Collection of simulators.
 	SimulatorScheduler simulators;
 	/// Global main simulator.
-	SimulatorScheduler mainArenaSim;
+	Simulator mainArenaSim;
 	/// OpenCL context. The point of multiplexed dsubs_server is to give
 	/// the game more control over the resource allocation and keep it
 	/// monolithic. Shared opencl context reduces VRAM usage and GPU overhead.

@@ -19,6 +19,7 @@ import dsubs_server.connections.database;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.dynamics: AttachedWire, RigidBody, WirePoint;
 import dsubs_server.weaponry;
+import dsubs_server.simulator: Simulator;
 import dsubs_server.ai.captain: ContactRelation;
 
 
@@ -252,7 +253,7 @@ final class Player: Captain
 			{
 				s = Globals.entityDb.buildSubFromLoadout(req, this, true);
 				generateShift();
-				randomizePosition(req, s);
+				randomizePosition(req, s, simToSpawnIn);
 				foreach (h; s.hydrophones)
 				{
 					h.shouldBeActive = true;

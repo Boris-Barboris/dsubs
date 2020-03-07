@@ -514,7 +514,7 @@ unittest
 
 unittest
 {
-	Globals.buildForTests();
+	auto sim = Globals.buildForTests();
 	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
@@ -539,7 +539,7 @@ unittest
 	pvs ~= pv;
 
 	Torpedo t = tf.build(null, pvs);
-	t.register();
+	t.register(sim);
 	cleanFolderForSonarImages("guidance", "minoga_snake_passive");
 	int imageRowCounter;
 	ubyte[] imageData;
@@ -557,22 +557,22 @@ unittest
 	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
 	s.targetCourse = s.transform.rotation;
 	s.targetThrottle = 1.0f;
-	s.register();
+	s.register(sim);
 	File* storkFile = writeRbodyCsvHeader("guidance", "minoga_snake_passive", "stork");
-	Globals.sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+	sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
 
 	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_snake_passive", "minoga");
-	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
-	Globals.sim.worldTimeLimit = 300 * cast(ulong)1e6;
+	sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
+	sim.worldTimeLimit = 300 * cast(ulong)1e6;
 
 	double minDist = double.max;
-	Globals.sim.onSimulationPassStart += (now) {
+	sim.onSimulationPassStart += (simptr, now) {
 		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
 	};
 
 	scope(exit) Globals.resetForTests();
-	Globals.sim.start();
-	Globals.sim.join();
+	Globals.simulators.start();
+	Globals.simulators.join();
 	writeTestImage("guidance", "minoga_snake_passive", "minoga", imageData,
 		(imageData.length / imageRowCounter).to!int, imageRowCounter, 0, "_hphone");
 	trace("minoga was ", minDist,

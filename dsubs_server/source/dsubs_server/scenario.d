@@ -231,7 +231,7 @@ final class BattleRoyale: Scenario
 						h.shouldBeActive = false;
 					m_simulator.bots.registerEntity(crew);
 					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
-					botSub.register();
+					botSub.register(m_simulator);
 				}));
 		}
 
@@ -261,7 +261,7 @@ final class BattleRoyale: Scenario
 					m_simulator.bots.registerEntity(crew);
 					m_easyBots[botSub] = true;
 					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
-					botSub.register();
+					botSub.register(m_simulator);
 				}));
 		}
 
@@ -295,7 +295,7 @@ final class BattleRoyale: Scenario
 					m_simulator.bots.registerEntity(crew);
 					m_mediumBots[botSub] = true;
 					crew.goal = new SwimToDestinationGoal(crew, getDistantPos(spawnPos));
-					botSub.register();
+					botSub.register(m_simulator);
 				}));
 		}
 
@@ -376,7 +376,7 @@ final class BattleRoyale: Scenario
 			animal.transform.position = spawnPos;
 			animal.transform.rotation = spawnRot;
 			animal.destination = getDistantPos(spawnPos);
-			animal.register();
+			animal.register(m_simulator);
 		}
 
 		int musicToSpawn = 1 - m_simulator.animals.entities.filter!(
@@ -392,7 +392,7 @@ final class BattleRoyale: Scenario
 			animal.transform.position = spawnPos;
 			animal.transform.rotation = spawnRot;
 			animal.destination = getDistantPos(spawnPos);
-			animal.register();
+			animal.register(m_simulator);
 		}
 	}
 

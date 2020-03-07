@@ -22,6 +22,11 @@ import dsubs_server.player: Player;
 import dsubs_server.dynamics;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.globals;
+import dsubs_server.vessel;
+import dsubs_server.animal;
+import dsubs_server.weaponry;
+import dsubs_server.torpedo;
+import dsubs_server.bots;
 
 
 
@@ -75,7 +80,7 @@ final class SimulatorScheduler
 	this(bool exitOnEmpty = false)
 	{
 		m_exitOnEmpty = exitOnEmpty;
-		m_simulators = new SimulatorStartTree();
+		m_simulators = new SimulatorSchedTree();
 		m_cond = new Condition(new Mutex());
 		m_thread = new Thread(&schedulingLoop);
 	}
@@ -268,8 +273,8 @@ final class Simulator
 	/// time acceleration factor.
 	float acceleration = 1.0f;
 
-	Event!(void delegate(usecs_t now)) onSimulationPassStart;
-	Event!(void delegate(usecs_t now)) onSimulationPassEnd;
+	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassStart;
+	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassEnd;
 
 	/// run one iteration of simulation
 	private void runOnce(ProfTimer profiler)
@@ -281,12 +286,12 @@ final class Simulator
 			Globals.sctx.queue(0).finish();
 			profiler.start();
 			profiler.start("onSimulationPassStart");
-			onSimulationPassStart(m_worldTime);
+			onSimulationPassStart(this, m_worldTime);
 			profiler.stopLast();
-			if (Globals.scenario)
+			if (scenario)
 			{
 				profiler.start("scenario.onBeforeSimulation");
-				Globals.scenario.onBeforeSimulation();
+				scenario.onBeforeSimulation();
 				profiler.stopLast();
 			}
 			profiler.start("vessels.preKinematics");
@@ -322,7 +327,7 @@ final class Simulator
 			animals.postKinematics(1000_000);
 			profiler.stopLast();
 			profiler.start("vessels.collectDeadVessels");
-			vessels.collectDeadVessels();
+			vessels.collectDeadVessels(worldTime);
 			profiler.stopLast();
 			profiler.start("bots.onAfterSimulation");
 			bots.onAfterSimulation();
@@ -341,7 +346,7 @@ final class Simulator
 				profiler.stopLast();
 			}
 			profiler.start("onSimulationPassEnd");
-			onSimulationPassEnd(m_worldTime);
+			onSimulationPassEnd(this, m_worldTime);
 			profiler.stopLast();
 		}
 		profiler.stop();
