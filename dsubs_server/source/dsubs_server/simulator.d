@@ -18,15 +18,15 @@ import dsubs_common.event;
 
 import dsubs_server.common;
 import dsubs_server.acoustics;
-import dsubs_server.player: Player;
+import dsubs_server.animal;
+import dsubs_server.bots;
 import dsubs_server.dynamics;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.globals;
 import dsubs_server.vessel;
-import dsubs_server.animal;
-import dsubs_server.weaponry;
+import dsubs_server.player: Player;
 import dsubs_server.torpedo;
-import dsubs_server.bots;
+import dsubs_server.weaponry;
 
 
 
@@ -276,6 +276,20 @@ final class Simulator
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassStart;
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassEnd;
 
+	/// Run dlg on each connected player.
+	private void sendUpdateToPlayers()
+	{
+		Player[] playersToUpdate;
+		foreach (Vessel v; vessels.entities)
+		{
+			Submarine sub = cast(Submarine) v;
+			if (sub && sub.player)
+				playersToUpdate ~= sub.player;
+		}
+		foreach (Player p; Globals.taskPool.parallel(playersToUpdate, 1))
+			p.sendUpdate();
+	}
+
 	/// run one iteration of simulation
 	private void runOnce(ProfTimer profiler)
 	{
@@ -338,13 +352,10 @@ final class Simulator
 				scenario.onAfterSimulation();
 				profiler.stopLast();
 			}
-			if (Globals.players)
-			{
-				// stream updates to players
-				profiler.start("players.forEachPlayer.sendUpdate");
-				Globals.players.forEachPlayer((p) { p.sendUpdate(); });
-				profiler.stopLast();
-			}
+			// stream updates to players
+			profiler.start("sendUpdateToPlayers");
+			sendUpdateToPlayers();
+			profiler.stopLast();
 			profiler.start("onSimulationPassEnd");
 			onSimulationPassEnd(this, m_worldTime);
 			profiler.stopLast();
