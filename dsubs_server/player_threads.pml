@@ -124,20 +124,28 @@ inline onConnectionClose()
 {
     take_player_recursive(_pid);
 
-    // take simulator's reader lock
-    d_step
-    {
-        sim_wr_lock == 0;
-        sim_r_lock++;
-    }
+    if
+    ::  player_m_submarine == 1;
+        // take simulator's reader lock
+        d_step
+        {
+            sim_wr_lock == 0;
+            sim_r_lock++;
+        }
+    ::  else -> skip;
+    fi
     // here we modify submarine (disable hydrophones) and
     // some other ops of low importance.
 
     // now player has no active connection
     active_con_idx = UNSET;
 
-    // release simulator's reader lock
-    sim_r_lock--;
+    if
+    ::  player_m_submarine == 1;
+        // release simulator's reader lock
+        sim_r_lock--;
+    ::  else -> skip;
+    fi
 
     release_player_recursive();
 }
@@ -145,7 +153,7 @@ inline onConnectionClose()
 
 active [CON_COUNT] proctype PlayerConThread()
 {
-
+    bit taken_lock = 0;
     // synchronized(PlayerCollection)
     d_step
     {
@@ -193,6 +201,34 @@ active [CON_COUNT] proctype PlayerConThread()
         // fi
 
         sim_r_lock--;
+
+        // emplaceConnection synchronized(Player)
+        release_player_recursive();
+    ::  // there was a player but he disconnected completely.
+        else;
+        assert(active_con_idx == UNSET);
+
+        // emplaceConnection synchronized(Player)
+        take_player_recursive(_pid);
+
+        // he may still have the submarine active, so we need to take the lock
+        if
+        ::  player_m_submarine == 1;
+            d_step
+            {
+                sim_wr_lock == 0;
+                sim_r_lock++;
+            }
+            taken_lock = 1;
+        ::  else -> skip;
+        fi
+        active_con_idx = _pid - 1;
+        if
+        ::  taken_lock == 1;
+            taken_lock = 0;
+            sim_r_lock--;
+        ::  else -> skip;
+        fi
 
         // emplaceConnection synchronized(Player)
         release_player_recursive();
