@@ -37,7 +37,7 @@ final class Submarine: Vessel
 	@property void captain(Captain rhs) { m_captain = rhs; }
 
 	/// result of captain's cast to Player class. Effectively a human player.
-	@property Player player() { return cast(Player) m_captain; }
+	@property inout(Player) player() inout { return cast(inout(Player)) m_captain; }
 
 	override string toString()
 	{

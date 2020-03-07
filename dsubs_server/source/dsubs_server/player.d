@@ -125,14 +125,14 @@ final class Player: Captain
 		m_password = pw;
 		m_connection = con;
 		side = new SideOfConflict("Side of player " ~ uname, false);
-		con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
 		con.player = this;
+		con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
 		atomicOp!"+="(s_playerCount, 1);
 	}
 
 	override @property string name() const { return m_username; }
 	@property string username() const { return m_username; }
-	@property PlayerConnection connection() { return m_connection; }
+	@property inout(PlayerConnection) connection() inout { return m_connection; }
 
 	private void generateShift()
 	{
@@ -163,10 +163,11 @@ final class Player: Captain
 						foreach (h; sub.hydrophones)
 							h.shouldBeActive = false;
 						sub.sonar.active = false;
-						m_connection = null;
+						m_connection = null;	// important, check spin model.
 					}
 				}
-				m_connection = null;
+				else
+					m_connection = null;
 				atomicOp!"-="(s_playerCount, 1);
 			}
 		}
@@ -178,7 +179,7 @@ final class Player: Captain
 		PlayerConnection con = m_connection;
 		if (con)
 		{
-			info("Closing previous connection of ", m_username);
+			info("Evicting previous connection of ", m_username);
 			con.close();
 			return true;
 		}
@@ -192,26 +193,33 @@ final class Player: Captain
 		synchronized(this)
 		{
 			closeConnection();
-			m_connection = con;
 			atomicOp!"+="(s_playerCount, 1);
 			con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
-			if (m_submarine)
+			Submarine sub = m_submarine;
+			if (sub)
 			{
-				if (m_submarine.dead)
+				if (sub.dead)
 					throw new Exception("submarine is dead");
-				foreach (h; m_submarine.hydrophones)
-					h.shouldBeActive = true;
-				m_submarine.sonar.active = true;
+				synchronized(sub.simulator.simMut.reader)
+				{
+					foreach (h; sub.hydrophones)
+						h.shouldBeActive = true;
+					sub.sonar.active = true;
+					m_connection = con;		// important, check spin model.
+				}
 			}
+			else
+				m_connection = con;
 		}
 	}
 
 	/// true if proposed credentials are the same as used
-	private bool compareCredentials(string uname, string pw) const
+	private bool areCredentialsEqual(string uname, string pw) const
 	{
 		return uname == m_username && pw == m_password;
 	}
 
+	// sim's lock must be held
 	immutable(ReconnectStateRes) getReconnectState()
 	{
 		Submarine s = m_submarine;
@@ -227,21 +235,21 @@ final class Player: Captain
 			s.tubeRange.map!(t => t.fullState).array,
 			s.ammoRoomRange.map!(r => r.fullState).array
 			);
-		if (Globals.scenario)
+		if (s.simulator.scenario)
 		{
-			Globals.scenario.generateBriefing(this, recState.mapElements, recState.briefing);
+			s.simulator.scenario.generateBriefing(this, recState.mapElements, recState.briefing);
 		}
 		return cast(immutable) recState;
 	}
 
-	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req)
+	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req, Simulator simToSpawnIn)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(this)
 		{
-			synchronized(this)
+			Submarine s = m_submarine;
+			enforce(s is null, "Already spawned");
+			synchronized(simToSpawnIn.simMut.reader)
 			{
-				Submarine s = m_submarine;
-				enforce(s is null, "Already spawned");
 				s = Globals.entityDb.buildSubFromLoadout(req, this, true);
 				generateShift();
 				randomizePosition(req, s);
@@ -250,15 +258,24 @@ final class Player: Captain
 					h.shouldBeActive = true;
 					h.listenDir = -coordRot;
 				}
-				s.register();
+				s.register(simToSpawnIn);
 				return getReconnectState();
 			}
 		}
 	}
 
+	/// Tru to get the simulator from player's submarine.
+	@property Simulator simulator()
+	{
+		Submarine sub = m_submarine;
+		enforce(sub !is null, "submarine is not set");
+		enforce(sub.simulator !is null, "submarine's simulator is null");
+		return sub.simulator;
+	}
+
 	void handleThrottleRequest(const ThrottleReq req)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to set throttle");
@@ -270,7 +287,7 @@ final class Player: Captain
 
 	void handleCourseRequest(const CourseReq req)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to set course");
@@ -282,7 +299,7 @@ final class Player: Captain
 
 	void handleListenDirRequest(const ListenDirReq req)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to listenDir");
@@ -296,20 +313,21 @@ final class Player: Captain
 
 	void handleEmitPingRequest(const EmitPingReq req)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to EmitPingReq");
 			if (s.dead)
 				return;
 			enforce(req.sonarIdx == 0, "no such sonar");
-			if (Globals.sim.worldTime - m_lastPingEmit >= 5_000_000)
+			usecs_t worldTime = simulator.worldTime;
+			if (worldTime - m_lastPingEmit >= 5_000_000)
 			{
 				auto ping = s.sonar.startPing(req.ilevel);
 				if (ping)
 				{
-					Globals.acous.registerSource(ping);
-					m_lastPingEmit = Globals.sim.worldTime;
+					simulator.acous.registerSource(ping);
+					m_lastPingEmit = worldTime;
 				}
 			}
 		}
@@ -317,7 +335,7 @@ final class Player: Captain
 
 	void handleLoadTubeReq(const LoadTubeReq req)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to EmitPingReq");
@@ -335,7 +353,7 @@ final class Player: Captain
 
 	void handleSetTubeStateReq(const SetTubeStateReq req)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to EmitPingReq");
@@ -352,7 +370,7 @@ final class Player: Captain
 
 	void handleWireDesiredLengthReq(WireDesiredLengthReq req)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to WireDesiredLengthReq");
@@ -366,7 +384,7 @@ final class Player: Captain
 
 	void handleLaunchTubeReq(LaunchTubeReq req)
 	{
-		synchronized(Globals.simMut.reader)
+		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
 			enforce(s, "player has no submarine, unable to EmitPingReq");
@@ -400,7 +418,7 @@ final class Player: Captain
 		vec2d vel = dirToClientSpace(s.rigidBody.kinet.vel);
 		double angVel = s.rigidBody.kinet.angVel;
 		return KinematicSnapshot(
-				Globals.sim.worldTime + timeShift,
+				s.simulator.worldTime + timeShift,
 				vec2d(shiftedPos.x, shiftedPos.y),
 				vec2d(vel.x, vel.y),
 				shiftedRot,
@@ -412,11 +430,12 @@ final class Player: Captain
 		assert(m_submarine);
 		Submarine s = m_submarine;
 		WireSnapshot[] res;
+		usecs_t worldTime = s.simulator.worldTime;
 		for (size_t i = 0; i < s.rigidBody.wires.length; i++)
 		{
 			AttachedWire wire = s.rigidBody.wires[i];
 			WireSnapshot wireSnap;
-			wireSnap.atTime = Globals.sim.worldTime + timeShift;
+			wireSnap.atTime = worldTime + timeShift;
 			wireSnap.points.length = wire.points.length;
 			wireSnap.attachPosition = posToClientSpace(wire.attachTransform.wposition);
 			foreach (j, point; wire.points)
@@ -493,8 +512,9 @@ final class Player: Captain
 						samples, samples.length.to!int);
 				}
 			}
+			usecs_t worldTime = s.simulator.worldTime;
 			con.sendMessage(immutable AcousticStreamRes(
-				Globals.sim.worldTime + timeShift, hdata, haudio));
+				worldTime + timeShift, hdata, haudio));
 			// now active sonar
 			if (s.sonar.active && s.sonar.hasSliceToSend)
 			{
@@ -502,7 +522,7 @@ final class Player: Captain
 					0, s.sonar.pingCounter, s.sonar.readySliceId,
 					s.sonar.getLastSlice());
 				con.sendMessage(immutable SonarStreamRes(
-					Globals.sim.worldTime + timeShift, [sdata]));
+					worldTime + timeShift, [sdata]));
 				s.sonar.markSliceSent();
 			}
 			// now send updates about tubes and rooms
@@ -520,13 +540,13 @@ final class Player: Captain
 		}
 	}
 
-	private void randomizePosition(const SpawnReq req, Submarine sub)
+	private void randomizePosition(const SpawnReq req, Submarine sub, Simulator sim)
 	{
 		double rot;
-		if (Globals.scenario)
+		if (sim.scenario)
 		{
 			vec2d pos;
-			Globals.scenario.selectPlayerSpawnPosition(this, req, pos, rot);
+			sim.scenario.selectPlayerSpawnPosition(this, req, pos, rot);
 			sub.transform.position = pos;
 		}
 		else
@@ -562,6 +582,7 @@ final class PlayerCollection
 		if (Globals.database)
 		{
 			PlayerDb* pdb = Globals.database.getPlayerByLogin(username);
+			// insert may throw but that's not a problem
 			if (pdb is null)
 				Globals.database.insertPlayer(username, password);
 			else if (!pdb.passwordMatchesHash(password))
@@ -590,26 +611,23 @@ final class PlayerCollection
 				Globals.auxTaskPool.put(task(&doSend));
 			}
 		}
-		synchronized(Globals.simMut.reader)
+		synchronized(this)
 		{
-			synchronized(this)
+			Player* p = username in m_players;
+			if (p !is null)
 			{
-				Player* p = username in m_players;
-				if (p !is null)
-				{
-					// player is already present, let's try to authorize new connection
-					enforce!AuthException(p.compareCredentials(username, password),
-						"invalid login or password");
-					p.emplaceConnection(con);
-					return *p;
-				}
-				else
-				{
-					// new player
-					Player np = new Player(con, username, password);
-					m_players[username] = np;
-					return np;
-				}
+				// player is already present, let's try to authorize new connection
+				enforce!AuthException(p.areCredentialsEqual(username, password),
+					"invalid login or password");
+				p.emplaceConnection(con);
+				return *p;
+			}
+			else
+			{
+				// new player
+				Player np = new Player(con, username, password);
+				m_players[username] = np;
+				return np;
 			}
 		}
 	}

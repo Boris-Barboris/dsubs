@@ -25,8 +25,6 @@ version(Posix)
 	extern(C) __gshared string[] rt_options = ["gcopt=gc:precise cleanup:finalize"];
 }
 
-__gshared Simulator mainArenaSim;
-
 void main(string[] argv)
 {
 	version(Windows)
@@ -48,10 +46,10 @@ void main(string[] argv)
 			Globals.metrics = new MetricsService(influxUrl);
 		}
 		Globals.build();
-		mainArenaSim = new Simulator("main_arena");
-		auto scenario = new BattleRoyale(mainArenaSim);
+		Globals.mainArenaSim = new Simulator("main_arena");
+		auto scenario = new BattleRoyale(Globals.mainArenaSim);
 		Globals.cons.bindSockets();
-		Globals.simulators.add(mainArenaSim);
+		Globals.simulators.add(Globals.mainArenaSim);
 		Globals.simulators.start();
 		Globals.cons.startListeners();
 		auto livenessThread = new Thread(&livenessWatchdog).start();
@@ -65,14 +63,17 @@ void main(string[] argv)
 	exit(0);
 }
 
+
+/// Infinithe thread that watches main arena's time in a loop and
+/// aborts the server process when it notices the deadlock or excessive stalling.
 void livenessWatchdog()
 {
-	usecs_t lastWorldTime = mainArenaSim.worldTime;
+	usecs_t lastWorldTime = Globals.mainArenaSim.worldTime;
 	while (true)
 	{
 		Thread.sleep(seconds(10));
-		if (mainArenaSim.worldTime == lastWorldTime)
+		if (Globals.mainArenaSim.worldTime == lastWorldTime)
 			abort();
-		lastWorldTime = mainArenaSim.worldTime;
+		lastWorldTime = Globals.mainArenaSim.worldTime;
 	}
 }

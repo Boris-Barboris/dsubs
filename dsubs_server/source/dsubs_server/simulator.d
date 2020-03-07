@@ -20,6 +20,7 @@ import dsubs_server.common;
 import dsubs_server.acoustics;
 import dsubs_server.player: Player;
 import dsubs_server.dynamics;
+import dsubs_server.submarine: Submarine;
 import dsubs_server.globals;
 
 
@@ -55,6 +56,7 @@ final class SimulatorScheduler
 			m_simulators.stableInsert(s);
 			m_cond.notify();
 		}
+		trace("added ", s.id, " simulator to scheduler");
 	}
 
 	/// Thread-safe removal of the simulator.
@@ -63,7 +65,10 @@ final class SimulatorScheduler
 		synchronized(m_cond.mutex)
 		{
 			if (m_simulators.removeKey(s))
+			{
 				m_cond.notify();
+				trace("removed ", s.id, " simulator from scheduler");
+			}
 		}
 	}
 
@@ -228,6 +233,21 @@ final class Simulator
 		bots = new BotCollection();
 	}
 
+	/// calculate the number of players that are connected to the submarines in
+	/// this simulator.
+	int getConnectedPlayers() const
+	{
+		int res = 0;
+		foreach (const Vessel v; vessels.entities)
+		{
+			const Submarine sub = cast(const Submarine) v;
+			if (sub && sub.player && sub.player.connection &&
+				sub.player.connection.isOpen)
+				res++;
+		}
+		return res;
+	}
+
 	private usecs_t m_worldTime = 0;
 	@property usecs_t worldTime() const { return m_worldTime; }
 
@@ -327,13 +347,14 @@ final class Simulator
 		profiler.stop();
 		if (printTimings)
 			profiler.printResult();
-		if (Globals.metrics && (m_worldTime % 10_000_000 == 0))
+		if (m_id == "main_arena" &&
+			Globals.metrics && (m_worldTime % 10_000_000 == 0))
 		{
 			Globals.auxTaskPool.put(
 				task(&Globals.metrics.writeMetrics,
 						profiler, Player.getPlayersOnline()));
 			// do not send data to influx when no-one is here
-			if (Player.getPlayersOnline)
+			if (Player.getPlayersOnline())
 			{
 				Globals.auxTaskPool.put(
 					task(&Globals.metrics.writeReplayData, this));

@@ -324,7 +324,7 @@ final class BattleRoyale: Scenario
 
 		// Despawn bots when players are long gone. Saves electricity and resets
 		// difficulty.
-		if (Player.getPlayersOnline)
+		if (m_simulator.getConnectedPlayers())
 			m_lastSeenPlayer = m_simulator.worldTime;
 		else if (m_simulator.worldTime - m_lastSeenPlayer > DESPAWN_IDLE_INTERVAL)
 		{

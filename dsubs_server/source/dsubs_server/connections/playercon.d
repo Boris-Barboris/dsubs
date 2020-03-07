@@ -76,7 +76,7 @@ private:
 		}
 		catch (AuthException aex)
 		{
-			Thread.sleep(dur!"seconds"(5));
+			Thread.sleep(dur!"seconds"(2));
 			sendMessage(immutable LoginRes(false, aex.msg,
 				Globals.entityDb.commonEntityDbHash, false));
 			throw aex;
@@ -93,7 +93,7 @@ private:
 		Player p = m_player;
 		enforce!AuthException(p, "unauthorized");
 		info("Handling spawn request for ", p.name);
-		immutable(ReconnectStateRes) rres = p.handleSpawnRequest(req);
+		immutable(ReconnectStateRes) rres = p.handleSpawnRequest(req, Globals.mainArenaSim);
 		sendMessage(immutable SpawnRes(true));
 		sendMessage(rres);
 		m_simulatorFlow = true;
@@ -104,11 +104,15 @@ private:
 		Player p = m_player;
 		enforce!AuthException(p, "unauthorized");
 		info("Sending reconnect state to ", p.name);
-		synchronized(Globals.simMut.reader)
+		auto sub = p.submarine;
+		enforce(sub !is null, "Player does not have a sub");
+		immutable(ReconnectStateRes) res;
+		synchronized(sub.simulator.simMut.reader)
 		{
-			sendMessage(p.getReconnectState());
+			res = p.getReconnectState();
 			m_simulatorFlow = true;
 		}
+		sendMessage(res);
 	}
 
 	void enforceAuthAndSim(Player p)
