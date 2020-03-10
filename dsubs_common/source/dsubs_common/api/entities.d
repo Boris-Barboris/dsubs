@@ -499,3 +499,32 @@ struct ReplaySlice
 	long unixTime;
 	ReplayObjectRecord[] objects;
 }
+
+
+// scenario-related entities
+
+enum ScenarioType
+{
+	standalone,
+	tutorial,
+	campaign_mission
+}
+
+struct AvailableCampaign
+{
+	string name;
+	string description;
+	bool completed;
+	AvailableScenario[] scenarios;
+	int lastAvailableScenarioIdx;
+}
+
+struct AvailableScenario
+{
+	ScenarioType type;
+	string name;
+	// short description
+	string shortDescription;
+	// long detailed description
+	string briefing;
+}
