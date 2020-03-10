@@ -85,7 +85,10 @@ private:
 
 	void h_entityDbReq(EntityDbReq req)
 	{
-		sendBytes(Globals.entityDb.marshalledCommonEntityDb);
+		sendMessage(immutable EntityDbRes(
+			Globals.entityDb.marshalledCommonEntityDb.length.to!int,
+			Globals.entityDb.compressedCommonEntityDb
+		));
 	}
 
 	void h_spawnReq(SpawnReq req)

@@ -9,7 +9,8 @@ public import dsubs_common.api.utils;
 
 // WARNING: all structs in this module are automatically registeded as
 // complete protocol messages. Move all utility struct declarations to
-// other modules.
+// other modules. Do not alter or rearrange structures here without bumping
+// apVersion value in ServerStatusRes.
 
 /// Sent by client to check server status when opening main menu
 struct ServerStatusReq
@@ -20,8 +21,9 @@ struct ServerStatusReq
 struct ServerStatusRes
 {
 	__gshared const int g_marshIdx;
+	/// Total number of authorized players currently online.
 	int playersOnline;
-	int apiVersion = 11;
+	int apiVersion = 12;
 }
 
 /** This message requests authorization from the server.
@@ -38,21 +40,17 @@ struct LoginRes
 {
 	__gshared const int g_marshIdx;
 	bool success;
-	string welcomeMsg;	/// auth failure reason can be here
-	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
+	string welcomeMsg;	/// auth failure reason will be here
+	/// Entity database hash (SHA256). Cannot change without server restart,
+	/// hence it is constant throughout TCP session.
+	@MaxLenAttr(32) immutable(ubyte)[] dbHash;
 	/// true when the player already has a submarine to reconnect to.
 	bool alreadySpawned;
-	/// if spawn was rejected because the player has died recently, this will
-	/// be the time in seconds left until the spawn is allowed again.
-	int secsLeft;
-}
-
-/// Sent by server when it can offer an explanation on why the connection is
-/// being closed.
-struct SessionClosedRes
-{
-	__gshared const int g_marshIdx;
-	@MaxLenAttr(64) string reason;
+	/// Id of a simulator that the player has a sub in. This is the sim we
+	/// must reconnect to.
+	@MaxLenAttr(64) string simulatorId;
+	/// Name of the scenario that is loaded to the 'simulatorId' sim.
+	string simulatorScenarioName;
 }
 
 /// Sent by client when he wants to download entity database
@@ -65,9 +63,10 @@ struct EntityDbReq
 struct EntityDbRes
 {
 	__gshared const int g_marshIdx;
-	PropulsorTemplate[] propulsors;
-	SubmarineTemplate[] controllableSubs;
-	WeaponTemplate[] weapons;
+	/// length of uncompressed compressedEntityDb.
+	int uncompressedLength;
+	/// DEFLATE-compressed (phobos std.zlib) serialized EntityDb structure.
+	ubyte[] compressedEntityDb;
 }
 
 /// request to spawn with chosen loadout
@@ -79,6 +78,8 @@ struct SpawnReq
 	@MaxLenAttr(16) AmmoRoomFullState[] ammoRoomLoadouts;
 	/// Only the tubes with 'loadedOnSpawn'=true must be specified here.
 	@MaxLenAttr(16) TubeSpawnState[] loadableTubeLoadouts;
+	/// the simulator to spawn in.
+	@MaxLenAttr(64) string simulatorId;
 }
 
 /// If spawn was allowed (spawnAllowed == true), this message will be followed by

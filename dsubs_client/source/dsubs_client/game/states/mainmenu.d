@@ -268,8 +268,7 @@ final class MainMenuState: GameState
 	void handleEntityDb(EntityDbRes res)
 	{
 		info("entity db received");
-		Game.entityDb = res;
-		Game.entityManager = new EntityManager(Game.entityDb);
+		Game.setEntityDb(res);
 
 		if (alreadySpawned)
 		{

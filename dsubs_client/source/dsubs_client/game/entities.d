@@ -604,7 +604,7 @@ final class EntityManager
 	mixin Readonly!(const(WeaponTemplate)*[string], "weaponTemplates");
 
 	/// construct shape collection from entity database
-	this(const(EntityDbRes) db)
+	this(const(EntityDb) db)
 	{
 		info("building entity manager from serialized database");
 		foreach (prop; db.propulsors)

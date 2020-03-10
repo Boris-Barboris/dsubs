@@ -1,12 +1,14 @@
 module dsubs_client.game;
 
 import std.parallelism;
+import std.zlib;
 
 import core.sync.mutex;
 import core.thread;
 import core.memory: GC;
 
 import dsubs_common.api;
+import dsubs_common.api.marshalling;
 import dsubs_common.api.messages: EntityDbRes;
 
 import dsubs_client.common;
@@ -49,7 +51,8 @@ __gshared:
 
 	// entity databases in different forms
 	immutable(ubyte)[] entityDbHash;
-	EntityDbRes entityDb;
+	EntityDbRes entityDbRes;
+	EntityDb entityDb;
 	EntityManager entityManager;
 
 	/// persistent backend connection
@@ -173,6 +176,15 @@ __gshared:
 			error("window message loop crashed with ", tw.toString);
 			throw tw;
 		}
+	}
+
+	static void setEntityDb(EntityDbRes res)
+	{
+		entityDbRes = res;
+		const(ubyte)[] uncompressed = cast(const(ubyte)[]) uncompress(
+			res.compressedEntityDb, res.uncompressedLength);
+		demarshalStruct!(EntityDb)(entityDb, uncompressed);
+		entityManager = new EntityManager(entityDb);
 	}
 
 	/// clear various callbacks and objects in order to transition to another

@@ -83,7 +83,7 @@ private:
 		EntityDbRes db;
 		synchronized(Game.mainMutex)
 		{
-			db = Game.entityDb;
+			db = Game.entityDbRes;
 		}
 		sendMessage(cast(immutable CICEntityDbRes) db);
 	}

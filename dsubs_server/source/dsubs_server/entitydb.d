@@ -4,10 +4,12 @@ import std.array: array;
 import std.algorithm: map, any, filter;
 import std.digest.sha;
 import std.range: retro;
+import std.zlib: compress;
 import std.exception;
 
 import dsubs_common.api;
 import dsubs_common.api.messages;
+import dsubs_common.api.marshalling;
 import dsubs_common.math;
 
 import dsubs_sound.activesonar;
@@ -29,11 +31,17 @@ public import dsubs_server.torpedo;
 public import dsubs_server.weaponry;
 
 
+alias EntityDbStruct = dsubs_common.api.entities.EntityDb;
+
+
 
 final class EntityDb
 {
 	/// pre-marshalled entity database, ready to be send to user
 	const immutable(ubyte)[] marshalledCommonEntityDb;
+
+	/// pre-compressed marshalledCommonEntityDb.
+	const immutable(ubyte)[] compressedCommonEntityDb;
 
 	/// hash (SHA-256) of g_marshalledCommonEntityDb
 	const immutable(ubyte)[] commonEntityDbHash;
@@ -77,7 +85,7 @@ final class EntityDb
 		buildSubmarineTemplates();
 		buildTorpedoTemplates();
 		buildAnimalTemplates();
-		immutable EntityDbRes enititydb = immutable EntityDbRes(
+		immutable EntityDbStruct enititydb = immutable EntityDbStruct(
 			m_propulsors.values.filter!(a => a.playable).map!(
 				a => cast(immutable) a.tmpl).array,
 			m_submarines.values.filter!(a => a.playable).map!(
@@ -85,11 +93,18 @@ final class EntityDb
 			m_weapons.values.filter!(a => a.playable).map!(
 				a => cast(immutable) a.tmpl).array,
 		);
-		marshalledCommonEntityDb = BackendProtocol.marshal(enititydb);
+		ubyte[] rawEntityDb;
+		marshalStruct(enititydb, rawEntityDb);
+		marshalledCommonEntityDb = cast(immutable) rawEntityDb;
 		auto sha256 = new SHA256Digest();
 		sha256.put(marshalledCommonEntityDb);
 		commonEntityDbHash = cast(immutable(ubyte)[]) sha256.finish();
 		assert(commonEntityDbHash.length == 32);
+		// compression
+		compressedCommonEntityDb = cast(immutable) compress(
+			marshalledCommonEntityDb, 6);
+		info("compressed entitydb from ", marshalledCommonEntityDb.length,
+			" bytes to ", compressedCommonEntityDb.length);
 	}
 
 	/// Build submarine object from the Spawn request message

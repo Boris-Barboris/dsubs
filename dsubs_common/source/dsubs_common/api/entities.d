@@ -461,6 +461,14 @@ struct WireSnapshot
 	WirePointSnapshot[] points;
 }
 
+/// Uncompressed entitydb.
+struct EntityDb
+{
+	PropulsorTemplate[] propulsors;
+	SubmarineTemplate[] controllableSubs;
+	WeaponTemplate[] weapons;
+}
+
 
 // replay-related
 

@@ -27,7 +27,6 @@ CREATE TABLE kill_records (
     dead_hull_name TEXT,
     weapon_name TEXT,
     weapon_travelled FLOAT,
-    simulator_id TEXT
 
     FOREIGN KEY (shooter_captain_type) REFERENCES captain_type(`name`),
     FOREIGN KEY (dead_captain_type) REFERENCES captain_type(`name`)

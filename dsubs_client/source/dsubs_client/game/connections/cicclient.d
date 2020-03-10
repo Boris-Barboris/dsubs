@@ -3,6 +3,7 @@ module dsubs_client.game.connections.cicclient;
 import core.thread;
 
 import std.socket;
+import std.zlib;
 
 import dsubs_common.api;
 import dsubs_common.api.protocol;
@@ -122,9 +123,7 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
-			Game.entityDbHash = awaitedDbHash;
-			Game.entityDb = res.res;
-			Game.entityManager = new EntityManager(Game.entityDb);
+			Game.setEntityDb(res.res);
 		}
 		info("entityDb received from CIC, entering simulation flow");
 		sendMessage(immutable CICEnterSimFlowReq());
