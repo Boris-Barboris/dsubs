@@ -66,6 +66,9 @@ ALTER TABLE kill_records ADD CONSTRAINT FOREIGN KEY (simulator_id)
 
 CREATE INDEX IF NOT EXISTS sim_instance_creator_id_idx ON simulator_instances(creator_id);
 
+INSERT INTO simulator_instances (id, scenario_name, scenario_type) VALUES
+    ('main_arena', 'dsubs_server.scenario.BattleRoyale', 'main_arena');
+
 CREATE TABLE capmaign_progress (
     player_id BIGINT NOT NULL,
     campaign_name TEXT NOT NULL,
