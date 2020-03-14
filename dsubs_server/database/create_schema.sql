@@ -36,15 +36,15 @@ CREATE TABLE scenario_types (
     name varchar(32) PRIMARY KEY
 );
 
-INSERT INTO scenario_types VALUES ('standalone'), ('tutorial'), ('capmaign_mission'),
-    ('main_arena');
+INSERT INTO scenario_types VALUES ('standalone'), ('tutorial'),
+    ('capmaign_mission'), ('main_arena');
 
 CREATE TABLE simulator_destroy_reasons (
     name varchar(32) PRIMARY KEY
 );
 
-INSERT INTO simulator_destroy_reasons VALUES ('age'), ('completed'), ('death'),
-    ('abandon');
+INSERT INTO simulator_destroy_reasons VALUES
+    ('timeout'), ('completed'), ('death'), ('abandon');
 
 CREATE TABLE simulator_instances (
     id TEXT PRIMARY KEY,
@@ -63,7 +63,8 @@ CREATE TABLE simulator_instances (
 ALTER TABLE kill_records ADD CONSTRAINT FOREIGN KEY (simulator_id)
     REFERENCES simulator_instances(id);
 
-CREATE INDEX IF NOT EXISTS sim_instance_creator_id_idx ON simulator_instances(creator_id);
+CREATE INDEX IF NOT EXISTS sim_instance_creator_id_idx ON
+    simulator_instances(creator_id);
 
 INSERT INTO simulator_instances (id, scenario_name, scenario_type) VALUES
     ('main_arena', 'dsubs_server.scenario.BattleRoyale', 'main_arena');

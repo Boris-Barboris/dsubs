@@ -30,17 +30,14 @@ final class CICServer
 		bool m_dead;
 	}
 
-	mixin Readonly!(int, "spawnId");
-
 	@property BackendConnection bcon() { return m_bcon; }
 
-	this(string password, BackendConnection bcon, int spawnId = -1)
+	this(string password, BackendConnection bcon)
 	{
 		m_listener = new CICListener(this, password);
 		m_state = new CICState();
 		m_raySyncer = new RayGeneratorSynchronizer();
 		m_bcon = bcon;
-		m_spawnId = spawnId;
 	}
 
 	void start()

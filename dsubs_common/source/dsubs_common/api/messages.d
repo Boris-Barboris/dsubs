@@ -46,8 +46,7 @@ struct LoginRes
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;
 	/// true when the player already has a submarine to reconnect to.
 	bool alreadySpawned;
-	/// Id of a simulator that the player has a sub in. This is the sim we
-	/// must reconnect to.
+	/// Id of a simulator that the player has a sub in.
 	@MaxLenAttr(64) string simulatorId;
 	/// Name of the scenario that is loaded to the 'simulatorId' sim.
 	string simulatorScenarioName;
@@ -76,10 +75,12 @@ struct SpawnReq
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
 	@MaxLenAttr(16) AmmoRoomFullState[] ammoRoomLoadouts;
-	/// Only the tubes with 'loadedOnSpawn'=true must be specified here.
+	/// Only the tubes with loadedOnSpawn==true must be specified here.
 	@MaxLenAttr(16) TubeSpawnState[] loadableTubeLoadouts;
-	/// the simulator to spawn in.
-	@MaxLenAttr(64) string simulatorId;
+	SpawnRequestType type;
+	/// The simulator to spawn in or the scenario name. Interpreted according
+	/// to type field.
+	@MaxLenAttr(256) string simulatorIdOrScenarioName;
 }
 
 /// If spawn was allowed (spawnAllowed == true), this message will be followed by
@@ -108,7 +109,6 @@ struct ReconnectReq
 struct ReconnectStateRes
 {
 	__gshared const int g_marshIdx;
-	int spawnId;
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
 	KinematicSnapshot subSnap;

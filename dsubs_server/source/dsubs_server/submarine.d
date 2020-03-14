@@ -24,12 +24,10 @@ final class Submarine: Vessel
 		Hydrophone[] m_hydrophones;
 		ActiveSonar m_sonar;
 		Captain m_captain;
-		int m_spawnId;
 		Tube[int] m_tubes;
 		AmmoRoom[int] m_rooms;
 	}
 
-	@property int spawnId() const { return m_spawnId; }
 	@property Hydrophone[] hydrophones() { return m_hydrophones; }
 	@property ActiveSonar sonar() { return m_sonar; }
 
@@ -54,7 +52,6 @@ final class Submarine: Vessel
 		m_captain = captain;
 		if (m_captain)
 			m_captain.submarine = this;
-		m_spawnId = uniform(0, int.max);
 	}
 
 	Tube getTube(int id)

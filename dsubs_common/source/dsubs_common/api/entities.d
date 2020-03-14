@@ -507,9 +507,11 @@ enum ScenarioType
 {
 	standalone,
 	tutorial,
-	campaign_mission
+	campaign_mission,
+	main_arena
 }
 
+/// Collection of missions that is available.
 struct AvailableCampaign
 {
 	string name;
@@ -527,4 +529,12 @@ struct AvailableScenario
 	string shortDescription;
 	// long detailed description
 	string briefing;
+	// true if the user has a record of completion
+	bool completed;
+}
+
+enum SpawnRequestType
+{
+	existing_simulator,
+	new_simulator
 }
