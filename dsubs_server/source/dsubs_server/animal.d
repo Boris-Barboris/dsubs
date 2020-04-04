@@ -51,6 +51,7 @@ final class Animal: Killable
 	{
 		m_transform = new Transform2D();
 		m_rigidBody = new RigidBody(m_transform);
+		m_rigidBody.owner = this;
 		m_factory = f;
 	}
 
