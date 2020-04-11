@@ -143,7 +143,7 @@ class ProtocolConnection(alias Protocol)
 	{
 		if (m_closed)
 			return;
-		if (atomicOp!"+="(m_writeQueueSize, 1) > 64)
+		if (atomicOp!"+="(m_writeQueueSize, 1) > 128)
 		{
 			error(conId, " write queue overflow, closing");
 			close();
@@ -209,10 +209,9 @@ class ProtocolConnection(alias Protocol)
 	{
 		m_sock.shutdown(SocketShutdown.BOTH);
 		m_sock.close();
-		onClose(this);
 	}
 
-	/// Fired when connection and the socket were declared closed
+	/// Fired asynchronously from writer thread when the connection is closed.
 	Event!(void delegate(typeof(this))) onClose;
 
 	// first int - message type, second - body size.
@@ -303,6 +302,7 @@ class ProtocolConnection(alias Protocol)
 
 	private void writerProc()
 	{
+		scope(exit) onClose(this);
 		try
 		{
 			bool exitFlag;
