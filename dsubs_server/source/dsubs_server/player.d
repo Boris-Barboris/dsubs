@@ -152,6 +152,7 @@ final class Player: Captain
 		oldCon.player = null;
 		synchronized(this)
 		{
+			atomicOp!"-="(s_playerCount, 1);
 			if (m_connection is oldCon)
 			{
 				Submarine sub = m_submarine;
@@ -169,7 +170,6 @@ final class Player: Captain
 				}
 				else
 					m_connection = null;
-				atomicOp!"-="(s_playerCount, 1);
 			}
 		}
 	}
