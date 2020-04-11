@@ -444,21 +444,23 @@ final class TorpedoGuidance: IGuidance
 				trace(v, " is killed in explosion");
 				if (Globals.database && m_torpedo.simulator.id == "main_arena")
 				{
-					void reportFunc()
+					void reportFunc(Killable killedVessel)
 					{
 						try
 						{
 							Globals.database.insertKillRecord(
 								m_torpedo.shooterCaptain,
 								m_torpedo.shooter,
-								v, m_torpedo);
+								killedVessel, m_torpedo);
 						}
 						catch (Exception ex)
 						{
 							error("error during kill report: ", ex.toString);
 						}
 					}
-					Globals.auxTaskPool.put(task(&reportFunc));
+					Globals.auxTaskPool.put(task(
+						((Killable vv) => { reportFunc(vv); })(v)
+						));
 				}
 			}
 			else
