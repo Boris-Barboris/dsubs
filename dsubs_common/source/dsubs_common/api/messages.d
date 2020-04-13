@@ -36,11 +36,10 @@ struct LoginReq
 	@MaxLenAttr(1024) ubyte[] password;		/// maybe encrypted
 }
 
-struct LoginRes
+struct LoginSuccessRes
 {
 	__gshared const int g_marshIdx;
-	bool success;
-	string welcomeMsg;	/// auth failure reason will be here
+	string welcomeMsg;
 	/// Entity database hash (SHA256). Cannot change without server restart,
 	/// hence it is constant throughout TCP session.
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;
@@ -50,6 +49,15 @@ struct LoginRes
 	string simulatorId;
 	/// Name of the scenario that is loaded to the 'simulatorId' sim.
 	string simulatorScenarioName;
+	// scenario-related collections
+	AvailableCampaign[] campaigns;
+	AvailableScenario[] scenarios;
+}
+
+struct LoginFailureRes
+{
+	__gshared const int g_marshIdx;
+	string reason;
 }
 
 /// Sent by client when he wants to download entity database

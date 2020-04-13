@@ -473,7 +473,7 @@ struct EntityDbShort
 {
 	string[] propulsorNames;
 	string[] controllableSubNames;
-	string[] weaponsNames;
+	string[] weaponNames;
 }
 
 
