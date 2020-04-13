@@ -20,6 +20,7 @@ abstract class Killable
 	private
 	{
 		bool m_dead;
+		usecs_t m_registerTime;
 		usecs_t m_deathTime;
 		string m_causeOfDeath;
 		Simulator m_simulator;
@@ -29,6 +30,7 @@ abstract class Killable
 	{
 		@property bool dead() const { return m_dead; }
 		@property usecs_t deathTime() const { return m_deathTime; }
+		@property usecs_t registerTime() const { return m_registerTime; }
 		@property string causeOfDeath() const { return m_causeOfDeath; }
 		@property inout(Simulator) simulator() inout { return m_simulator; }
 	}
@@ -36,6 +38,7 @@ abstract class Killable
 	final protected void registerSimulator(Simulator sim)
 	{
 		m_simulator = sim;
+		m_registerTime = sim.worldTime;
 	}
 
 	/// Ensure that the vessel is dead. Returns true if it was killed first time.
