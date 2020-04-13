@@ -1005,7 +1005,8 @@ final class AICaptain
 			m_lastPing = simulator.worldTime;
 			ActiveSonar sonar = m_crew.submarine.sonar;
 			float maxIlevel = sonar.proto.maxPeakIlevel;
-			SonarPing ping = sonar.startPing(m_power * maxIlevel);
+			float minIlevel = sonar.proto.minPeakIlevel;
+			SonarPing ping = sonar.startPing(minIlevel + m_power * (maxIlevel - minIlevel));
 			simulator.acous.registerSource(ping);
 			ReflectorImprint[] imprints = sonar.estimateReflectors(simulator.acous.reflectors);
 			// ping returned imprints
