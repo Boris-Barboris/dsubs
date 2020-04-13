@@ -1204,7 +1204,7 @@ final class AICaptain
 					and after 2 minutes alive", () =>
 					simulator.worldTime - m_crew.submarine.registerTime > 120_000_000L &&
 					simulator.worldTime - m_lastPing > 300_000_000L),
-				new RequestPing(0.5f)
+				new RequestPing(0.75f)
 			]),
 			new FallbackNode("when we have main target", [
 				new DropStaleMainTarget(),
@@ -1260,7 +1260,7 @@ final class AICaptain
 						and after 2 minutes alive", () =>
 						simulator.worldTime - m_crew.submarine.registerTime > 120_000_000L &&
 						simulator.worldTime - m_lastPing > 300_000_000L),
-					new RequestPing(0.75f)
+					new RequestPing(0.85f)
 				]),
 				new SequenceNode("Active ping when in danger", [
 					new ConditionNode("There is danger", () =>
