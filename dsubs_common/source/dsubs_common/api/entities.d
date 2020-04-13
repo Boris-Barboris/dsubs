@@ -469,6 +469,13 @@ struct EntityDb
 	WeaponTemplate[] weapons;
 }
 
+struct EntityDbShort
+{
+	string[] propulsorNames;
+	string[] controllableSubNames;
+	string[] weaponsNames;
+}
+
 
 // replay-related
 
@@ -507,11 +514,12 @@ enum ScenarioType
 {
 	standalone,
 	tutorial,
-	campaign_mission,
-	main_arena
+	campaignMission,
+	/// Special scenario that has a persistent simulator instance serving it.
+	persistentSimulator
 }
 
-/// Collection of missions that is available.
+/// Collection of missions that must be completed one-by-one.
 struct AvailableCampaign
 {
 	string name;
@@ -525,16 +533,21 @@ struct AvailableScenario
 {
 	ScenarioType type;
 	string name;
-	// short description
 	string shortDescription;
-	// long detailed description
-	string briefing;
-	// true if the user has a record of completion
+	string fullDescription;
+	/// When type is persistentSimulator, this is the id of the sim to spawn in.
+	string simulatorId;
+	/// true if the user has a record of completion
 	bool completed;
+	/// part of the entityDb that is allowed for usage in this scenario.
+	EntityDbShort allowedEntities;
 }
 
 enum SpawnRequestType
 {
-	existing_simulator,
-	new_simulator
+	/// Used for persistentSimulator scenarios when the client wishes to spawn
+	/// in an already-running sim.
+	existingSimulator,
+	/// Request to create a new simulator for a scenario and spawn there.
+	newSimulator
 }

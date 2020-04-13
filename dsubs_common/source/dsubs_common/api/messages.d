@@ -27,7 +27,7 @@ struct ServerStatusRes
 }
 
 /** This message requests authorization from the server.
-After authorization succeeded, you must not send any more of those.
+After authorization succeeded, client must not send any more of these.
 Authorization is done only once for TCP connection. */
 struct LoginReq
 {
@@ -47,7 +47,7 @@ struct LoginRes
 	/// true when the player already has a submarine to reconnect to.
 	bool alreadySpawned;
 	/// Id of a simulator that the player has a sub in.
-	@MaxLenAttr(64) string simulatorId;
+	string simulatorId;
 	/// Name of the scenario that is loaded to the 'simulatorId' sim.
 	string simulatorScenarioName;
 }
@@ -68,7 +68,7 @@ struct EntityDbRes
 	ubyte[] compressedEntityDb;
 }
 
-/// request to spawn with chosen loadout
+/// If the player is not already spawned, he can request to spawn with chosen loadout.
 struct SpawnReq
 {
 	__gshared const int g_marshIdx;
@@ -77,25 +77,22 @@ struct SpawnReq
 	@MaxLenAttr(16) AmmoRoomFullState[] ammoRoomLoadouts;
 	/// Only the tubes with loadedOnSpawn==true must be specified here.
 	@MaxLenAttr(16) TubeSpawnState[] loadableTubeLoadouts;
+	/// You either request to spawn in a new simulator or in existing one.
 	SpawnRequestType type;
-	/// The simulator to spawn in or the scenario name. Interpreted according
-	/// to type field.
+	/// The simulator to spawn in or the scenario name.
 	@MaxLenAttr(256) string simulatorIdOrScenarioName;
 }
 
-/// If spawn was allowed (spawnAllowed == true), this message will be followed by
+/// If spawn was successfull (spawnAccepted == true), this message will be followed by
 /// ReconnectStateRes.
 struct SpawnRes
 {
 	__gshared const int g_marshIdx;
-	/// true when the server has accepted your spawn request
-	bool spawnAllowed;
-	/// if spawn was rejected because the player has died recently, this will
-	/// be the time in seconds left until the spawn is allowed again.
-	int secsLeft;
+	bool spawnAccepted;
+	string rejectionReason;
 }
 
-/// request to reconnect to existing submarine. Should be issued
+/// Request to reconnect to existing submarine. Should be issued
 /// instead of SpawnReq when 'alreadySpawned' from LoginRes was true.
 /// Server will reply with ReconnectStateRes and resume normal
 /// simulator flow message streaming.
