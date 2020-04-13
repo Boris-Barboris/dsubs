@@ -54,6 +54,12 @@ final class AIAcoustic
 			h.shouldBeActive = true;
 			h.maintainImprints = true;
 		}
+		// if we are not an easy bot we use towed arrays
+		if (m_difficulty >= BOT_DIFFICULTY.medium)
+		{
+			foreach (wire; m_crew.submarine.rigidBody.wires)
+				wire.desiredLength = wire.maxLength * 0.75f;
+		}
 	}
 
 	private
@@ -91,6 +97,8 @@ final class AIAcoustic
 			m_lastImprints.length = 0;
 			foreach (Hydrophone h; sub.hydrophones)
 			{
+				if (!h.active)
+					continue;
 				// trace("Acoustic sees: ", h.imprints);
 				m_lastImprints ~= h.imprints.filter!(imp =>
 					imp.source.owner &&
