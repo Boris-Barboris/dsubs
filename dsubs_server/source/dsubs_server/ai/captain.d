@@ -993,7 +993,7 @@ final class AICaptain
 		private float m_detectionMargin = 0.0f;
 		private float m_power = 1.0f;
 
-		enum float CLASSIFICATION_MARGIN = 30.0f;
+		enum float CLASSIFICATION_MARGIN = 50.0f;
 
 		override @property bool shouldBeRunning()
 		{
@@ -1195,16 +1195,14 @@ final class AICaptain
 			new FallbackNode("use or find main target", [
 				new ConditionNode("do we have main target?",
 					() => m_mainTarget !is null),
-				new ChooseClosestEnemyContact()
-			]),
-			new SequenceNode("Rare ping when in search mode", [
-				new ConditionNode("There is no target", () =>
-					m_mainTarget is null),
-				new ConditionNode("Ping not more than once in 5 minutes
-					and after 2 minutes alive", () =>
-					(simulator.worldTime - m_crew.submarine.registerTime > 120_000_000L) &&
-					(simulator.worldTime - m_lastPing > 300_000_000L)),
-				new RequestPing(0.75f)
+				new ChooseClosestEnemyContact(),
+				new SequenceNode("Rare ping when in search mode", [
+					new ConditionNode("Ping not more than once in 5 minutes
+						and after 3 minutes alive", () =>
+						(simulator.worldTime - m_crew.submarine.registerTime > 180_000_000L) &&
+						(simulator.worldTime - m_lastPing > 300_000_000L)),
+					new RequestPing(0.4f)
+				])
 			]),
 			new FallbackNode("when we have main target", [
 				new DropStaleMainTarget(),
