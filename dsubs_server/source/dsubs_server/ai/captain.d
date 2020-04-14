@@ -1202,8 +1202,8 @@ final class AICaptain
 					m_mainTarget is null),
 				new ConditionNode("Ping not more than once in 5 minutes
 					and after 2 minutes alive", () =>
-					simulator.worldTime - m_crew.submarine.registerTime > 120_000_000L &&
-					simulator.worldTime - m_lastPing > 300_000_000L),
+					(simulator.worldTime - m_crew.submarine.registerTime > 120_000_000L) &&
+					(simulator.worldTime - m_lastPing > 300_000_000L)),
 				new RequestPing(0.75f)
 			]),
 			new FallbackNode("when we have main target", [
@@ -1258,8 +1258,8 @@ final class AICaptain
 						m_mainDanger is null && m_mainTarget is null),
 					new ConditionNode("Ping not more than once in 5 minutes
 						and after 2 minutes alive", () =>
-						simulator.worldTime - m_crew.submarine.registerTime > 120_000_000L &&
-						simulator.worldTime - m_lastPing > 300_000_000L),
+						(simulator.worldTime - m_crew.submarine.registerTime > 120_000_000L) &&
+						(simulator.worldTime - m_lastPing > 300_000_000L)),
 					new RequestPing(0.85f)
 				]),
 				new SequenceNode("Active ping when in danger", [
