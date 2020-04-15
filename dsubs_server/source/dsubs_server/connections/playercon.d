@@ -28,6 +28,9 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 	private
 	{
 		Player m_player;
+		/// True when the connection is sending simulator-related messages to the client.
+		/// Requested to be set to true by the client when either spawning or
+		/// reconnecting.
 		bool m_simulatorFlow;
 		RSAKeyInfo m_backendPrivKeyInfo;
 	}
@@ -118,37 +121,37 @@ private:
 		sendMessage(cast(immutable) res);
 	}
 
-	void enforceAuthAndSim(Player p)
+	/// Return false if not in simulator message flow.
+	void enforceAuth(Player p)
 	{
 		enforce!AuthException(p, "unauthorized");
-		enforce!Exception(m_simulatorFlow, "not in simulator flow");
 	}
 
 	void h_throttleReq(ThrottleReq req)
 	{
 		Player p = m_player;
-		enforceAuthAndSim(p);
+		enforceAuth(p);
 		p.handleThrottleRequest(req);
 	}
 
 	void h_courseReq(CourseReq req)
 	{
 		Player p = m_player;
-		enforceAuthAndSim(p);
+		enforceAuth(p);
 		p.handleCourseRequest(req);
 	}
 
 	void h_listenDirReq(ListenDirReq req)
 	{
 		Player p = m_player;
-		enforceAuthAndSim(p);
+		enforceAuth(p);
 		p.handleListenDirRequest(req);
 	}
 
 	void h_emitPingReq(EmitPingReq req)
 	{
 		Player p = m_player;
-		enforceAuthAndSim(p);
+		enforceAuth(p);
 		info(p.name, " requests ping");
 		p.handleEmitPingRequest(req);
 	}
@@ -156,21 +159,21 @@ private:
 	void h_loadTubeReq(LoadTubeReq req)
 	{
 		Player p = m_player;
-		enforceAuthAndSim(p);
+		enforceAuth(p);
 		p.handleLoadTubeReq(req);
 	}
 
 	void h_setTubeStateReq(SetTubeStateReq req)
 	{
 		Player p = m_player;
-		enforceAuthAndSim(p);
+		enforceAuth(p);
 		p.handleSetTubeStateReq(req);
 	}
 
 	void h_launchTubeReq(LaunchTubeReq req)
 	{
 		Player p = m_player;
-		enforceAuthAndSim(p);
+		enforceAuth(p);
 		info(p.name, " requests tube launch: ", req);
 		p.handleLaunchTubeReq(req);
 	}
@@ -178,7 +181,7 @@ private:
 	void h_wireDesiredLengthReq(WireDesiredLengthReq req)
 	{
 		Player p = m_player;
-		enforceAuthAndSim(p);
+		enforceAuth(p);
 		p.handleWireDesiredLengthReq(req);
 	}
 

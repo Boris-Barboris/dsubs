@@ -524,23 +524,28 @@ struct AvailableCampaign
 {
 	string name;
 	string description;
+	/// the player has completed all missions earlier.
 	bool completed;
+	/// Only available scenarios are listed here. Unknown number is hidden.
 	AvailableScenario[] scenarios;
-	int lastAvailableScenarioIdx;
 }
 
 struct AvailableScenario
 {
 	ScenarioType type;
+	/// Globally-unique human-readable scenario name.
 	string name;
 	string shortDescription;
 	string fullDescription;
-	/// When type is persistentSimulator, this is the id of the sim to spawn in.
-	string simulatorId;
 	/// true if the user has a record of completion
 	bool completed;
 	/// part of the entityDb that is allowed for usage in this scenario.
 	EntityDbShort allowedEntities;
+	/// When type is persistentSimulator, this is the id of the sim to spawn in.
+	string simulatorId;
+	/// For persistent scenarios this is the approximate number of players that are
+	/// playing int it's simulator.
+	int playerCount;
 }
 
 enum SpawnRequestType

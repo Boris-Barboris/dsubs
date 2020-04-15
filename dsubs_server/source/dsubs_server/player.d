@@ -199,10 +199,10 @@ final class Player: Captain
 			Submarine sub = m_submarine;
 			if (sub)
 			{
-				if (sub.dead)
-					throw new Exception("submarine is dead");
 				synchronized(sub.simulator.simMut.reader)
 				{
+					if (sub.dead)
+						throw new Exception("submarine is dead");
 					foreach (h; sub.hydrophones)
 						h.shouldBeActive = true;
 					sub.sonar.active = true;
@@ -265,7 +265,7 @@ final class Player: Captain
 		}
 	}
 
-	/// Tru to get the simulator from player's submarine.
+	/// Try to get the simulator from player's submarine.
 	@property Simulator simulator()
 	{
 		Submarine sub = m_submarine;
@@ -279,8 +279,7 @@ final class Player: Captain
 		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
-			enforce(s, "player has no submarine, unable to set throttle");
-			if (s.dead)
+			if (s is null || s.dead)
 				return;
 			s.targetThrottle = req.target;
 		}
@@ -291,8 +290,7 @@ final class Player: Captain
 		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
-			enforce(s, "player has no submarine, unable to set course");
-			if (s.dead)
+			if (s is null || s.dead)
 				return;
 			s.targetCourse = req.target - coordRot;
 		}
@@ -303,8 +301,7 @@ final class Player: Captain
 		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
-			enforce(s, "player has no submarine, unable to listenDir");
-			if (s.dead)
+			if (s is null || s.dead)
 				return;
 			int hcount = s.hydrophones.length.to!int;
 			enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < hcount, "no such hydrophone");
@@ -317,8 +314,7 @@ final class Player: Captain
 		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
-			enforce(s, "player has no submarine, unable to EmitPingReq");
-			if (s.dead)
+			if (s is null || s.dead)
 				return;
 			enforce(req.sonarIdx == 0, "no such sonar");
 			usecs_t worldTime = simulator.worldTime;
@@ -339,8 +335,7 @@ final class Player: Captain
 		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
-			enforce(s, "player has no submarine, unable to EmitPingReq");
-			if (s.dead)
+			if (s is null || s.dead)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			TubeOperationResult topRes = tube.processLoadRequest(req.weaponName);
@@ -357,8 +352,7 @@ final class Player: Captain
 		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
-			enforce(s, "player has no submarine, unable to EmitPingReq");
-			if (s.dead)
+			if (s is null || s.dead)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			TubeOperationResult topRes = tube.processStateRequest(req.desiredState);
@@ -374,8 +368,7 @@ final class Player: Captain
 		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
-			enforce(s, "player has no submarine, unable to WireDesiredLengthReq");
-			if (s.dead)
+			if (s is null || s.dead)
 				return;
 			enforce(req.wireIdx >= 0 && req.wireIdx < s.rigidBody.wires.length,
 				"invalid wire index");
@@ -388,8 +381,7 @@ final class Player: Captain
 		synchronized(simulator.simMut.reader)
 		{
 			Submarine s = m_submarine;
-			enforce(s, "player has no submarine, unable to EmitPingReq");
-			if (s.dead)
+			if (s is null || s.dead)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			// reference frame translation for courses

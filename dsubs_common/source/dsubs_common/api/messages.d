@@ -49,15 +49,23 @@ struct LoginSuccessRes
 	string simulatorId;
 	/// Name of the scenario that is loaded to the 'simulatorId' sim.
 	string simulatorScenarioName;
-	// scenario-related collections
-	AvailableCampaign[] campaigns;
-	AvailableScenario[] scenarios;
+	/// and it's scenario type
+	ScenarioType simulatorScenarioType;
 }
 
 struct LoginFailureRes
 {
 	__gshared const int g_marshIdx;
 	string reason;
+}
+
+/// If the user is not spawned, right after LoginSuccessRes the server sends this message.
+/// Can also follow AbandonReq.
+struct AvailableScenariosRes
+{
+	__gshared const int g_marshIdx;
+	AvailableCampaign[] campaigns;
+	AvailableScenario[] scenarios;
 }
 
 /// Sent by client when he wants to download entity database
@@ -98,6 +106,14 @@ struct SpawnRes
 	__gshared const int g_marshIdx;
 	bool spawnAccepted;
 	string rejectionReason;
+	string simulatorId;
+}
+
+/// Request to abandon an existing submarine and simulator. Will not be satisfied for persistent
+/// simulators like the main arena. If satisfied, will be followed by AvailableScenariosRes.
+struct AbandonReq
+{
+	__gshared const int g_marshIdx;
 }
 
 /// Request to reconnect to existing submarine. Should be issued
@@ -279,7 +295,7 @@ struct WireDesiredLengthReq
 // Replay-related messages
 //
 
-/// Request to get replay data from the server for a given day.
+/// Request to get replay data from the server for a given day. Does not require authorization.
 struct ReplayGetDataReq
 {
 	__gshared const int g_marshIdx;
