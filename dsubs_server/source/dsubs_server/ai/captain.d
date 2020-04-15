@@ -972,9 +972,10 @@ final class AICaptain
 
 	private final class RequestPing: FixedCostActionNode
 	{
-		this(string file = __FILE__, size_t line = __LINE__)
+		this(float power = 1.0f, string file = __FILE__, size_t line = __LINE__)
 		{
 			super("Emit one max-power sonar ping", 1000, false, file, line);
+			m_power = power;
 			final switch (m_difficulty)
 			{
 				case (BOT_DIFFICULTY.easy):
@@ -990,8 +991,9 @@ final class AICaptain
 		}
 
 		private float m_detectionMargin = 0.0f;
+		private float m_power = 1.0f;
 
-		enum float CLASSIFICATION_MARGIN = 100.0f;
+		enum float CLASSIFICATION_MARGIN = 50.0f;
 
 		override @property bool shouldBeRunning()
 		{
@@ -1003,7 +1005,8 @@ final class AICaptain
 			m_lastPing = simulator.worldTime;
 			ActiveSonar sonar = m_crew.submarine.sonar;
 			float maxIlevel = sonar.proto.maxPeakIlevel;
-			SonarPing ping = sonar.startPing(maxIlevel);
+			float minIlevel = sonar.proto.minPeakIlevel;
+			SonarPing ping = sonar.startPing(minIlevel + m_power * (maxIlevel - minIlevel));
 			simulator.acous.registerSource(ping);
 			ReflectorImprint[] imprints = sonar.estimateReflectors(simulator.acous.reflectors);
 			// ping returned imprints
@@ -1019,7 +1022,8 @@ final class AICaptain
 				if (v !in m_crew.state.contacts)
 				{
 					Contact* newCtc = new Contact(v);
-					trace("Adding new contact for reflector imprint ", ri);
+					trace("Adding new contact for reflector imprint ", ri,
+						", vessel ", v);
 					m_crew.state.contacts[v] = newCtc;
 				}
 				Contact* ctc = m_crew.state.contacts[v];
@@ -1185,13 +1189,20 @@ final class AICaptain
 
 	private BehavourTreeNode easyCombatTree()
 	{
-		BehavourTreeNode node = new SequenceNode("Simply attack if if possible", [
+		BehavourTreeNode node = new SequenceNode("Simply attack if possible", [
 			new ConditionNode("if we have ammo",
 				() => m_crew.submarine.haveTorpedoes),
 			new FallbackNode("use or find main target", [
 				new ConditionNode("do we have main target?",
 					() => m_mainTarget !is null),
-				new ChooseClosestEnemyContact()
+				new ChooseClosestEnemyContact(),
+				new SequenceNode("Rare ping when in search mode", [
+					new ConditionNode("Ping not more than once in 5 minutes
+						and after 3 minutes alive", () =>
+						(simulator.worldTime - m_crew.submarine.registerTime > 180_000_000L) &&
+						(simulator.worldTime - m_lastPing > 300_000_000L)),
+					new RequestPing(0.4f)
+				])
 			]),
 			new FallbackNode("when we have main target", [
 				new DropStaleMainTarget(),
@@ -1240,11 +1251,20 @@ final class AICaptain
 						simulator.worldTime - m_lastFire > 90_000_000L),
 					new FireOneTorpedoOnDanger()
 				]),
-				new SequenceNode("Rare active ping when in combat", [
+				new SequenceNode("Rare ping when in search mode", [
+					new ConditionNode("There is no danger", () =>
+						m_mainDanger is null && m_mainTarget is null),
+					new ConditionNode("Ping not more than once in 5 minutes
+						and after 2 minutes alive", () =>
+						(simulator.worldTime - m_crew.submarine.registerTime > 120_000_000L) &&
+						(simulator.worldTime - m_lastPing > 300_000_000L)),
+					new RequestPing(0.85f)
+				]),
+				new SequenceNode("Active ping when in danger", [
 					new ConditionNode("There is danger", () =>
 						m_mainDanger !is null),
-					new ConditionNode("Ping not more than once in 3 minutes", () =>
-						simulator.worldTime - m_lastPing > 180_000_000L),
+					new ConditionNode("Ping not more than once in 2 minutes", () =>
+						simulator.worldTime - m_lastPing > 120_000_000L),
 					new RequestPing()
 				]),
 				new SequenceNode("General attack sequence", [
