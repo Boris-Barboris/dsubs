@@ -1,7 +1,6 @@
 module dsubs_client.game;
 
 import std.parallelism;
-import std.zlib;
 
 import core.sync.mutex;
 import core.thread;
@@ -51,7 +50,6 @@ __gshared:
 
 	// entity databases in different forms
 	immutable(ubyte)[] entityDbHash;
-	EntityDbRes entityDbRes;
 	EntityDb entityDb;
 	EntityManager entityManager;
 
@@ -180,10 +178,7 @@ __gshared:
 
 	static void setEntityDb(EntityDbRes res)
 	{
-		entityDbRes = res;
-		const(ubyte)[] uncompressed = cast(const(ubyte)[]) uncompress(
-			res.compressedEntityDb, res.uncompressedLength);
-		demarshalStruct!(EntityDb)(entityDb, uncompressed);
+		entityDb = res.entityDb;
 		entityManager = new EntityManager(entityDb);
 	}
 

@@ -13,7 +13,7 @@ public import dsubs_client.game.cic.entities;
 struct CICLoginReq
 {
 	__gshared const int g_marshIdx;
-	@MaxLenAttr(64) string password;
+	@MaxLenAttr(256) string password;
 }
 
 /// CIC server hello response that states the version
@@ -21,7 +21,7 @@ struct CICLoginRes
 {
 	__gshared const int g_marshIdx;
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
-	int apiVersion = 6;
+	int apiVersion = 7;
 }
 
 /// CIC client sends this to receive entity DB
@@ -41,13 +41,15 @@ struct CICEnterSimFlowReq
 Messages that duplicate backend protocol messages
 */
 
+@Compressed
 struct CICEntityDbRes
 {
 	__gshared const int g_marshIdx;
-	EntityDbRes res;
+	EntityDb res;
 	alias res this;
 }
 
+@Compressed
 struct CICReconnectStateRes
 {
 	__gshared const int g_marshIdx;

@@ -3,7 +3,6 @@ module dsubs_client.game.connections.cicclient;
 import core.thread;
 
 import std.socket;
-import std.zlib;
 
 import dsubs_common.api;
 import dsubs_common.api.protocol;

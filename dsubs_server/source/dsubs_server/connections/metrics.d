@@ -6,7 +6,6 @@ import std.base64: Base64;
 import std.array: array;
 import std.string: representation;
 import std.array: Appender, appender;
-import std.zlib;
 import std.datetime;
 import std.json;
 

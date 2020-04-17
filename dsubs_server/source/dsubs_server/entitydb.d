@@ -4,7 +4,6 @@ import std.array: array;
 import std.algorithm: map, any, filter;
 import std.digest.sha;
 import std.range: retro;
-import std.zlib: compress;
 import std.exception;
 
 import dsubs_common.api;
@@ -37,13 +36,10 @@ alias EntityDbStruct = dsubs_common.api.entities.EntityDb;
 
 final class EntityDb
 {
-	/// pre-marshalled entity database, ready to be send to user
+	/// pre-marshalled entity database message, ready to be send to user.
 	const immutable(ubyte)[] marshalledCommonEntityDb;
 
-	/// pre-compressed marshalledCommonEntityDb.
-	const immutable(ubyte)[] compressedCommonEntityDb;
-
-	/// hash (SHA-256) of g_marshalledCommonEntityDb
+	/// hash (SHA-256) of marshalledCommonEntityDb
 	const immutable(ubyte)[] commonEntityDbHash;
 
 	private
@@ -93,18 +89,11 @@ final class EntityDb
 			m_weapons.values.filter!(a => a.playable).map!(
 				a => cast(immutable) a.tmpl).array,
 		);
-		ubyte[] rawEntityDb;
-		marshalStruct(enititydb, rawEntityDb);
-		marshalledCommonEntityDb = cast(immutable) rawEntityDb;
+		marshalledCommonEntityDb = BackendProtocol.marshal(&enititydb);
 		auto sha256 = new SHA256Digest();
 		sha256.put(marshalledCommonEntityDb);
 		commonEntityDbHash = cast(immutable(ubyte)[]) sha256.finish();
 		assert(commonEntityDbHash.length == 32);
-		// compression
-		compressedCommonEntityDb = cast(immutable) compress(
-			marshalledCommonEntityDb, 6);
-		info("compressed entitydb from ", marshalledCommonEntityDb.length,
-			" bytes to ", compressedCommonEntityDb.length);
 	}
 
 	/// Build submarine object from the Spawn request message

@@ -80,10 +80,7 @@ struct EntityDbReq
 struct EntityDbRes
 {
 	__gshared const int g_marshIdx;
-	/// length of uncompressed compressedEntityDb.
-	int uncompressedLength;
-	/// DEFLATE-compressed (phobos std.zlib) serialized EntityDb structure.
-	ubyte[] compressedEntityDb;
+	EntityDb entityDb;
 }
 
 /// If the player is not already spawned, he can request to spawn with chosen loadout.
