@@ -458,6 +458,7 @@ struct WireSnapshot
 	usecs_t atTime;
 	/// world position of the attachment point
 	vec2d attachPosition;
+	/// if empty, no wire segments are extended
 	WirePointSnapshot[] points;
 }
 
@@ -555,4 +556,11 @@ enum SpawnRequestType
 	existingSimulator,
 	/// Request to create a new simulator for a scenario and spawn there.
 	newSimulator
+}
+
+enum SimFlowEndReason
+{
+	death,
+	win,
+	simulatorStopped
 }

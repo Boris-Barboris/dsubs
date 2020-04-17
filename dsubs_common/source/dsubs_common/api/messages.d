@@ -47,9 +47,9 @@ struct LoginSuccessRes
 	bool alreadySpawned;
 	/// Id of a simulator that the player has a sub in.
 	string simulatorId;
-	/// Name of the scenario that is loaded to the 'simulatorId' sim.
+	/// Name of the scenario that is loaded to the 'simulatorId' sim...
 	string simulatorScenarioName;
-	/// and it's scenario type
+	/// ... and it's scenario type.
 	ScenarioType simulatorScenarioType;
 }
 
@@ -60,8 +60,17 @@ struct LoginFailureRes
 	string reason;
 }
 
+/// Explicit request to query AvailableScenariosRes. Should be sent after death
+/// when the user has read the de-brief and wishes to return to main spawn menu again.
+struct AvailableScenariosReq
+{
+	__gshared const int g_marshIdx;
+}
+
 /// If the user is not spawned, right after LoginSuccessRes the server sends this message.
-/// Also is a result of successfull AbandonReq handling.
+/// Also is a result of successfull AbandonReq handling. Effectively is used to render
+/// main menu.
+@Compressed
 struct AvailableScenariosRes
 {
 	__gshared const int g_marshIdx;
@@ -98,18 +107,21 @@ struct SpawnReq
 	@MaxLenAttr(256) string simulatorIdOrScenarioName;
 }
 
-/// If spawn was successfull (spawnAccepted == true), this message will be followed by
-/// ReconnectStateRes.
-struct SpawnRes
+/// Followed by ReconnectStateRes.
+struct SpawnSuccessRes
 {
 	__gshared const int g_marshIdx;
-	bool spawnAccepted;
-	string rejectionReason;
 	string simulatorId;
 }
 
-/// Request to abandon an existing submarine and simulator. Will not be satisfied for persistent
-/// simulators like the main arena. If satisfied, will be followed by AvailableScenariosRes.
+struct SpawnFailureRes
+{
+	__gshared const int g_marshIdx;
+	string reason;
+}
+
+/// Request to abandon an existing submarine and simulator. Will not be accepted for persistent
+/// simulators like the main arena. If accepted, will be followed by AvailableScenariosRes.
 struct AbandonReq
 {
 	__gshared const int g_marshIdx;
@@ -210,11 +222,13 @@ struct EmitPingReq
 	float ilevel;	/// intensity level
 }
 
-/// Server sends when the player dies.
-struct DeathRes
+/// Server sends when client's submarine is no longer alive for various reasons.
+/// To return to main menu, client should send AvailableScenariosReq.
+struct SimFlowEndRes
 {
 	__gshared const int g_marshIdx;
-	string cause;
+	SimFlowEndReason reason;
+	string shortReport;
 	string longReport;
 }
 

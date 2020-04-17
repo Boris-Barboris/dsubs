@@ -153,6 +153,7 @@ struct CICMapOverlayUpdateRes
 	MapOverlayUpdateRes res;
 }
 
+@Compressed
 struct CICChatMessageRes
 {
 	__gshared const int g_marshIdx;
