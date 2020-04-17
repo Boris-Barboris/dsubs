@@ -14,6 +14,9 @@ struct MaxLenAttr
 	int maxLength = 4096;
 }
 
+/// UDA to decorade mesages that are transparently compressed.
+struct Compressed {}
+
 class ProtocolException: Exception
 {
 	mixin ExceptionConstructors;

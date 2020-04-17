@@ -6,7 +6,9 @@ import std.traits;
 import std.meta;
 import std.utf: validate;
 import std.math: isNaN, isInfinity;
+import std.zlib;
 
+import dsubs_common.api.constants;
 import dsubs_common.api.utils;
 import dsubs_common.meta;
 
@@ -22,24 +24,59 @@ alias MsgDemarshallerFunc = void function(void* outMsgPtr, const(ubyte)[] data);
 void demarshalMessage(MsgT)(MsgT* outMsgPtr, const(ubyte)[] data)
 	if (is(MsgT == struct))
 {
-	demarshalStruct(*outMsgPtr, data);
-	enforce!ProtocolException(data.length == 0, "Leftover data after demarshalling");
+	static if (hasAnnotation!(MsgT, Compressed))
+	{
+		// first 4 bytes are an int that contains uncompressed length of a struct
+		enforce!ProtocolException(data.length >= 4, "Compression header missing");
+		int uncompressedLen = *(cast(int*) &data[0]);
+		enforce!ProtocolException(uncompressedLen <= MAX_MSG_SIZE,
+			"Uncompressed message too big");
+		const(ubyte)[] uncompressedStructBuf = cast(const(ubyte)[]) uncompress(
+			data[4..$], uncompressedLen);
+		demarshalStruct(*outMsgPtr, uncompressedStructBuf);
+		enforce!ProtocolException(uncompressedStructBuf.length == 0,
+			"Leftover data after demarshalling");
+	}
+	else
+	{
+		demarshalStruct(*outMsgPtr, data);
+		enforce!ProtocolException(data.length == 0, "Leftover data after demarshalling");
+	}
 }
 
 immutable(ubyte)[] marshalMessage(MsgT)(immutable(MsgT)* msg)
 	if (is(MsgT == struct))
 {
 	assert(msg);
-	// 4 bytes on message type, 4 on message size. Then recursively descend into the
+	// Recursively descend into the
 	// structure type and get the size of the byte buffer
 	int byteCount = 0;
 	getStructMarshLen!MsgT(*msg, byteCount);
-	ubyte[] buf = new ubyte[byteCount + 8];
-	*(cast(int*) &buf[0]) = MsgT.g_marshIdx;
-	*(cast(int*) &buf[4]) = byteCount;
-	ubyte[] volatileBuf = buf[8 .. $];
-	marshalStruct!MsgT(*msg, volatileBuf);
-	return cast(immutable(ubyte)[]) buf;
+	// 4 bytes on message type and 4 on size
+	ubyte[] headerBuf = new ubyte[8];
+	*(cast(int*) &headerBuf[0]) = MsgT.g_marshIdx;
+	ubyte[] uncompressedBuf = new ubyte[byteCount];
+	ubyte[] uncompressedBufCopy = uncompressedBuf;
+	marshalStruct!MsgT(*msg, uncompressedBufCopy);
+	static if (hasAnnotation!(MsgT, Compressed))
+	{
+		ubyte[] compressedBuf = compress(uncompressedBuf, 6);
+		// compressed struct is serialized to 4-byte int that
+		// specifies the uncompressed size in bytes and
+		// compressed byte array right after it
+		ubyte[4] uncompressedLenBuf;
+		*(cast(int*) &uncompressedLenBuf[0]) = byteCount;
+		// size excludes 8-byte header.
+		byteCount = (4 + compressedBuf.length).to!int;
+		*(cast(int*) &headerBuf[4]) = byteCount;
+		return cast(immutable(ubyte)[]) (headerBuf ~ uncompressedLenBuf[] ~ compressedBuf);
+	}
+	else
+	{
+		// size excludes 8-byte header.
+		*(cast(int*) &headerBuf[4]) = byteCount;
+		return cast(immutable(ubyte)[]) (headerBuf ~ uncompressedBuf);
+	}
 }
 
 

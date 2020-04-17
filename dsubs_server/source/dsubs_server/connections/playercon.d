@@ -1,7 +1,6 @@
 module dsubs_server.connections.playercon;
 
 import std.socket;
-import std.zlib;
 import std.datetime;
 
 import core.atomic;
@@ -193,16 +192,10 @@ private:
 			Date day = Date.fromISOExtString(req.metricsDate);
 			DateTime from = DateTime(day);
 			DateTime until = DateTime(day + days(1));
-			immutable (ReplaySlice[]) slices = cast(immutable)
-				Globals.metrics.queryReplaySlices(req.simulatorInstance, from, until);
-			ReplayDataRes res = ReplayDataRes(req.metricsDate);
-			getArrayMarshLen(slices, res.uncompressedLength);
-			ubyte[] buf;
-			buf.length = res.uncompressedLength.to!size_t;
-			ubyte[] bufSlice = buf;
-			marshalArray(slices, bufSlice);
-			res.compressedReplaySlices = compress(buf, 6);
-			trace("compressed ", res.uncompressedLength, " replay bytes to ", res.compressedReplaySlices.length);
+			info("Sending replay data from ", from, " until ", until);
+			ReplaySlice[] slices = Globals.metrics.queryReplaySlices(
+				req.simulatorInstance, from, until);
+			ReplayDataRes res = ReplayDataRes(req.metricsDate, slices);
 			sendMessage(cast(immutable) res);
 		}
 	}

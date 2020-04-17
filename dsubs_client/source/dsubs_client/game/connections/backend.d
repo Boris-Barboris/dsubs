@@ -3,7 +3,6 @@ module dsubs_client.game.connections.backend;
 import std.socket;
 import std.process;
 import std.datetime: Date;
-import std.zlib;
 
 import core.atomic;
 import core.thread;
@@ -53,14 +52,10 @@ private:
 
 	void h_replayDataRes(ReplayDataRes res)
 	{
-		ReplaySlice[] slices;
-		const(ubyte)[] uncompressed = cast(const(ubyte)[]) uncompress(
-			res.compressedReplaySlices, res.uncompressedLength);
-		demarshalArray!(ReplaySlice[])(slices, uncompressed);
 		Date date = Date.fromISOExtString(res.metricsDate);
 		synchronized(Game.mainMutex)
 		{
-			Game.activeState = new ReplayState(date, slices);
+			Game.activeState = new ReplayState(date, res.replaySlices);
 		}
 	}
 
