@@ -32,14 +32,14 @@ Authorization is done only once for TCP connection. */
 struct LoginReq
 {
 	__gshared const int g_marshIdx;
-	@MaxLenAttr(1024) ubyte[] username;		/// maybe encrypted
-	@MaxLenAttr(1024) ubyte[] password;		/// maybe encrypted
+	@MaxLenAttr(1024) ubyte[] username;		/// encrypted
+	@MaxLenAttr(1024) ubyte[] password;		/// encrypted
 }
 
+/// Sent in response to LoginReq if everything is OK.
 struct LoginSuccessRes
 {
 	__gshared const int g_marshIdx;
-	string welcomeMsg;
 	/// Entity database hash (SHA256). Cannot change without server restart,
 	/// hence it is constant throughout TCP session.
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;
@@ -53,6 +53,7 @@ struct LoginSuccessRes
 	ScenarioType simulatorScenarioType;
 }
 
+/// LoginReq rejection.
 struct LoginFailureRes
 {
 	__gshared const int g_marshIdx;
@@ -60,7 +61,7 @@ struct LoginFailureRes
 }
 
 /// If the user is not spawned, right after LoginSuccessRes the server sends this message.
-/// Can also follow AbandonReq.
+/// Also is a result of successfull AbandonReq handling.
 struct AvailableScenariosRes
 {
 	__gshared const int g_marshIdx;
@@ -68,7 +69,7 @@ struct AvailableScenariosRes
 	AvailableScenario[] scenarios;
 }
 
-/// Sent by client when he wants to download entity database
+/// Sent by client when he wants to download full entity database
 struct EntityDbReq
 {
 	__gshared const int g_marshIdx;
