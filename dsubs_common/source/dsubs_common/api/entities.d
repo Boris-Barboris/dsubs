@@ -330,7 +330,7 @@ struct KinematicSnapshot
 	double angVel;
 }
 
-enum HydrophoneType: byte
+enum HydrophoneType: ubyte
 {
 	/// Hydrophone is hard-mounted to the hull.
 	fixed,
@@ -414,7 +414,7 @@ struct HydrophoneAudio
 	int samplingRate;	// 8192 Hz
 }
 
-enum MapElementType: byte
+enum MapElementType: ubyte
 {
 	circle
 }
@@ -472,8 +472,8 @@ struct EntityDb
 
 struct EntityDbShort
 {
-	string[] propulsorNames;
 	string[] controllableSubNames;
+	string[] propulsorNames;
 	string[] weaponNames;
 }
 
@@ -511,7 +511,7 @@ struct ReplaySlice
 
 // scenario-related entities
 
-enum ScenarioType
+enum ScenarioType: ubyte
 {
 	standalone,
 	tutorial,
@@ -549,18 +549,11 @@ struct AvailableScenario
 	int playerCount;
 }
 
-enum SpawnRequestType
+enum SpawnRequestType: ubyte
 {
 	/// Used for persistentSimulator scenarios when the client wishes to spawn
 	/// in an already-running sim.
 	existingSimulator,
 	/// Request to create a new simulator for a scenario and spawn there.
 	newSimulator
-}
-
-enum SimFlowEndReason
-{
-	death,
-	win,
-	simulatorStopped
 }

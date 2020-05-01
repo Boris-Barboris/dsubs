@@ -196,7 +196,7 @@ struct ListenDirReq
 }
 
 /// Server streams acoustic data to the player. All hydrophones that were active
-/// are represented here. If some hydrophone is absent, it was inactive.
+/// are represented here. If some hydrophone is absent, it is inactive.
 struct AcousticStreamRes
 {
 	__gshared const int g_marshIdx;
@@ -222,14 +222,29 @@ struct EmitPingReq
 	float ilevel;	/// intensity level
 }
 
-/// Server sends when client's submarine is no longer alive for various reasons.
+/// Server sends when client's submarine is no longer alive.
 /// To return to main menu, client should send AvailableScenariosReq.
-struct SimFlowEndRes
+struct DeathRes
 {
 	__gshared const int g_marshIdx;
-	SimFlowEndReason reason;
 	string shortReport;
 	string longReport;
+}
+
+/// Server sends when the player has won.
+/// To return to main menu, client should send AvailableScenariosReq.
+struct VictoryRes
+{
+	__gshared const int g_marshIdx;
+	string shortReport;
+	string longReport;
+}
+
+/// Server sends when the simulator instance is killed.
+/// To return to main menu, client should send AvailableScenariosReq.
+struct SimulatorKilledRes
+{
+	__gshared const int g_marshIdx;
 }
 
 /// Client requests to change desired loaded weapon.
@@ -256,13 +271,13 @@ struct SetTubeStateReq
 }
 
 /// Client requests to launch the weapon in the tube.
-/// Weapon parameters MUST be correct.
+/// Weapon parameters MUST be correct (contained in param constraints).
 struct LaunchTubeReq
 {
 	__gshared const int g_marshIdx;
 	int tubeId;
 	/// If this weapon does not match the actual loaded weapon,
-	/// the request is ignored. Prevents race conditions.
+	/// the request is ignored.
 	string weaponName;
 	@MaxLenAttr(32) WeaponParamValue[] weaponParams;
 }
@@ -288,7 +303,7 @@ struct MapOverlayUpdateRes
 	MapElement[] mapElements;
 }
 
-/// Backend sends a message to client.
+/// Backend sends a chat message to client.
 @Compressed
 struct ChatMessageRes
 {
