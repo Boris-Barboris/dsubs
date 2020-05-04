@@ -54,6 +54,18 @@ final class EntityDb
 		AnimalFactory[string] m_animals;
 	}
 
+	EntityDbShort getCompleteShortDb() const
+	{
+		EntityDbShort res;
+		res.controllableSubNames = m_submarines.byValue.filter!(sf => sf.playable).
+			map!(sf => sf.name).array;
+		res.propulsorNames = m_propulsors.byValue.filter!(pf => pf.playable).
+			map!(pf => pf.name).array;
+		res.weaponNames = m_weapons.byValue.filter!(wf => wf.playable).
+			map!(wf => wf.name).array;
+		return res;
+	}
+
 	PropulsorFactory getPropulsorFactory(string name)
 	{
 		return m_propulsors[name];

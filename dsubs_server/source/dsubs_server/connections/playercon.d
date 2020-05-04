@@ -63,11 +63,13 @@ private:
 			m_player = Globals.players.authorizeConnection(this,
 				decrypt(req.username, &m_backendPrivKeyInfo),
 				decrypt(req.password, &m_backendPrivKeyInfo));
-			if (m_player.submarine)
+			Submarine sub = m_player.submarine;
+			if (sub)
 			{
 				info("Player is already spawned");
-				sendMessage(immutable LoginRes(true, "Welcome",
-					Globals.entityDb.commonEntityDbHash, true));
+				sendMessage(immutable LoginSuccessRes(
+					Globals.entityDb.commonEntityDbHash, true,
+					sub.simulator.id));
 			}
 			else
 			{

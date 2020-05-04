@@ -531,22 +531,31 @@ struct AvailableCampaign
 	AvailableScenario[] scenarios;
 }
 
-struct AvailableScenario
+/// Parts of AvailableScenario that do not depend on the observer.
+struct AvailableScenarioConstants
 {
-	ScenarioType type;
 	/// Globally-unique human-readable scenario name.
 	string name;
 	string shortDescription;
 	string fullDescription;
-	/// true if the user has a record of completion
-	bool completed;
 	/// part of the entityDb that is allowed for usage in this scenario.
 	EntityDbShort allowedEntities;
+}
+
+struct AvailableScenario
+{
+	AvailableScenarioConstants constants;
+	/// Type of the scenario.
+	ScenarioType type;
+	/// true if the user has a record of completion.
+	bool completed;
 	/// When type is persistentSimulator, this is the id of the sim to spawn in.
 	string simulatorId;
 	/// For persistent scenarios this is the approximate number of players that are
 	/// playing int it's simulator.
 	int playerCount;
+
+	alias constants this;
 }
 
 enum SpawnRequestType: ubyte

@@ -33,18 +33,18 @@ CREATE TABLE kill_records (
 );
 
 CREATE TABLE scenario_types (
-    name varchar(32) PRIMARY KEY
+    name varchar(64) PRIMARY KEY
 );
 
 INSERT INTO scenario_types VALUES ('standalone'), ('tutorial'),
-    ('capmaign_mission'), ('main_arena');
+    ('capmaignMission'), ('persistentSimulator');
 
 CREATE TABLE simulator_destroy_reasons (
-    name varchar(32) PRIMARY KEY
+    name varchar(64) PRIMARY KEY
 );
 
 INSERT INTO simulator_destroy_reasons VALUES
-    ('timeout'), ('completed'), ('death'), ('abandon');
+    ('timeout'), ('victory'), ('death'), ('abandon');
 
 CREATE TABLE simulator_instances (
     id TEXT PRIMARY KEY,
@@ -67,16 +67,22 @@ CREATE INDEX IF NOT EXISTS sim_instance_creator_id_idx ON
     simulator_instances(creator_id);
 
 INSERT INTO simulator_instances (id, scenario_name, scenario_type) VALUES
-    ('main_arena', 'dsubs_server.scenario.BattleRoyale', 'main_arena');
+    ('main_arena', 'main_arena');
 
-CREATE TABLE capmaign_progress (
-    player_id BIGINT NOT NULL,
+CREATE TABLE player_scenario_completion (
+    player_id BIGINT NOT NULL REFERENCES players(id),
+    scenario_name TEXT NOT NULL,
+
+    PRIMARY KEY (player_id, scenario_name)
+);
+
+CREATE TABLE campaign_progress (
+    player_id BIGINT NOT NULL REFERENCES players(id),
     campaign_name TEXT NOT NULL,
     last_available_scenario TEXT NOT NULL,
     completed BOOLEAN NOT NULL DEFAULT 'false',
 
-    PRIMARY KEY (player_id, campaign_name),
-    FOREIGN KEY (player_id) REFERENCES players(`id`)
+    PRIMARY KEY (player_id, campaign_name)
 );
 
 COMMIT;

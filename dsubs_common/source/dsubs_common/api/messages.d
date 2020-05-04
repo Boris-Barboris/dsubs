@@ -121,7 +121,8 @@ struct SpawnFailureRes
 }
 
 /// Request to abandon an existing submarine and simulator. Will not be accepted for persistent
-/// simulators like the main arena. If accepted, will be followed by AvailableScenariosRes.
+/// simulators like the main arena. If accepted, will be followed by SimulatorKilledRes
+/// and then AvailableScenariosRes.
 struct AbandonReq
 {
 	__gshared const int g_marshIdx;
@@ -142,6 +143,9 @@ struct ReconnectReq
 struct ReconnectStateRes
 {
 	__gshared const int g_marshIdx;
+	/// Identifier to discriminate between respawns in the same simulator. Constant
+	/// through lifetime of a submarine.
+	string spawnId;
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
 	KinematicSnapshot subSnap;
@@ -240,8 +244,8 @@ struct VictoryRes
 	string longReport;
 }
 
-/// Server sends when the simulator instance is killed.
-/// To return to main menu, client should send AvailableScenariosReq.
+/// Server sends when the simulator instance is killed. Sent as an answer to
+/// AbandonReq. To return to main menu, client should send AvailableScenariosReq.
 struct SimulatorKilledRes
 {
 	__gshared const int g_marshIdx;

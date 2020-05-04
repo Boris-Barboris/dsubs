@@ -17,7 +17,7 @@ import dsubs_server.animal: AnimalCollection;
 import dsubs_server.torpedo: WeaponCollection;
 import dsubs_server.entitydb: EntityDb;
 import dsubs_server.simulator: Simulator, SimulatorScheduler;
-import dsubs_server.scenario: Scenario;
+import dsubs_server.scenario;
 import dsubs_server.connections.listener: ConListener;
 
 
@@ -33,6 +33,8 @@ __gshared:
 	/// Library of all existing submarine types, propulsors and other unit types,
 	/// irrespective of the scenatio.
 	EntityDb entityDb;
+	/// Collection of scenario factories and player-scenario controllers.
+	ScenarioDatabase scenarioDb;
 	/// Players that were authorized at least once.
 	PlayerCollection players;
 	/// TCP listeners
@@ -57,6 +59,7 @@ __gshared:
 		trace("totalCPUs = ", totalCPUs);
 		sctx = new DsubsSoundOpenclCtx(totalCPUs);
 		entityDb = new EntityDb();
+		scenarioDb = new ScenarioDatabase();
 		players = new PlayerCollection();
 		cons = new ConListener();
 		simulators = new SimulatorScheduler(false);
@@ -73,6 +76,8 @@ __gshared:
 			sctx = new DsubsSoundOpenclCtx(1);
 		if (entityDb is null)
 			entityDb = new EntityDb();
+		if (scenarioDb is null)
+			scenarioDb = new ScenarioDatabase();
 		if (simulators is null)
 			simulators = new SimulatorScheduler(true);
 		else
