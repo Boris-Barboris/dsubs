@@ -117,9 +117,8 @@ abstract class Scenario
 	abstract void selectPlayerSpawnPosition(Player player,
 		out vec2d position, out double rotation);
 
-
 	/// Throws if some titles are not allowed by the scenario.
-	void verifySpawnRequest(Player player, const SpawnReq req)
+	void validateSpawnRequest(Player player, const SpawnReq req)
 	{
 		const EntityDbShort allowedTitles = m_factory.constants.allowedEntities;
 		enforce(canFind(allowedTitles.controllableSubNames, req.submarineName));
@@ -151,8 +150,9 @@ int intUnixTime()
 final class ScenarioDatabase
 {
 	private ScenarioFactory[string] m_scenarios;
+	private Simulator[string] m_persistentSims;
 
-	ScenarioFactory getFactory(string scenarioName)
+	const ScenarioFactory getFactory(string scenarioName) const
 	{
 		enforce(scenarioName in m_scenarios);
 		return m_scenarios[scenarioName];
@@ -165,10 +165,8 @@ final class ScenarioDatabase
 		m_scenarios[factory.constants.name] = factory;
 	}
 
-	private Simulator[string] m_persistentSims;
-
 	/// Build and schedule persistent simulators.
-	void startPeristentSimulators()
+	void startPeristentSimulators() const
 	{
 		Simulator sim = new Simulator("main_arena");
 		getFactory("Battle royale").build(sim);
@@ -176,15 +174,34 @@ final class ScenarioDatabase
 		Globals.simulators.add(sim);
 	}
 
-	/// Throws if scenario is not available for the player or
-	void validateSpawnRequest(Player p, const SpawnReq req)
+	/// Throws if scenario is not available for the player.
+	void validateSpawnRequest(Player p, const SpawnReq req) const
 	{
-
+		// TODO
 	}
 
 	/// Prepare response for a player that filters out unavailable scenarios.
-	AvailableScenariosRes getScenarioResForPlayer(Player p)
+	AvailableScenariosRes getScenarioResForPlayer(Player p) const
 	{
-
+		AvailableScenariosRes res;
+		res.scenarios = m_scenarios.byValue.map!((ScenarioFactory factory) {
+			AvailableScenario preparedScen;
+			preparedScen.constants = factory.constants;
+			preparedScen.type = ScenarioType.standalone;
+			// TODO
+			preparedScen.completed = false;
+			return preparedScen;
+		}).array;
+		// append persistent simulator scenarios
+		res.scenarios ~= m_persistentSims.byValue.map!((Simulator sim) {
+			AvailableScenario preparedScen;
+			preparedScen.constants = sim.scenario.factory.constants;
+			preparedScen.type = ScenarioType.persistentSimulator;
+			preparedScen.simulatorId = sim.id;
+			// TODO
+			preparedScen.completed = false;
+			return preparedScen;
+		}).array;
+		return res;
 	}
 }
