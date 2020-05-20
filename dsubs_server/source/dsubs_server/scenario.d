@@ -5,7 +5,7 @@ import std.array: array;
 import std.random: uniform, uniform01;
 import std.range: walkLength;
 import std.container.rbtree;
-import std.datetime.systime;
+import std.uuid;
 
 import dsubs_common.math.angles;
 import dsubs_common.api.messages;
@@ -25,6 +25,7 @@ import dsubs_server.ai.common;
 import dsubs_server.scenarios.battleroyale;
 
 
+/// Action to run after specified clock time.
 struct AlarmClockAction
 {
 	usecs_t when;
@@ -52,42 +53,13 @@ struct AlarmCollection
 		m_events.insert(event);
 	}
 
-	void runActions(usecs_t worldTime)
+	void triggerAlarms(usecs_t clockTime)
 	{
-		auto toRun = m_events.lowerBound(AlarmClockAction(worldTime));
+		auto toRun = m_events.lowerBound(AlarmClockAction(clockTime));
 		foreach (AlarmClockAction evt; toRun)
 			evt.action();
+		// Evicts the alarms
 		m_events.remove(toRun);
-	}
-}
-
-
-class ScenarioFactory
-{
-	private
-	{
-		AvailableScenarioConstants m_contsants;
-		Scenario delegate(Simulator sim) m_generator;
-	}
-
-	this(AvailableScenarioConstants contsants,
-		Scenario delegate(Simulator sim) generator)
-	{
-		m_contsants = constants;
-		m_generator = generator;
-	}
-
-	// publicly-visible information.
-	@property ref const AvailableScenarioConstants constants() const
-	{
-		return m_contsants;
-	}
-
-	Scenario build(Simulator sim) const
-	{
-		Scenario res = m_generator(sim);
-		res.m_factory = this;
-		return res;
 	}
 }
 
@@ -117,10 +89,45 @@ abstract class Scenario
 	abstract void selectPlayerSpawnPosition(Player player,
 		out vec2d position, out double rotation);
 
-	/// Throws if some titles are not allowed by the scenario.
+	/// Scenario is responsible for generating initial overlay state and briefing
+	/// for (re)connecting player.
+	abstract void generateBriefing(Player player, out MapElement[] mapOverlayEls,
+		out ChatMessage briefing);
+}
+
+
+private final class ScenarioFactory
+{
+	private
+	{
+		AvailableScenarioConstants m_contsants;
+		Scenario delegate(Simulator sim) m_factory;
+	}
+
+	this(AvailableScenarioConstants contsants,
+		Scenario delegate(Simulator sim) factory)
+	{
+		m_contsants = constants;
+		m_factory = factory;
+	}
+
+	// publicly-visible information.
+	@property ref const AvailableScenarioConstants constants() const
+	{
+		return m_contsants;
+	}
+
+	Scenario build(Simulator sim) const
+	{
+		Scenario res = m_factory(sim);
+		res.m_factory = this;
+		return res;
+	}
+
+	/// Throws if some modules/subs are not allowed by the scenario.
 	void validateSpawnRequest(Player player, const SpawnReq req)
 	{
-		const EntityDbShort allowedTitles = m_factory.constants.allowedEntities;
+		const EntityDbShort allowedTitles = m_constants.allowedEntities;
 		enforce(canFind(allowedTitles.controllableSubNames, req.submarineName));
 		enforce(canFind(allowedTitles.propulsorNames, req.propulsorName));
 		foreach (const TubeSpawnState ltl; req.loadableTubeLoadouts)
@@ -132,52 +139,166 @@ abstract class Scenario
 				enforce(canFind(allowedTitles.weaponNames, wc.weaponName));
 		}
 	}
-
-	/// Scenario is responsible for generating initial overlay state and briefing
-	/// for (re)connecting player.
-	abstract void generateBriefing(Player player, out MapElement[] mapOverlayEls,
-		out ChatMessage briefing);
 }
 
 
-int intUnixTime()
+private struct Campaign
 {
-	return Clock.currTime.toUnixTime.to!int;
+	string name;
+	string description;
+	CampaignScenarioSpawner[] scenarios;
+}
+
+/// Scenario can be a persistent-sim, standalone or part of a campaign.
+/// Various checks must be performed by the server to ensure spawn request validity.
+private abstract class ScenarioSpawner
+{
+	protected ScenarioFactory m_factory;
+
+	final @property const(ScenarioFactory) factory() const
+	{
+		return m_factory;
+	}
+
+	this(ScenarioFactory factory)
+	{
+		m_factory = factory;
+	}
+
+	@property ScenarioType scenarioType() const;
+
+	/// Throws if something is wrong.
+	void validateSpawnRequest(Player player, const SpawnReq req)
+	{
+		m_factory.validateSpawnRequest(player, req);
+	}
+
+	Scenario createSimulatorAndScenario(string simId = null)
+	{
+		if (simId == null)
+			simId = randomUUID().toString();
+		Simulator sim = new Simulator(simId);
+		Scenario res = m_factory.build(sim);
+		return res;
+	}
 }
 
 
-/// Collection of all standalone scenarios, campaigns and persistent scenarios.
+private final class StandaloneScenarioSpawner: ScenarioSpawner
+{
+	this(ScenarioFactory factory) { super(factory); }
+
+	@override @property ScenarioType scenarioType() const
+	{
+		return ScenarioType.standalone;
+	}
+
+	override void validateSpawnRequest(Player player, const SpawnReq req)
+	{
+		enforce(req.type == SpawnRequestType.newSimulator, "wrong type");
+		assert(req.simulatorIdOrScenarioName == m_factory.m_contsants.name);
+		super.validateSpawnRequest(player, req);
+	}
+}
+
+private final class TutorialScenarioSpawner: ScenarioSpawner
+{
+	this(ScenarioFactory factory) { super(factory); }
+
+	@override @property ScenarioType scenarioType() const
+	{
+		return ScenarioType.tutorial;
+	}
+
+	override void validateSpawnRequest(Player player, const SpawnReq req)
+	{
+		enforce(req.type == SpawnRequestType.newSimulator);
+		assert(req.simulatorIdOrScenarioName == m_factory.m_contsants.name);
+		super.validateSpawnRequest(player, req);
+	}
+}
+
+private final class CampaignScenarioSpawner: ScenarioSpawner
+{
+	Campaign* campaign;
+
+	this(ScenarioFactory factory, Campaign camp)
+	{
+		super(factory);
+		campaign = camp;
+	}
+
+	@override @property ScenarioType scenarioType() const
+	{
+		return ScenarioType.campaignMission;
+	}
+
+	override void validateSpawnRequest(Player player, const SpawnReq req)
+	{
+		enforce(req.type == SpawnRequestType.newSimulator);
+		assert(req.simulatorIdOrScenarioName == m_factory.m_contsants.name);
+		super.validateSpawnRequest(player, req);
+		// TODO: validate that the previous mission is completed, or this is the
+		// first campaign mission.
+	}
+}
+
+private final class PersistentScenarioSpawner: ScenarioSpawner
+{
+	Simulator simulator;
+	Scenario scenario;
+
+	// eagerly builds the simulator
+	this(ScenarioFactory factory, string persistentSimId)
+	{
+		super(factory);
+		scenario = createSimulatorAndScenario(persistentSimId);
+		simulator = scenario.simulator;
+	}
+
+	@override @property ScenarioType scenarioType() const
+	{
+		return ScenarioType.campaignMission;
+	}
+
+	override void validateSpawnRequest(Player player, const SpawnReq req)
+	{
+		enforce(req.type == SpawnRequestType.existingSimulator);
+		enforce(req.simulatorIdOrScenarioName == simulator.id);
+		super.validateSpawnRequest(player, req);
+		// TODO: validate that the previous mission is completed, or this is the
+		// first campaign mission.
+	}
+}
+
+
+/// Collection of all standalone scenarios, campaigns and persistent scenarios. Responsible
+/// for progress persistence, rendering of scenario collection to the client and simulator
+/// preparation. Meat of spawn request validation and handling is performed here.
 final class ScenarioDatabase
 {
-	private ScenarioFactory[string] m_scenarios;
-	private Simulator[string] m_persistentSims;
+	/// All non-perisstent scenarions, indexed by their name.
+	private ScenarioSpawner[string] m_spawnableScenarios;
 
-	const ScenarioFactory getFactory(string scenarioName) const
-	{
-		enforce(scenarioName in m_scenarios);
-		return m_scenarios[scenarioName];
-	}
+	/// Persistent scenarios, indexed by simulatorId.
+	private PersistentScenarioSpawner[string] m_persistentSims;
 
 	/// Build scenario database. Globals.entityDb must be built at this point.
 	this()
 	{
-		ScenarioFactory factory = BattleRoyale.getFactory();
-		m_scenarios[factory.constants.name] = factory;
+		m_persistentSims["main_arena"] =
+			new PersistentScenarioSpawner(BattleRoyale.getFactory(), "main_arena");
+		ScenarioFactory singleBrFactory = BattleRoyale.getFactory();
+		singleBrFactory.m_contsants.name = "Battle royale (singleplayer)";
+		m_spawnableScenarios[singleBrFactory.m_contsants.name] =
+			new StandaloneScenarioSpawner(singleBrFactory);
 	}
 
-	/// Build and schedule persistent simulators.
+	/// Start scheduling persistent simulators.
 	void startPeristentSimulators() const
 	{
-		Simulator sim = new Simulator("main_arena");
-		getFactory("Battle royale").build(sim);
-		m_persistentSims[sim.id] = sim;
-		Globals.simulators.add(sim);
-	}
-
-	/// Throws if scenario is not available for the player.
-	void validateSpawnRequest(Player p, const SpawnReq req) const
-	{
-		// TODO
+		foreach (PersistentScenarioSpawner spawner; m_persistentSims.byValue)
+			Globals.simulators.add(spawner.simulator);
 	}
 
 	/// Prepare response for a player that filters out unavailable scenarios.

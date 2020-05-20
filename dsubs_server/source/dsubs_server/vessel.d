@@ -1,5 +1,6 @@
 module dsubs_server.vessel;
 
+import std.uuid;
 import std.random: uniform;
 
 import dsubs_common.api.entities;
@@ -19,6 +20,7 @@ abstract class Killable
 {
 	private
 	{
+		UUID m_id;
 		bool m_dead;
 		usecs_t m_registerTime;
 		usecs_t m_deathTime;
@@ -26,8 +28,14 @@ abstract class Killable
 		Simulator m_simulator;
 	}
 
+	this()
+	{
+		m_id = randomUUID();
+	}
+
 	final
 	{
+		@property UUID id() const { return m_id; }
 		@property bool dead() const { return m_dead; }
 		@property usecs_t deathTime() const { return m_deathTime; }
 		@property usecs_t registerTime() const { return m_registerTime; }
@@ -41,7 +49,8 @@ abstract class Killable
 		m_registerTime = sim.worldTime;
 	}
 
-	/// Ensure that the vessel is dead. Returns true if it was killed first time.
+	/// Ensure that the vessel is dead. Returns true if it was killed
+	/// in the first time.
 	bool kill(string cause)
 	{
 		synchronized(this)

@@ -54,6 +54,7 @@ final class EntityDb
 		AnimalFactory[string] m_animals;
 	}
 
+	/// Get EntityDbShort that contains all playable entities.
 	EntityDbShort getCompleteShortDb() const
 	{
 		EntityDbShort res;

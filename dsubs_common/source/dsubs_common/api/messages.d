@@ -2,6 +2,8 @@
 
 module dsubs_common.api.messages;
 
+import std.uuid;
+
 public import dsubs_common.api.constants;
 public import dsubs_common.api.entities;
 public import dsubs_common.api.utils;
@@ -68,7 +70,7 @@ struct AvailableScenariosReq
 }
 
 /// If the user is not spawned, right after LoginSuccessRes the server sends this message.
-/// Also is a result of successfull AbandonReq handling. Effectively is used to render
+/// Also is a result of successfull AbandonReq handling. Should be used to render
 /// main menu.
 @Compressed
 struct AvailableScenariosRes
@@ -103,7 +105,7 @@ struct SpawnReq
 	@MaxLenAttr(16) TubeSpawnState[] loadableTubeLoadouts;
 	/// You either request to spawn in a new simulator or in existing one.
 	SpawnRequestType type;
-	/// The simulator to spawn in or the scenario name.
+	/// The simulator to spawn in or the scenario name to create new simulator from.
 	@MaxLenAttr(256) string simulatorIdOrScenarioName;
 }
 
@@ -114,6 +116,7 @@ struct SpawnSuccessRes
 	string simulatorId;
 }
 
+/// Should not happen. Client must
 struct SpawnFailureRes
 {
 	__gshared const int g_marshIdx;
@@ -121,7 +124,7 @@ struct SpawnFailureRes
 }
 
 /// Request to abandon an existing submarine and simulator. Will not be accepted for persistent
-/// simulators like the main arena. If accepted, will be followed by SimulatorKilledRes
+/// simulators like the main_arena. If accepted, will be followed by SimulatorKilledRes
 /// and then AvailableScenariosRes.
 struct AbandonReq
 {
@@ -143,9 +146,9 @@ struct ReconnectReq
 struct ReconnectStateRes
 {
 	__gshared const int g_marshIdx;
-	/// Identifier to discriminate between respawns in the same simulator. Constant
-	/// through lifetime of a submarine.
-	string spawnId;
+	/// Globally-unique submarine identifier. Can be used to restore CIC state
+	/// from backup after crash.
+	UUID subId;
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
 	KinematicSnapshot subSnap;
