@@ -243,23 +243,34 @@ final class Player: Captain
 		return cast(immutable) recState;
 	}
 
-	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req, Simulator simToSpawnIn)
+	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req)
 	{
 		synchronized(this)
 		{
 			Submarine s = m_submarine;
 			enforce(s is null, "Already spawned");
-			synchronized(simToSpawnIn.simMut.reader)
+			generateShift();
+			Scenario scen = Globals.scenarioDb.generateScenarioForSpawnReq(this, req);
+			// spawn submarine
+			synchronized(scen.simulator.simMut.reader)
 			{
-				s = Globals.entityDb.buildSubFromLoadout(req, this, true);
-				generateShift();
-				randomizePosition(req, s, simToSpawnIn);
-				foreach (h; s.hydrophones)
+				Submarine sub = Globals.entityDb.buildSubFromLoadout(req, this, true);
+				// start position initialization
+				vec2d pos;
+				double rot;
+				scen.selectPlayerSpawnPosition(player, pos, rot);
+				sub.transform.position = pos;
+				sub.transform.rotation = rot;
+				sub.rudder.targetCourse = rot;
+				foreach (h; sub.hydrophones)
 				{
 					h.shouldBeActive = true;
-					h.listenDir = -coordRot;
+					h.listenDir = rot;
 				}
-				s.register(simToSpawnIn);
+				sub.register(scen.simulator);
+				// schedule simulator for execution
+				if (req.type == SpawnRequestType.newSimulator)
+					Globals.simulators.add(scen.simulator);
 				return getReconnectState();
 			}
 		}

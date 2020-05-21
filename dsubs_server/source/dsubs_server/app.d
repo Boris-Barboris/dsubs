@@ -46,10 +46,8 @@ void main(string[] argv)
 			Globals.metrics = new MetricsService(influxUrl);
 		}
 		Globals.build();
-		Globals.mainArenaSim = new Simulator("main_arena");
-		auto scenario = new BattleRoyale(Globals.mainArenaSim);
+		Globals.scenarioDb.startPeristentSimulators();
 		Globals.cons.bindSockets();
-		Globals.simulators.add(Globals.mainArenaSim);
 		Globals.simulators.start();
 		Globals.cons.startListeners();
 		auto livenessThread = new Thread(&livenessWatchdog).start();

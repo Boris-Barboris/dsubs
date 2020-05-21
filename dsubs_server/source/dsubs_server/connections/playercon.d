@@ -16,6 +16,7 @@ import dsubs_common.network.connection;
 
 import dsubs_server.common;
 import dsubs_server.player;
+import dsubs_server.scenario;
 
 private immutable string backendPrivKey = `AAAAQIhNNOl1mtHa10rEmT2cNlHRPpPnRZjbcKDVkxQ632xXvalu5FR+TBVntVprWNSWdU8+8eU9NEZTQM2J2+XCzwGFDL8MsqmcEiIcX75poV2js3UKvpoV7l8aQ/i7mWSg+Z0nLrhqJOk9Jc4gU7gUmUOkF5lECIoUC8QUm496M5Xz`;
 
@@ -54,6 +55,8 @@ private:
 		sendMessage(immutable ServerStatusRes(Player.getPlayersOnline()));
 	}
 
+	int loginFailureSleep = 2;
+
 	void h_loginReq(LoginReq req)
 	{
 		enforce!AuthException(m_player is null, "already authorized");
@@ -64,40 +67,59 @@ private:
 				decrypt(req.username, &m_backendPrivKeyInfo),
 				decrypt(req.password, &m_backendPrivKeyInfo));
 			Submarine sub = m_player.submarine;
+			LoginSuccessRes resMsg = LoginSuccessRes(Globals.entityDb.commonEntityDbHash);
 			if (sub)
 			{
 				info("Player is already spawned");
-				sendMessage(immutable LoginSuccessRes(
-					Globals.entityDb.commonEntityDbHash, true,
-					sub.simulator.id));
+				resMsg.alreadySpawned = true;
+				if (sub.simulator.scenario)
+				{
+					ScenarioSpawner spawner = sub.simulator.scenario.spawner;
+					resMsg.simulatorScenarioName = spawner.constants.name;
+					resMsg.simulatorScenarioType = spawner.scenarioType;
+				}
 			}
-			else
-			{
-				// we have no submarine
-				sendMessage(immutable LoginRes(true, "Welcome",
-					Globals.entityDb.commonEntityDbHash, false));
-			}
+			loginFailureSleep = 2;
+			sendMessage(cast(immutable) resMsg);
+			if (resMsg.alreadySpawned)
+				return;
+			// not-spawned user needs available scenarios.
+			AvailableScenariosRes resMsg =
+				Globals.scenarioDb.getScenarioResForPlayer(m_player);
+			sendMessage(cast(immutable) resMsg);
 		}
 		catch (AuthException aex)
 		{
-			Thread.sleep(dur!"seconds"(2));
-			sendMessage(immutable LoginRes(false, aex.msg,
-				Globals.entityDb.commonEntityDbHash, false));
-			throw aex;
+			Thread.sleep(dur!"seconds"(loginFailureSleep));
+			// simple backoff
+			if (loginFailureSleep < 60 * 30)
+				loginFailureSleep *= 2;
+			sendMessage(immutable LoginFailureRes(aex.msg));
 		}
 	}
 
 	void h_entityDbReq(EntityDbReq req)
 	{
 		sendBytes(EntityDb.marshalledCommonEntityDb);
+	}
+
+	void h_availableScenariosReq(AvailableScenariosReq req)
+	{
+		Player p = m_player;
+		enforceAuth(p);
+		AvailableScenariosRes resMsg =
+			Globals.scenarioDb.getScenarioResForPlayer(p);
+		sendMessage(cast(immutable) resMsg);
+	}
 
 	void h_spawnReq(SpawnReq req)
 	{
 		Player p = m_player;
-		enforce!AuthException(p, "unauthorized");
+		enforceAuth(p);
 		info("Handling spawn request for ", p.name);
-		immutable(ReconnectStateRes) rres = p.handleSpawnRequest(req, Globals.mainArenaSim);
-		sendMessage(immutable SpawnRes(true));
+		immutable(ReconnectStateRes) rres =
+			p.handleSpawnRequest(req);
+		sendMessage(immutable SpawnSuccessRes());
 		sendMessage(rres);
 		m_simulatorFlow = true;
 	}
@@ -105,7 +127,7 @@ private:
 	void h_reconnectReq(ReconnectReq req)
 	{
 		Player p = m_player;
-		enforce!AuthException(p, "unauthorized");
+		enforceAuth(p);
 		info("Sending reconnect state to ", p.name);
 		auto sub = p.submarine;
 		enforce(sub !is null, "Player does not have a sub");

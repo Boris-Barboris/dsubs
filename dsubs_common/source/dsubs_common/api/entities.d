@@ -558,7 +558,7 @@ struct AvailableScenario
 	/// When type is persistentSimulator, this is the id of the sim to spawn in.
 	string simulatorId;
 	/// For persistent scenarios this is the approximate number of players that are
-	/// playing int it's simulator.
+	/// connected to it's simulator.
 	int playerCount;
 
 	alias constants this;

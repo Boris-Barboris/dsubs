@@ -38,7 +38,8 @@ struct LoginReq
 	@MaxLenAttr(1024) ubyte[] password;		/// encrypted
 }
 
-/// Sent in response to LoginReq if everything is OK.
+/// Sent in response to LoginReq if everything is OK. Followed by
+/// AvailableScenariosRes.
 struct LoginSuccessRes
 {
 	__gshared const int g_marshIdx;
@@ -47,11 +48,10 @@ struct LoginSuccessRes
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;
 	/// true when the player already has a submarine to reconnect to.
 	bool alreadySpawned;
-	/// Id of a simulator that the player has a sub in.
-	string simulatorId;
-	/// Name of the scenario that is loaded to the 'simulatorId' sim...
+	/// Name of the scenario that is loaded to the simulator that contains the
+	/// existing submarine.
 	string simulatorScenarioName;
-	/// ... and it's scenario type.
+	/// and it's scenario type.
 	ScenarioType simulatorScenarioType;
 }
 
@@ -95,6 +95,7 @@ struct EntityDbRes
 }
 
 /// If the player is not already spawned, he can request to spawn with chosen loadout.
+/// If spawn succeeds, ReconnectStateRes is sent in response by the server.
 struct SpawnReq
 {
 	__gshared const int g_marshIdx;
@@ -109,14 +110,7 @@ struct SpawnReq
 	@MaxLenAttr(256) string simulatorIdOrScenarioName;
 }
 
-/// Followed by ReconnectStateRes.
-struct SpawnSuccessRes
-{
-	__gshared const int g_marshIdx;
-	string simulatorId;
-}
-
-/// Should not happen. Client must
+/// Spawn failure.
 struct SpawnFailureRes
 {
 	__gshared const int g_marshIdx;
