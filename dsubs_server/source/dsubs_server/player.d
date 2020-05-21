@@ -227,7 +227,7 @@ final class Player: Captain
 		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
 		enforce(!s.dead, "user has a submarine, but it is dead");
 		ReconnectStateRes recState = ReconnectStateRes(
-			s.prototypeName, s.propulsor.prototypeName,
+			s.id, s.prototypeName, s.propulsor.prototypeName,
 			genSubSnapshot(), genSubWireSnapshots(),
 			s.targetCourse + coordRot, s.targetThrottle,
 			s.hydrophones.map!(
@@ -238,9 +238,15 @@ final class Player: Captain
 			);
 		if (s.simulator.scenario)
 		{
-			s.simulator.scenario.generateBriefing(this, recState.mapElements, recState.briefing);
+			s.simulator.scenario.generateBriefing(
+				this, recState.mapElements, recState.briefing);
 		}
 		return cast(immutable) recState;
+	}
+
+	void abandonSimulator()
+	{
+
 	}
 
 	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req)
@@ -473,6 +479,17 @@ final class Player: Captain
 		return (sub && !sub.dead);
 	}
 
+	void handleSimTerminating()
+	{
+		PlayerConnection con = m_connection;
+		m_submarine = null;
+		if (con && con.isOpen)
+		{
+			con.simulatorFlow = false;
+			con.sendMessage(immutable SimulatorTerminatingRes());
+		}
+	}
+
 	// simMut.writer is held by the simulator
 	void sendUpdate()
 	{
@@ -488,7 +505,8 @@ final class Player: Captain
 			if (s.dead)
 			{
 				con.simulatorFlow = false;
-				con.sendMessage(immutable DeathRes(s.causeOfDeath, ""));
+				con.sendMessage(immutable SimFlowEndRes(
+					SimFlowEndReason.death, s.causeOfDeath, ""));
 				return;
 			}
 			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(),

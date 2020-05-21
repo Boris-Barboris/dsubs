@@ -107,7 +107,7 @@ private:
 	{
 		Player p = m_player;
 		enforceAuth(p);
-		AvailableScenariosRes resMsg =
+		immutable AvailableScenariosRes resMsg =
 			Globals.scenarioDb.getScenarioResForPlayer(p);
 		sendMessage(cast(immutable) resMsg);
 	}
@@ -117,11 +117,35 @@ private:
 		Player p = m_player;
 		enforceAuth(p);
 		info("Handling spawn request for ", p.name);
-		immutable(ReconnectStateRes) rres =
-			p.handleSpawnRequest(req);
-		sendMessage(immutable SpawnSuccessRes());
-		sendMessage(rres);
-		m_simulatorFlow = true;
+		try
+		{
+			immutable(ReconnectStateRes) rres =
+				p.handleSpawnRequest(req);
+			sendMessage(rres);
+			m_simulatorFlow = true;
+		}
+		catch (Exception ex)
+		{
+			error("spawn failure: ", ex.toString());
+			sendMessage(immutable SpawnFailureRes(ex.msg));
+		}
+	}
+
+	void h_abandonReq(AbandonReq req)
+	{
+		Player p = m_player;
+		enforceAuth(p);
+		info("Handling abandon request for ", p.name);
+		auto sub = p.submarine;
+		enforce(sub !is null, "Player does not have a sub");
+		Simulator sim = sub.simulator;
+		enforce(sim !is null, "Submarine's simulator is unset");
+		synchronized(sim.simMut.reader)
+		{
+			sim.terminateAsync();
+		}
+		// simulator will asynchronously self-destruct and notify the connection
+		// with SimulatorTerminatingRes.
 	}
 
 	void h_reconnectReq(ReconnectReq req)

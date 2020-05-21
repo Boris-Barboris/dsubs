@@ -26,6 +26,7 @@ import dsubs_server.globals;
 import dsubs_server.vessel;
 import dsubs_server.player: Player;
 import dsubs_server.torpedo;
+import dsubs_server.scenario;
 import dsubs_server.weaponry;
 
 
@@ -178,7 +179,7 @@ final class SimulatorScheduler
 					}
 					else
 						newNextStart = simToRun.nextStart +
-							msecs((1000 / simToRun.acceleration).to!uint);
+							msecs((1000 / simToRun.timeAcceleration).to!uint);
 				}
 				else
 					newNextStart = MonoTime.currTime;
@@ -256,9 +257,17 @@ final class Simulator
 	private usecs_t m_worldTime = 0;
 	@property usecs_t worldTime() const { return m_worldTime; }
 
-	/// simulator will report as finished when it's wordTime exceeds worldTimeLimit.
+	// Must be called while holding simMut.
+	void terminateAsync()
+	{
+		m_terminating = true;
+	}
+
+	private bool m_terminating;
+	/// simulator will report as finished when it's wordTime exceeds worldTimeLimit, or
+	/// when it's asked to terminate by scenario.
 	usecs_t worldTimeLimit = usecs_t.max;
-	@property bool finished() const { return m_worldTime > worldTimeLimit; }
+	@property bool finished() const { return m_terminating || m_worldTime > worldTimeLimit; }
 
 	/// print stage timings to log
 	bool printTimings = false;
@@ -270,13 +279,12 @@ final class Simulator
 	/// scheduling and wants to be ran as often as possible (subject to fairness constraints).
 	bool doSleep = true;
 
-	/// time acceleration factor.
-	float acceleration = 1.0f;
+	float timeAcceleration = 1.0f;
 
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassStart;
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassEnd;
 
-	/// Run dlg on each connected player.
+	/// All players that own vessels in this sim receive update.
 	private void sendUpdateToPlayers()
 	{
 		Player[] playersToUpdate;
@@ -287,7 +295,12 @@ final class Simulator
 				playersToUpdate ~= sub.player;
 		}
 		foreach (Player p; Globals.taskPool.parallel(playersToUpdate, 1))
-			p.sendUpdate();
+		{
+			if (finished)
+				p.handleSimTerminating();
+			else
+				p.sendUpdate();
+		}
 	}
 
 	/// run one iteration of simulation
@@ -349,10 +362,15 @@ final class Simulator
 			if (scenario)
 			{
 				profiler.start("scenario.onAfterSimulation");
-				scenario.onAfterSimulation();
+				ShouldSimTerminate signal = scenario.onAfterSimulation();
 				profiler.stopLast();
+				if (signal == ShouldSimTerminate.yes)
+				{
+					info("Terminating simulator ", id);
+					m_terminating = true;
+				}
 			}
-			// stream updates to players
+			// send updates to players
 			profiler.start("sendUpdateToPlayers");
 			sendUpdateToPlayers();
 			profiler.stopLast();
@@ -363,7 +381,7 @@ final class Simulator
 		profiler.stop();
 		if (printTimings)
 			profiler.printResult();
-		if (m_id == "main_arena" &&
+		if (!finished && m_id == "main_arena" &&
 			Globals.metrics && (m_worldTime % 10_000_000 == 0))
 		{
 			Globals.auxTaskPool.put(

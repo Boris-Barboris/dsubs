@@ -572,3 +572,11 @@ enum SpawnRequestType: ubyte
 	/// Request to create a new simulator for a scenario and spawn there.
 	newSimulator
 }
+
+
+enum SimFlowEndReason: ubyte
+{
+	death,
+	victory,
+	defeat
+}

@@ -223,27 +223,22 @@ struct EmitPingReq
 	float ilevel;	/// intensity level
 }
 
-/// Server sends when client's submarine is no longer alive.
+/// Server sends when client's submarine is no longer alive or vicroty/loss
+/// condition is reached. May be followed by SimulatorTerminatingRes if generated
+/// by non-persistent scenario.
 /// To return to main menu, client should send AvailableScenariosReq.
-struct DeathRes
+struct SimFlowEndRes
 {
 	__gshared const int g_marshIdx;
+	SimFlowEndReason reason;
 	string shortReport;
 	string longReport;
 }
 
-/// Server sends when the player has won.
+/// Server sends when the simulator instance is abandoned or killed. Sent as an answer to
+/// AbandonReq, or right after vicorty/defeat/death in non-peristent scenario.
 /// To return to main menu, client should send AvailableScenariosReq.
-struct VictoryRes
-{
-	__gshared const int g_marshIdx;
-	string shortReport;
-	string longReport;
-}
-
-/// Server sends when the simulator instance is killed. Sent as an answer to
-/// AbandonReq. To return to main menu, client should send AvailableScenariosReq.
-struct SimulatorKilledRes
+struct SimulatorTerminatingRes
 {
 	__gshared const int g_marshIdx;
 }

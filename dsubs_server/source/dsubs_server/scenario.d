@@ -64,6 +64,13 @@ struct AlarmCollection
 }
 
 
+enum ShouldSimTerminate
+{
+	no,
+	yes
+}
+
+
 /// Running instance of scenario with all necessary internal state.
 abstract class Scenario
 {
@@ -83,7 +90,8 @@ abstract class Scenario
 
 	abstract void onBeforeSimulation();
 
-	abstract void onAfterSimulation();
+	/// scenario is responsible for sending SimFlowEndRes messages to players.
+	abstract ShouldSimTerminate onAfterSimulation();
 
 	/// Scenario is responsible for picking true world-space player spawn position.
 	abstract void selectPlayerSpawnPosition(Player player,
@@ -278,7 +286,7 @@ final class ScenarioDatabase
 	}
 
 	/// Prepare response for a player that filters out unavailable scenarios.
-	AvailableScenariosRes getScenarioResForPlayer(Player player) const
+	immutable(AvailableScenariosRes) getScenarioResForPlayer(Player player) const
 	{
 		AvailableScenariosRes res;
 		// all non-campaign missions
@@ -302,7 +310,7 @@ final class ScenarioDatabase
 			preparedScen.playerCount = 0;
 			return preparedScen;
 		}).array;
-		return res;
+		return cast(immutable) res;
 	}
 
 	/// Validate spawn request, create or get persistent simulator.
