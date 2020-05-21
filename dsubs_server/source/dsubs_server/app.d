@@ -66,12 +66,13 @@ void main(string[] argv)
 /// aborts the server process when it notices the deadlock or excessive stalling.
 void livenessWatchdog()
 {
-	usecs_t lastWorldTime = Globals.mainArenaSim.worldTime;
+	Simulator mainArenaSim = Globals.scenarioDb.getPersistentById("main_arena").simulator;
+	usecs_t lastWorldTime = mainArenaSim.worldTime;
 	while (true)
 	{
 		Thread.sleep(seconds(10));
-		if (Globals.mainArenaSim.worldTime == lastWorldTime)
+		if (mainArenaSim.worldTime == lastWorldTime)
 			abort();
-		lastWorldTime = Globals.mainArenaSim.worldTime;
+		lastWorldTime = mainArenaSim.worldTime;
 	}
 }

@@ -84,7 +84,7 @@ abstract class Scenario
 	this(Simulator sim)
 	{
 		assert(sim);
-		m_simulator = rhs;
+		m_simulator = sim;
 		m_simulator.scenario = this;
 	}
 
@@ -118,23 +118,23 @@ abstract class ScenarioSpawner
 {
 	private
 	{
-		AvailableScenarioConstants m_contsants;
+		const AvailableScenarioConstants m_constants;
 		Scenario delegate(Simulator sim) m_factory;
 	}
 
 	// publicly-visible information.
-	@property ref const AvailableScenarioConstants constants() const
+	@property ref const(AvailableScenarioConstants) constants() const
 	{
-		return m_contsants;
+		return m_constants;
 	}
 
-	this(AvailableScenarioConstants contsants, Scenario delegate(Simulator sim) factory)
+	this(const AvailableScenarioConstants contsants, Scenario delegate(Simulator sim) factory)
 	{
-		m_contsants = constants;
+		m_constants = constants;
 		m_factory = factory;
 	}
 
-	Scenario build(Simulator sim) const
+	Scenario build(Simulator sim)
 	{
 		Scenario res = m_factory(sim);
 		res.m_spawner = this;
@@ -164,7 +164,7 @@ abstract class ScenarioSpawner
 		if (simId == null)
 			simId = randomUUID().toString();
 		Simulator sim = new Simulator(simId);
-		Scenario res = m_factory.build(sim);
+		Scenario res = m_factory(sim);
 		return res;
 	}
 }
@@ -172,9 +172,12 @@ abstract class ScenarioSpawner
 
 private final class StandaloneScenarioSpawner: ScenarioSpawner
 {
-	this(ScenarioFactory factory) { super(factory); }
+	this(AvailableScenarioConstants contsants, Scenario delegate(Simulator sim) factory)
+	{
+		super(constants, factory);
+	}
 
-	@override @property ScenarioType scenarioType() const
+	override @property ScenarioType scenarioType() const
 	{
 		return ScenarioType.standalone;
 	}
@@ -182,16 +185,19 @@ private final class StandaloneScenarioSpawner: ScenarioSpawner
 	override void validateSpawnRequest(Player player, const SpawnReq req)
 	{
 		enforce(req.type == SpawnRequestType.newSimulator, "wrong type");
-		assert(req.simulatorIdOrScenarioName == m_factory.m_contsants.name);
+		assert(req.simulatorIdOrScenarioName == m_constants.name);
 		super.validateSpawnRequest(player, req);
 	}
 }
 
 private final class TutorialScenarioSpawner: ScenarioSpawner
 {
-	this(ScenarioFactory factory) { super(factory); }
+	this(AvailableScenarioConstants contsants, Scenario delegate(Simulator sim) factory)
+	{
+		super(constants, factory);
+	}
 
-	@override @property ScenarioType scenarioType() const
+	override @property ScenarioType scenarioType() const
 	{
 		return ScenarioType.tutorial;
 	}
@@ -199,7 +205,7 @@ private final class TutorialScenarioSpawner: ScenarioSpawner
 	override void validateSpawnRequest(Player player, const SpawnReq req)
 	{
 		enforce(req.type == SpawnRequestType.newSimulator);
-		assert(req.simulatorIdOrScenarioName == m_factory.m_contsants.name);
+		assert(req.simulatorIdOrScenarioName == m_constants.name);
 		super.validateSpawnRequest(player, req);
 	}
 }
@@ -208,13 +214,14 @@ private final class CampaignScenarioSpawner: ScenarioSpawner
 {
 	const Campaign* campaign;
 
-	this(ScenarioFactory factory, const Campaign* camp)
+	this(AvailableScenarioConstants contsants,
+		Scenario delegate(Simulator sim) factory, const Campaign* camp)
 	{
-		super(factory);
+		super(constants, factory);
 		campaign = camp;
 	}
 
-	@override @property ScenarioType scenarioType() const
+	override @property ScenarioType scenarioType() const
 	{
 		return ScenarioType.campaignMission;
 	}
@@ -222,7 +229,7 @@ private final class CampaignScenarioSpawner: ScenarioSpawner
 	override void validateSpawnRequest(Player player, const SpawnReq req)
 	{
 		enforce(req.type == SpawnRequestType.newSimulator);
-		assert(req.simulatorIdOrScenarioName == m_factory.m_contsants.name);
+		assert(req.simulatorIdOrScenarioName == m_constants.name);
 		super.validateSpawnRequest(player, req);
 		// TODO: validate that the previous mission is completed, or this is the
 		// first campaign mission.
@@ -231,18 +238,25 @@ private final class CampaignScenarioSpawner: ScenarioSpawner
 
 private final class PersistentScenarioSpawner: ScenarioSpawner
 {
-	Simulator simulator;
-	Scenario scenario;
-
-	this(ScenarioFactory factory, string persistentSimId)
+	private
 	{
-		super(factory);
-		// eagerly builds the simulator
-		scenario = createSimulatorAndScenario(persistentSimId);
-		simulator = scenario.simulator;
+		Simulator m_simulator;
+		Scenario m_scenario;
 	}
 
-	@override @property ScenarioType scenarioType() const
+	@property Simulator simulator() { return m_simulator; }
+	@property Scenario scenario() { return m_scenario; }
+
+	this(AvailableScenarioConstants contsants,
+		Scenario delegate(Simulator sim) factory, string persistentSimId)
+	{
+		super(contsants, factory);
+		// eagerly builds the simulator
+		m_scenario = createSimulatorAndScenario(persistentSimId);
+		m_simulator = scenario.simulator;
+	}
+
+	override @property ScenarioType scenarioType() const
 	{
 		return ScenarioType.campaignMission;
 	}
@@ -271,22 +285,30 @@ final class ScenarioDatabase
 	this()
 	{
 		m_persistentSims["main_arena"] =
-			new PersistentScenarioSpawner(BattleRoyale.getFactory(), "main_arena");
-		ScenarioFactory singleBrFactory = BattleRoyale.getFactory();
-		singleBrFactory.m_contsants.name = "Battle royale (singleplayer)";
-		m_spawnableScenarios[singleBrFactory.m_contsants.name] =
-			new StandaloneScenarioSpawner(singleBrFactory);
+			new PersistentScenarioSpawner(BattleRoyale.getConstants(),
+				sim => new BattleRoyale(sim), "main_arena");
+
+		AvailableScenarioConstants scenConstants = BattleRoyale.getConstants();
+		scenConstants.name = "Battle royale (singleplayer)";
+		StandaloneScenarioSpawner spawner = new StandaloneScenarioSpawner(
+			scenConstants, sim => new BattleRoyale(sim));
+		m_spawnableScenarios[scenConstants.name] = spawner;
+	}
+
+	PersistentScenarioSpawner getPersistentById(string simId)
+	{
+		return m_persistentSims[simId];
 	}
 
 	/// Start scheduling persistent simulators.
-	void startPeristentSimulators() const
+	void startPeristentSimulators()
 	{
 		foreach (PersistentScenarioSpawner spawner; m_persistentSims.byValue)
 			Globals.simulators.add(spawner.simulator);
 	}
 
 	/// Prepare response for a player that filters out unavailable scenarios.
-	immutable(AvailableScenariosRes) getScenarioResForPlayer(Player player) const
+	immutable(AvailableScenariosRes) getScenarioResForPlayer(Player player)
 	{
 		AvailableScenariosRes res;
 		// all non-campaign missions
@@ -294,7 +316,7 @@ final class ScenarioDatabase
 			spawner => spawner.scenarioType != ScenarioType.campaignMission
 		).map!((ScenarioSpawner spawner) {
 			AvailableScenario preparedScen;
-			preparedScen.constants = spawner.factory.constants;
+			preparedScen.constants = cast() spawner.constants;
 			preparedScen.type = spawner.scenarioType;
 			// TODO: set completion flag from db
 			preparedScen.completed = false;
@@ -303,9 +325,9 @@ final class ScenarioDatabase
 		// append persistent simulator scenarios
 		res.scenarios ~= m_persistentSims.byValue.map!((ScenarioSpawner spawner) {
 			AvailableScenario preparedScen;
-			preparedScen.constants = spawner.factory.constants;
+			preparedScen.constants = cast() spawner.constants;
 			preparedScen.type = ScenarioType.persistentSimulator;
-			preparedScen.simulatorId = spawner.simulator.id;
+			preparedScen.simulatorId = (cast(PersistentScenarioSpawner) spawner).simulator.id;
 			// TODO: player count
 			preparedScen.playerCount = 0;
 			return preparedScen;
@@ -323,14 +345,14 @@ final class ScenarioDatabase
 			case SpawnRequestType.newSimulator:
 				enforce(req.simulatorIdOrScenarioName in m_spawnableScenarios,
 					"scenario not found");
-				spawner = m_spawnableScenarios[eq.simulatorIdOrScenarioName];
+				spawner = m_spawnableScenarios[req.simulatorIdOrScenarioName];
 				spawner.validateSpawnRequest(player, req);
 				scen = spawner.createSimulatorAndScenario();
 				break;
 			case SpawnRequestType.existingSimulator:
 				enforce(req.simulatorIdOrScenarioName in m_persistentSims,
 					"simulator not found");
-				spawner = m_persistentSims[eq.simulatorIdOrScenarioName];
+				spawner = m_persistentSims[req.simulatorIdOrScenarioName];
 				spawner.validateSpawnRequest(player, req);
 				scen = (cast(PersistentScenarioSpawner) spawner).scenario;
 				break;

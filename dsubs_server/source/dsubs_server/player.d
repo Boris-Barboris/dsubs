@@ -19,6 +19,7 @@ import dsubs_server.connections.database;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.dynamics: AttachedWire, RigidBody, WirePoint;
 import dsubs_server.weaponry;
+import dsubs_server.scenario: Scenario;
 import dsubs_server.simulator: Simulator;
 import dsubs_server.ai.captain: ContactRelation;
 
@@ -201,11 +202,17 @@ final class Player: Captain
 			{
 				synchronized(sub.simulator.simMut.reader)
 				{
-					if (sub.dead)
-						throw new Exception("submarine is dead");
-					foreach (h; sub.hydrophones)
-						h.shouldBeActive = true;
-					sub.sonar.active = true;
+					if (sub.dead || sub.simulator.finished)
+					{
+						trace("Emplacing connection while the sub/sim is dead");
+						m_submarine = null;
+					}
+					else
+					{
+						foreach (h; sub.hydrophones)
+							h.shouldBeActive = true;
+						sub.sonar.active = true;
+					}
 					m_connection = con;		// important, check spin model.
 				}
 			}
@@ -264,7 +271,7 @@ final class Player: Captain
 				// start position initialization
 				vec2d pos;
 				double rot;
-				scen.selectPlayerSpawnPosition(player, pos, rot);
+				scen.selectPlayerSpawnPosition(this, pos, rot);
 				sub.transform.position = pos;
 				sub.transform.rotation = rot;
 				sub.rudder.targetCourse = rot;
@@ -560,26 +567,6 @@ final class Player: Captain
 				con.sendMessage(cast(immutable) AmmoRoomStateUpdateRes(
 					s.getAmmoRoom(roomId).fullState));
 		}
-	}
-
-	private void randomizePosition(const SpawnReq req, Submarine sub, Simulator sim)
-	{
-		double rot;
-		if (sim.scenario)
-		{
-			vec2d pos;
-			sim.scenario.selectPlayerSpawnPosition(this, req, pos, rot);
-			sub.transform.position = pos;
-		}
-		else
-		{
-			double px = uniform(-1000.0, 1000.0);
-			double py = uniform(-1000.0, 1000.0);
-			rot = uniform(-PI, PI);
-			sub.transform.position = vec2d(px, py);
-		}
-		sub.transform.rotation = rot;
-		sub.rudder.targetCourse = rot;
 	}
 }
 

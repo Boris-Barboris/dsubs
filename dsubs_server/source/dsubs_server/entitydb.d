@@ -58,11 +58,11 @@ final class EntityDb
 	EntityDbShort getCompleteShortDb() const
 	{
 		EntityDbShort res;
-		res.controllableSubNames = m_submarines.byValue.filter!(sf => sf.playable).
+		res.controllableSubNames = cast(string[]) m_submarines.byValue.filter!(sf => sf.playable).
 			map!(sf => sf.name).array;
-		res.propulsorNames = m_propulsors.byValue.filter!(pf => pf.playable).
+		res.propulsorNames = cast(string[]) m_propulsors.byValue.filter!(pf => pf.playable).
 			map!(pf => pf.name).array;
-		res.weaponNames = m_weapons.byValue.filter!(wf => wf.playable).
+		res.weaponNames = cast(string[]) m_weapons.byValue.filter!(wf => wf.playable).
 			map!(wf => wf.name).array;
 		return res;
 	}
@@ -102,7 +102,7 @@ final class EntityDb
 			m_weapons.values.filter!(a => a.playable).map!(
 				a => cast(immutable) a.tmpl).array,
 		);
-		marshalledCommonEntityDb = BackendProtocol.marshal(&enititydb);
+		marshalledCommonEntityDb = BackendProtocol.marshal(immutable EntityDbRes(enititydb));
 		auto sha256 = new SHA256Digest();
 		sha256.put(marshalledCommonEntityDb);
 		commonEntityDbHash = cast(immutable(ubyte)[]) sha256.finish();

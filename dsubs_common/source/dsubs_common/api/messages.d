@@ -2,7 +2,7 @@
 
 module dsubs_common.api.messages;
 
-import std.uuid;
+public import std.uuid;
 
 public import dsubs_common.api.constants;
 public import dsubs_common.api.entities;

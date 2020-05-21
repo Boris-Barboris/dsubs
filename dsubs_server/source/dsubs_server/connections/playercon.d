@@ -16,6 +16,8 @@ import dsubs_common.network.connection;
 
 import dsubs_server.common;
 import dsubs_server.player;
+import dsubs_server.simulator: Simulator;
+import dsubs_server.submarine: Submarine;
 import dsubs_server.scenario;
 
 private immutable string backendPrivKey = `AAAAQIhNNOl1mtHa10rEmT2cNlHRPpPnRZjbcKDVkxQ632xXvalu5FR+TBVntVprWNSWdU8+8eU9NEZTQM2J2+XCzwGFDL8MsqmcEiIcX75poV2js3UKvpoV7l8aQ/i7mWSg+Z0nLrhqJOk9Jc4gU7gUmUOkF5lECIoUC8QUm496M5Xz`;
@@ -84,9 +86,9 @@ private:
 			if (resMsg.alreadySpawned)
 				return;
 			// not-spawned user needs available scenarios.
-			AvailableScenariosRes resMsg =
+			immutable AvailableScenariosRes scenMsg =
 				Globals.scenarioDb.getScenarioResForPlayer(m_player);
-			sendMessage(cast(immutable) resMsg);
+			sendMessage(scenMsg);
 		}
 		catch (AuthException aex)
 		{
@@ -100,7 +102,7 @@ private:
 
 	void h_entityDbReq(EntityDbReq req)
 	{
-		sendBytes(EntityDb.marshalledCommonEntityDb);
+		sendBytes(Globals.entityDb.marshalledCommonEntityDb);
 	}
 
 	void h_availableScenariosReq(AvailableScenariosReq req)

@@ -92,15 +92,14 @@ final class BattleRoyale: Scenario
 		bool[Submarine] m_mediumBots;
 	}
 
-	static ScenarioFactory getFactory()
+	static AvailableScenarioConstants getConstants()
 	{
 		AvailableScenarioConstants constants;
 		constants.name = "Battle royale";
 		constants.shortDescription = "quick battle arena with bots";
 		constants.fullDescription = "fullDescription";
 		constants.allowedEntities = Globals.entityDb.getCompleteShortDb();
-		return new ScenarioFactory(constants,
-			(Simulator sim) => new BattleRoyale(sim));
+		return constants;
 	}
 
 	@property usecs_t lastSeenPlayer() const { return m_lastSeenPlayer; }
@@ -144,7 +143,7 @@ final class BattleRoyale: Scenario
 			}
 		}
 		// spawn bots if necessary
-		m_delayer.runCallbacks(m_simulator.worldTime);
+		m_delayer.triggerAlarms(m_simulator.worldTime);
 		// trader bots
 		int botsToSpawn = ACTIVE_CIVILIAN_BOTS - m_civBotSpawnRequests -
 			m_simulator.bots.captains.filter!(b => b.submarine.prototypeName == "Bot trader").
@@ -152,7 +151,7 @@ final class BattleRoyale: Scenario
 
 		void delayCivilianBotSpawn(usecs_t delay)
 		{
-			m_delayer.put(DelayedEvent(m_simulator.worldTime + delay,
+			m_delayer.put(AlarmClockAction(m_simulator.worldTime + delay,
 				{
 					info("Spawning new trader bot");
 					m_civBotSpawnRequests--;
@@ -383,7 +382,7 @@ final class BattleRoyale: Scenario
 	private void triggerReloadCircles()
 	{
 		Player[] triggeredPlayers;
-		int unixTime = intUnixTime();
+		long unixTime = longUnixTime();
 		foreach (playerRcPair; m_playerReloadCircles.byKeyValue)
 		{
 			Player p = playerRcPair.key;
@@ -441,7 +440,7 @@ final class BattleRoyale: Scenario
 		}
 	}
 
-	override void onAfterSimulation()
+	override ShouldSimTerminate onAfterSimulation()
 	{
 		synchronizeReloadCircles();
 		triggerReloadCircles();
@@ -492,12 +491,13 @@ final class BattleRoyale: Scenario
 			foreach (Animal an; m_simulator.animals.entities)
 				an.destination = getDistantPos(an.transform.wposition);
 		}
+		return ShouldSimTerminate.no;
 	}
 
 	override void generateBriefing(Player player,
 		out MapElement[] mapOverlayEls, out ChatMessage briefing)
 	{
-		int unixTime = intUnixTime();
+		long unixTime = longUnixTime();
 		// circle for next/active arena
 		MapElementUnion arenaCircleUnion;
 		arenaCircleUnion.circle = MapCircle(
@@ -543,8 +543,7 @@ final class BattleRoyale: Scenario
 		rotation = uniform(0.0f, 2 * PI);
 	}
 
-	override void selectPlayerSpawnPosition(Player p, const SpawnReq req,
-		out vec2d position, out double rotation)
+	override void selectPlayerSpawnPosition(Player p, out vec2d position, out double rotation)
 	{
 		getRandomSpawn(position, rotation);
 	}
