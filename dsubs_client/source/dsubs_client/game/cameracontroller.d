@@ -103,7 +103,7 @@ final class CameraController
 		double targetZoom;
 		vec2d zoomPivot;
 		double zoomVel = 0.0;
-		double zoomAcc = 90.0;
+		double zoomAcc = 60.0;
 	}
 
 	private static double parabolicMove(double y1, double v1, double y2,
