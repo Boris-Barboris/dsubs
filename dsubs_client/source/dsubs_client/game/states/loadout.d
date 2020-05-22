@@ -19,7 +19,7 @@ import dsubs_client.common;
 import dsubs_client.game;
 import dsubs_client.game.entities;
 import dsubs_client.game.gamestate;
-import dsubs_client.game.states.mainmenu;
+import dsubs_client.game.states.loginscreen;
 import dsubs_client.game.states.simulation;
 import dsubs_client.game.cic.server;
 import dsubs_client.gui;
@@ -58,13 +58,13 @@ final class LoadoutState: GameState
 	override void handleBackendDisconnect()
 	{
 		error("backend connection closed");
-		Game.activeState = new MainMenuState();
+		Game.activeState = new LoginScreenState();
 	}
 
 	override void handleCICDisconnect()
 	{
 		error("cic connection closed");
-		Game.activeState = new MainMenuState();
+		Game.activeState = new LoginScreenState();
 	}
 
 	private string getRoomCapacityString(int roomId)
@@ -387,32 +387,28 @@ final class LoadoutState: GameState
 		};
 	}
 
-	void handleSpawnRes(SpawnRes res)
+	void handleReconnectStateRes(ReconnectStateRes res)
 	{
-		if (res.spawnAllowed)
-		{
-			// we need to create new CIC server
-			if (Game.cic)
-				Game.cic.stop();
-			info("building new CIC server");
-			Game.cic = new CICServer("", Game.bconm.con);
-			info("starting CIC");
-			Game.cic.start();
-			info("connecting to local CIC");
-			ushort port = Game.cic.listener.port;
-			Game.ciccon = CICClientConnection.connect("127.0.0.1:" ~ port.to!string, "");
-			// CIC client will perform simulator bootstrap from here
-			return;
-		}
-		else if (res.secsLeft >= 0)
-		{
-			hullDescriptionBox.content = "Respawn available in " ~
-				res.secsLeft.to!string ~ " seconds";
-			Game.delay(() { startButton.signalClickEnd(); },
-				seconds(res.secsLeft + 1));
-		}
-		else
-			startButton.signalClickEnd();
+		// we need to create new CIC server
+		if (Game.cic)
+			Game.cic.stop();
+		info("building new CIC server");
+		Game.cic = new CICServer("", Game.bconm.con);
+		info("starting CIC");
+		Game.cic.start();
+		info("connecting to local CIC");
+		ushort port = Game.cic.listener.port;
+		Game.ciccon = CICClientConnection.connect("127.0.0.1:" ~ port.to!string, "");
+		// CIC client will perform simulator bootstrap from here, will broadcast
+		// reconnect message to cic clients, and this window's cic client will
+		// switch game state to Simulator.
+		Game.cic.handleReconnectStateRes(res);
+	}
+
+	void handleSpawnFailureRes(SpawnFailureRes res)
+	{
+		hullDescriptionBox.content = "Spawn failed: " ~ res.reason;
+		startButton.signalClickEnd();
 	}
 
 }

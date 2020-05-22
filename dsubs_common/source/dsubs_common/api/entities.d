@@ -575,6 +575,7 @@ enum SpawnRequestType: ubyte
 }
 
 
+/// Scenario-level simulator flow termination reason.
 enum SimFlowEndReason: ubyte
 {
 	death,

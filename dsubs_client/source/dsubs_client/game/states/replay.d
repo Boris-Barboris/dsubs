@@ -19,7 +19,7 @@ import dsubs_client.game.cameracontroller;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.gamestate;
 import dsubs_client.game.tacoverlay;
-import dsubs_client.game.states.mainmenu;
+import dsubs_client.game.states.loginscreen;
 import dsubs_client.gui;
 
 
@@ -123,12 +123,12 @@ final class ReplayState: GameState
 
 	override void handleBackendDisconnect()
 	{
-		Game.activeState = new MainMenuState();
+		Game.activeState = new LoginScreenState();
 	}
 
 	override void handleCICDisconnect()
 	{
-		Game.activeState = new MainMenuState();
+		Game.activeState = new LoginScreenState();
 	}
 }
 

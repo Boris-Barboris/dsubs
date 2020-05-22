@@ -137,16 +137,18 @@ final class CICServer
 		}
 	}
 
-	void handleDeathRes(DeathRes res)
+	void handleSimFlowEndRes(SimFlowEndRes res)
 	{
 		synchronized(m_state.ctcMut)
 		{
 			synchronized(m_state.rsMut)
 			{
+				// we assubme the submarine dead regardless of actual reason.
+				// simulation termination is handled by backend connection itself.
 				m_dead = true;
 			}
 		}
-		m_listener.broadcast(cast(immutable CICDeathRes) res);
+		m_listener.broadcast(immutable CICSimFlowEndRes(res));
 	}
 
 	void handleAcousticStreamRes(AcousticStreamRes res)

@@ -104,11 +104,11 @@ struct CICEmitPingReq
 	float ilevel;
 }
 
-struct CICDeathRes
+struct CICSimFlowEndRes
 {
 	__gshared const int g_marshIdx;
-	string cause;
-	string longReport;
+	SimFlowEndRes res;
+	alias res this;
 }
 
 /*

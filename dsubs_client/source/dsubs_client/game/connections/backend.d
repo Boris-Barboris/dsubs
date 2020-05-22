@@ -16,7 +16,7 @@ import dsubs_common.network.connection;
 import dsubs_client.common;
 import dsubs_client.game;
 import dsubs_client.game.gamestate: GameState;
-import dsubs_client.game.states.mainmenu: MainMenuState;
+import dsubs_client.game.states.loginscreen: LoginScreenState;
 import dsubs_client.game.states.replay: ReplayState;
 import dsubs_client.game.entities;
 
@@ -45,8 +45,8 @@ private:
 		synchronized(Game.mainMutex)
 		{
 			GameState activeState = Game.activeState;
-			if (cast(MainMenuState) activeState)
-				Game.mainMenuState.handleServerStatus(res);
+			if (cast(LoginScreenState) activeState)
+				Game.loginScreenState.handleServerStatus(res);
 		}
 	}
 
@@ -59,11 +59,19 @@ private:
 		}
 	}
 
-	void h_login(LoginRes res)
+	void h_loginSuccess(LoginSuccessRes res)
 	{
 		synchronized(Game.mainMutex)
 		{
-			Game.mainMenuState.handleLogin(res);
+			Game.loginScreenState.handleLoginSuccess(res);
+		}
+	}
+
+	void h_loginFailure(LoginFailureRes res)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.loginScreenState.handleLoginFailure(res);
 		}
 	}
 
@@ -71,20 +79,23 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
-			Game.mainMenuState.handleEntityDb(res);
+			Game.loginScreenState.handleEntityDb(res);
 		}
 	}
 
 	void h_reconnectState(ReconnectStateRes res)
 	{
-		Game.cic.handleReconnectStateRes(res);
-	}
-
-	void h_spawnRes(SpawnRes res)
-	{
 		synchronized(Game.mainMutex)
 		{
 			Game.loadoutState.handleSpawnRes(res);
+		}
+	}
+
+	void h_spawnFailureRes(SpawnFailureRes res)
+	{
+		synchronized(Game.mainMutex)
+		{
+			Game.loadoutState.handleSpawnFailureRes(res);
 		}
 	}
 
@@ -103,9 +114,9 @@ private:
 		Game.cic.handleSonarStreamRes(res);
 	}
 
-	void h_deathRes(DeathRes res)
+	void h_simFlowEndRes(SimFlowEndRes res)
 	{
-		Game.cic.handleDeathRes(res);
+		Game.cic.handleSimFlowEndRes(res);
 	}
 
 	void h_tubeStateUpdateRes(TubeStateUpdateRes res)

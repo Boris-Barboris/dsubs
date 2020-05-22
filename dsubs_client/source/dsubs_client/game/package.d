@@ -24,7 +24,7 @@ import dsubs_client.game.gamestate;
 import dsubs_client.game.connections.backend;
 import dsubs_client.game.entities;
 import dsubs_client.game.cic.server;
-import dsubs_client.game.states.mainmenu;
+import dsubs_client.game.states.loginscreen;
 import dsubs_client.game.states.loadout;
 import dsubs_client.game.states.replay;
 import dsubs_client.game.states.simulation;
@@ -79,11 +79,11 @@ __gshared:
 		m_activeState.setup();
 	}
 
-	static @property MainMenuState mainMenuState()
+	static @property LoginScreenState loginScreenState()
 	{
-		MainMenuState resState = cast(MainMenuState) m_activeState;
+		LoginScreenState resState = cast(LoginScreenState) m_activeState;
 		enforce(resState !is null,
-			"game is not in main menu state, but in " ~ m_activeState.classinfo.name);
+			"game is not in loginscreen state, but in " ~ m_activeState.classinfo.name);
 		return resState;
 	}
 
@@ -150,9 +150,9 @@ __gshared:
 			info("OK");
 		}
 
-		// setup main menu
+		// setup login screen
 		synchronized (mainMutex)
-			activeState = new MainMenuState();
+			activeState = new LoginScreenState();
 
 		// start render thread and serve the windows event pump
 		render.start(mainMutex);

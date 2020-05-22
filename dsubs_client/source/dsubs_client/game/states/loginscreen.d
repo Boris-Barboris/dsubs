@@ -1,4 +1,4 @@
-module dsubs_client.game.states.mainmenu;
+module dsubs_client.game.states.loginscreen;
 
 import std.utf;
 import std.process: browse;
@@ -34,7 +34,7 @@ private
 }
 
 
-final class MainMenuState: GameState
+final class LoginScreenState: GameState
 {
 	private
 	{
@@ -42,6 +42,7 @@ final class MainMenuState: GameState
 		Label infoLabel;
 		Button connectButton, cicConnectButton, replayButton;
 		void delegate() cicConnectCancellator;
+		LoginSuccessRes m_loginSuccessRes;
 	}
 
 	override void setup()
@@ -239,29 +240,28 @@ final class MainMenuState: GameState
 		// Game.bconm.con.sendMessage(immutable ReplayGetDataReq("main_arena", "2020-02-25"));
 	}
 
-	void handleLogin(LoginRes res)
+	void handleLoginSuccess(LoginSuccessRes res)
 	{
-		if (res.success)
+		info("login successfull");
+		canLogin = false;
+		Game.entityDbHash = res.dbHash;
+		infoLabel.content = "Requesting entity database";
+		m_loginSuccessRes = res;
+		Game.bconm.con.sendMessage(immutable EntityDbReq());
+		// check if we are already swimming out there on the server
+		if (res.alreadySpawned)
 		{
-			info("login successfull");
-			infoLabel.content = res.welcomeMsg;
-			canLogin = false;
-			Game.entityDbHash = res.dbHash;
-			infoLabel.content = "Requesting entity database";
-			Game.bconm.con.sendMessage(immutable EntityDbReq());
-			// check if we are already swimming out there on the server
-			if (res.alreadySpawned)
-			{
-				info("Player is already spawned");
-				alreadySpawned = true;
-			}
-			else
-				alreadySpawned = false;
+			info("Player is already spawned");
+			alreadySpawned = true;
 		}
 		else
-		{
-			infoLabel.content = "Unable to log in: " ~ res.welcomeMsg;
-		}
+			alreadySpawned = false;
+		connectButton.signalClickEnd();
+	}
+
+	void handleLoginFailure(LoginFailureRes res)
+	{
+		infoLabel.content = "Unable to log in: " ~ res.reason;
 		connectButton.signalClickEnd();
 	}
 

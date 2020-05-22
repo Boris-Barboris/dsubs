@@ -137,7 +137,7 @@ private:
 		}
 	}
 
-	void h_deathRes(CICDeathRes res)
+	void h_deathRes(CICSimFlowEndRes res)
 	{
 		synchronized(Game.mainMutex)
 		{

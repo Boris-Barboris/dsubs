@@ -141,7 +141,7 @@ struct ReconnectStateRes
 {
 	__gshared const int g_marshIdx;
 	/// Globally-unique submarine identifier. Can be used to restore CIC state
-	/// from backup after crash.
+	/// from backup after client crash.
 	UUID subId;
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
@@ -236,7 +236,7 @@ struct SimFlowEndRes
 }
 
 /// Server sends when the simulator instance is abandoned or killed. Sent as an answer to
-/// AbandonReq, or right after vicorty/defeat/death in non-peristent scenario.
+/// AbandonReq, or right after SimFlowEndRes in non-peristent scenario.
 /// To return to main menu, client should send AvailableScenariosReq.
 struct SimulatorTerminatingRes
 {

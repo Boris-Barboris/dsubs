@@ -19,7 +19,7 @@ import dsubs_client.gui;
 import dsubs_client.input.hotkeymanager;
 import dsubs_client.game.gamestate;
 import dsubs_client.game.entities;
-import dsubs_client.game.states.mainmenu;
+import dsubs_client.game.states.loginscreen;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cameracontroller;
 import dsubs_client.game.tacoverlay;
@@ -135,13 +135,13 @@ final class SimulatorState: GameState
 
 	override void handleBackendDisconnect()
 	{
-		Game.activeState = new MainMenuState();
+		Game.activeState = new LoginScreenState();
 	}
 
 	override void handleCICDisconnect()
 	{
 		error("CIC connection lost");
-		Game.activeState = new MainMenuState();
+		Game.activeState = new LoginScreenState();
 	}
 
 	void updateLastServerTime(usecs_t newTime)

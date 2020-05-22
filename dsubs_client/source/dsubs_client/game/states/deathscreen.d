@@ -14,7 +14,7 @@ import dsubs_client.common;
 import dsubs_client.core.utils;
 import dsubs_client.game;
 import dsubs_client.game.gamestate;
-import dsubs_client.game.states.mainmenu;
+import dsubs_client.game.states.loginscreen;
 import dsubs_client.game.cic.server;
 import dsubs_client.game.cic.messages;
 import dsubs_client.gui;
@@ -34,10 +34,10 @@ final class DeathScreenState: GameState
 {
 	private
 	{
-		CICDeathRes m_deathRes;
+		CICSimFlowEndRes m_deathRes;
 	}
 
-	this(CICDeathRes deathRes)
+	this(CICSimFlowEndRes deathRes)
 	{
 		m_deathRes = deathRes;
 	}
@@ -46,7 +46,20 @@ final class DeathScreenState: GameState
 	{
 		Game.window.title = "dsubs";
 
-		Label youDiedLabel = builder(new Label()).content("YOU DIED").
+		string mainLabel;
+		final switch (m_deathRes.res)
+		{
+			case SimFlowEndReason.death:
+				mainLabel = "YOU DIED";
+				break;
+			case SimFlowEndReason.victory:
+				mainLabel = "VICTORY";
+				break;
+			case SimFlowEndReason.defeat:
+				mainLabel = "DEFEAT";
+				break;
+		}
+		Label youDiedLabel = builder(new Label()).content(mainLabel).
 			htextAlign(HTextAlign.CENTER).fontSize(YOU_DIED_FONTSIZE).
 			fontColor(YOU_DIED_FONTCOLOR).build();
 		Label causeLabel = builder(new Label()).content(m_deathRes.cause).
@@ -69,11 +82,11 @@ final class DeathScreenState: GameState
 
 	override void handleBackendDisconnect()
 	{
-		Game.activeState = new MainMenuState();
+		Game.activeState = new LoginScreenState();
 	}
 
 	override void handleCICDisconnect()
 	{
-		Game.activeState = new MainMenuState();
+		Game.activeState = new LoginScreenState();
 	}
 }
