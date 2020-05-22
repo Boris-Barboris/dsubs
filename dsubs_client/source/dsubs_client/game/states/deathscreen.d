@@ -15,6 +15,7 @@ import dsubs_client.core.utils;
 import dsubs_client.game;
 import dsubs_client.game.gamestate;
 import dsubs_client.game.states.loginscreen;
+import dsubs_client.game.states.loadout;
 import dsubs_client.game.cic.server;
 import dsubs_client.game.cic.messages;
 import dsubs_client.gui;
@@ -47,7 +48,7 @@ final class DeathScreenState: GameState
 		Game.window.title = "dsubs";
 
 		string mainLabel;
-		final switch (m_deathRes.res)
+		final switch (m_deathRes.res.reason)
 		{
 			case SimFlowEndReason.death:
 				mainLabel = "YOU DIED";
@@ -62,12 +63,12 @@ final class DeathScreenState: GameState
 		Label youDiedLabel = builder(new Label()).content(mainLabel).
 			htextAlign(HTextAlign.CENTER).fontSize(YOU_DIED_FONTSIZE).
 			fontColor(YOU_DIED_FONTCOLOR).build();
-		Label causeLabel = builder(new Label()).content(m_deathRes.cause).
+		Label causeLabel = builder(new Label()).content(m_deathRes.shortReport).
 			htextAlign(HTextAlign.CENTER).fontSize(CAUSE_FONTSIZE).build();
 		Button goToMainMenu = builder(new Button()).content("return to main menu").
 			htextAlign(HTextAlign.CENTER).fontSize(BUTTON_FONTSIZE).build();
 
-		goToMainMenu.onClick += () { Game.activeState = new MainMenuState(); };
+		goToMainMenu.onClick += () { Game.activeState = new LoadoutState(); };
 
 		Div textDiv = builder(vDiv([youDiedLabel, causeLabel, goToMainMenu])).borderWidth(20).
 			fixedSize(vec2i(50, 250)).build();

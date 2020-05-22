@@ -268,7 +268,7 @@ final class LoginScreenState: GameState
 	void handleEntityDb(EntityDbRes res)
 	{
 		info("entity db received");
-		Game.setEntityDb(res);
+		Game.setEntityDb(res.entityDb);
 
 		if (alreadySpawned)
 		{

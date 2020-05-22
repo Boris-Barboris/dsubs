@@ -87,7 +87,7 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
-			Game.loadoutState.handleSpawnRes(res);
+			Game.loadoutState.handleReconnectStateRes(res);
 		}
 	}
 

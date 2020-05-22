@@ -176,9 +176,8 @@ __gshared:
 		}
 	}
 
-	static void setEntityDb(EntityDbRes res)
+	static void setEntityDb(EntityDb entityDb)
 	{
-		entityDb = res.entityDb;
 		entityManager = new EntityManager(entityDb);
 	}
 
