@@ -343,7 +343,9 @@ final class LoadoutState: GameState
 								)).array
 						)).array,
 					tubeLoadouts.byKeyValue.map!(pair =>
-						TubeSpawnState(pair.key, pair.value)).array
+						TubeSpawnState(pair.key, pair.value)).array,
+					SpawnRequestType.existingSimulator,
+					"main_arena"
 					);
 				trace("Requesting spawn: ", req);
 				Game.bconm.con.sendMessage(req);
@@ -387,7 +389,8 @@ final class LoadoutState: GameState
 		};
 	}
 
-	void handleReconnectStateRes(ReconnectStateRes res)
+	// shared by loginscreen and this state
+	static void handleReconnectStateRes(ReconnectStateRes res)
 	{
 		// we need to create new CIC server
 		if (Game.cic)

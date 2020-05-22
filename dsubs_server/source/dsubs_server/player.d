@@ -251,11 +251,6 @@ final class Player: Captain
 		return cast(immutable) recState;
 	}
 
-	void abandonSimulator()
-	{
-
-	}
-
 	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req)
 	{
 		synchronized(this)

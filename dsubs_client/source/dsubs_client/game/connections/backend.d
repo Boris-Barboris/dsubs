@@ -16,6 +16,7 @@ import dsubs_common.network.connection;
 import dsubs_client.common;
 import dsubs_client.game;
 import dsubs_client.game.gamestate: GameState;
+import dsubs_client.game.states.loadout: LoadoutState;
 import dsubs_client.game.states.loginscreen: LoginScreenState;
 import dsubs_client.game.states.replay: ReplayState;
 import dsubs_client.game.entities;
@@ -87,8 +88,12 @@ private:
 	{
 		synchronized(Game.mainMutex)
 		{
-			Game.loadoutState.handleReconnectStateRes(res);
+			LoadoutState.handleReconnectStateRes(res);
 		}
+	}
+
+	void h_availableScenariosRes(AvailableScenariosRes res)
+	{
 	}
 
 	void h_spawnFailureRes(SpawnFailureRes res)

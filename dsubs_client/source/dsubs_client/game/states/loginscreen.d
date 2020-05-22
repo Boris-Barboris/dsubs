@@ -272,18 +272,8 @@ final class LoginScreenState: GameState
 
 		if (alreadySpawned)
 		{
-			if (Game.cic)
-				Game.cic.stop();
-			info("building new CIC server");
-			Game.cic = new CICServer("", Game.bconm.con);
-			info("starting CIC");
-			Game.cic.start();
-			info("connecting to local CIC");
-			ushort port = Game.cic.listener.port;
-			Game.ciccon = CICClientConnection.connect("127.0.0.1:" ~ port.to!string, "");
 			// send request for reconnection
 			Game.bconm.con.sendMessage(immutable ReconnectReq());
-			// CIC client connection will do the rest
 		}
 		else
 			Game.activeState = new LoadoutState();

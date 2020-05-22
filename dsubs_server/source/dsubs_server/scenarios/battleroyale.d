@@ -99,6 +99,7 @@ final class BattleRoyale: Scenario
 		constants.shortDescription = "quick battle arena with bots";
 		constants.fullDescription = "fullDescription";
 		constants.allowedEntities = Globals.entityDb.getCompleteShortDb();
+		trace(constants.allowedEntities);
 		return constants;
 	}
 

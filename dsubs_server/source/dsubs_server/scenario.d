@@ -128,32 +128,29 @@ abstract class ScenarioSpawner
 		return m_constants;
 	}
 
-	this(const AvailableScenarioConstants contsants, Scenario delegate(Simulator sim) factory)
+	this(const AvailableScenarioConstants constants, Scenario delegate(Simulator sim) factory)
 	{
 		m_constants = constants;
 		m_factory = factory;
-	}
-
-	Scenario build(Simulator sim)
-	{
-		Scenario res = m_factory(sim);
-		res.m_spawner = this;
-		return res;
 	}
 
 	/// Throws if some modules/subs are not allowed by the scenario.
 	void validateSpawnRequest(Player player, const SpawnReq req)
 	{
 		const EntityDbShort allowedTitles = m_constants.allowedEntities;
-		enforce(canFind(allowedTitles.controllableSubNames, req.submarineName));
-		enforce(canFind(allowedTitles.propulsorNames, req.propulsorName));
+		enforce(canFind(allowedTitles.controllableSubNames, req.submarineName),
+			"invalid submarineName " ~ req.submarineName);
+		enforce(canFind(allowedTitles.propulsorNames, req.propulsorName),
+			"invalid propulsorName " ~ req.propulsorName);
 		foreach (const TubeSpawnState ltl; req.loadableTubeLoadouts)
 			if (ltl.loadedWeapon)
-				enforce(canFind(allowedTitles.weaponNames, ltl.loadedWeapon));
+				enforce(canFind(allowedTitles.weaponNames, ltl.loadedWeapon),
+					"invalid loadedWeapon " ~ ltl.loadedWeapon);
 		foreach (const AmmoRoomFullState arl; req.ammoRoomLoadouts)
 		{
 			foreach (const WeaponCount wc; arl.storedWeapons)
-				enforce(canFind(allowedTitles.weaponNames, wc.weaponName));
+				enforce(canFind(allowedTitles.weaponNames, wc.weaponName),
+					"invalid weaponName " ~ wc.weaponName);
 		}
 	}
 
@@ -165,6 +162,7 @@ abstract class ScenarioSpawner
 			simId = randomUUID().toString();
 		Simulator sim = new Simulator(simId);
 		Scenario res = m_factory(sim);
+		res.m_spawner = this;
 		return res;
 	}
 }
@@ -172,7 +170,7 @@ abstract class ScenarioSpawner
 
 private final class StandaloneScenarioSpawner: ScenarioSpawner
 {
-	this(AvailableScenarioConstants contsants, Scenario delegate(Simulator sim) factory)
+	this(AvailableScenarioConstants constants, Scenario delegate(Simulator sim) factory)
 	{
 		super(constants, factory);
 	}
@@ -192,7 +190,7 @@ private final class StandaloneScenarioSpawner: ScenarioSpawner
 
 private final class TutorialScenarioSpawner: ScenarioSpawner
 {
-	this(AvailableScenarioConstants contsants, Scenario delegate(Simulator sim) factory)
+	this(AvailableScenarioConstants constants, Scenario delegate(Simulator sim) factory)
 	{
 		super(constants, factory);
 	}
@@ -214,7 +212,7 @@ private final class CampaignScenarioSpawner: ScenarioSpawner
 {
 	const Campaign* campaign;
 
-	this(AvailableScenarioConstants contsants,
+	this(AvailableScenarioConstants constants,
 		Scenario delegate(Simulator sim) factory, const Campaign* camp)
 	{
 		super(constants, factory);
@@ -247,10 +245,10 @@ private final class PersistentScenarioSpawner: ScenarioSpawner
 	@property Simulator simulator() { return m_simulator; }
 	@property Scenario scenario() { return m_scenario; }
 
-	this(AvailableScenarioConstants contsants,
+	this(AvailableScenarioConstants constants,
 		Scenario delegate(Simulator sim) factory, string persistentSimId)
 	{
-		super(contsants, factory);
+		super(constants, factory);
 		// eagerly builds the simulator
 		m_scenario = createSimulatorAndScenario(persistentSimId);
 		m_simulator = scenario.simulator;

@@ -1,5 +1,6 @@
 module dsubs_client.game.gamestate;
 
+import dsubs_common.api.messages;
 import dsubs_client.game;
 
 

@@ -176,9 +176,10 @@ __gshared:
 		}
 	}
 
-	static void setEntityDb(EntityDb entityDb)
+	static void setEntityDb(EntityDb newDb)
 	{
-		entityManager = new EntityManager(entityDb);
+		entityDb = newDb;
+		entityManager = new EntityManager(newDb);
 	}
 
 	/// clear various callbacks and objects in order to transition to another
