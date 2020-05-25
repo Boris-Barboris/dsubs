@@ -76,6 +76,7 @@ struct AvailableScenariosRes
 {
 	__gshared const int g_marshIdx;
 	AvailableCampaign[] campaigns;
+	// does not include campaign scenarios
 	AvailableScenario[] scenarios;
 }
 

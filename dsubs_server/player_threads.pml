@@ -1,5 +1,6 @@
 /*
-Verification of correctness and liveness of various dsubs_server threads.
+Verification of correctness and liveness of playercon atomic replacement
+and eviction for dsubs_server threads.
 */
 
 #define CON_COUNT 3

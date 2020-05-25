@@ -5,6 +5,7 @@ import std.array;
 import std.conv: to;
 import std.math;
 import std.utf;
+import std.traits: EnumMembers;
 import std.experimental.logger;
 
 import core.thread;
@@ -29,14 +30,19 @@ import dsubs_client.input.hotkeymanager;
 
 private
 {
+	enum int HDR_SIZE = 30;
+	enum int HDR_FONT = 24;
 	enum int BTN_SIZE = 26;
 	enum int BTN_FONT = 20;
 	enum int WPN_FONT = 18;
 	enum int TUBE_FONT = 18;
+	enum int MISSION_FONT = 18;
+	enum int DESCRIPTION_FONT = 16;
 	enum int TUBE_CONTENT_FONT = 14;
 }
 
 
+/// Scenario and loadout selection.
 final class LoadoutState: GameState
 {
 	private
@@ -55,6 +61,11 @@ final class LoadoutState: GameState
 		Div rightColumnDiv;
 		ScrollBar rightColumnScrollbar;
 		Panel m_mainPanel;
+		ScrollBar m_scenDesc;
+		Div m_missionSelectionOuterDiv;
+		Div m_missionSelectFooterDiv;
+		AvailableScenario m_selectedScenario;
+		Button m_toLoadoutBtn;
 	}
 
 	// if null, will request scenarios in setup()
@@ -169,7 +180,7 @@ final class LoadoutState: GameState
 			fixedSize(vec2i(200, BTN_FONT)).build();
 	}
 
-	void selectHull(string hullname)
+	void selectHull(string hullname, AvailableScenario* scenario)
 	{
 		if (curSelectedSub is null || curSelectedSub.tmpl.name != hullname)
 		{
@@ -187,6 +198,8 @@ final class LoadoutState: GameState
 				fixedSize(vec2i(1, 30)).build;
 			foreach (propName; propulsorNames)
 			{
+				if (!canFind(scenario.allowedEntities.propulsorNames, propName))
+					continue;
 				Button propSelector = builder(new Button()).content(propName).
 					fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
 					htextAlign(HTextAlign.LEFT).build();
@@ -227,6 +240,10 @@ final class LoadoutState: GameState
 				int[string] defaultLoadout;
 				foreach (i, weaponName; ammoRoom.allowedWeaponSet.weaponNames)
 				{
+					// not only we are limited by hull weapon set, we are also
+					// limited by the scenario
+					if (!canFind(scenario.allowedEntities.weaponNames, weaponName))
+						continue;
 					int count = 0;
 					if (i == 0)
 						count = ammoRoom.capacity;
@@ -245,15 +262,21 @@ final class LoadoutState: GameState
 					tt => tt.roomId == ammoRoom.id && tt.loadedOnSpawn).array;
 				if (roomTubes.length == 0)
 					continue;
+				// not only we are limited by hull weapon set, we are also
+				// limited by the scenario
+				const(string)[] filteredWeaponSet = ammoRoom.allowedWeaponSet.weaponNames.
+					filter!(wn => canFind(scenario.allowedEntities.weaponNames, wn)).array;
+				if (filteredWeaponSet.length == 0)
+					continue;
 				roomTubes.sort!("a.id < b.id");
 				Label roomHeader = builder(new Label()).content(ammoRoom.name ~ " tubes").
 					fontSize(BTN_FONT).fontColor(COLORS.loadoutHint).fixedSize(vec2i(1, 30)).build;
 				divElements ~= roomHeader;
 				foreach (const TubeTemplate tt; roomTubes)
 				{
-					tubeLoadouts[tt.id] = ammoRoom.allowedWeaponSet.weaponNames[0];
+					tubeLoadouts[tt.id] = filteredWeaponSet[0];
 					divElements ~= buildTubeLoadDiv(tt.id, tubeLoadouts[tt.id],
-						ammoRoom.allowedWeaponSet.weaponNames);
+						filteredWeaponSet);
 				}
 				divElements ~= filler(10);
 			}
@@ -290,12 +313,9 @@ final class LoadoutState: GameState
 			handleAvailableScenariosRes(*availableScenarios);
 	}
 
-	override void handleAvailableScenariosRes(AvailableScenariosRes res)
+	private GuiElement buildLoadoutUi(AvailableScenario* scenario)
 	{
-		if (m_mainPanel !is null)
-			Game.guiManager.removePanel(m_mainPanel);
-
-		availableHulls = Game.entityDb.controllableSubs.map!(a => a.name).array;
+		availableHulls = scenario.allowedEntities.controllableSubNames;
 
 		/* Layout:
 		Hull1 |	Description	| hull_props
@@ -315,7 +335,7 @@ final class LoadoutState: GameState
 				fontSize(BTN_FONT).fixedSize(vec2i(200, BTN_SIZE)).
 				htextAlign(HTextAlign.LEFT).build();
 			hullButtons ~= hullSelector;
-			hullSelector.onClick += ((string hn) => { selectHull(hn); })(hullname);
+			hullSelector.onClick += ((string hn) => { selectHull(hn, scenario); })(hullname);
 			hullSelector.onClick += ((Button selectedBtn) => {
 					selectedBtn.fontColor = COLORS.textFieldCursor;
 					hullButtons.filter!(b => b !is selectedBtn).
@@ -371,8 +391,10 @@ final class LoadoutState: GameState
 						)).array,
 					tubeLoadouts.byKeyValue.map!(pair =>
 						TubeSpawnState(pair.key, pair.value)).array,
-					SpawnRequestType.existingSimulator,
-					"main_arena"
+					scenario.type == ScenarioType.persistentSimulator ?
+						SpawnRequestType.existingSimulator : SpawnRequestType.newSimulator,
+					scenario.type == ScenarioType.persistentSimulator ?
+						scenario.simulatorId : scenario.name
 					);
 				trace("Requesting spawn: ", req);
 				Game.bconm.con.sendMessage(req);
@@ -387,7 +409,7 @@ final class LoadoutState: GameState
 				])
 			).fixedSize(vec2i(250, 1)).build();
 
-		auto prepareGui = hDiv([
+		auto loadoutDiv = hDiv([
 			builder(vDiv([
 						builder(new Label()).content("Hulls:").
 							fontSize(BTN_FONT).fontColor(COLORS.loadoutHint).
@@ -406,7 +428,116 @@ final class LoadoutState: GameState
 			rightColumnDiv
 		]);
 
-		m_mainPanel = new Panel(prepareGui);
+		return loadoutDiv;
+	}
+
+	private GuiElement buildScenarioSelectionUi()
+	{
+		AvailableScenario[][ScenarioType] scenarioGroups;
+		scenarioGroups[ScenarioType.standalone] = [];
+		scenarioGroups[ScenarioType.tutorial] = [];
+		scenarioGroups[ScenarioType.persistentSimulator] = [];
+		AvailableCampaign[string] campaigns;
+
+		foreach (AvailableScenario scen; availableScenarios.scenarios)
+			scenarioGroups[scen.type] ~= scen;
+		foreach (AvailableCampaign camp; availableScenarios.campaigns)
+			campaigns[camp.name] = camp;
+
+		Label[] missionTypeLabels;
+		Div[] missionTypeColumns;
+		foreach (scenType; EnumMembers!ScenarioType)
+		{
+			string content;
+			final switch (scenType)
+			{
+				case ScenarioType.persistentSimulator:
+					content = "Online arenas";
+					break;
+				case ScenarioType.tutorial:
+					content = "Tutorials";
+					break;
+				case ScenarioType.campaignMission:
+					content = "Campaigns";
+					break;
+				case ScenarioType.standalone:
+					content = "Standalone";
+					break;
+			}
+			Label typeLabel = builder(new Label()).fontSize(BTN_FONT).
+				htextAlign(HTextAlign.CENTER).
+				fixedSize(vec2i(1, BTN_SIZE + 10)).content(content).build();
+			missionTypeLabels ~= typeLabel;
+			GuiElement[] missionButtons;
+			if (scenType != ScenarioType.campaignMission)
+			{
+				AvailableScenario[] scens = scenarioGroups[scenType];
+				// lexicographic sort
+				sort!((a, b) => a.name < b.name)(scens);
+				foreach (AvailableScenario scen; scens)
+				{
+					Button btn = builder(new Button()).content(scen.name).
+						fontSize(MISSION_FONT).fixedSize(vec2i(1, MISSION_FONT + 6)).build();
+					btn.onClick += (s) { return {
+						string descContent = s.name ~ "\n\n" ~ s.shortDescription ~
+							"\n\n" ~ s.fullDescription;
+						TextBox descBox = builder(new TextBox()).fontSize(DESCRIPTION_FONT).
+							content(descContent).build();
+						m_scenDesc = builder(new ScrollBar(descBox)).
+							fraction(0.33f).build();
+						m_selectedScenario = s;
+						m_missionSelectionOuterDiv.setChild(m_scenDesc, 2);
+						m_missionSelectFooterDiv.setChild(m_toLoadoutBtn, 1);
+					}; } (scen);
+					missionButtons ~= btn;
+				}
+			}
+			if (missionButtons.length == 0)
+				missionButtons ~= filler(10);
+			int sbDivHeight = ((MISSION_FONT + 6) * missionButtons.length).to!int;
+			Div missionsDiv = builder(vDiv(missionButtons)).
+				fixedSize(vec2i(10, sbDivHeight)).backgroundColor(COLORS.simPanelBgnd).
+				build();
+			ScrollBar missionsSb = new ScrollBar(missionsDiv);
+
+			missionTypeColumns ~= vDiv([
+				typeLabel,
+				missionsSb
+			]);
+		}
+
+		m_toLoadoutBtn = builder(new Button()).fontSize(HDR_FONT).
+			backgroundColor(COLORS.simLaunchButtonBgnd).fontColor(sfBlack).
+			fixedSize(vec2i(150, HDR_SIZE)).content("To loadout").build();
+
+		m_toLoadoutBtn.onClick += {
+			trace("selected " ~ m_selectedScenario.name);
+		};
+
+		m_missionSelectFooterDiv = builder(hDiv([filler(), filler()])).
+			fixedSize(vec2i(1, HDR_SIZE)).build();
+
+		m_missionSelectionOuterDiv = vDiv([
+			filler(0.08f),
+			builder(hDiv([filler(20)] ~ cast(GuiElement[]) missionTypeColumns ~
+				 [filler(20)])).build(),
+			// here should lie a mission description
+			filler(0.33f),
+			m_missionSelectFooterDiv
+		]);
+
+		return m_missionSelectionOuterDiv;
+	}
+
+	override void handleAvailableScenariosRes(AvailableScenariosRes res)
+	{
+		if (m_mainPanel !is null)
+			Game.guiManager.removePanel(m_mainPanel);
+
+		// GuiElement loadoutGuiEl = buildLoadoutUi();
+		GuiElement missionsUi = buildScenarioSelectionUi();
+
+		m_mainPanel = new Panel(missionsUi);
 		Game.guiManager.addPanel(m_mainPanel);
 		Game.worldManager.camCtx.camera.zoom = 10.0;
 		Game.worldManager.camCtx.camera.center = vec2d(0.0, 0.0);

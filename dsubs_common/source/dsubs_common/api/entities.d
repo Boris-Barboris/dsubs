@@ -520,11 +520,11 @@ struct ReplaySlice
 
 enum ScenarioType: ubyte
 {
-	standalone,
+	/// Special scenario that has a persistent simulator instance serving it.
+	persistentSimulator,
 	tutorial,
 	campaignMission,
-	/// Special scenario that has a persistent simulator instance serving it.
-	persistentSimulator
+	standalone
 }
 
 /// Collection of missions that must be completed one-by-one.
