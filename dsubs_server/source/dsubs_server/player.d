@@ -481,6 +481,7 @@ final class Player: Captain
 		return (sub && !sub.dead);
 	}
 
+	// called while holding simulator's write lock
 	void handleSimTerminating()
 	{
 		PlayerConnection con = m_connection;

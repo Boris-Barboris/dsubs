@@ -38,7 +38,7 @@ struct LoginReq
 	@MaxLenAttr(1024) ubyte[] password;		/// encrypted
 }
 
-/// Sent in response to LoginReq if everything is OK. Followed by
+/// Sent in response to LoginReq if everything is OK. Immediately followed by
 /// AvailableScenariosRes.
 struct LoginSuccessRes
 {
@@ -70,8 +70,7 @@ struct AvailableScenariosReq
 }
 
 /// If the user is not spawned, right after LoginSuccessRes the server sends this message.
-/// Also is a result of successfull AbandonReq handling. Should be used to render
-/// main menu.
+/// Should be used to render main menu. Different content for each user.
 @Compressed
 struct AvailableScenariosRes
 {
@@ -80,7 +79,7 @@ struct AvailableScenariosRes
 	AvailableScenario[] scenarios;
 }
 
-/// Sent by client when he wants to download full entity database
+/// Sent by client when he wants to download full entity database. Is constant for all users.
 struct EntityDbReq
 {
 	__gshared const int g_marshIdx;
@@ -118,8 +117,8 @@ struct SpawnFailureRes
 }
 
 /// Request to abandon an existing submarine and simulator. Will not be accepted for persistent
-/// simulators like the main_arena. If accepted, will be followed by SimulatorKilledRes
-/// and then AvailableScenariosRes.
+/// simulators like the main_arena. If accepted, will result in SimulatorKilledRes
+/// after unspecified delay.
 struct AbandonReq
 {
 	__gshared const int g_marshIdx;
@@ -155,6 +154,8 @@ struct ReconnectStateRes
 	AmmoRoomFullState[] ammoRoomStates;
 	MapElement[] mapElements;
 	ChatMessage briefing;
+	/// True when the player can abandon the simulator.
+	bool canAbandon;
 }
 
 /*

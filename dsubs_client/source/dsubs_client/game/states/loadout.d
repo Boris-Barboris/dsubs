@@ -41,6 +41,7 @@ final class LoadoutState: GameState
 {
 	private
 	{
+		AvailableScenariosRes* availableScenarios;
 		Submarine curSelectedSub;
 		TextBox hullDescriptionBox;
 		Button startButton;
@@ -53,6 +54,13 @@ final class LoadoutState: GameState
 		string[] availableHulls;
 		Div rightColumnDiv;
 		ScrollBar rightColumnScrollbar;
+		Panel m_mainPanel;
+	}
+
+	// if null, will request scenarios in setup()
+	this(AvailableScenariosRes* scenarios = null)
+	{
+		availableScenarios = scenarios;
 	}
 
 	override void handleBackendDisconnect()
@@ -268,6 +276,25 @@ final class LoadoutState: GameState
 
 	override void setup()
 	{
+		if (availableScenarios is null)
+		{
+			trace("requesting available scenarios");
+			Game.bconm.con.sendMessage(immutable AvailableScenariosReq());
+			Label loadingLabel = builder(new Label()).content("Loading scenarios...").
+				fontSize(BTN_SIZE).htextAlign(HTextAlign.CENTER).
+				fontColor(COLORS.defaultFont).build();
+			m_mainPanel = new Panel(loadingLabel);
+			Game.guiManager.addPanel(m_mainPanel);
+		}
+		else
+			handleAvailableScenariosRes(*availableScenarios);
+	}
+
+	override void handleAvailableScenariosRes(AvailableScenariosRes res)
+	{
+		if (m_mainPanel !is null)
+			Game.guiManager.removePanel(m_mainPanel);
+
 		availableHulls = Game.entityDb.controllableSubs.map!(a => a.name).array;
 
 		/* Layout:
@@ -379,7 +406,8 @@ final class LoadoutState: GameState
 			rightColumnDiv
 		]);
 
-		Game.guiManager.addPanel(new Panel(prepareGui));
+		m_mainPanel = new Panel(prepareGui);
+		Game.guiManager.addPanel(m_mainPanel);
 		Game.worldManager.camCtx.camera.zoom = 10.0;
 		Game.worldManager.camCtx.camera.center = vec2d(0.0, 0.0);
 

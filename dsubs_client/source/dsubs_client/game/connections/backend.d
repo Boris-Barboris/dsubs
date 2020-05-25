@@ -94,6 +94,10 @@ private:
 
 	void h_availableScenariosRes(AvailableScenariosRes res)
 	{
+		synchronized(Game.mainMutex)
+		{
+			Game.activeState.handleAvailableScenariosRes(res);
+		}
 	}
 
 	void h_spawnFailureRes(SpawnFailureRes res)
@@ -142,6 +146,18 @@ private:
 	void h_chatMessageRes(ChatMessageRes res)
 	{
 		Game.cic.handleChatMessageRes(res);
+	}
+
+	void h_simulatorTerminatingRes(SimulatorTerminatingRes res)
+	{
+		trace("SimulatorTerminatingRes received!");
+		synchronized(Game.mainMutex)
+		{
+			Game.activeState.handleSimulatorTerminatingRes();
+			// eager CIC destruction to evict clients
+			if (Game.cic)
+				Game.cic.stop();
+		}
 	}
 }
 

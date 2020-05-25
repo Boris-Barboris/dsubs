@@ -42,7 +42,8 @@ final class LoginScreenState: GameState
 		Label infoLabel;
 		Button connectButton, cicConnectButton, replayButton;
 		void delegate() cicConnectCancellator;
-		LoginSuccessRes m_loginSuccessRes;
+		bool m_scenariosReceived;
+		AvailableScenariosRes m_scenarios;
 	}
 
 	override void setup()
@@ -244,9 +245,9 @@ final class LoginScreenState: GameState
 	{
 		info("login successfull");
 		canLogin = false;
+		m_scenariosReceived = false;
 		Game.entityDbHash = res.dbHash;
 		infoLabel.content = "Requesting entity database";
-		m_loginSuccessRes = res;
 		Game.bconm.con.sendMessage(immutable EntityDbReq());
 		// check if we are already swimming out there on the server
 		if (res.alreadySpawned)
@@ -265,18 +266,26 @@ final class LoginScreenState: GameState
 		connectButton.signalClickEnd();
 	}
 
+	override void handleAvailableScenariosRes(AvailableScenariosRes res)
+	{
+		trace(res);
+		m_scenarios = res;
+		m_scenariosReceived = true;
+	}
+
+	// will arrive after AvailableScenariosRes.
 	void handleEntityDb(EntityDbRes res)
 	{
 		info("entity db received");
 		Game.setEntityDb(res.entityDb);
-
+		// when we've got entitydb we always reconnect.
 		if (alreadySpawned)
-		{
-			// send request for reconnection
 			Game.bconm.con.sendMessage(immutable ReconnectReq());
-		}
 		else
-			Game.activeState = new LoadoutState();
+		{
+			assert(m_scenariosReceived);
+			Game.activeState = new LoadoutState(&m_scenarios);
+		}
 	}
 
 	override void handleBackendDisconnect()

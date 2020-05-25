@@ -35,6 +35,7 @@ final class DeathScreenState: GameState
 {
 	private
 	{
+		bool m_simTerminated;
 		CICSimFlowEndRes m_deathRes;
 	}
 
@@ -43,27 +44,43 @@ final class DeathScreenState: GameState
 		m_deathRes = deathRes;
 	}
 
+	/// Used to handle in abrupt
+	this()
+	{
+		m_simTerminated = true;
+	}
+
 	override void setup()
 	{
 		Game.window.title = "dsubs";
 
 		string mainLabel;
-		final switch (m_deathRes.res.reason)
+		if (m_simTerminated)
+			mainLabel = "Simulation was terminated";
+		else
 		{
-			case SimFlowEndReason.death:
-				mainLabel = "YOU DIED";
-				break;
-			case SimFlowEndReason.victory:
-				mainLabel = "VICTORY";
-				break;
-			case SimFlowEndReason.defeat:
-				mainLabel = "DEFEAT";
-				break;
+			final switch (m_deathRes.res.reason)
+			{
+				case SimFlowEndReason.death:
+					mainLabel = "YOU DIED";
+					break;
+				case SimFlowEndReason.victory:
+					mainLabel = "VICTORY";
+					break;
+				case SimFlowEndReason.defeat:
+					mainLabel = "DEFEAT";
+					break;
+			}
 		}
 		Label youDiedLabel = builder(new Label()).content(mainLabel).
 			htextAlign(HTextAlign.CENTER).fontSize(YOU_DIED_FONTSIZE).
 			fontColor(YOU_DIED_FONTCOLOR).build();
-		Label causeLabel = builder(new Label()).content(m_deathRes.shortReport).
+		string shortReport;
+		if (m_simTerminated)
+			shortReport = "Simulator was abruptly terminated";
+		else
+			shortReport = m_deathRes.shortReport;
+		Label causeLabel = builder(new Label()).content(shortReport).
 			htextAlign(HTextAlign.CENTER).fontSize(CAUSE_FONTSIZE).build();
 		Button goToMainMenu = builder(new Button()).content("return to main menu").
 			htextAlign(HTextAlign.CENTER).fontSize(BUTTON_FONTSIZE).build();
@@ -86,8 +103,10 @@ final class DeathScreenState: GameState
 		Game.activeState = new LoginScreenState();
 	}
 
-	override void handleCICDisconnect()
-	{
-		Game.activeState = new LoginScreenState();
-	}
+	// these disconnects and aborts do not require immediate state switch, we can
+	// continue in loadout state.
+
+	override void handleCICDisconnect() {}
+
+	override void handleSimulatorTerminatingRes() {}
 }

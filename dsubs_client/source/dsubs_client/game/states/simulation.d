@@ -20,6 +20,7 @@ import dsubs_client.input.hotkeymanager;
 import dsubs_client.game.gamestate;
 import dsubs_client.game.entities;
 import dsubs_client.game.states.loginscreen;
+import dsubs_client.game.states.deathscreen;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cameracontroller;
 import dsubs_client.game.tacoverlay;
@@ -148,6 +149,12 @@ final class SimulatorState: GameState
 	{
 		m_lastServerTime = newTime;
 		m_lastServerTimeOnClient = MonoTime.currTime;
+	}
+
+	override void handleSimulatorTerminatingRes()
+	{
+		error("SimulatorTerminatingRes received, jumping to death screen");
+		Game.activeState = new DeathScreenState();
 	}
 }
 

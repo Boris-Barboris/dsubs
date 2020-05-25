@@ -160,6 +160,7 @@ private:
 		ReconnectStateRes res;
 		synchronized(sub.simulator.simMut.reader)
 		{
+			enforce(!sub.simulator.finished, "simulator is finished");
 			res = cast() p.getReconnectState();
 			m_simulatorFlow = true;
 		}
