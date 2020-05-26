@@ -206,10 +206,12 @@ class GuiElement: IInputReceiver
 		vec4i res;
 		res[0] = min(max((*rhs)[0], m_position.x), m_position.x + m_size.x);
 		res[1] = min(max((*rhs)[1], m_position.y), m_position.y + m_size.y);
-		int right = (*rhs)[0] + (*rhs)[2];
-		int bottom = (*rhs)[1] + (*rhs)[3];
-		res[2] = max(0, min(right, m_position.x + m_size.x - res[0]));
-		res[3] = max(0, min(bottom, m_position.y + m_size.y - res[1]));
+		int parentRight = (*rhs)[0] + (*rhs)[2];
+		int parentBottom = (*rhs)[1] + (*rhs)[3];
+		int childRight = max(res[0], min(m_position.x + m_size.x, parentRight));
+		int childBottom = max(res[1], min(m_position.y + m_size.y, parentBottom));
+		res[2] = max(0, childRight - res[0]);
+		res[3] = max(0, childBottom - res[1]);
 		return res;
 	}
 

@@ -35,6 +35,7 @@ struct ColorScheme
 	sfColor simButtonDisabledFont = sfColor(0, 0, 0, 40);
 	sfColor simButtonSelectedStateBgnd = sfColor(86, 41, 41, 200);
 	sfColor simLaunchButtonBgnd = sfColor(200, 50, 50, 255);
+	sfColor cancelButtonBgnd = sfColor(132, 119, 217, 255);
 	sfColor simMessageFont = sfColor(189, 135, 135, 255);
 	sfColor loadoutHint = sfColor(150, 150, 150, 255);
 	sfColor tubeCircle = sfColor(255, 94, 0, 255);

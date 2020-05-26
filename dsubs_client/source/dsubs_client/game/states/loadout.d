@@ -30,8 +30,8 @@ import dsubs_client.input.hotkeymanager;
 
 private
 {
-	enum int HDR_SIZE = 30;
-	enum int HDR_FONT = 24;
+	enum int HDR_SIZE = 40;
+	enum int HDR_FONT = 30;
 	enum int BTN_SIZE = 26;
 	enum int BTN_FONT = 20;
 	enum int WPN_FONT = 18;
@@ -62,8 +62,9 @@ final class LoadoutState: GameState
 		ScrollBar rightColumnScrollbar;
 		Panel m_mainPanel;
 		ScrollBar m_scenDesc;
-		Div m_missionSelectionOuterDiv;
-		Div m_missionSelectFooterDiv;
+		Div m_topLevelDiv;
+		Div m_footerDiv;
+		Div m_missionSelectionContent;
 		AvailableScenario m_selectedScenario;
 		Button m_toLoadoutBtn;
 	}
@@ -365,8 +366,8 @@ final class LoadoutState: GameState
 							availableHulls.length.to!int)).build;
 		ScrollBar hullsScrollbar = new ScrollBar(hullDiv);
 
-		startButton = builder(new Button(ButtonType.ASYNC)).fontSize(45).
-			htextAlign(HTextAlign.CENTER).content("Start").fixedSize(vec2i(1, 70)).
+		startButton = builder(new Button(ButtonType.ASYNC)).fontSize(HDR_FONT).
+			htextAlign(HTextAlign.CENTER).content("Start").fixedSize(vec2i(150, HDR_SIZE)).
 			backgroundColor(COLORS.simLaunchButtonBgnd).fontColor(sfBlack).
 			build();
 		startButton.onClick += ()
@@ -400,12 +401,27 @@ final class LoadoutState: GameState
 				Game.bconm.con.sendMessage(req);
 			};
 
+		m_footerDiv.setChild(startButton, 2);
+
+		// button to return to mission selection
+		Button backToMissionBtn = builder(new Button()).fontSize(HDR_FONT).
+			htextAlign(HTextAlign.CENTER).content("Cancel").fixedSize(vec2i(150, HDR_SIZE)).
+			backgroundColor(COLORS.cancelButtonBgnd).fontColor(sfBlack).
+			build();
+
+		backToMissionBtn.onClick += {
+			m_footerDiv.setChild(filler(), 0);
+			m_topLevelDiv.setChild(m_missionSelectionContent, 1);
+			Game.worldManager.clear();
+		};
+
+		m_footerDiv.setChild(backToMissionBtn, 0);
+
 		Game.hotkeyManager.setHotkey(Hotkey(sfKeyReturn),
 			() { startButton.simulateClick(); });
 
 		rightColumnDiv = builder(vDiv([
-				rightColumnScrollbar,
-				startButton
+				rightColumnScrollbar
 				])
 			).fixedSize(vec2i(250, 1)).build();
 
@@ -431,7 +447,7 @@ final class LoadoutState: GameState
 		return loadoutDiv;
 	}
 
-	private GuiElement buildScenarioSelectionUi()
+	private void buildScenarioSelectionUi()
 	{
 		AvailableScenario[][ScenarioType] scenarioGroups;
 		scenarioGroups[ScenarioType.standalone] = [];
@@ -476,18 +492,22 @@ final class LoadoutState: GameState
 				sort!((a, b) => a.name < b.name)(scens);
 				foreach (AvailableScenario scen; scens)
 				{
+					// generate scenario selection buttons
 					Button btn = builder(new Button()).content(scen.name).
-						fontSize(MISSION_FONT).fixedSize(vec2i(1, MISSION_FONT + 6)).build();
+						fontSize(MISSION_FONT).fixedSize(vec2i(1, MISSION_FONT + 6)).
+						build();
 					btn.onClick += (s) { return {
+						// on click we generate scenario description text box.
 						string descContent = s.name ~ "\n\n" ~ s.shortDescription ~
 							"\n\n" ~ s.fullDescription;
 						TextBox descBox = builder(new TextBox()).fontSize(DESCRIPTION_FONT).
 							content(descContent).build();
 						m_scenDesc = builder(new ScrollBar(descBox)).
-							fraction(0.33f).build();
+							fraction(0.36f).build();
 						m_selectedScenario = s;
-						m_missionSelectionOuterDiv.setChild(m_scenDesc, 2);
-						m_missionSelectFooterDiv.setChild(m_toLoadoutBtn, 1);
+						(cast(Div) m_topLevelDiv.children[1]).setChild(m_scenDesc, 1);
+						// activate 'to loadout' button in the footer
+						m_footerDiv.setChild(m_toLoadoutBtn, 2);
 					}; } (scen);
 					missionButtons ~= btn;
 				}
@@ -508,25 +528,20 @@ final class LoadoutState: GameState
 
 		m_toLoadoutBtn = builder(new Button()).fontSize(HDR_FONT).
 			backgroundColor(COLORS.simLaunchButtonBgnd).fontColor(sfBlack).
-			fixedSize(vec2i(150, HDR_SIZE)).content("To loadout").build();
+			fixedSize(vec2i(180, HDR_SIZE)).content("To loadout").build();
 
 		m_toLoadoutBtn.onClick += {
-			trace("selected " ~ m_selectedScenario.name);
+			// we now build the loadout UI.
+			GuiElement loadoutUi = buildLoadoutUi(&m_selectedScenario);
+			m_topLevelDiv.setChild(loadoutUi, 1);
 		};
 
-		m_missionSelectFooterDiv = builder(hDiv([filler(), filler()])).
-			fixedSize(vec2i(1, HDR_SIZE)).build();
-
-		m_missionSelectionOuterDiv = vDiv([
-			filler(0.08f),
+		m_missionSelectionContent = vDiv([
 			builder(hDiv([filler(20)] ~ cast(GuiElement[]) missionTypeColumns ~
 				 [filler(20)])).build(),
 			// here should lie a mission description
-			filler(0.33f),
-			m_missionSelectFooterDiv
+			filler(0.36f)
 		]);
-
-		return m_missionSelectionOuterDiv;
 	}
 
 	override void handleAvailableScenariosRes(AvailableScenariosRes res)
@@ -534,10 +549,18 @@ final class LoadoutState: GameState
 		if (m_mainPanel !is null)
 			Game.guiManager.removePanel(m_mainPanel);
 
-		// GuiElement loadoutGuiEl = buildLoadoutUi();
-		GuiElement missionsUi = buildScenarioSelectionUi();
+		m_footerDiv = builder(hDiv([filler(), filler(), filler()])).
+			fixedSize(vec2i(1, HDR_SIZE)).build();
 
-		m_mainPanel = new Panel(missionsUi);
+		buildScenarioSelectionUi();
+
+		m_topLevelDiv = vDiv([
+			filler(0.08f),
+			m_missionSelectionContent,
+			m_footerDiv
+		]);
+
+		m_mainPanel = new Panel(m_topLevelDiv);
 		Game.guiManager.addPanel(m_mainPanel);
 		Game.worldManager.camCtx.camera.zoom = 10.0;
 		Game.worldManager.camCtx.camera.center = vec2d(0.0, 0.0);
