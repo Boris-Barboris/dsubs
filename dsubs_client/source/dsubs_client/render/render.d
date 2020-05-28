@@ -46,7 +46,7 @@ final class Render
 	}
 
 	/// start rendering thread
-	void start(Mutex mutex)
+	void start(Object.Monitor mutex)
 	{
 		if (m_worker && m_worker.isRunning)
 			throw new Exception("Render already started");
@@ -97,7 +97,7 @@ final class Render
 	@property MonoTime frameStartTime() const { return m_frameStartTime; }
 
 	/// Thread function
-	private void render(scope Mutex mutex)
+	private void render(scope Object.Monitor mutex)
 	{
 		try
 		{
@@ -145,9 +145,6 @@ final class Render
 					frameCounter = 0;
 					lastFpsMark = m_frameEndTime;
 				}
-				// in case the player has disabled vsync in driver, we don't want to
-				// starve other threads
-				Thread.yield();
 			}
 		}
 		catch (Throwable err)

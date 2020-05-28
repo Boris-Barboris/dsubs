@@ -19,7 +19,7 @@ final class Scheduler
 	{
 		MonoTime when;
 		void delegate() what;
-		Mutex lockToHold;
+		Object.Monitor lockToHold;
 	}
 
 	private
@@ -60,7 +60,7 @@ final class Scheduler
 
 	/// execute delegate 'what' after 'after' time interval, while holding
 	/// 'mutToHold' lock.
-	void delay(void delegate() what, Duration after, Mutex mutToHold = null)
+	void delay(void delegate() what, Duration after, Object.Monitor mutToHold = null)
 	{
 		assert(what !is null);
 		assert(after > Duration.zero);

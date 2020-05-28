@@ -2,7 +2,7 @@ module dsubs_client.game;
 
 import std.parallelism;
 
-import core.sync.mutex;
+import core.sync.rwmutex;
 import core.thread;
 import core.memory: GC;
 
@@ -46,7 +46,7 @@ __gshared:
 
 	/// Global lock, held by window message pump and render threads.
 	/// When in doubt, hold this one.
-	Mutex mainMutex;
+	ReadWriteMutex mainMutex;
 
 	// entity databases in different forms
 	immutable(ubyte)[] entityDbHash;
@@ -121,7 +121,7 @@ __gshared:
 		guiManager = new GuiManager(window);
 		worldManager = new WorldManager(window);
 		hotkeyManager = new HotkeyManager(window);
-		mainMutex = new Mutex();
+		mainMutex = new ReadWriteMutex();
 		scheduler = new Scheduler();
 		scheduler.start();
 		scope(exit)
@@ -151,11 +151,12 @@ __gshared:
 		}
 
 		// setup login screen
-		synchronized (mainMutex)
+		synchronized (mainMutex.writer)
 			activeState = new LoginScreenState();
 
-		// start render thread and serve the windows event pump
-		render.start(mainMutex);
+		// Start render thread and serve the windows event pump. Render takes
+		// reader lock and has low priority.
+		render.start(mainMutex.reader);
 		scope(exit)
 		{
 			shuttingDown = true;
@@ -163,8 +164,8 @@ __gshared:
 		}
 		try
 		{
-			window.pollEvents(mainMutex);
-			synchronized (mainMutex)
+			window.pollEvents(mainMutex.writer);
+			synchronized (mainMutex.writer)
 			{
 				clearEntities();
 			}
@@ -200,8 +201,7 @@ __gshared:
 
 	/// execute delegate 'what' after 'after' time interval, while holding
 	/// 'mutToHold' lock.
-	static void delay(void delegate() what, Duration after,
-		Mutex mutToHold = Game.mainMutex)
+	static void delay(void delegate() what, Duration after, Object.Monitor mutToHold)
 	{
 		assert(Game.scheduler !is null);
 		Game.scheduler.delay(what, after, mutToHold);

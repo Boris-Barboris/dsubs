@@ -1,6 +1,5 @@
 module dsubs_client.core.window;
 
-import core.sync.mutex;
 import core.stdc.stdlib: free;
 
 import std.algorithm;
@@ -100,7 +99,7 @@ final class Window
 	/// Function repeatedly polls events in window buffer and calls
 	/// respective handlers, if registered. Blocks until the window is closed, or
 	/// waitEvent returns error.
-	void pollEvents(scope Mutex mutex)
+	void pollEvents(scope Object.Monitor mutex)
 	{
 		sfEvent event;
 		while (!m_stopFlag && sfRenderWindow_waitEvent(m_wnd, &event))

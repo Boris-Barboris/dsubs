@@ -413,6 +413,7 @@ final class LoadoutState: GameState
 			m_footerDiv.setChild(filler(), 0);
 			m_topLevelDiv.setChild(m_missionSelectionContent, 1);
 			Game.worldManager.clear();
+			curSelectedSub = null;
 		};
 
 		m_footerDiv.setChild(backToMissionBtn, 0);
