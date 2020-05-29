@@ -131,7 +131,7 @@ final class TextBox: GuiElement
 		// write out the word to tmp buffer
 		void finalizeWord(bool writeContentIdx, bool reduceTmpIdx = false)
 		{
-			assert(contentIdx > 0);
+			assert(contentIdx >= 0);
 			size_t sepOffset = writeContentIdx ? 0 : 1;
 			size_t tmpIdxOffset = reduceTmpIdx ? 0 : 1;
 			for (size_t i = wordStartIdx; i < contentIdx - sepOffset; i++)

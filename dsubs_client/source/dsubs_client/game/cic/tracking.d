@@ -48,9 +48,9 @@ private
 	enum float CAPTURE_SEEK_AREA_PERSEC = dgr2rad(4);
 	enum float CAPTURE_SEEK_MAX_AREA = dgr2rad(8);
 	enum float ANGVEL_FILTER_K = 0.66;
-	enum float DETECTION_MARGIN_TO_NOISE = 3.5f;
+	enum float DETECTION_MARGIN_TO_NOISE = 2.6f;
 	/// after how many data slices we redo our noise estimation
-	enum int NOISE_ESTIMATION_FREQUENCY = 10;
+	enum int NOISE_ESTIMATION_FREQUENCY = 3;
 }
 
 
@@ -103,7 +103,7 @@ final class WaterfallAnalyzer
 		ushort m_detectMargin = ushort.max / 8;
 		bool m_noiseEstimated;
 		int m_noiseEstimationCounter;
-		float m_noiseLevelEstimate;
+		float m_varianceEstimate;
 	}
 
 	this(const HydrophoneTemplate tmpl, int sensorIdx, RayGeneratorSynchronizer* sync)
@@ -127,24 +127,27 @@ final class WaterfallAnalyzer
 		foreach (AntennaeData d; hdata.antennaes)
 			m_min = min(m_min, minElement(d.beams));
 
-		if ((!m_noiseEstimated || m_noiseEstimationCounter % NOISE_ESTIMATION_FREQUENCY == 0) && m_min > 0)
+		if ((!m_noiseEstimated || m_noiseEstimationCounter == 0) && m_min > 0)
 		{
 			int deltas = 0;
-			float deltaAbsSum = 0.0f;
+			float deltaSqrSum = 0.0f;
 			// estimate noise
 			foreach (AntennaeData d; hdata.antennaes)
 			{
 				for (size_t i = 0; i < d.beams.length - 1; i++)
 				{
 					deltas++;
-					deltaAbsSum += fabs(d.beams[i + 1].to!float - d.beams[i].to!float);
+					deltaSqrSum += pow(
+						d.beams[i + 1].to!float - d.beams[i].to!float, 2);
 				}
 			}
-			m_noiseLevelEstimate = deltaAbsSum / deltas;
-			m_detectMargin = ceil(m_noiseLevelEstimate * DETECTION_MARGIN_TO_NOISE).lrint.to!ushort;
+			m_varianceEstimate = deltaSqrSum / deltas;
+			m_detectMargin = ceil(sqrt(m_varianceEstimate) * DETECTION_MARGIN_TO_NOISE).
+				lrint.to!ushort;
 			m_noiseEstimated = true;
-			m_noiseEstimationCounter = (m_noiseEstimationCounter + 1) % NOISE_ESTIMATION_FREQUENCY;
 		}
+		m_noiseEstimationCounter =
+			(m_noiseEstimationCounter + 1) % NOISE_ESTIMATION_FREQUENCY;
 
 		// find all peaks and write them to array
 		m_peaks.length = 0;

@@ -316,7 +316,8 @@ final class SimulationGUI
 			tabIdxToHotkeyKey[idx] = mixin("sfKeyF" ~ (idx + 1).to!string);
 		}
 
-		foreach (i, btn; tabs)
+		size_t tabFirstHtIdx = canAbandon ? 1 : 0;
+		foreach (i, btn; tabs[tabFirstHtIdx .. $])
 		{
 			Game.hotkeyManager.setHotkey(Hotkey(tabIdxToHotkeyKey[i]),
 				((btn) => { btn.simulateClick(); }) (btn));
