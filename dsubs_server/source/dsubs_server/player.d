@@ -245,8 +245,12 @@ final class Player: Captain
 			);
 		if (s.simulator.scenario)
 		{
-			s.simulator.scenario.generateBriefing(
+			Scenario scenario = s.simulator.scenario;
+			scenario.generateBriefing(
 				this, recState.mapElements, recState.briefing);
+			trace(scenario.spawner.scenarioType);
+			recState.canAbandon =
+				scenario.spawner.scenarioType != ScenarioType.persistentSimulator;
 		}
 		return cast(immutable) recState;
 	}

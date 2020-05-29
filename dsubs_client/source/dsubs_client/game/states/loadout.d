@@ -553,6 +553,8 @@ final class LoadoutState: GameState
 		m_footerDiv = builder(hDiv([filler(), filler(), filler()])).
 			fixedSize(vec2i(1, HDR_SIZE)).build();
 
+		availableScenarios = new AvailableScenariosRes();
+		*availableScenarios = res;
 		buildScenarioSelectionUi();
 
 		m_topLevelDiv = vDiv([

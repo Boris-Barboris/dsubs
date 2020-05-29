@@ -111,7 +111,8 @@ final class SimulatorState: GameState
 		m_playerSubIcon = new PlayerSubIcon(m_tacticalOverlay, m_playerSub);
 		m_tacticalOverlay.updateScenarioElements(rawRecState.mapElements);
 
-		m_gui = new SimulationGUI();
+		bool isCicClient = Game.bconm.stopped;
+		m_gui = new SimulationGUI(rawRecState.canAbandon && !isCicClient);
 		foreach (i, listenDir; rawRecState.listenDirs)
 			m_gui.waterfalls[i].listenDir = listenDir;
 		foreach (i, desiredLength; rawRecState.desiredWireLenghts)
@@ -263,13 +264,27 @@ final class SimulationGUI
 		m_wireUis[req.wireIdx].updateDesiredLength(req.desiredLength);
 	}
 
-	this()
+	this(bool canAbandon)
 	{
 		Submarine playerSub = Game.simState.playerSub;
 
 		// Tabs at the top of the screen
 
 		Button[] tabs;
+
+		if (canAbandon)
+		{
+			// abandon sim button
+			Button abandonBtn = builder(new Button(ButtonType.ASYNC)).content("X").
+				fixedSize(vec2i(TAB_SIZE, TAB_SIZE)).fontSize(BIG_BTN_FONT).
+				backgroundColor(COLORS.simLaunchButtonBgnd).build;
+			abandonBtn.onClick += {
+				trace("sending request to abandon scenario");
+				Game.bconm.con.sendMessage(immutable AbandonReq());
+			};
+			tabs ~= abandonBtn;
+		}
+
 		Button tacticalTab = builder(new Button()).content("F1 Tactical").
 			fontSize(BIG_BTN_FONT).build;
 		Button[] hydrophoneTabs;
@@ -284,7 +299,7 @@ final class SimulationGUI
 		}
 		Button asonarTab = builder(new Button()).content("F" ~ tabId.to!string ~
 			" Active sonar").fontSize(BIG_BTN_FONT).build;
-		tabs = [tacticalTab] ~ hydrophoneTabs ~ [asonarTab];
+		tabs ~= [tacticalTab] ~ hydrophoneTabs ~ [asonarTab];
 
 		int[] tabIdxToHotkeyKey;
 		tabIdxToHotkeyKey.length = 8;

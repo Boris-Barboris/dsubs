@@ -155,7 +155,7 @@ final class LoginScreenState: GameState
 				cicIpField.content.str, "",
 				(CICClientConnection c)
 				{
-					synchronized(Game.mainMutex)
+					synchronized(Game.mainMutexWriter)
 					{
 						Game.ciccon = c;
 						cicConnectButton.signalClickEnd();
@@ -169,7 +169,7 @@ final class LoginScreenState: GameState
 				(Exception ex)
 				{
 					error(ex.msg);
-					synchronized(Game.mainMutex)
+					synchronized(Game.mainMutexWriter)
 					{
 						infoLabel.content = ex.msg;
 						cicConnectButton.signalClickEnd();

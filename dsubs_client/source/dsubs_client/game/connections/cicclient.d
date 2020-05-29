@@ -31,7 +31,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 			{
 				if (Game.shuttingDown)
 					return;
-				synchronized(Game.mainMutex)
+				synchronized(Game.mainMutexWriter)
 				{
 					// under no circumstance local CIC server should survive
 					// local cic connection crash
@@ -97,7 +97,7 @@ private:
 				expected.apiVersion.to!string ~ ", server: " ~ res.apiVersion.to!string);
 		// let's check db versions
 		bool requireDb = false;
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			if (res.dbHash != Game.entityDbHash)
 			{
@@ -120,7 +120,7 @@ private:
 
 	void h_entityDbRes(CICEntityDbRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.setEntityDb(res.res);
 		}
@@ -131,7 +131,7 @@ private:
 	void h_reconnectStateRes(CICReconnectStateRes res)
 	{
 		info("received reconnect state from CIC, switching to simulation state");
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.activeState = new SimulatorState(res);
 		}
@@ -139,7 +139,7 @@ private:
 
 	void h_deathRes(CICSimFlowEndRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.activeState = new DeathScreenState(res);
 		}
@@ -147,7 +147,7 @@ private:
 
 	void h_SubKinematicRes(CICSubKinematicRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.updateLastServerTime(res.snap.atTime);
 			Game.simState.playerSub.updateKinematics(res.snap);
@@ -158,7 +158,7 @@ private:
 
 	void h_throttleReq(CICThrottleReq req)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.playerSub.targetThrottle = req.target;
 			Game.simState.gui.updateTgtThrottleDisplay(req.target);
@@ -167,7 +167,7 @@ private:
 
 	void h_courseReq(CICCourseReq req)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.playerSub.targetCourse = req.target;
 			Game.simState.gui.updateTgtCourseDisplay(req.target);
@@ -176,7 +176,7 @@ private:
 
 	void h_listenDirReq(CICListenDirReq req)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.gui.waterfalls[req.hydrophoneIdx].listenDir = req.dir;
 		}
@@ -184,7 +184,7 @@ private:
 
 	void h_acousticRes(CICSubAcousticRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			bool[int] arrivedDataIdx;
 			// broadband idx
@@ -230,7 +230,7 @@ private:
 	{
 		assert(res.data.length == 1);
 		assert(res.data[0].sonarIdx == 0);
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.gui.sonardisp.putSliceData(res.data[0]);
 		}
@@ -238,7 +238,7 @@ private:
 
 	void h_contactCreatedFromDataRes(CICContactCreatedFromDataRes msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.handleContactCreated(msg);
 		}
@@ -246,7 +246,7 @@ private:
 
 	void h_contactCreatedFromHTrackerRes(CICContactCreatedFromHTrackerRes msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.handleContactCreated(msg);
 		}
@@ -254,7 +254,7 @@ private:
 
 	void h_contactDataReq(CICContactDataReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.handleContactData(msg.data);
 		}
@@ -262,7 +262,7 @@ private:
 
 	void h_contactUpdateTypeReq(CICContactUpdateTypeReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.handleContactUpdate(msg);
 		}
@@ -270,7 +270,7 @@ private:
 
 	void h_contactUpdateSolutionReq(CICContactUpdateSolutionReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.handleContactUpdate(msg);
 		}
@@ -278,7 +278,7 @@ private:
 
 	void h_contactUpdateDescriptionReq(CICContactUpdateDescriptionReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.handleContactUpdate(msg);
 		}
@@ -286,7 +286,7 @@ private:
 
 	void h_contactUpdateReq(CICContactUpdateReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.handleContactUpdate(msg);
 		}
@@ -294,7 +294,7 @@ private:
 
 	void h_dropContactReq(CICDropContactReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.handleDropContact(msg.ctcId);
 		}
@@ -302,7 +302,7 @@ private:
 
 	void h_dropDataReq(CICDropDataReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.handleDropData(msg.dataId);
 		}
@@ -310,7 +310,7 @@ private:
 
 	void h_contectMergeReq(CICContactMergeReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.contactManager.hadleMergeContact(msg.sourceCtcId, msg.destCtcId);
 		}
@@ -318,7 +318,7 @@ private:
 
 	void h_waterfallUpdateRes(CICWaterfallUpdateRes msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			auto wto = Game.simState.gui.waterfalls[msg.hydrophoneIdx].trackerOverlay;
 			wto.updatePeaks(msg.peaks);
@@ -330,7 +330,7 @@ private:
 
 	void h_updateTrackerReq(CICUpdateTrackerReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			auto manager = Game.simState.contactManager;
 			manager.handleTracker(msg.tracker);
@@ -339,7 +339,7 @@ private:
 
 	void h_dropTrackerReq(CICDropTrackerReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			auto manager = Game.simState.contactManager;
 			manager.handleDropTracker(msg.tid);
@@ -348,7 +348,7 @@ private:
 
 	void h_trimContactData(CICTrimContactData msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			auto manager = Game.simState.contactManager;
 			manager.handleTrimContactData(msg.ctcId, msg.olderThan);
@@ -357,7 +357,7 @@ private:
 
 	void h_tubeStateUpdateRes(CICTubeStateUpdateRes msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.playerSub.tube(msg.res.tube.tubeId).
 				updateFromFullState(msg.res.tube);
@@ -366,7 +366,7 @@ private:
 
 	void h_ammoRoomStateUpdateRes(CICAmmoRoomStateUpdateRes msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.playerSub.ammoRoom(msg.res.room.roomId).
 				updateFromFullState(msg.res.room);
@@ -375,7 +375,7 @@ private:
 
 	void h_mapOverlayUpdateRes(CICMapOverlayUpdateRes msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.tacticalOverlay.updateScenarioElements(msg.res.mapElements);
 		}
@@ -384,7 +384,7 @@ private:
 	void h_chatMessageRes(CICChatMessageRes msg)
 	{
 		info("received chat message: ", msg.res);
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.gui.handleChatMessage(msg.res.message);
 		}
@@ -392,7 +392,7 @@ private:
 
 	void h_wireDesiredLengthReq(CICWireDesiredLengthReq msg)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.gui.handleCICWireDesiredLengthReq(msg);
 		}

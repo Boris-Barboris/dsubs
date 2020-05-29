@@ -33,7 +33,7 @@ final class BackendConnection: ProtocolConnection!BackendProtocol
 			{
 				if (Game.shuttingDown)
 					return;
-				synchronized(Game.mainMutex)
+				synchronized(Game.mainMutexWriter)
 					Game.activeState.handleBackendDisconnect();
 			};
 		mixinHandlers(this);
@@ -43,7 +43,7 @@ private:
 
 	void h_serverStatus(ServerStatusRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			GameState activeState = Game.activeState;
 			if (cast(LoginScreenState) activeState)
@@ -54,7 +54,7 @@ private:
 	void h_replayDataRes(ReplayDataRes res)
 	{
 		Date date = Date.fromISOExtString(res.metricsDate);
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.activeState = new ReplayState(date, res.replaySlices);
 		}
@@ -62,7 +62,7 @@ private:
 
 	void h_loginSuccess(LoginSuccessRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.loginScreenState.handleLoginSuccess(res);
 		}
@@ -70,7 +70,7 @@ private:
 
 	void h_loginFailure(LoginFailureRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.loginScreenState.handleLoginFailure(res);
 		}
@@ -78,7 +78,7 @@ private:
 
 	void h_entityDb(EntityDbRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.loginScreenState.handleEntityDb(res);
 		}
@@ -86,7 +86,7 @@ private:
 
 	void h_reconnectState(ReconnectStateRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			LoadoutState.handleReconnectStateRes(res);
 		}
@@ -94,7 +94,7 @@ private:
 
 	void h_availableScenariosRes(AvailableScenariosRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.activeState.handleAvailableScenariosRes(res);
 		}
@@ -102,7 +102,7 @@ private:
 
 	void h_spawnFailureRes(SpawnFailureRes res)
 	{
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.loadoutState.handleSpawnFailureRes(res);
 		}
@@ -151,7 +151,7 @@ private:
 	void h_simulatorTerminatingRes(SimulatorTerminatingRes res)
 	{
 		trace("SimulatorTerminatingRes received!");
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			Game.activeState.handleSimulatorTerminatingRes();
 			// eager CIC destruction to evict clients
@@ -190,6 +190,8 @@ final class BackendConMaintainer
 		if (m_started && m_con)
 			m_con.close();
 	}
+
+	@property bool stopped() const { return exit_flag; }
 
 	private void proc()
 	{

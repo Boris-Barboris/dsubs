@@ -46,7 +46,9 @@ __gshared:
 
 	/// Global lock, held by window message pump and render threads.
 	/// When in doubt, hold this one.
-	ReadWriteMutex mainMutex;
+	private ReadWriteMutex mainMutex;
+	pragma(inline) static @property Object.Monitor mainMutexReader() { return mainMutex.reader; }
+	pragma(inline) static @property Object.Monitor mainMutexWriter() { return mainMutex.writer; }
 
 	// entity databases in different forms
 	immutable(ubyte)[] entityDbHash;
@@ -151,7 +153,7 @@ __gshared:
 		}
 
 		// setup login screen
-		synchronized (mainMutex.writer)
+		synchronized (mainMutexWriter)
 			activeState = new LoginScreenState();
 
 		// Start render thread and serve the windows event pump. Render takes
@@ -164,8 +166,8 @@ __gshared:
 		}
 		try
 		{
-			window.pollEvents(mainMutex.writer);
-			synchronized (mainMutex.writer)
+			window.pollEvents(mainMutexWriter);
+			synchronized (mainMutexWriter)
 			{
 				clearEntities();
 			}

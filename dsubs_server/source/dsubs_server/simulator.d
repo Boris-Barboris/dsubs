@@ -163,6 +163,7 @@ final class SimulatorScheduler
 			// now we calculate the next wakeup or remove the sim from tree
 			if (simToRun.finished)
 			{
+				trace("Evicting ", simToRun.id, " finished simulator from scheduler");
 				synchronized(m_cond.mutex)
 					m_simulators.removeKey(simToRun);
 			}

@@ -256,7 +256,7 @@ private final class PersistentScenarioSpawner: ScenarioSpawner
 
 	override @property ScenarioType scenarioType() const
 	{
-		return ScenarioType.campaignMission;
+		return ScenarioType.persistentSimulator;
 	}
 
 	override void validateSpawnRequest(Player player, const SpawnReq req)

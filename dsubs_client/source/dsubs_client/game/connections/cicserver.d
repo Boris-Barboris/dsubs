@@ -69,7 +69,7 @@ private:
 		enforce(req.password == m_expectedPw, "Wrong password");
 		info("CIC peer connection authorized");
 		immutable(ubyte)[] dbHash;
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			dbHash = Game.entityDbHash;
 		}
@@ -81,7 +81,7 @@ private:
 	{
 		enforce(m_authorized, "unauthorized");
 		EntityDbRes db;
-		synchronized(Game.mainMutex)
+		synchronized(Game.mainMutexWriter)
 		{
 			db = EntityDbRes(Game.entityDb);
 		}

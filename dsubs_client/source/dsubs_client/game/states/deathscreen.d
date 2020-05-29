@@ -23,8 +23,7 @@ import dsubs_client.gui;
 
 private
 {
-	enum int MENU_BUTTON_FONTSIZE = 50;
-	enum int YOU_DIED_FONTSIZE = 70;
+	enum int YOU_DIED_FONTSIZE = 60;
 	enum sfColor YOU_DIED_FONTCOLOR = sfColor(255, 50, 50, 255);
 	enum int CAUSE_FONTSIZE = 25;
 	enum int BUTTON_FONTSIZE = 40;
@@ -56,7 +55,7 @@ final class DeathScreenState: GameState
 
 		string mainLabel;
 		if (m_simTerminated)
-			mainLabel = "Simulation was terminated";
+			mainLabel = "Simulator was killed";
 		else
 		{
 			final switch (m_deathRes.res.reason)
@@ -77,15 +76,25 @@ final class DeathScreenState: GameState
 			fontColor(YOU_DIED_FONTCOLOR).build();
 		string shortReport;
 		if (m_simTerminated)
-			shortReport = "Simulator was abruptly terminated";
+			shortReport = "Simulator was terminated/abandoned";
 		else
 			shortReport = m_deathRes.shortReport;
 		Label causeLabel = builder(new Label()).content(shortReport).
 			htextAlign(HTextAlign.CENTER).fontSize(CAUSE_FONTSIZE).build();
-		Button goToMainMenu = builder(new Button()).content("return to main menu").
-			htextAlign(HTextAlign.CENTER).fontSize(BUTTON_FONTSIZE).build();
-
-		goToMainMenu.onClick += () { Game.activeState = new LoadoutState(); };
+		Button goToMainMenu;
+		bool isCicClient = Game.bconm.stopped;
+		if (isCicClient)
+		{
+			goToMainMenu = builder(new Button()).content("return to login screen").
+				htextAlign(HTextAlign.CENTER).fontSize(BUTTON_FONTSIZE).build();
+			goToMainMenu.onClick += () { Game.activeState = new LoginScreenState(); };
+		}
+		else
+		{
+			goToMainMenu = builder(new Button()).content("return to main menu").
+				htextAlign(HTextAlign.CENTER).fontSize(BUTTON_FONTSIZE).build();
+			goToMainMenu.onClick += () { Game.activeState = new LoadoutState(); };
+		}
 
 		Div textDiv = builder(vDiv([youDiedLabel, causeLabel, goToMainMenu])).borderWidth(20).
 			fixedSize(vec2i(50, 250)).build();
