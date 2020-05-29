@@ -253,7 +253,7 @@ private:
 		if (rres.reciever)
 		{
 			underCursor = rres.reciever;
-			// mouse button events also clear keyboard focus
+			// IMPORTANT: mouse button events also clear keyboard focus
 			if (evt.type == sfEvtMouseButtonPressed &&
 				rres.reciever != kbFocused)
 			{

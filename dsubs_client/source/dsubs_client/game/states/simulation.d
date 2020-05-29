@@ -186,6 +186,7 @@ final class SimulationGUI
 		Div m_topLevelDiv;
 		TubeUI[int] tubeUis;
 		WireUi[] m_wireUis;
+		Button m_abandonBtn;
 	}
 
 	@property WireUi[] wireUis() { return m_wireUis; }
@@ -275,14 +276,21 @@ final class SimulationGUI
 		if (canAbandon)
 		{
 			// abandon sim button
-			Button abandonBtn = builder(new Button(ButtonType.ASYNC)).content("X").
+			m_abandonBtn = builder(new Button(ButtonType.ASYNC)).content("X").
 				fixedSize(vec2i(TAB_SIZE, TAB_SIZE)).fontSize(BIG_BTN_FONT).
 				backgroundColor(COLORS.simLaunchButtonBgnd).build;
-			abandonBtn.onClick += {
-				trace("sending request to abandon scenario");
-				Game.bconm.con.sendMessage(immutable AbandonReq());
+			m_abandonBtn.onClick += {
+				startYesNoDialog("Confirm abandon scenario",
+					{
+						trace("sending request to abandon scenario");
+						Game.bconm.con.sendMessage(immutable AbandonReq());
+					},
+					{
+						m_abandonBtn.signalClickEnd();
+					},
+					360);
 			};
-			tabs ~= abandonBtn;
+			tabs ~= m_abandonBtn;
 		}
 
 		Button tacticalTab = builder(new Button()).content("F1 Tactical").
