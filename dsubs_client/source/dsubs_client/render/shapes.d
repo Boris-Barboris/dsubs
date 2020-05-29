@@ -282,7 +282,7 @@ final class LineShape: Shape
 
 	@property Transform transform() { return m_transform; }
 
-	this(vec2d p1, vec2d p2, sfColor color, float width = 1.0f)
+	this(vec2d p1, vec2d p2, sfColor color, float width = 1.0f, bool invertY = false)
 	{
 		m_transform = new Transform();
 		m_shape = sfRectangleShape_create();
@@ -290,6 +290,11 @@ final class LineShape: Shape
 		sfRectangleShape_setOutlineThickness(m_shape, 0.0f);
 		sfRectangleShape_setSize(m_shape, sfVector2f(1.0f, 1.0f));
 		sfRectangleShape_setPosition(m_shape, sfVector2f(0.0f, -0.5f));
+		if (invertY)
+		{
+			p1.y = -p1.y;
+			p2.y = -p2.y;
+		}
 		rebuild(p1, p2, width);
 	}
 

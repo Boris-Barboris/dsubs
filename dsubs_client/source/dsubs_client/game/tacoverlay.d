@@ -469,6 +469,8 @@ final class TacticalOverlay: Overlay
 		bool m_inMerge;
 		ContactId m_mergeSourceId;
 		TacticalContactElement m_mergeSourceElement;
+
+		MapGrid m_mapGrid;
 	}
 
 	@property bool inMerge() const { return m_inMerge; }
@@ -505,6 +507,8 @@ final class TacticalOverlay: Overlay
 		onMouseScroll += &processMouseScroll;
 
 		m_hoverDesc = new HoveredContactDescription();
+
+		m_mapGrid = new MapGrid(COLORS.mapGrid, 1.0f);
 	}
 
 	override void updatePosition()
@@ -772,6 +776,8 @@ final class TacticalOverlay: Overlay
 		if (hidden)
 			return;
 		super.draw(wnd, usecsDelta);
+		m_mapGrid.rebuild(this);
+		m_mapGrid.draw(wnd);
 		foreach (ContactDataOverlayElement el; m_selectedContactData.byValue)
 		{
 			if (!el.hidden)
@@ -814,6 +820,85 @@ final class TacticalOverlay: Overlay
 			return this;
 		}
 		return null;
+	}
+}
+
+
+// WARNING: does not support camera rotation.
+final class MapGrid
+{
+	private
+	{
+		LineShape[] m_horLines;
+		LineShape[] m_verLines;
+		vec2d m_origin = vec2d(0.0, 0.0);
+		double m_interval = 2500.0;
+		sfColor m_color;
+		float m_width;
+	}
+
+	this(sfColor color, float width)
+	{
+		m_color = color;
+		m_width = width;
+	}
+
+	void rebuild(Overlay overlay)
+	{
+		vec2d overlaySize = vec2d(overlay.size.x, overlay.size.y);
+		vec2d worldSize = overlay.screen2worldLength(1.0f) * overlaySize;
+		vec2d worldLL = overlay.screen2worldPos(vec2d(0.0, overlay.size.y));
+
+		long istart;
+		long iend;
+		// vertical lines
+		getLineIndeces(worldLL.x, worldSize.x, istart, iend);
+		assert(iend >= istart - 1);
+		assert(abs(iend - istart) < 10000);
+		m_verLines.length = iend - istart + 1;
+		foreach (i, ref line; m_verLines)
+		{
+			double x = istart * m_interval;
+			vec2d p1 = overlay.world2screenPos(vec2d(x, worldLL.y));
+			vec2d p2 = overlay.world2screenPos(vec2d(x, worldLL.y + worldSize.y));
+			if (line is null)
+				line = new LineShape(p1, p2, m_color, m_width, true);
+			else
+				line.setPoints(p1, p2, true);
+			istart++;
+		}
+		// horizontal lines
+		getLineIndeces(worldLL.y, worldSize.y, istart, iend);
+		assert(iend >= istart - 1);
+		assert(abs(iend - istart) < 10000);
+		m_horLines.length = iend - istart + 1;
+		foreach (i, ref line; m_horLines)
+		{
+			double y = istart * m_interval;
+			vec2d p1 = overlay.world2screenPos(vec2d(worldLL.x, y));
+			vec2d p2 = overlay.world2screenPos(vec2d(worldLL.x + worldSize.x, y));
+			if (line is null)
+				line = new LineShape(p1, p2, m_color, m_width, true);
+			else
+				line.setPoints(p1, p2, true);
+			istart++;
+		}
+	}
+
+	private void getLineIndeces(double worldStart, double worldLength,
+		out long lineIndexStart, out long lineIndexEnd)
+	{
+		assert(worldLength >= 0.0);
+		lineIndexStart = ceil(worldStart / m_interval).to!long;
+		lineIndexEnd = floor((worldStart + worldLength) / m_interval).to!long;
+	}
+
+	void draw(Window wnd)
+	{
+		foreach (line; m_verLines)
+			line.render(wnd);
+		foreach (line; m_horLines)
+			line.render(wnd);
 	}
 }
 
