@@ -5,6 +5,7 @@ import std.datetime;
 import std.parallelism: task;
 import std.uuid;
 
+import core.atomic;
 import core.time: MonoTime;
 import core.thread;
 import core.memory;
@@ -172,15 +173,16 @@ final class SimulatorScheduler
 				MonoTime newNextStart;
 				if (simToRun.doSleep)
 				{
+					Duration expectedInterval = msecs(
+						(1000 / simToRun.timeAcceleration).to!uint);
 					if (late > msecs(20))
 					{
 						warning("Simulator loop stalling");
-						// self-distributing
-						newNextStart = now + msecs(uniform!"[]"(0, 10));
+						// schedule skew
+						newNextStart = now + expectedInterval;
 					}
 					else
-						newNextStart = simToRun.nextStart +
-							msecs((1000 / simToRun.timeAcceleration).to!uint);
+						newNextStart = simToRun.nextStart + expectedInterval;
 				}
 				else
 					newNextStart = MonoTime.currTime;
@@ -223,6 +225,19 @@ final class Simulator
 
 		/// Scenario object, should be constructed by the external code.
 		Scenario scenario;
+
+		/// Reference counter
+		shared int m_connectedPlayers;
+	}
+
+	int getConnectedPlayers() const { return atomicLoad(m_connectedPlayers); }
+
+	void incConnectedPlayers() { atomicOp!"+="(m_connectedPlayers, 1); }
+
+	void decConnectedPlayers()
+	{
+		int result = atomicOp!"-="(m_connectedPlayers, 1);
+		assert(result >= 0);
 	}
 
 	/// id will be a random UUID string if not specified.
@@ -240,20 +255,19 @@ final class Simulator
 		bots = new BotCollection();
 	}
 
-	/// calculate the number of players that are connected to the submarines in
-	/// this simulator.
-	int getConnectedPlayers() const
-	{
-		int res = 0;
-		foreach (const Vessel v; vessels.entities)
-		{
-			const Submarine sub = cast(const Submarine) v;
-			if (sub && sub.player && sub.player.connection &&
-				sub.player.connection.isOpen)
-				res++;
-		}
-		return res;
-	}
+	// calculate the number of players that are connected to the submarines in
+	// this simulator.
+	// int getConnectedPlayers() const
+	// {
+	// 	int res = 0;
+	// 	foreach (const Submarine sub; vessels.submarines)
+	// 	{
+	// 		if (sub && sub.player && sub.player.connection &&
+	// 			sub.player.connection.isOpen)
+	// 			res++;
+	// 	}
+	// 	return res;
+	// }
 
 	private usecs_t m_worldTime = 0;
 	@property usecs_t worldTime() const { return m_worldTime; }
@@ -283,6 +297,10 @@ final class Simulator
 	/// scheduling and wants to be ran as often as possible (subject to fairness constraints).
 	bool doSleep = true;
 
+	/// Set to true if this is a real-time simulator that needs to proceed even without
+	/// player observers.
+	bool runWithoutPlayers = false;
+
 	float timeAcceleration = 1.0f;
 
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassStart;
@@ -292,9 +310,8 @@ final class Simulator
 	private void sendUpdateToPlayers()
 	{
 		Player[] playersToUpdate;
-		foreach (Vessel v; vessels.entities)
+		foreach (Submarine sub; vessels.submarines)
 		{
-			Submarine sub = cast(Submarine) v;
 			if (sub && sub.player)
 				playersToUpdate ~= sub.player;
 		}
@@ -310,6 +327,8 @@ final class Simulator
 	/// run one iteration of simulation
 	private void runOnce(ProfTimer profiler)
 	{
+		if (!runWithoutPlayers && getConnectedPlayers() == 0)
+			return;
 		synchronized (simMut.writer)
 		{
 			// some user actions enqueue buffer commands on first queue,

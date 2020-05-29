@@ -13,6 +13,7 @@ import dsubs_sound.activesonar: Reflector, ReflectorPrototype;
 import dsubs_server.common;
 import dsubs_server.dynamics;
 import dsubs_server.propulsion;
+import dsubs_server.submarine: Submarine;
 import dsubs_server.simulator;
 
 
@@ -178,15 +179,21 @@ final class VesselCollection
 	private
 	{
 		Vessel[] m_entities;
+		// subset of m_entities
+		Submarine[] m_submarines;
 	}
 
 	@property inout(Vessel)[] entities() inout { return m_entities; }
+	@property inout(Submarine)[] submarines() inout { return m_submarines; }
 
 	void registerEntity(Vessel e)
 	{
 		synchronized(this)
 		{
 			m_entities ~= e;
+			Submarine sub = cast(Submarine) e;
+			if (sub)
+				m_submarines ~= sub;
 		}
 	}
 
@@ -195,6 +202,9 @@ final class VesselCollection
 		synchronized(this)
 		{
 			m_entities.removeFirstUnstable(e);
+			Submarine sub = cast(Submarine) e;
+			if (sub)
+				m_submarines.removeFirstUnstable(sub);
 		}
 	}
 
@@ -229,6 +239,7 @@ final class VesselCollection
 		foreach(e; entities)
 			e.shutdown();
 		assert(m_entities.length == 0, "vessel leak");
+		assert(m_submarines.length == 0, "submarine leak");
 	}
 }
 

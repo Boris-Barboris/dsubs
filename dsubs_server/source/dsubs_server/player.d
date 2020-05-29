@@ -163,6 +163,7 @@ final class Player: Captain
 				{
 					synchronized(sub.simulator.simMut.reader)
 					{
+						sub.simulator.decConnectedPlayers();
 						foreach (h; sub.hydrophones)
 							h.shouldBeActive = false;
 						sub.sonar.active = false;
@@ -202,6 +203,7 @@ final class Player: Captain
 			{
 				synchronized(sub.simulator.simMut.reader)
 				{
+					sub.simulator.incConnectedPlayers();
 					if (sub.dead || sub.simulator.finished)
 					{
 						trace("Emplacing connection while the sub/sim is dead");
@@ -266,6 +268,7 @@ final class Player: Captain
 			// spawn submarine
 			synchronized(scen.simulator.simMut.reader)
 			{
+				scen.simulator.incConnectedPlayers();
 				Submarine sub = Globals.entityDb.buildSubFromLoadout(req, this, true);
 				// start position initialization
 				vec2d pos;
