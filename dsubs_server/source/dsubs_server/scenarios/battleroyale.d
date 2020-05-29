@@ -95,9 +95,17 @@ final class BattleRoyale: Scenario
 	static AvailableScenarioConstants getConstants()
 	{
 		AvailableScenarioConstants constants;
-		constants.name = "Battle royale";
-		constants.shortDescription = "quick battle arena with bots";
-		constants.fullDescription = "fullDescription";
+		constants.name = "Circle arena";
+		constants.shortDescription = "Quick battle with infinite bots.";
+		constants.fullDescription =
+`Three civilian traders (propellers with 3 blades) are infinitely respawned for you to kill.
+Each trader killed triggers an easy combat bot spawn.
+Each easy combat bot killed spawns a medium combat bot.
+Player movement is restricted by big blue circle, that sometimes moves.
+You can rearm by swimming into the small yellow circle.
+
+Pace your kills according to the amount of chaos you desire.
+Good luck!`;
 		constants.allowedEntities = Globals.entityDb.getCompleteShortDb();
 		trace(constants.allowedEntities);
 		return constants;

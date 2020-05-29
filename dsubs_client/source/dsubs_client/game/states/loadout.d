@@ -478,7 +478,7 @@ final class LoadoutState: GameState
 					content = "Campaigns";
 					break;
 				case ScenarioType.standalone:
-					content = "Standalone";
+					content = "Singleplayer";
 					break;
 			}
 			Label typeLabel = builder(new Label()).fontSize(BTN_FONT).

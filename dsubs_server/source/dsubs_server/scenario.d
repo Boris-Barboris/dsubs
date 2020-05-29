@@ -288,7 +288,7 @@ final class ScenarioDatabase
 				sim => new BattleRoyale(sim), "main_arena");
 
 		AvailableScenarioConstants scenConstants = BattleRoyale.getConstants();
-		scenConstants.name = "Battle royale (singleplayer)";
+		scenConstants.name = "Circle arena (SP)";
 		StandaloneScenarioSpawner spawner = new StandaloneScenarioSpawner(
 			scenConstants, sim => new BattleRoyale(sim));
 		m_spawnableScenarios[scenConstants.name] = spawner;

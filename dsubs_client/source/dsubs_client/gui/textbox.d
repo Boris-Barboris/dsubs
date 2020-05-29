@@ -155,7 +155,10 @@ final class TextBox: GuiElement
 					finalizeWord(true, true);
 				}
 				else
-					tmpIdx -= (contentIdx - wordStartIdx);	// move tmpIdx back
+				{
+					// move tmpIdx back to word start
+					tmpIdx -= (contentIdx - wordStartIdx);
+				}
 			}
 			if (tmpIdx > 0)
 			{
@@ -209,6 +212,7 @@ final class TextBox: GuiElement
 					finalizeLine();
 			}
 		}
+		finalizeWord(true, true);
 		if (!finalizeLine())
 			goto fillerLoop;	// fuck off
 
