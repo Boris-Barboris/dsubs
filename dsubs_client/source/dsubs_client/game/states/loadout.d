@@ -411,6 +411,8 @@ final class LoadoutState: GameState
 
 		backToMissionBtn.onClick += {
 			m_footerDiv.setChild(filler(), 0);
+			// activate 'to loadout' button in the footer
+			m_footerDiv.setChild(m_toLoadoutBtn, 2);
 			m_topLevelDiv.setChild(m_missionSelectionContent, 1);
 			Game.worldManager.clear();
 			curSelectedSub = null;
