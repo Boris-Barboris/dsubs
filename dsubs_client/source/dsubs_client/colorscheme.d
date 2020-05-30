@@ -39,7 +39,7 @@ struct ColorScheme
 	sfColor simMessageFont = sfColor(189, 135, 135, 255);
 	sfColor loadoutHint = sfColor(150, 150, 150, 255);
 	sfColor tubeCircle = sfColor(255, 94, 0, 255);
-	sfColor mapGrid = sfColor(130, 112, 112, 20);
+	sfColor mapGrid = sfColor(130, 112, 112, 23);
 }
 
 /// Global color scheme
