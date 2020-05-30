@@ -349,10 +349,10 @@ final class LoadoutState: GameState
 						Game.entityManager.submarineTemplates[hn].description;
 				};
 			hullSelector.onMouseEnter += capture(hullname);
-			if (i == 0)
+			if (i == availableHulls.length - 1)
 			{
 				assert(curSelectedSub is null);
-				// select first submarine in the list
+				// select last submarine in the list, i want stork
 				hullSelector.simulateClick();
 				hullSelector.onMouseEnter(null);
 				hullSelector.onMouseLeave(null);

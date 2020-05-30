@@ -92,10 +92,12 @@ final class BattleRoyale: Scenario
 		bool[Submarine] m_mediumBots;
 	}
 
-	static AvailableScenarioConstants getConstants()
+	static AvailableScenarioConstants getConstants(bool singlePlayer)
 	{
 		AvailableScenarioConstants constants;
 		constants.name = "Circle arena";
+		if (singlePlayer)
+			constants.name ~= " (SP)";
 		constants.shortDescription = "Quick battle with infinite bots.";
 		constants.fullDescription =
 `Three civilian traders (propellers with 3 blades) are infinitely respawned for you to kill.
@@ -106,6 +108,11 @@ You can rearm by swimming into the small yellow circle.
 
 Pace your kills according to the amount of chaos you desire.
 Good luck!`;
+		if (!singlePlayer)
+		{
+			constants.fullDescription ~= "\n\n" ~
+`You cannot abandon online games. The only way out is to torpedo yourself or disconnect for 30 minutes.`;
+		}
 		constants.allowedEntities = Globals.entityDb.getCompleteShortDb();
 		trace(constants.allowedEntities);
 		return constants;

@@ -324,13 +324,33 @@ final class Simulator
 		}
 	}
 
+	private
+	{
+		long m_abandonedCounter;
+		// 3 days
+		enum long ABANDON_COUNT_LIMIT = 60 * 60 * 24 * 3;
+	}
+
 	/// run one iteration of simulation
 	private void runOnce(ProfTimer profiler)
 	{
 		if (!runWithoutPlayers && getConnectedPlayers() == 0)
-			return;
+		{
+			m_abandonedCounter++;
+			if (m_abandonedCounter >= ABANDON_COUNT_LIMIT)
+				terminateAsync();
+			else
+				return;
+		}
+		m_abandonedCounter = 0;
 		synchronized (simMut.writer)
 		{
+			// early exit
+			if (m_terminating)
+			{
+				sendUpdateToPlayers();
+				return;
+			}
 			// some user actions enqueue buffer commands on first queue,
 			// we need to wait for their completion.
 			Globals.sctx.queue(0).finish();

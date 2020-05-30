@@ -284,11 +284,10 @@ final class ScenarioDatabase
 	this()
 	{
 		m_persistentSims["main_arena"] =
-			new PersistentScenarioSpawner(BattleRoyale.getConstants(),
+			new PersistentScenarioSpawner(BattleRoyale.getConstants(false),
 				sim => new BattleRoyale(sim), "main_arena");
 
-		AvailableScenarioConstants scenConstants = BattleRoyale.getConstants();
-		scenConstants.name = "Circle arena (SP)";
+		AvailableScenarioConstants scenConstants = BattleRoyale.getConstants(true);
 		StandaloneScenarioSpawner spawner = new StandaloneScenarioSpawner(
 			scenConstants, sim => new BattleRoyale(sim));
 		m_spawnableScenarios[scenConstants.name] = spawner;
