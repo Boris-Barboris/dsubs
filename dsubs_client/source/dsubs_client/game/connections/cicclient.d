@@ -198,6 +198,7 @@ private:
 				}
 				Game.simState.gui.waterfalls[hdata.hydrophoneIdx].completeRow(&hdata.position);
 			}
+			// data-less row finalizer for hydrophones that are off
 			foreach (waterfall; Game.simState.gui.waterfalls)
 				if (waterfall.hydrophoneIdx !in arrivedDataIdx)
 					waterfall.completeRow(null);
@@ -205,20 +206,13 @@ private:
 			foreach (HydrophoneAudio audio; res.audio)
 			{
 				StreamingSoundSource s = Game.simState.sonarSounds[audio.hydrophoneIdx];
-				s.pullFinishedBuffers();
-				if (s.queuedCount == 1)
-				{
-					// We only append if there is at most one audio buffer being currently played.
-					// This is required to handle time acceleration on the server.
-					s.append(audio.samples, audio.samplingRate);
-				}
-				else if (s.queuedCount == 0)
+				if (s.isPlaying)
+					s.setNextSample(audio.samples, audio.samplingRate);
+				else
 				{
 					// we delay first sample enqueing in order to reduce the risk of stutter
 					Game.delay( ((audio, source) => {
-							// same safeguard for overbuffering
-							if (source.queuedCount == 0)
-								source.append(audio.samples, audio.samplingRate);
+							source.setNextSample(audio.samples, audio.samplingRate);
 						}) (audio, s),
 						msecs(250), null);
 				}
