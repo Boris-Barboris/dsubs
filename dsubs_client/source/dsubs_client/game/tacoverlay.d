@@ -855,7 +855,7 @@ final class MapGrid
 		getLineIndeces(worldLL.x, worldSize.x, istart, iend);
 		assert(iend >= istart - 1);
 		assert(abs(iend - istart) < 10000);
-		m_verLines.length = iend - istart + 1;
+		m_verLines.length = (iend - istart + 1).to!size_t;
 		foreach (i, ref line; m_verLines)
 		{
 			double x = istart * m_interval;
@@ -871,7 +871,7 @@ final class MapGrid
 		getLineIndeces(worldLL.y, worldSize.y, istart, iend);
 		assert(iend >= istart - 1);
 		assert(abs(iend - istart) < 10000);
-		m_horLines.length = iend - istart + 1;
+		m_horLines.length = (iend - istart + 1).to!size_t;
 		foreach (i, ref line; m_horLines)
 		{
 			double y = istart * m_interval;
