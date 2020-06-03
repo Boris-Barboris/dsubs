@@ -25,7 +25,7 @@ struct ServerStatusRes
 	__gshared const int g_marshIdx;
 	/// Total number of authorized players currently online.
 	int playersOnline;
-	int apiVersion = 12;
+	int apiVersion = 13;
 }
 
 /** This message requests authorization from the server.
@@ -142,7 +142,7 @@ struct ReconnectStateRes
 	__gshared const int g_marshIdx;
 	/// Globally-unique submarine identifier. Can be used to restore CIC state
 	/// from backup after client crash.
-	UUID subId;
+	string subId;
 	@MaxLenAttr(64) string submarineName;
 	@MaxLenAttr(64) string propulsorName;
 	KinematicSnapshot subSnap;
