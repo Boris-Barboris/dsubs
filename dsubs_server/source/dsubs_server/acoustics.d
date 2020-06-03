@@ -150,6 +150,8 @@ final class AcousticEnv
 
 	void applySourcesOnHydrophones()
 	{
+		// Transform objects are lazily-rebuild and in order to be race-free
+		// we need to rebuild them eagerly.
 		foreach (source; m_sources)
 			source.transform.rebuild();
 
