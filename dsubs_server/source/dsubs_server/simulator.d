@@ -302,7 +302,7 @@ final class Simulator
 	/// player observers.
 	bool runWithoutPlayers = false;
 
-	float timeAcceleration = 1.0f;
+	float timeAcceleration = 4.0f;
 
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassStart;
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassEnd;
@@ -310,18 +310,24 @@ final class Simulator
 	/// All players that own vessels in this sim receive update.
 	private void sendUpdateToPlayers()
 	{
-		Player[] playersToUpdate;
+		static struct SubPlayerPair
+		{
+			Player player;
+			Submarine sub;
+		}
+
+		SubPlayerPair[] playersToUpdate;
 		foreach (Submarine sub; vessels.submarines)
 		{
 			if (sub && sub.player)
-				playersToUpdate ~= sub.player;
+				playersToUpdate ~= SubPlayerPair(sub.player, sub);
 		}
-		foreach (Player p; Globals.taskPool.parallel(playersToUpdate, 1))
+		foreach (SubPlayerPair pair; Globals.taskPool.parallel(playersToUpdate, 1))
 		{
 			if (finished)
-				p.handleSimTerminating();
+				pair.player.handleSimTerminating(pair.sub);
 			else
-				p.sendUpdate();
+				pair.player.sendUpdate(pair.sub);
 		}
 	}
 

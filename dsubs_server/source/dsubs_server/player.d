@@ -502,8 +502,11 @@ final class Player: Captain
 	}
 
 	// called while holding simulator's write lock
-	void handleSimTerminating()
+	void handleSimTerminating(Submarine terminatedSub)
 	{
+		// Dangling submarine reference protection
+		if (m_submarine is null || terminatedSub !is m_submarine)
+			return;
 		PlayerConnection con = m_connection;
 		m_submarine = null;
 		if (con && con.isOpen)
@@ -514,10 +517,16 @@ final class Player: Captain
 	}
 
 	// simMut.writer is held by the simulator
-	void sendUpdate()
+	void sendUpdate(Submarine subToUpdate)
 	{
 		Submarine s = m_submarine;
+
+		// Dangling submarine reference protection
+		if (s is null || subToUpdate !is s)
+			return;
+
 		PlayerConnection con = m_connection;
+		trace("sendUpdate for ", m_username);
 
 		// handle death
 		if (s && s.dead)

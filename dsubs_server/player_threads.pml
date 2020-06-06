@@ -1,14 +1,27 @@
 /*
 Verification of correctness and liveness of playercon atomic replacement
-and eviction for dsubs_server threads.
+and eviction, simulator start/stop for dsubs_server threads.
 */
 
 #define CON_COUNT 3
+#define SIM_COUNT 2
 #define UNSET 255
 
+
+// Simulator:
+
 // Simulator's rw lock
-bit sim_wr_lock = 0;
-short sim_r_lock = 0;
+bit sim_wr_lock[SIM_COUNT];
+short sim_r_lock[SIM_COUNT];
+
+short sim_connectedPlayers[SIM_COUNT];
+
+// End of Simulator
+
+// scheduler's simulator collection
+bit sim_scheduled[SIM_COUNT];
+
+// Player:
 
 // is player logged in (Player class created and put to PlayerCollection
 bit player_created = 0;
@@ -17,13 +30,19 @@ bit playercoll_lock = 0;
 // player's recursive mutex
 short player_lock_depth;
 pid player_lock_owner;
+
+// End of Player
+
+
 // is player's connection in simulator flow.
 bit playercon_in_simflow[CON_COUNT];
 
 #define NOT_SPAWNED 0
 #define ALIVE 1
 #define DEAD 2
-byte subState = NOT_SPAWNED;
+
+// At most one submarine per player per simulator
+byte subState[SIM_COUNT] = NOT_SPAWNED;
 
 // Player.m_submarine is set or not
 bit player_m_submarine = 0;
@@ -55,51 +74,50 @@ inline release_player_recursive()
 }
 
 
-active proctype SimSchedulerThread()
+inline simulatorRunOnce(sim_idx)
 {
-    byte cached_active_con_idx1 = UNSET;
-    byte cached_active_con_idx2 = UNSET;
-end:
     do
     ::  // take simulator's writer lock
         d_step
         {
-            sim_r_lock == 0 && sim_wr_lock == 0;
-            sim_wr_lock = 1;
+            sim_r_lock[sim_idx] == 0 && sim_wr_lock[sim_idx] == 0;
+            sim_wr_lock[sim_idx] = 1;
         }
 
-        // We don't allow arbitrary player's connection changes during simulator's run,
-        // Only one connection per simulator update gets the update.
         cached_active_con_idx1 = active_con_idx;
         cached_active_con_idx2 = active_con_idx;
 
-        // active sub's connection never changes throughout simulator's loop.
+        // We assert that active sub's connection does not change
+        // under sim's write lock. That way only one connection per
+        // simulator update actually gets the update.
         if
-        ::  subState != NOT_SPAWNED;
+        ::  subState[sim_idx] != NOT_SPAWNED;
             assert(cached_active_con_idx1 == cached_active_con_idx2);
         ::  else -> skip;
         fi
 
-        // with random chance kill the sub
+        // randomly kill the sub
         if
         ::  d_step
             {
-                subState == ALIVE;
-                subState = DEAD;
+                subState[sim_idx] == ALIVE;
+                subState[sim_idx] = DEAD;
             }
         ::  skip;
         fi
 
         // send update for each submarine whose captain is instance of Player class
         if
-        ::  player_created && subState == DEAD && player_m_submarine == 1;
+        ::  subState[sim_idx] == DEAD && player_m_submarine == 1;
+            // s.simulator.decConnectedPlayers();
+            sim_connectedPlayers[sim_idx]--;
             // sub was killed, set Player.m_submarine to null;
             player_m_submarine = 0;
         ::  else -> skip;
         fi
 
         if
-        ::  player_created && cached_active_con_idx1 != UNSET && subState == DEAD;
+        ::  cached_active_con_idx1 != UNSET && subState[sim_idx] == DEAD;
             // sub was killed, switch connection to not-in-sim-flow state
             playercon_in_simflow[cached_active_con_idx1] = 0;
         ::  else -> skip;
@@ -109,15 +127,24 @@ end:
         ::  d_step
             {
                 // allow respawn
-                subState == DEAD;
-                subState = NOT_SPAWNED;
+                subState[sim_idx] == DEAD;
+                subState[sim_idx] = NOT_SPAWNED;
             }
         ::  else -> skip;
         fi
 
         // release writer lock
-        sim_wr_lock = 0;
+        sim_wr_lock[sim_idx] = 0;
     od
+}
+
+
+active proctype SimSchedulerThread()
+{
+    byte cached_active_con_idx1 = UNSET;
+    byte cached_active_con_idx2 = UNSET;
+end:
+    simulatorRunOnce()
 }
 
 

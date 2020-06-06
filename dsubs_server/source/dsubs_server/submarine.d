@@ -45,7 +45,7 @@ final class Submarine: Vessel
 			")";
 	}
 
-	/// creates transform and rigid body
+	/// creates transform and rigid body. Sets Captain and Submarine cross-references.
 	this(Captain captain, string prototypeName)
 	{
 		super(prototypeName);
