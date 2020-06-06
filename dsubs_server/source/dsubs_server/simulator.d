@@ -226,7 +226,8 @@ final class Simulator
 		/// Scenario object, should be constructed by the external code.
 		Scenario scenario;
 
-		/// Reference counter
+		/// Reference counter, number of connected players that have a
+		/// m_submarine in this simulator.
 		shared int m_connectedPlayers;
 	}
 

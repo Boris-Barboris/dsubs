@@ -154,24 +154,30 @@ final class Player: Captain
 		synchronized(this)
 		{
 			atomicOp!"-="(s_playerCount, 1);
-			if (m_connection is oldCon)
+			Submarine sub = m_submarine;
+			// if there is a submarine we deactivate it's sensors
+			// to save computational resources.
+			if (sub)
 			{
-				Submarine sub = m_submarine;
-				// if there is a submarine we deactivate it's sensors
-				// to save computational resources.
-				if (sub)
+				synchronized(sub.simulator.simMut.reader)
 				{
-					synchronized(sub.simulator.simMut.reader)
-					{
+					// every connection has to do decrease refcount for alive sub
+					if (!sub.dead)
 						sub.simulator.decConnectedPlayers();
+					// but only if there is no newer connection we update
+					// the sub
+					if (m_connection is oldCon)
+					{
 						foreach (h; sub.hydrophones)
 							h.shouldBeActive = false;
 						sub.sonar.active = false;
 						m_connection = null;	// important, check spin model.
 					}
 				}
-				else
-					m_connection = null;
+			}
+			else if (m_connection is oldCon)
+			{
+				m_connection = null;
 			}
 		}
 	}
@@ -203,7 +209,6 @@ final class Player: Captain
 			{
 				synchronized(sub.simulator.simMut.reader)
 				{
-					sub.simulator.incConnectedPlayers();
 					if (sub.dead || sub.simulator.finished)
 					{
 						trace("Emplacing connection while the sub/sim is dead");
@@ -211,6 +216,7 @@ final class Player: Captain
 					}
 					else
 					{
+						sub.simulator.incConnectedPlayers();
 						foreach (h; sub.hydrophones)
 							h.shouldBeActive = true;
 						sub.sonar.active = true;
@@ -268,7 +274,6 @@ final class Player: Captain
 			// spawn submarine
 			synchronized(scen.simulator.simMut.reader)
 			{
-				scen.simulator.incConnectedPlayers();
 				Submarine sub = Globals.entityDb.buildSubFromLoadout(req, this, true);
 				// start position initialization
 				vec2d pos;
@@ -282,6 +287,7 @@ final class Player: Captain
 					h.shouldBeActive = true;
 					h.listenDir = rot;
 				}
+				scen.simulator.incConnectedPlayers();
 				sub.register(scen.simulator);
 				// schedule simulator for execution
 				if (req.type == SpawnRequestType.newSimulator)
@@ -291,21 +297,14 @@ final class Player: Captain
 		}
 	}
 
-	/// Try to get the simulator from player's submarine.
-	@property Simulator simulator()
-	{
-		Submarine sub = m_submarine;
-		enforce(sub !is null, "submarine is not set");
-		enforce(sub.simulator !is null, "submarine's simulator is null");
-		return sub.simulator;
-	}
-
 	void handleThrottleRequest(const ThrottleReq req)
 	{
-		synchronized(simulator.simMut.reader)
+		Submarine s = m_submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
 		{
-			Submarine s = m_submarine;
-			if (s is null || s.dead)
+			if (s.dead)
 				return;
 			s.targetThrottle = req.target;
 		}
@@ -313,10 +312,12 @@ final class Player: Captain
 
 	void handleCourseRequest(const CourseReq req)
 	{
-		synchronized(simulator.simMut.reader)
+		Submarine s = m_submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
 		{
-			Submarine s = m_submarine;
-			if (s is null || s.dead)
+			if (s.dead)
 				return;
 			s.targetCourse = req.target - coordRot;
 		}
@@ -324,10 +325,12 @@ final class Player: Captain
 
 	void handleListenDirRequest(const ListenDirReq req)
 	{
-		synchronized(simulator.simMut.reader)
+		Submarine s = m_submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
 		{
-			Submarine s = m_submarine;
-			if (s is null || s.dead)
+			if (s.dead)
 				return;
 			int hcount = s.hydrophones.length.to!int;
 			enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < hcount, "no such hydrophone");
@@ -337,19 +340,21 @@ final class Player: Captain
 
 	void handleEmitPingRequest(const EmitPingReq req)
 	{
-		synchronized(simulator.simMut.reader)
+		Submarine s = m_submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
 		{
-			Submarine s = m_submarine;
-			if (s is null || s.dead)
+			if (s.dead)
 				return;
 			enforce(req.sonarIdx == 0, "no such sonar");
-			usecs_t worldTime = simulator.worldTime;
+			usecs_t worldTime = s.simulator.worldTime;
 			if (worldTime - m_lastPingEmit >= 5_000_000)
 			{
 				auto ping = s.sonar.startPing(req.ilevel);
 				if (ping)
 				{
-					simulator.acous.registerSource(ping);
+					s.simulator.acous.registerSource(ping);
 					m_lastPingEmit = worldTime;
 				}
 			}
@@ -358,10 +363,12 @@ final class Player: Captain
 
 	void handleLoadTubeReq(const LoadTubeReq req)
 	{
-		synchronized(simulator.simMut.reader)
+		Submarine s = m_submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
 		{
-			Submarine s = m_submarine;
-			if (s is null || s.dead)
+			if (s.dead)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			TubeOperationResult topRes = tube.processLoadRequest(req.weaponName);
@@ -375,10 +382,12 @@ final class Player: Captain
 
 	void handleSetTubeStateReq(const SetTubeStateReq req)
 	{
-		synchronized(simulator.simMut.reader)
+		Submarine s = m_submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
 		{
-			Submarine s = m_submarine;
-			if (s is null || s.dead)
+			if (s.dead)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			TubeOperationResult topRes = tube.processStateRequest(req.desiredState);
@@ -391,10 +400,12 @@ final class Player: Captain
 
 	void handleWireDesiredLengthReq(WireDesiredLengthReq req)
 	{
-		synchronized(simulator.simMut.reader)
+		Submarine s = m_submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
 		{
-			Submarine s = m_submarine;
-			if (s is null || s.dead)
+			if (s.dead)
 				return;
 			enforce(req.wireIdx >= 0 && req.wireIdx < s.rigidBody.wires.length,
 				"invalid wire index");
@@ -404,10 +415,12 @@ final class Player: Captain
 
 	void handleLaunchTubeReq(LaunchTubeReq req)
 	{
-		synchronized(simulator.simMut.reader)
+		Submarine s = m_submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
 		{
-			Submarine s = m_submarine;
-			if (s is null || s.dead)
+			if (s.dead)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			// reference frame translation for courses
@@ -508,7 +521,10 @@ final class Player: Captain
 
 		// handle death
 		if (s && s.dead)
+		{
+			s.simulator.decConnectedPlayers();
 			m_submarine = null;
+		}
 
 		if (con && con.isOpen && con.simulatorFlow && s)
 		{
