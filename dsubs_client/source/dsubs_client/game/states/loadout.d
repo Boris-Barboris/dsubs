@@ -81,11 +81,7 @@ final class LoadoutState: GameState
 		Game.activeState = new LoginScreenState();
 	}
 
-	override void handleCICDisconnect()
-	{
-		error("cic connection closed");
-		Game.activeState = new LoginScreenState();
-	}
+	override void handleCICDisconnect() {}
 
 	private string getRoomCapacityString(int roomId)
 	{
@@ -312,6 +308,9 @@ final class LoadoutState: GameState
 		}
 		else
 			handleAvailableScenariosRes(*availableScenarios);
+		// close cic client
+		if (Game.ciccon)
+			Game.ciccon.close();
 	}
 
 	private GuiElement buildLoadoutUi(AvailableScenario* scenario)

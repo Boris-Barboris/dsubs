@@ -53,7 +53,7 @@ final class CICServer
 
 	void stop()
 	{
-		info("shutting CIC server down");
+		info("ensuring that CIC server down");
 		m_listener.stop();
 	}
 

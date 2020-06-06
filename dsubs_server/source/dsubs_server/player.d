@@ -526,7 +526,6 @@ final class Player: Captain
 			return;
 
 		PlayerConnection con = m_connection;
-		trace("sendUpdate for ", m_username);
 
 		// handle death
 		if (s && s.dead)
