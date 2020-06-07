@@ -172,8 +172,24 @@ final class Player: Captain
 						foreach (h; sub.hydrophones)
 							h.shouldBeActive = false;
 						sub.sonar.active = false;
-						m_connection = null;	// important, check spin model.
 					}
+				}
+				// onConnectionClose may be called very late, way after
+				// m_submarine is changed. We need to lock on current simulator to
+				// change m_connection, not on the sim of oldCon.simFlowSub.
+				Submarine currentSub = m_submarine;
+				if (currentSub)
+				{
+					synchronized(currentSub.simulator.simMut.reader)
+					{
+						if (m_connection is oldCon)
+							m_connection = null;
+					}
+				}
+				else
+				{
+					if (m_connection is oldCon)
+						m_connection = null;
 				}
 			}
 			else

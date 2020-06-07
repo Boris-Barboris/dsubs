@@ -13,7 +13,7 @@ spin -l -p -replay player_threads.pml
 */
 
 #define CON_COUNT 2
-#define SIM_COUNT 1
+#define SIM_COUNT 2
 #define SUB_COUNT 2
 #define UNSET 255
 
@@ -121,16 +121,22 @@ inline sendTerminatedToPlayer(sim_idx, sub_idx)
     ::  else -> skip;
     fi
 
+    assert(cached_active_con_idx1 == cached_active_con_idx2);
+
     player_m_submarine = UNSET;
     if
     ::  cached_active_con_idx1 != UNSET;
         playercon_in_simflow[cached_active_con_idx1] = 0;
-        d_step
-        {
-            // connection's logical clock must not stutter, at most once delivery
-            assert(playerconClocks[cached_active_con_idx1] < simClocks[sim_idx]);
-            playerconClocks[cached_active_con_idx1] = simClocks[sim_idx];
-        }
+        if
+        ::  playercon_closed[cached_active_con_idx1] == 0;
+            d_step
+            {
+                // connection's logical clock must not stutter, at most once delivery
+                assert(playerconClocks[cached_active_con_idx1] < simClocks[sim_idx]);
+                playerconClocks[cached_active_con_idx1] = 0;
+            }
+        ::  else -> skip;
+        fi
     ::  else -> skip;
     fi
 skip_sendTerm:
@@ -155,10 +161,13 @@ inline sendUpdateToPlayer(sub_idx)
     // if con.simulatorFlow is false we skip the update send
     if
     ::  cached_active_con_idx1 == UNSET ||
-            playerconSubFlowPtr[cached_active_con_idx1] != sub_idx;
+            playerconSubFlowPtr[cached_active_con_idx1] != sub_idx ||
+            playercon_in_simflow[cached_active_con_idx1] == 0;
         goto skip_sendUpdate;
     ::  else -> skip;
     fi
+
+    assert(cached_active_con_idx1 == cached_active_con_idx2);
 
     d_step
     {
@@ -172,6 +181,8 @@ inline sendUpdateToPlayer(sub_idx)
             playercon_in_simflow[cached_active_con_idx1];
         // sub was killed, switch connection to not-in-sim-flow state
         playercon_in_simflow[cached_active_con_idx1] = 0;
+        // reset clock because connection can change sub and simulator
+        playerconClocks[cached_active_con_idx1] = 0;
         goto skip_sendUpdate;
     ::  else -> skip;
     fi
@@ -242,6 +253,7 @@ inline simulatorRunOnce(sim_idx)
     // Used to check Player.m_connection immutability under sim's write lock.
     // Immutable only if the player is connected to this simulator.
     cached_active_con_idx1 = active_con_idx;
+    cached_active_con_idx2 = active_con_idx;
 
     // random chance to terminate non-persistent simulator
     if
@@ -251,7 +263,7 @@ inline simulatorRunOnce(sim_idx)
 	    for (i : 0 .. SUB_COUNT-1)
         {
             if
-            ::  subStates[i] != SUB_INIT && subSimPtrs[i] == sim_idx;
+            ::  subStates[i] == SUB_ALIVE && subSimPtrs[i] == sim_idx;
                 sendTerminatedToPlayer(sim_idx, i);
             ::  else -> skip;
             fi
@@ -306,6 +318,7 @@ release:
 proctype SimSchedulerThread()
 {
     byte cached_active_con_idx1 = UNSET;
+    byte cached_active_con_idx2 = UNSET;
     byte i, j;
 end:
     do
@@ -353,6 +366,30 @@ inline onConnectionClose(old_con_idx)
     ::  else -> skip;
     fi
 
+    // here we modify submarine (disable hydrophones) and
+    // some other ops of low importance.
+
+    if
+    ::  cached_sub_idx != UNSET;
+        // release simulator's reader lock
+        sim_r_lock[subSimPtrs[cached_sub_idx]]--;
+    ::  else -> skip;
+    fi
+
+    // second round of locks for current sim
+    cached_sub_idx = player_m_submarine;
+
+    if
+    ::  cached_sub_idx != UNSET;
+        // take simulator's reader lock
+        d_step
+        {
+            sim_wr_lock[subSimPtrs[cached_sub_idx]] == 0;
+            sim_r_lock[subSimPtrs[cached_sub_idx]]++;
+        }
+    ::  else -> skip;
+    fi
+
     // unset player's connection
     if
     ::  old_con_idx == active_con_idx;
@@ -360,9 +397,6 @@ inline onConnectionClose(old_con_idx)
         // active_con_idx must be checked when we verify connection's process.
     ::  else -> skip;
     fi
-
-    // here we modify submarine (disable hydrophones) and
-    // some other ops of low importance.
 
     if
     ::  cached_sub_idx != UNSET;
