@@ -226,7 +226,8 @@ final class Simulator
 		/// Scenario object, should be constructed by the external code.
 		Scenario scenario;
 
-		/// Reference counter
+		/// Reference counter, number of connected players that have a
+		/// m_submarine in this simulator.
 		shared int m_connectedPlayers;
 	}
 
@@ -309,18 +310,24 @@ final class Simulator
 	/// All players that own vessels in this sim receive update.
 	private void sendUpdateToPlayers()
 	{
-		Player[] playersToUpdate;
+		static struct SubPlayerPair
+		{
+			Player player;
+			Submarine sub;
+		}
+
+		SubPlayerPair[] playersToUpdate;
 		foreach (Submarine sub; vessels.submarines)
 		{
 			if (sub && sub.player)
-				playersToUpdate ~= sub.player;
+				playersToUpdate ~= SubPlayerPair(sub.player, sub);
 		}
-		foreach (Player p; Globals.taskPool.parallel(playersToUpdate, 1))
+		foreach (SubPlayerPair pair; Globals.taskPool.parallel(playersToUpdate, 1))
 		{
 			if (finished)
-				p.handleSimTerminating();
+				pair.player.handleSimTerminating(pair.sub);
 			else
-				p.sendUpdate();
+				pair.player.sendUpdate(pair.sub);
 		}
 	}
 

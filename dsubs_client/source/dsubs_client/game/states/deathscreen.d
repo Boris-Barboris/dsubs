@@ -51,6 +51,9 @@ final class DeathScreenState: GameState
 
 	override void setup()
 	{
+		if (Game.ciccon)
+			Game.ciccon.close();
+
 		Game.window.title = "dsubs";
 
 		string mainLabel;

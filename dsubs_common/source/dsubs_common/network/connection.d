@@ -211,7 +211,7 @@ class ProtocolConnection(alias Protocol)
 		m_sock.close();
 	}
 
-	/// Fired asynchronously from writer thread when the connection is closed.
+	/// Fired asynchronously from reader thread when the connection is closed.
 	Event!(void delegate(typeof(this))) onClose;
 
 	// first int - message type, second - body size.
@@ -263,6 +263,7 @@ class ProtocolConnection(alias Protocol)
 
 	private void readProc()
 	{
+		scope(exit) onClose(this);
 		try
 		{
 			while (true)
@@ -302,7 +303,6 @@ class ProtocolConnection(alias Protocol)
 
 	private void writerProc()
 	{
-		scope(exit) onClose(this);
 		try
 		{
 			bool exitFlag;

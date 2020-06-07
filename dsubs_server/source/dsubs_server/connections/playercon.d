@@ -34,6 +34,8 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 		/// Requested to be set to true by the client when either spawning or
 		/// reconnecting.
 		bool m_simulatorFlow;
+		/// Reverse-reference for refcounting
+		Submarine m_simFlowSub;
 		RSAKeyInfo m_backendPrivKeyInfo;
 	}
 
@@ -42,6 +44,9 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 
 	@property bool simulatorFlow() const { return m_simulatorFlow; }
 	@property void simulatorFlow(bool rhs) { m_simulatorFlow = rhs; }
+
+	@property Submarine simFlowSub() { return m_simFlowSub; }
+	@property void simFlowSub(Submarine rhs) { m_simFlowSub = rhs; }
 
 	this(Socket sock)
 	{
@@ -121,10 +126,7 @@ private:
 		info("Handling spawn request for ", p.name);
 		try
 		{
-			immutable(ReconnectStateRes) rres =
-				p.handleSpawnRequest(req);
-			sendMessage(rres);
-			m_simulatorFlow = true;
+			p.handleSpawnRequest(req, this);
 		}
 		catch (Exception ex)
 		{
@@ -142,6 +144,11 @@ private:
 		enforce(sub !is null, "Player does not have a sub");
 		Simulator sim = sub.simulator;
 		enforce(sim !is null, "Submarine's simulator is unset");
+		if (sim.scenario !is null)
+		{
+			enforce(sim.scenario.spawner.scenarioType != ScenarioType.persistentSimulator,
+				"you cannot abandon persistent simulators");
+		}
 		synchronized(sim.simMut.reader)
 		{
 			sim.terminateAsync();
@@ -154,17 +161,23 @@ private:
 	{
 		Player p = m_player;
 		enforceAuth(p);
-		info("Sending reconnect state to ", p.name);
-		auto sub = p.submarine;
-		enforce(sub !is null, "Player does not have a sub");
-		ReconnectStateRes res;
-		synchronized(sub.simulator.simMut.reader)
+		info("Generating reconnect state response for ", p.name);
+		synchronized(p)
 		{
-			enforce(!sub.simulator.finished, "simulator is finished");
-			res = cast() p.getReconnectState();
-			m_simulatorFlow = true;
+			auto sub = p.submarine;
+			enforce(sub !is null, "Player does not have a sub");
+			ReconnectStateRes res;
+			synchronized(sub.simulator.simMut.reader)
+			{
+				enforce(sub is p.submarine, "Submarine has changed after lock");
+				res = cast() p.getReconnectState();
+				sub.incSubConRefCounter();
+				m_simFlowSub = sub;
+				p.enableSubSensors(sub);
+				sendMessage(cast(immutable) res);
+				m_simulatorFlow = true;
+			}
 		}
-		sendMessage(cast(immutable) res);
 	}
 
 	/// Return false if not in simulator message flow.

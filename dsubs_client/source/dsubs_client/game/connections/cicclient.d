@@ -31,6 +31,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 			{
 				if (Game.shuttingDown)
 					return;
+				trace("cic client connection onClose");
 				synchronized(Game.mainMutexWriter)
 				{
 					// under no circumstance local CIC server should survive
