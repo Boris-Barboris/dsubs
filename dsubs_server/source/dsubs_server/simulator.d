@@ -324,7 +324,7 @@ final class Simulator
 		}
 		foreach (SubPlayerPair pair; Globals.taskPool.parallel(playersToUpdate, 1))
 		{
-			if (finished)
+			if (finished && !pair.sub.dead)
 				pair.player.handleSimTerminating(pair.sub);
 			else
 				pair.player.sendUpdate(pair.sub);
