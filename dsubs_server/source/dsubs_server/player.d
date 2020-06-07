@@ -216,6 +216,9 @@ final class Player: Captain
 					}
 					else
 					{
+						// remove all this. Emplace is authorization, it does not
+						// move connection to simFlow, hence no need to activate
+						// sensors
 						sub.simulator.incConnectedPlayers();
 						foreach (h; sub.hydrophones)
 							h.shouldBeActive = true;
@@ -263,7 +266,7 @@ final class Player: Captain
 		return cast(immutable) recState;
 	}
 
-	immutable(ReconnectStateRes) handleSpawnRequest(const SpawnReq req)
+	void handleSpawnRequest(const SpawnReq req, PlayerConnection con)
 	{
 		synchronized(this)
 		{
@@ -292,7 +295,9 @@ final class Player: Captain
 				// schedule simulator for execution
 				if (req.type == SpawnRequestType.newSimulator)
 					Globals.simulators.add(scen.simulator);
-				return getReconnectState();
+				enforce(con is m_connection);
+				con.sendMessage(getReconnectState());
+				con.simulatorFlow = true;
 			}
 		}
 	}

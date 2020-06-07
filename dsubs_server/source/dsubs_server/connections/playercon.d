@@ -121,10 +121,7 @@ private:
 		info("Handling spawn request for ", p.name);
 		try
 		{
-			immutable(ReconnectStateRes) rres =
-				p.handleSpawnRequest(req);
-			sendMessage(rres);
-			m_simulatorFlow = true;
+			p.handleSpawnRequest(req, this);
 		}
 		catch (Exception ex)
 		{
@@ -170,9 +167,9 @@ private:
 				enforce(!sub.simulator.finished, "simulator is finished");
 				res = cast() p.getReconnectState();
 				sub.simulator.incConnectedPlayers();
+				sendMessage(cast(immutable) res);
 				m_simulatorFlow = true;
 			}
-			sendMessage(cast(immutable) res);
 		}
 	}
 
