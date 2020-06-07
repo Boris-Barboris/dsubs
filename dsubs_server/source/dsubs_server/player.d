@@ -162,7 +162,7 @@ final class Player: Captain
 				synchronized(sub.simulator.simMut.reader)
 				{
 					// every connection has to do decrease refcount for alive sub
-					if (!sub.dead)
+					if (!sub.dead && oldCon.simulatorFlow)
 						sub.simulator.decConnectedPlayers();
 					// but only if there is no newer connection we update
 					// the sub

@@ -142,6 +142,11 @@ private:
 		enforce(sub !is null, "Player does not have a sub");
 		Simulator sim = sub.simulator;
 		enforce(sim !is null, "Submarine's simulator is unset");
+		if (sim.scenario !is null)
+		{
+			enforce(sim.scenario.spawner.scenarioType != ScenarioType.persistentSimulator,
+				"you cannot abandon persistent simulators");
+		}
 		synchronized(sim.simMut.reader)
 		{
 			sim.terminateAsync();
@@ -154,17 +159,21 @@ private:
 	{
 		Player p = m_player;
 		enforceAuth(p);
-		info("Sending reconnect state to ", p.name);
-		auto sub = p.submarine;
-		enforce(sub !is null, "Player does not have a sub");
-		ReconnectStateRes res;
-		synchronized(sub.simulator.simMut.reader)
+		info("Generating reconnect state response for ", p.name);
+		synchronized(p)
 		{
-			enforce(!sub.simulator.finished, "simulator is finished");
-			res = cast() p.getReconnectState();
-			m_simulatorFlow = true;
+			auto sub = p.submarine;
+			enforce(sub !is null, "Player does not have a sub");
+			ReconnectStateRes res;
+			synchronized(sub.simulator.simMut.reader)
+			{
+				enforce(!sub.simulator.finished, "simulator is finished");
+				res = cast() p.getReconnectState();
+				sub.simulator.incConnectedPlayers();
+				m_simulatorFlow = true;
+			}
+			sendMessage(cast(immutable) res);
 		}
-		sendMessage(cast(immutable) res);
 	}
 
 	/// Return false if not in simulator message flow.

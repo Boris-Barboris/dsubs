@@ -2,6 +2,14 @@
 Verification of correctness and liveness of playercon atomic replacement
 and eviction, simulator start/stop and general referential integrity
 of dsubs_server threading and entity model.
+
+to run:
+spin -run -m200 player_threads.pml
+spin -run -bfs player_threads.pml
+spin -run -bfspar -bit player_threads.pml
+spin -run -dfspar player_threads.pml
+to debug errors:
+spin -l -p -replay player_threads.pml
 */
 
 #define CON_COUNT 3
@@ -26,10 +34,10 @@ short sim_connectedPlayers[SIM_COUNT];
 #define SIM_RUNNING 1
 #define SIM_TERMINATED 2
 
-// scheduler's simulator collection
+// scheduler's simulator collection. First simulator is persistent.
 byte simStates[SIM_COUNT];
 // index of the next simulator to allocate
-byte allocSim = 0;
+byte allocSim = 1;
 // simulator logical clocks
 short simClocks[SIM_COUNT];
 
@@ -38,7 +46,7 @@ short simClocks[SIM_COUNT];
 
 // is player logged in (Player class created and put to PlayerCollection
 bit player_created = 0;
-// player collenciton mutex
+// PlayerCollection.monitor mutex
 bit playercoll_lock = 0;
 // player's recursive mutex
 short player_lock_depth;
@@ -58,6 +66,9 @@ byte subStates[SUB_COUNT];
 byte subSimPtrs[SUB_COUNT];
 // index of the next submarine to allocate
 byte allocSub = 0;
+// mutex array
+bit subLocks[SUB_COUNT];
+bit subDecreasedOnDeath[SUB_COUNT];
 
 // Player.m_submarine pointer
 byte player_m_submarine = UNSET;
@@ -65,9 +76,13 @@ byte player_m_submarine = UNSET;
 byte active_con_idx = UNSET;
 // Is player's connection in simulator flow.
 // Server must not send simflow messages to connection that is not in sim flow.
-bit playercon_in_simflow[CON_COUNT];
+bit playercon_in_simflow[CON_COUNT + 4];
+// synchronous shutdown+close flags
+bit playercon_closed[CON_COUNT + 4];
 // player connection logical clocks. Used to track update sending.
-short playerconClocks[SIM_COUNT];
+short playerconClocks[CON_COUNT + 4];
+// queue of connections to asynchronously close
+chan conIdxToCloseQueue = [CON_COUNT - 1] of { byte };
 
 
 inline take_player_recursive(new_owner)
@@ -140,18 +155,24 @@ inline sendUpdateToPlayer(sub_idx)
 
     if
     ::  subStates[sub_idx] == SUB_DEAD;
-        // s.simulator.decConnectedPlayers();
-        sim_connectedPlayers[subSimPtrs[sub_idx]]--;
         // sub was killed, set Player.m_submarine to null;
         player_m_submarine = UNSET;
+    ::  else -> skip;
+    fi
+
+    // if con.simulatorFlow is false we skip the update send
+    if
+    ::  cached_active_con_idx1 == UNSET ||
+            playercon_in_simflow[cached_active_con_idx1] == 0;
+        goto skip_sendUpdate;
     ::  else -> skip;
     fi
 
     d_step
     {
         // connection's logical clock must not stutter, at most once delivery
-        assert(playerconClocks[cached_active_con_idx1] < simClocks[sim_idx]);
-        playerconClocks[cached_active_con_idx1] = simClocks[sim_idx];
+        assert(playerconClocks[cached_active_con_idx1] < simClocks[subSimPtrs[sub_idx]]);
+        playerconClocks[cached_active_con_idx1] = simClocks[subSimPtrs[sub_idx]];
     }
 
     if
@@ -187,9 +208,10 @@ inline simulatorRunOnce(sim_idx)
     cached_active_con_idx1 = active_con_idx;
     cached_active_con_idx2 = active_con_idx;
 
-    // random chance to terminate the simulator
+    // random chance to terminate non-persistent simulator
     if
-    ::  simStates[sim_idx] = SIM_TERMINATED;
+    ::  sim_idx > 0;
+        simStates[sim_idx] = SIM_TERMINATED;
         // send update for all the submarines of this simulator
 	    for (i : 0 .. SUB_COUNT-1)
         {
@@ -207,8 +229,19 @@ inline simulatorRunOnce(sim_idx)
     for (i : 0 .. SUB_COUNT-1)
     {
         if
-        ::  subStates[i] == SUB_ALIVE && subSimPtrs[i] == sim_idx;
-            subStates[i] = DEAD;
+        ::  d_step
+            {
+                subStates[i] == SUB_ALIVE && subSimPtrs[i] == sim_idx && subLocks[i] == 0;
+                subLocks[i] = 1;
+            }
+            subStates[i] = SUB_DEAD;
+            if
+            ::  player_m_submarine == i;
+                // s.simulator.decConnectedPlayers();
+                sim_connectedPlayers[sim_idx]--;
+            ::  else -> skip;
+            fi
+            subLocks[i] = 0;
         ::  skip;
         fi
     }
@@ -229,7 +262,7 @@ release:
 }
 
 
-active proctype SimSchedulerThread()
+proctype SimSchedulerThread()
 {
     byte cached_active_con_idx1 = UNSET;
     byte cached_active_con_idx2 = UNSET;
@@ -243,7 +276,7 @@ end:
             ::  simStates[j] == SIM_RUNNING;
                 simulatorRunOnce(j);
             ::  else -> skip;
-            fi:
+            fi
         }
     od
 }
@@ -269,14 +302,24 @@ inline onConnectionClose(old_con_idx)
     fi
 
     // If this holds, cached_sub_idx is not actually needed.
-    assert(cached_sub_idx == player_m_submarine);
+    // assert(cached_sub_idx == player_m_submarine);
 
-    // here we modify submarine (disable hydrophones) and
-    // some other ops of low importance.
     if
-    ::  subStates[cached_sub_idx] == SUB_ALIVE;
-        // sub.simulator.decConnectedPlayers();
-        sim_connectedPlayers[subSimPtrs[cached_sub_idx]]--;
+    ::  cached_sub_idx != UNSET;
+        d_step
+        {
+            subLocks[cached_sub_idx] == 0;
+            subLocks[cached_sub_idx] = 1;
+        }
+        if
+        ::  subStates[cached_sub_idx] == SUB_ALIVE &&
+                playercon_in_simflow[old_con_idx] == 1;
+            // we only decrement reference count when sub is alive and
+            // connection was in sim flow.
+            sim_connectedPlayers[subSimPtrs[cached_sub_idx]]--;
+        ::  else -> skip;
+        fi
+        subLocks[cached_sub_idx] = 0;
     ::  else -> skip;
     fi
 
@@ -284,9 +327,12 @@ inline onConnectionClose(old_con_idx)
     if
     ::  old_con_idx == active_con_idx;
         active_con_idx = UNSET;
-        // active_con_idx must be checked when we verify connection's process
+        // active_con_idx must be checked when we verify connection's process.
     ::  else -> skip;
     fi
+
+    // here we modify submarine (disable hydrophones) and
+    // some other ops of low importance.
 
     if
     ::  cached_sub_idx != UNSET;
@@ -299,10 +345,40 @@ inline onConnectionClose(old_con_idx)
 }
 
 
-active [CON_COUNT] proctype PlayerConThread()
+// Thread that calls onConnectionClose asynchronously.
+active proctype PlayerConCloser()
+{
+    byte oldConIdx;
+    byte cached_sub_idx;
+    short counter;
+    byte i;
+end:
+    do
+    ::  conIdxToCloseQueue?oldConIdx;
+        onConnectionClose(oldConIdx);
+        d_step
+        {
+            counter++
+            if
+            ::  counter == CON_COUNT;
+                // ensure that simulator reference counts are zero when all connections
+                // have closed
+                for (i : 0 .. SIM_COUNT-1)
+                {
+                    assert(simStates[i] != SIM_RUNNING || sim_connectedPlayers[i] == 0);
+                }
+            ::  else -> skip;
+            fi
+        }
+    od
+}
+
+
+proctype PlayerConThread()
 {
     bit taken_sim_lock = 0;
-    short cached_sub_idx = UNSET;
+    byte cached_sub_idx = UNSET;
+    byte cached_sim_idx = UNSET;
     // synchronized(PlayerCollection)
     d_step
     {
@@ -311,17 +387,22 @@ active [CON_COUNT] proctype PlayerConThread()
     }
 
     if
+
+    // Stage1a: initial player creation
+
     ::  player_created == 0;
-        // this may be the first time the player has logged in
+        // Player is logged in
         assert(active_con_idx == UNSET);
-        active_con_idx = _pid - 1;
+        active_con_idx = _pid;
         // we assume that the connection auth always succeeds. There are no
-        // important races during login check, and no locks are taken.
+        // interesting races during login check, and no locks are taken.
         player_created = 1;
+
+    // Stage1b: player's connection emplacement
+
     ::  else;   // player exists
         assert(player_created == 1);
-        // or there already is the connection there
-        assert(active_con_idx != _pid - 1);
+        assert(active_con_idx != _pid);
 
         // emplaceConnection synchronized(Player)
         take_player_recursive(_pid);
@@ -329,38 +410,63 @@ active [CON_COUNT] proctype PlayerConThread()
         // previous connection is closed
         if
         ::  active_con_idx != UNSET;
-            onConnectionClose();
+            // closeConnection();
+            atomic
+            {
+                if
+                ::  playercon_closed[active_con_idx] == 0;
+                    playercon_closed[active_con_idx] = 1;
+                    conIdxToCloseQueue!active_con_idx;
+                ::  else -> skip;
+                fi
+            }
         ::  else -> skip;
         fi
 
+        cached_sub_idx = player_m_submarine;
+
         if
-        ::  player_m_submarine == 1;
+        ::  cached_sub_idx != UNSET;
             // now we take sim read lock to enable submarine sensors and
             // verify that we are alive
             d_step
             {
-                sim_wr_lock == 0;
-                sim_r_lock++;
+                sim_wr_lock[subSimPtrs[cached_sub_idx]] == 0;
+                sim_r_lock[subSimPtrs[cached_sub_idx]]++;
             }
             taken_sim_lock = 1;
+
+            // if (sub.dead || sub.simulator.finished) block
+            if
+            ::  subStates[cached_sub_idx] == SUB_DEAD ||
+                    simStates[subSimPtrs[cached_sub_idx]] == SIM_TERMINATED;
+                player_m_submarine = UNSET;
+            ::  else;
+                // sub.simulator.incConnectedPlayers();
+                sim_connectedPlayers[subSimPtrs[cached_sub_idx]]++;
+            fi
+
         ::  else -> skip;
         fi
 
         // m_connection = con;
-        active_con_idx = _pid - 1;
+        active_con_idx = _pid;
 
         if
         ::  taken_sim_lock == 1;
-            sim_r_lock--;
+            sim_r_lock[subSimPtrs[cached_sub_idx]]--;
         ::  else -> skip;
         fi
 
-        // emplaceConnection synchronized(Player)
+        // emplaceConnection synchronized(Player) end
         release_player_recursive();
     fi
 
     // release synchronized(PlayerCollection)
     playercoll_lock = 0;
+
+
+    // Stage2: spawn or reconnect
 
     // right next after the login user may disconnect
     if
@@ -370,92 +476,172 @@ active [CON_COUNT] proctype PlayerConThread()
 
     // next is the spawn or reconnect
     if
-    ::  // spawn request
+    ::  // spawn sim+sub request
+        allocSim < SIM_COUNT && allocSub < SUB_COUNT;
+        // only do when we can create more sims
         take_player_recursive(_pid);
-        // take simulator's reader lock
-        d_step
-        {
-            sim_wr_lock == 0;
-            sim_r_lock++;
-        }
+
+        // guard against stale active_con reference in the player
+        // if
+        // ::  active_con_idx != _pid;
+        //     release_player_recursive();
+        //     goto ON_CLOSE;
+        // ::  else -> skip;
+        // fi
+
+        cached_sub_idx = player_m_submarine;
         // if there is a submarine we throw
         if
-        ::  player_m_submarine == 1;
-            sim_r_lock--;
+        ::  cached_sub_idx != UNSET;
             release_player_recursive();
             goto ON_CLOSE;
         ::  else -> skip;
         fi
-        assert(subStates == NOT_SPAWNED);
-        // there is no submarine, we spawn
-        subStates = ALIVE;
-        player_m_submarine = 1;
-        sim_r_lock--;
-        release_player_recursive();
-        // set connection's simFlow flag
-        playercon_in_simflow[_pid - 1] = 1;
-    ::  // reconnect request
-        // we only lock the simulator as there is no player state mutation
+
+        // we create a simulator
+        d_step
+        {
+            cached_sim_idx = allocSim;
+            allocSim++;
+        }
+
         // take simulator's reader lock
         d_step
         {
-            sim_wr_lock == 0;
-            sim_r_lock++;
+            sim_wr_lock[cached_sim_idx] == 0;
+            sim_r_lock[cached_sim_idx]++;
         }
+
+        // create submarine
+        d_step
+        {
+            cached_sub_idx = allocSub;
+            subStates[cached_sub_idx] = SUB_ALIVE;
+            allocSub++;
+        }
+        player_m_submarine = cached_sub_idx;
+        // bind sub to simulator...
+        subSimPtrs[cached_sub_idx] = cached_sim_idx;
+        // sub.simulator.incConnectedPlayers();
+        sim_connectedPlayers[cached_sim_idx]++;
+        // ... and schedule simulator
+        simStates[cached_sim_idx] = SIM_RUNNING;
+
+        sim_r_lock[cached_sim_idx]--;
+        release_player_recursive();
+        // set connection's simFlow flag. Possibly racy and must be done under
+        // simulator's lock.
+        playercon_in_simflow[_pid] = 1;
+
+    ::  // reconnect request
+        take_player_recursive(_pid);
+        cached_sub_idx = player_m_submarine;
         if
-        ::  player_m_submarine == 0;
+        ::  cached_sub_idx == UNSET;
             // throw if no submarine
-            sim_r_lock--;
+            release_player_recursive();
             goto ON_CLOSE;
-        ::  player_m_submarine == 1 && subState == DEAD -> assert(false);
-        ::  else -> skip;
+        ::  else;
+            cached_sim_idx = subSimPtrs[cached_sub_idx];
+            // take simulator's reader lock
+            d_step
+            {
+                sim_wr_lock[cached_sim_idx] == 0;
+                sim_r_lock[cached_sim_idx]++;
+            }
+            // check wether player_m_submarine changed during read lock taking.
+            // If it did, we are currently holding lock on wrong simulator and
+            // need a Player lock as well.
+            assert(cached_sub_idx == player_m_submarine);
+            // throw if simulator is terminated
+            if
+            ::  simStates[cached_sim_idx] == SIM_TERMINATED;
+                sim_r_lock[cached_sim_idx]--;
+                release_player_recursive();
+                goto ON_CLOSE;
+            ::  else -> skip;
+            fi
+
+            // throw if submarine is dead
+            if
+            ::  subStates[cached_sub_idx] == SUB_DEAD;
+                sim_r_lock[cached_sim_idx]--;
+                release_player_recursive();
+                goto ON_CLOSE;
+            ::  else -> skip;
+            fi
+
+            // reconnect state is generated and sent in place of this comment
+            assert(subStates[cached_sub_idx] == SUB_ALIVE);
+            // sub.simulator.incConnectedPlayers();
+            sim_connectedPlayers[cached_sim_idx]++;
+            playercon_in_simflow[_pid] = 1;
+            sim_r_lock[cached_sim_idx]--;
+            release_player_recursive();
         fi
-        // invariant: we must not send reconnect state of the dead submarine
-        assert(subState == ALIVE);
-        sim_r_lock--;
-        // set connection's simFlow flag
-        playercon_in_simflow[_pid - 1] = 1;
     fi
 
-    // we are now supposedly in sim flow
+    // we are now accepting sim flow commands
 
-    // optional crash
+    // optional connection crash
     if
     ::  goto ON_CLOSE;
     ::  skip;
     fi
 
-    // now actual ingame command arrives
+    // now actual ingame command arrives, it is either sim abandon or some write
     if
-    ::  playercon_in_simflow[_pid - 1] == 0;
-        // early exit because we are not in sim-flow already (died).
-        goto ON_CLOSE;
-    ::  else;
-        // actual action
+    ::  // let's say it's a write
+        cached_sub_idx = player_m_submarine;
+        if
+        ::  cached_sub_idx == UNSET;
+            // ignore command when there is no sub
+            goto ON_CLOSE;
+        ::  else -> skip;
+        fi
         // take simulator's reader lock
         d_step
         {
-            sim_wr_lock == 0;
-            sim_r_lock++;
+            sim_wr_lock[subSimPtrs[cached_sub_idx]] == 0;
+            sim_r_lock[subSimPtrs[cached_sub_idx]]++;
         }
+        // check wether our caching is still valid, guard against stale sub
+        // if
+        // ::  cached_sub_idx != player_m_submarine;
+        //     sim_r_lock[subSimPtrs[cached_sub_idx]]--;
+        //     goto ON_CLOSE;
+        // ::  else -> skip;
+        // fi
+        assert(cached_sub_idx == player_m_submarine);
         if
-        ::  player_m_submarine == 0;
-            // throw if no submarine
-            sim_r_lock--;
+        ::  subStates[cached_sub_idx] == SUB_DEAD;
+            // ignore command when the sub is dead
+            sim_r_lock[subSimPtrs[cached_sub_idx]]--;
             goto ON_CLOSE;
-        ::  subState == DEAD -> skip;  // early exit when sub is dead
         ::  else;
             // actual command issue
             // invariant: we must not update controllable state of a dead submarine
             // if we need so send a reply here, we use the same snapshotting technique.
-            assert(subState == ALIVE);
+            assert(subStates[cached_sub_idx] == SUB_ALIVE);
         fi
         // release simulator's reader lock
-        sim_r_lock--;
+        sim_r_lock[subSimPtrs[cached_sub_idx]]--;
+
+    ::  // let's say it's abandon
+        skip;   // TODO
     fi
 
 ON_CLOSE:
-    onConnectionClose();
+    // closeConnection();
+        atomic
+        {
+            if
+            ::  playercon_closed[_pid] == 0;
+                playercon_closed[_pid] = 1;
+                conIdxToCloseQueue!_pid;
+            ::  else -> skip;
+            fi
+        }
 }
 
 
@@ -464,7 +650,11 @@ active proctype GlobalInvariants()
     byte i;
     atomic
     {
-        assert(subStates[player_m_submarine] != SUB_INIT);
+        if
+        ::  player_m_submarine != UNSET;
+            assert(subStates[player_m_submarine] != SUB_INIT);
+        ::  else -> skip;
+        fi
         assert(player_lock_depth >= 0);
         for (i : 0 .. SIM_COUNT-1)
         {
@@ -472,6 +662,25 @@ active proctype GlobalInvariants()
             assert(sim_r_lock[i] >= 0);
             // reference counting decrement correctness
             assert(sim_connectedPlayers[i] >= 0);
+        }
+    }
+}
+
+
+init
+{
+    byte i;
+    atomic
+    {
+        simStates[0] = SIM_RUNNING; // initialize persistent simulator
+        for (i : 0 .. SUB_COUNT-1)
+        {
+            subSimPtrs[i] = UNSET;
+        }
+        run SimSchedulerThread();
+        for (i : 1 .. CON_COUNT)
+        {
+            run PlayerConThread();
         }
     }
 }
