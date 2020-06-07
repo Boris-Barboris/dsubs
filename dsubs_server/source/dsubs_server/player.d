@@ -505,7 +505,7 @@ final class Player: Captain
 	void handleSimTerminating(Submarine terminatedSub)
 	{
 		// Dangling submarine reference protection
-		if (m_submarine is null || terminatedSub !is m_submarine)
+		if (terminatedSub !is m_submarine)
 			return;
 		PlayerConnection con = m_connection;
 		m_submarine = null;
@@ -522,7 +522,7 @@ final class Player: Captain
 		Submarine s = m_submarine;
 
 		// Dangling submarine reference protection
-		if (s is null || subToUpdate !is s)
+		if (subToUpdate !is s)
 			return;
 
 		PlayerConnection con = m_connection;
