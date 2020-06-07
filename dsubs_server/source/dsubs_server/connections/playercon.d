@@ -34,6 +34,8 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 		/// Requested to be set to true by the client when either spawning or
 		/// reconnecting.
 		bool m_simulatorFlow;
+		/// Reverse-reference for refcounting
+		Submarine m_simFlowSub;
 		RSAKeyInfo m_backendPrivKeyInfo;
 	}
 
@@ -42,6 +44,9 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 
 	@property bool simulatorFlow() const { return m_simulatorFlow; }
 	@property void simulatorFlow(bool rhs) { m_simulatorFlow = rhs; }
+
+	@property Submarine simFlowSub() { return m_simFlowSub; }
+	@property void simFlowSub(Submarine rhs) { m_simFlowSub = rhs; }
 
 	this(Socket sock)
 	{
@@ -164,9 +169,11 @@ private:
 			ReconnectStateRes res;
 			synchronized(sub.simulator.simMut.reader)
 			{
-				enforce(!sub.simulator.finished, "simulator is finished");
+				enforce(sub is p.submarine, "Submarine has changed after lock");
 				res = cast() p.getReconnectState();
-				sub.simulator.incConnectedPlayers();
+				sub.incSubConRefCounter();
+				m_simFlowSub = sub;
+				p.enableSubSensors(sub);
 				sendMessage(cast(immutable) res);
 				m_simulatorFlow = true;
 			}

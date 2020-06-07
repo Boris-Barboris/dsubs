@@ -26,6 +26,47 @@ final class Submarine: Vessel
 		Captain m_captain;
 		Tube[int] m_tubes;
 		AmmoRoom[int] m_rooms;
+		// connection reference cnounter
+		int m_conRefCount;
+	}
+
+	// reference counters work in lockstep with simulator's reference counter in
+	// order to have up-to-date integer number of connections that depend on
+	// simulator.
+
+	@property int conRefCount() const { return m_conRefCount; }
+
+	void incSubConRefCounter()
+	{
+		synchronized(this)
+		{
+			if (m_conRefCount == 0)
+			{
+				if (simulator)
+					simulator.incConnectedPlayers();
+			}
+			m_conRefCount++;
+		}
+	}
+
+	void decSubConRefCounter()
+	{
+		synchronized(this)
+		{
+			if (m_conRefCount == 1 && !dead)
+			{
+				if (simulator)
+					simulator.decConnectedPlayers();
+			}
+			m_conRefCount--;
+			assert(m_conRefCount >= 0);
+		}
+	}
+
+	override protected void onFirstKill()
+	{
+		if (m_conRefCount > 0 && simulator)
+			simulator.decConnectedPlayers();
 	}
 
 	@property Hydrophone[] hydrophones() { return m_hydrophones; }

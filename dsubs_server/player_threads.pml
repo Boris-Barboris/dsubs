@@ -124,7 +124,7 @@ inline sendTerminatedToPlayer(sim_idx, sub_idx)
     player_m_submarine = UNSET;
     if
     ::  cached_active_con_idx1 != UNSET;
-        playerconSubFlowPtr[cached_active_con_idx1] = UNSET;
+        playercon_in_simflow[cached_active_con_idx1] = 0;
         d_step
         {
             // connection's logical clock must not stutter, at most once delivery
@@ -553,11 +553,12 @@ proctype PlayerConThread()
         fi
 
         // bind sub to simulator...
+        // next two lines - order is important
         subSimPtrs[cached_sub_idx] = cached_sim_idx;
         player_m_submarine = cached_sub_idx;
-        incSubConCounter(cached_sub_idx);
         // ... and schedule simulator
         simStates[cached_sim_idx] = SIM_RUNNING;    // fits persistent case
+        incSubConCounter(cached_sub_idx);
         playerconSubFlowPtr[_pid] = cached_sub_idx;
         playercon_in_simflow[_pid] = 1;
 

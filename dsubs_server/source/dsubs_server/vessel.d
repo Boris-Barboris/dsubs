@@ -50,6 +50,9 @@ abstract class Killable
 		m_registerTime = sim.worldTime;
 	}
 
+	// called under (this) lock
+	protected void onFirstKill() {}
+
 	/// Ensure that the vessel is dead. Returns true if it was killed
 	/// in the first time.
 	bool kill(string cause)
@@ -57,7 +60,10 @@ abstract class Killable
 		synchronized(this)
 		{
 			if (!m_dead)
+			{
 				m_dead = true;
+				onFirstKill();
+			}
 			else
 				return false;
 		}

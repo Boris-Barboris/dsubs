@@ -154,16 +154,17 @@ final class Player: Captain
 		synchronized(this)
 		{
 			atomicOp!"-="(s_playerCount, 1);
-			Submarine sub = m_submarine;
+			Submarine sub = oldCon.simFlowSub;
 			// if there is a submarine we deactivate it's sensors
 			// to save computational resources.
 			if (sub)
 			{
 				synchronized(sub.simulator.simMut.reader)
 				{
-					// every connection has to do decrease refcount for alive sub
-					if (!sub.dead && oldCon.simulatorFlow)
-						sub.simulator.decConnectedPlayers();
+					// every connection has to do decrease refcount for it's sub
+					sub.decSubConRefCounter();
+					oldCon.simFlowSub = null;
+					oldCon.simulatorFlow = false;
 					// but only if there is no newer connection we update
 					// the sub
 					if (m_connection is oldCon)
@@ -175,9 +176,10 @@ final class Player: Captain
 					}
 				}
 			}
-			else if (m_connection is oldCon)
+			else
 			{
-				m_connection = null;
+				if (m_connection is oldCon)
+					m_connection = null;
 			}
 		}
 	}
@@ -193,6 +195,13 @@ final class Player: Captain
 			return true;
 		}
 		return false;
+	}
+
+	static void enableSubSensors(Submarine sub)
+	{
+		foreach (h; sub.hydrophones)
+			h.shouldBeActive = true;
+		sub.sonar.active = true;
 	}
 
 	/// Set current m_connection to new value. Simulator's reader lock
@@ -213,16 +222,6 @@ final class Player: Captain
 					{
 						trace("Emplacing connection while the sub/sim is dead");
 						m_submarine = null;
-					}
-					else
-					{
-						// remove all this. Emplace is authorization, it does not
-						// move connection to simFlow, hence no need to activate
-						// sensors
-						sub.simulator.incConnectedPlayers();
-						foreach (h; sub.hydrophones)
-							h.shouldBeActive = true;
-						sub.sonar.active = true;
 					}
 					m_connection = con;		// important, check spin model.
 				}
@@ -290,14 +289,14 @@ final class Player: Captain
 					h.shouldBeActive = true;
 					h.listenDir = rot;
 				}
-				scen.simulator.incConnectedPlayers();
 				sub.register(scen.simulator);
+				sub.incSubConRefCounter();
+				con.simFlowSub = sub;
+				con.simulatorFlow = true;
 				// schedule simulator for execution
 				if (req.type == SpawnRequestType.newSimulator)
 					Globals.simulators.add(scen.simulator);
-				enforce(con is m_connection);
 				con.sendMessage(getReconnectState());
-				con.simulatorFlow = true;
 			}
 		}
 	}
@@ -309,7 +308,7 @@ final class Player: Captain
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead)
+			if (s.dead || s !is m_submarine)
 				return;
 			s.targetThrottle = req.target;
 		}
@@ -322,7 +321,7 @@ final class Player: Captain
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead)
+			if (s.dead || s !is m_submarine)
 				return;
 			s.targetCourse = req.target - coordRot;
 		}
@@ -335,7 +334,7 @@ final class Player: Captain
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead)
+			if (s.dead || s !is m_submarine)
 				return;
 			int hcount = s.hydrophones.length.to!int;
 			enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < hcount, "no such hydrophone");
@@ -350,7 +349,7 @@ final class Player: Captain
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead)
+			if (s.dead || s !is m_submarine)
 				return;
 			enforce(req.sonarIdx == 0, "no such sonar");
 			usecs_t worldTime = s.simulator.worldTime;
@@ -373,7 +372,7 @@ final class Player: Captain
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead)
+			if (s.dead || s !is m_submarine)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			TubeOperationResult topRes = tube.processLoadRequest(req.weaponName);
@@ -392,7 +391,7 @@ final class Player: Captain
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead)
+			if (s.dead || s !is m_submarine)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			TubeOperationResult topRes = tube.processStateRequest(req.desiredState);
@@ -410,7 +409,7 @@ final class Player: Captain
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead)
+			if (s.dead || s !is m_submarine)
 				return;
 			enforce(req.wireIdx >= 0 && req.wireIdx < s.rigidBody.wires.length,
 				"invalid wire index");
@@ -425,7 +424,7 @@ final class Player: Captain
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead)
+			if (s.dead || s !is m_submarine)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			// reference frame translation for courses
@@ -514,10 +513,11 @@ final class Player: Captain
 			return;
 		PlayerConnection con = m_connection;
 		m_submarine = null;
-		if (con && con.isOpen)
+		if (con)
 		{
 			con.simulatorFlow = false;
-			con.sendMessage(immutable SimulatorTerminatingRes());
+			if (con.isOpen)
+				con.sendMessage(immutable SimulatorTerminatingRes());
 		}
 	}
 
@@ -533,13 +533,13 @@ final class Player: Captain
 		PlayerConnection con = m_connection;
 
 		// handle death
-		if (s && s.dead)
+		assert(s !is null);
+		if (s.dead)
 		{
-			s.simulator.decConnectedPlayers();
 			m_submarine = null;
 		}
 
-		if (con && con.isOpen && con.simulatorFlow && s)
+		if (con && con.isOpen && con.simulatorFlow && (con.simFlowSub is s))
 		{
 			if (s.dead)
 			{
