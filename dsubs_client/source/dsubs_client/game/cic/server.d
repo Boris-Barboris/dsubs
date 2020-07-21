@@ -65,7 +65,13 @@ final class CICServer
 		const SubmarineTemplate sbmTpl = *Game.entityManager.
 			submarineTemplates[res.submarineName];
 		foreach (size_t i, const HydrophoneTemplate ht; sbmTpl.hydrophones)
-			m_wfAnalizers ~= new WaterfallAnalyzer(ht, i.to!int, m_raySyncer);
+		{
+			WaterfallAnalyzer alz = new WaterfallAnalyzer(
+				res.subId, ht, i.to!int, m_raySyncer);
+			alz.recoverFromDisk(m_state);
+			m_wfAnalizers ~= alz;
+		}
+		m_state.signalStateReady();
 	}
 
 	void handleSubKinematicRes(SubKinematicRes res)
@@ -172,6 +178,7 @@ final class CICServer
 				ContactData[] newCdata = al.generateRayData(res.atTime);
 				foreach (cd; newCdata)
 					processContactData(cd);
+				al.saveToDiskIfNeeded();
 			}
 		}
 	}
@@ -261,6 +268,7 @@ final class CICServer
 			res.newContact = *ctc;
 			res.initialData = *data;
 			m_listener.broadcast(cast(immutable) res);
+			m_state.saveToDiskIfNeeded();
 		}
 	}
 
@@ -277,6 +285,7 @@ final class CICServer
 			TrackerId tid = TrackerId(req.hydrophoneIdx, ctc.id);
 			res.tracker = m_wfAnalizers[req.hydrophoneIdx].createTracker(tid, req.bearing);
 			m_listener.broadcast(cast(immutable) res);
+			m_state.saveToDiskIfNeeded();
 		}
 	}
 
@@ -288,7 +297,10 @@ final class CICServer
 			if (m_dead)
 				return;
 			if (m_state.updateContact(req))
+			{
 				m_listener.broadcast(cast(immutable) req);
+				m_state.saveToDiskIfNeeded();
+			}
 		}
 	}
 
@@ -301,8 +313,11 @@ final class CICServer
 			m_listener.broadcast(cast(immutable) res);
 			Contact* updatedContact = m_state.updateSolutionFromNewData(data);
 			if (updatedContact)
+			{
 				m_listener.broadcast(immutable CICContactUpdateSolutionReq(
 					updatedContact.id, updatedContact.solution));
+				m_state.saveToDiskIfNeeded();
+			}
 		}
 		// we do not throw here because contact could be deleted right after the
 		// message was sent
@@ -329,6 +344,7 @@ final class CICServer
 				foreach (WaterfallAnalyzer wa; m_wfAnalizers)
 					wa.dropTracker(req.ctcId);
 				m_listener.broadcast(cast(immutable) req);
+				m_state.saveToDiskIfNeeded();
 			}
 		}
 	}
@@ -360,6 +376,7 @@ final class CICServer
 				Contact destCtc = m_state.getContact(req.destCtcId);
 				m_listener.broadcast(immutable CICContactUpdateReq(
 					destCtc.id, destCtc.type, destCtc.solution, destCtc.description));
+				m_state.saveToDiskIfNeeded();
 			}
 		}
 	}
@@ -402,7 +419,10 @@ final class CICServer
 			if (m_dead)
 				return;
 			if (m_state.trimData(req.ctcId, req.olderThan))
+			{
 				m_listener.broadcast(req);
+				m_state.saveToDiskIfNeeded();
+			}
 		}
 	}
 }

@@ -1,6 +1,6 @@
 module dsubs_client.game.cic.state;
 
-import std.algorithm: find;
+import std.algorithm: find, sort;
 import std.array: array, appender;
 import std.algorithm: map;
 import std.ascii: isUpper;
@@ -9,6 +9,8 @@ import core.sync.mutex: Mutex;
 import core.sync.condition: Condition;
 
 import dsubs_common.api.messages;
+import dsubs_common.api.marshalling;
+import dsubs_client.game.cic.persistence;
 import dsubs_client.game.cic.protocol;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cic.entities;
@@ -21,7 +23,7 @@ game world and is destroyed only on the next spawn or when the process dies.
 Important data is periodically dumped to disk in order to be able to survive
 CIC server crash.
 */
-final class CICState
+final class CICState: Persistable
 {
 	private
 	{
@@ -35,6 +37,7 @@ final class CICState
 
 	this()
 	{
+		super("CIC");
 		m_rsMut = new Mutex();
 		m_recStateCond = new Condition(m_rsMut);
 		m_ctcMut = new Mutex();
@@ -73,8 +76,17 @@ final class CICState
 		{
 			m_recState = res;
 			m_recStateInitialized = true;
-			m_recStateCond.notifyAll();
+			OnDiskState* recoveredState = loadFromFile!OnDiskState();
+			if (recoveredState)
+				loadFromMessage(*recoveredState);
 		}
+	}
+
+	/// Wakes threads that are waiting in awaitCicRecState
+	void signalStateReady()
+	{
+		synchronized(m_recStateCond.mutex)
+			m_recStateCond.notifyAll();
 	}
 
 	void handleSubKinematicRes(SubKinematicRes res)
@@ -134,6 +146,19 @@ final class CICState
 	private
 	{
 		Mutex m_ctcMut;
+
+		/// Persistent contact state is saved as this structure
+		@Compressed
+		struct OnDiskState
+		{
+			enum int g_marshIdx = 1;
+
+			Contact[] contacts;
+			int dataIdSeq;
+			int['Z' - 'A' + 1] contactPostfixes;
+			ContactData[] contactData;
+		}
+
 		/// ctcId-hashed table of all contact contexts
 		ContactContext*[ContactId] m_ctcCtxHash;
 		/// contact id sequence generators
@@ -142,6 +167,48 @@ final class CICState
 		int m_dataIdSeq = -1;
 		/// id-hashed table of all contact data
 		ContactData*[int] m_ctcDataHash;
+	}
+
+	bool contactExists(ContactId id) const
+	{
+		return (id in m_ctcCtxHash) !is null;
+	}
+
+	// must be called while holding contacts lock
+	override immutable(ubyte)[] buildOnDiskMessage()
+	{
+		OnDiskState stateStruct;
+		stateStruct.contacts = m_ctcCtxHash.byValue.map!(cc => cc.ctc).array;
+		stateStruct.dataIdSeq = m_dataIdSeq;
+		stateStruct.contactPostfixes = m_contactPostfixes;
+		ContactData*[] dataPtrArr = m_ctcDataHash.byValue.array;
+		// we only save last 1000 samples
+		sort!"a.id > b.id"(dataPtrArr);
+		if (dataPtrArr.length > 1000)
+			dataPtrArr.length = 1000;
+		stateStruct.contactData = dataPtrArr.map!(ptr => *ptr).array;
+		return marshalMessage(cast(immutable) &stateStruct);
+	}
+
+	override string getFileName()
+	{
+		return m_recState.subId ~ "_contacts";
+	}
+
+	private void loadFromMessage(OnDiskState state)
+	{
+		m_dataIdSeq = state.dataIdSeq;
+		m_contactPostfixes = state.contactPostfixes;
+		foreach (ref ctc; state.contacts)
+		{
+			ContactContext* ctx = new ContactContext(ctc, new ContactDataTree());
+			m_ctcCtxHash[ctc.id] = ctx;
+		}
+		foreach (ref ctcData; state.contactData)
+		{
+			m_ctcDataHash[ctcData.id] = &ctcData;
+			m_ctcCtxHash[ctcData.ctcId].dataTree.insert(&ctcData);
+		}
 	}
 
 	/// Main contact menagement system mutex, provides contac state serialization.

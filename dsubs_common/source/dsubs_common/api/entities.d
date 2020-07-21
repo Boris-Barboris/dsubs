@@ -401,7 +401,7 @@ struct HydrophoneData
 {
 	int hydrophoneIdx;	// index of the sub's hydrophone
 	AntennaeData[] antennaes;
-	/// world position of the hydrophone's focus
+	/// world position of the hydrophone's focal point
 	vec2d position;
 	/// world rotation
 	double rotation;

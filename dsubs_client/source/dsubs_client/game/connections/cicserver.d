@@ -38,7 +38,7 @@ final class CICServerConnection: ProtocolConnection!CICProtocol
 
 private:
 
-	// just pass messages to CIC server.
+	// just pass messages to CIC server, with minimal inSimFlow check.
 	static string passToServerMixin(MsgT)(string serverHandlerName = null)
 	{
 		string conMethodName = "h_" ~ MsgT.stringof;
@@ -102,7 +102,7 @@ private:
 				sendMessage(m_cicserv.state.awaitCicRecState());
 				m_inSimFlow = true;
 			}
-			sendBytes(m_cicserv.state.serializeLastNData(100));
+			sendBytes(m_cicserv.state.serializeLastNData(1000));
 		}
 	}
 
