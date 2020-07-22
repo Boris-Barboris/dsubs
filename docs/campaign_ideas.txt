@@ -1,3 +1,48 @@
+Tutorials.
+
+Navigation tutorial.
+
+Camera control.
+Throttle control.
+Course control.
+Small waypoint excercise.
+
+Needs text hints and color blink of controls.
+Needs navigational triggers on the backend.
+
+
+Active sonar and TMA tutorial.
+
+Detect, mark, enter solution.
+Multiwindow feature tutorial.
+Reveal true solution in the end.
+
+Needs dynamic shape hints on TMA controls.
+Needs solution hint from server.
+Needs button input from client to reveal the solution.
+Needs client to send success or failure result for tutorial scenario.
+
+
+Artillery tutorial.
+
+Reloading.
+Aiming.
+Search patterns.
+Detect using active sonar and kill a test target.
+
+Needs dynamic color hints on aiming controls.
+Needs death triggers on the server.
+Needs victory condition as death.
+
+
+Passive sonar and towed arrays.
+
+Detect, mark, enter solution and kill a target.
+
+Needs same features as active sonar tutorial.
+
+
+
 Campaign starts with routine ecological tasks and anti-smuggling patrols.
 
 

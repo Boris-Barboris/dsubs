@@ -271,6 +271,7 @@ final class Simulator
 	// }
 
 	private usecs_t m_worldTime = 0;
+
 	@property usecs_t worldTime() const { return m_worldTime; }
 
 	// Must be called while holding simMut.
@@ -280,9 +281,11 @@ final class Simulator
 	}
 
 	private bool m_terminating;
+
 	/// simulator will report as finished when it's wordTime exceeds worldTimeLimit, or
 	/// when it's asked to terminate by scenario.
 	usecs_t worldTimeLimit = usecs_t.max;
+
 	@property bool finished() const
 	{
 		return m_terminating || m_worldTime > worldTimeLimit;

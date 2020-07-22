@@ -43,7 +43,6 @@ final class DeathScreenState: GameState
 		m_deathRes = deathRes;
 	}
 
-	/// Used to handle in abrupt
 	this()
 	{
 		m_simTerminated = true;
