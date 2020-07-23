@@ -20,13 +20,15 @@ final class Collapsable: Div
 		Div m_headerDiv;
 		CircleShape m_titleTriangle;
 		Button m_titleShapeButton;
-		Label m_title;
+		Button m_title;
 		bool m_collapsed = true;
+		int m_headerFontSize = 14;
 	}
 
 	@property bool collapsed() const { return m_collapsed; }
 
-	@property Label title() { return m_title; }
+	mixin GetSet!(int, "headerFontSize",
+		"m_title.fontSize = rhs; recalculate();");
 
 	@property GuiElement child() { return m_child; }
 
@@ -34,7 +36,8 @@ final class Collapsable: Div
 	{
 		m_titleTriangle = new CircleShape(5.0f, 3);
 		m_titleTriangle.fillColor = sfWhite;
-		m_title = new Label();
+		m_title = new Button();
+		m_title.htextAlign = HTextAlign.LEFT;
 		m_title.mouseTransparent = false;
 		m_titleShapeButton = new Button();
 		m_titleShapeButton.fixedSize(vec2i(16, 10));
@@ -42,18 +45,21 @@ final class Collapsable: Div
 		m_childFiller = filler(0);
 		m_headerDiv = hDiv(cast(GuiElement[]) [m_titleShapeButton, m_title]);
 		m_headerDiv.layoutType = layoutType.FIXED;
-		m_headerDiv.size = vec2i(16, 16);
 		super(DivType.VERT, [m_headerDiv, m_childFiller]);
 		mouseTransparent = false;
 		// layoutType = layoutType.FIXED;
 		m_child = child;
 		m_titleTriangle.rotation = 180.0f;
 		m_titleShapeButton.onClick += &toggleCollapsed;
+		m_title.onClick += &toggleCollapsed;
+		headerFontSize = 14;
 	}
 
-	void toggleCollapsed()
+	private void recalculate()
 	{
-		if (m_collapsed)
+		int divSize = m_headerFontSize + 4;
+		m_headerDiv.size = vec2i(divSize, divSize);
+		if (!m_collapsed)
 		{
 			setChild(m_child, 1);
 			size = vec2i(size.x, m_headerDiv.size.y + m_child.size.y);
@@ -65,7 +71,12 @@ final class Collapsable: Div
 			size = vec2i(size.x, m_headerDiv.size.y);
 			m_titleTriangle.rotation = 180.0f;
 		}
+	}
+
+	void toggleCollapsed()
+	{
 		m_collapsed = !m_collapsed;
+		recalculate();
 	}
 
 	override void onBeforeChildrenDraw(Window wnd, long usecsDelta)

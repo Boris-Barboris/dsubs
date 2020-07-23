@@ -53,7 +53,7 @@ void testGuiElements()
 	Div row2 = builder(hDiv(
 		[
 			builder(new Collapsable(collapsableText, "show/hide")).
-				size(vec2i(180, 20)).build(),
+				size(vec2i(180, 20)).headerFontSize(18).build(),
 			builder(new PasswordField()).fontSize(28).content("TextField").build(),
 			builder(new TextField()).fontSize(14).content("TextField").build()
 		]
