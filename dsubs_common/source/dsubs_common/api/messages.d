@@ -25,7 +25,7 @@ struct ServerStatusRes
 	__gshared const int g_marshIdx;
 	/// Total number of authorized players currently online.
 	int playersOnline;
-	int apiVersion = 13;
+	int apiVersion = 14;
 }
 
 /** This message requests authorization from the server.
@@ -153,8 +153,10 @@ struct ReconnectStateRes
 	float[] desiredWireLenghts;
 	TubeFullState[] tubeStates;
 	AmmoRoomFullState[] ammoRoomStates;
+	/// Current list of all scenario map elements that must be rendered
 	MapElement[] mapElements;
-	ChatMessage briefing;
+	/// Tail of the chat log. Length is server-defined.
+	ChatMessage[] lastChatLogs;
 	/// True when the player can abandon the simulator.
 	bool canAbandon;
 }
