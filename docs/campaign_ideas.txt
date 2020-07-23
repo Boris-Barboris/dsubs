@@ -9,6 +9,7 @@ Small waypoint excercise.
 
 Needs text hints and color blink of controls.
 Needs navigational triggers on the backend.
+Needs listable text box with pages.
 
 
 Active sonar and TMA tutorial.

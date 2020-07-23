@@ -90,6 +90,14 @@ class GuiElement: IInputReceiver
 
 	mixin GetSet!(vec2i, "position", "updatePosition();");
 
+	final vec2f center() const
+	{
+		return vec2f(
+			position.x + size.x / 2.0f,
+			position.y + size.y / 2.0f
+		);
+	}
+
 	final @property vec2i size() const { return m_size; }
 
 	@property vec2i size(vec2i rhs)

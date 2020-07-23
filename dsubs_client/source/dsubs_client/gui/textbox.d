@@ -251,7 +251,8 @@ final class TextBox: GuiElement
 	private float getGlyphWidth() const
 	{
 		// glyph of 'A'
-		sfGlyph g = sfFont_getGlyph(g_loadedFonts[m_fontName].ptr, 34, m_fontSize, false);
+		sfGlyph g = sfFont_getGlyph(g_loadedFonts[m_fontName].ptr, 65, m_fontSize,
+			false, 0.0f);
 		return g.bounds.width;
 	}
 

@@ -5,7 +5,7 @@ import std.container.rbtree;
 
 import derelict.sfml2.graphics;
 
-import gfm.math.vector: vec4i;
+import gfm.math.vector: vec4i, vec2f;
 
 import dsubs_client.lib.sfml;
 

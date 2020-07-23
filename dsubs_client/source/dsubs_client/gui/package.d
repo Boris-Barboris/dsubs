@@ -15,3 +15,4 @@ public import dsubs_client.gui.passwordfield;
 public import dsubs_client.gui.scrollbar;
 public import dsubs_client.gui.slider;
 public import dsubs_client.gui.contextmenu;
+public import dsubs_client.gui.collapsable;

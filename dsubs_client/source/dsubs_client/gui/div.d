@@ -26,7 +26,7 @@ enum DivType
 }
 
 /// Linear layout manager, rectangular one-dimentional array of elements
-final class Div: GuiElement
+class Div: GuiElement
 {
 	public
 	{
@@ -127,7 +127,7 @@ final class Div: GuiElement
 
 	override void childChanged(GuiElement child)
 	{
-		// kids are expected to notify us on their property changes
+		// kids are expected to notify us on their size/layout property changes
 		if (!m_updatingKids)
 			updateChildren();
 	}
@@ -277,6 +277,8 @@ final class Div: GuiElement
 		super.onHide();
 	}
 
+	protected void onBeforeChildrenDraw(Window wnd, long usecsDelta) {}
+
 	override void draw(Window wnd, long usecsDelta)
 	{
 		super.draw(wnd, usecsDelta);
@@ -285,6 +287,7 @@ final class Div: GuiElement
 				sfRenderWindow_drawRectangleShape(wnd.wnd, rect, &m_sfRst);
 		foreach (rect; m_cellBorders)
 			sfRenderWindow_drawRectangleShape(wnd.wnd, rect, &m_sfRst);
+		onBeforeChildrenDraw(wnd, usecsDelta);
 		foreach (child; m_children)
 			child.draw(wnd, usecsDelta);
 	}
