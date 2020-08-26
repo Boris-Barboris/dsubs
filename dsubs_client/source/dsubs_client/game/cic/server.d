@@ -236,6 +236,15 @@ final class CICServer
 		m_listener.broadcast(cast(immutable) CICMapOverlayUpdateRes(res));
 	}
 
+	void handleScenarioGoalUpdateRes(ScenarioGoalUpdateRes res)
+	{
+		synchronized(m_state.rsMut)
+		{
+			m_state.handleScenarioGoalUpdateRes(res);
+		}
+		m_listener.broadcast(cast(immutable) CICScenarioGoalUpdateRes(res));
+	}
+
 	void handleChatMessageRes(ChatMessageRes res)
 	{
 		synchronized(m_state.rsMut)

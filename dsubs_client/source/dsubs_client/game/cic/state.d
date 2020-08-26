@@ -130,6 +130,11 @@ final class CICState: Persistable
 		m_recState.mapElements = res.mapElements;
 	}
 
+	void handleScenarioGoalUpdateRes(ScenarioGoalUpdateRes res)
+	{
+		m_recState.goals = res.goals;
+	}
+
 	void handleChatMessageRes(ChatMessageRes res)
 	{
 		m_recState.briefing = res.message;

@@ -182,7 +182,7 @@ private final class StandaloneScenarioSpawner: ScenarioSpawner
 
 	override void validateSpawnRequest(Player player, const SpawnReq req)
 	{
-		enforce(req.type == SpawnRequestType.newSimulator, "wrong type");
+		enforce(req.type == SpawnRequestType.newSimulator);
 		assert(req.simulatorIdOrScenarioName == m_constants.name);
 		super.validateSpawnRequest(player, req);
 	}
@@ -356,5 +356,21 @@ final class ScenarioDatabase
 				break;
 		}
 		return scen;
+	}
+}
+
+
+/// Goal that needs to be achieved.
+final class ScenarioGoal
+{
+	private
+	{
+		ScenarioGoalStatus m_status;
+	}
+
+	@property ScenarioGoalStatus status() const { return m_status; }
+
+	this()
+	{
 	}
 }

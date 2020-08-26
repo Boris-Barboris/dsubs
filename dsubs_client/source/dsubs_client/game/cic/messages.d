@@ -160,6 +160,13 @@ struct CICChatMessageRes
 	ChatMessageRes res;
 }
 
+@Compressed
+struct CICScenarioGoalUpdateRes
+{
+	__gshared const int g_marshIdx;
+	ScenarioGoalUpdateRes res;
+}
+
 /*
 Contact and sensor data management API.
 */
