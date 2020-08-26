@@ -236,7 +236,7 @@ enum TubeType: ubyte
 }
 
 /**
-Standard tube state evolution:
+Standard tube launch state schedule:
 	dry -> loading -> dry -> flooding -> flooded -> opening ->
 		open -> firing -> open -> closing -> flooded ->
 		drying -> dry.
@@ -251,7 +251,7 @@ enum TubeState: ushort
 	loading,	/// weapon is being loaded
 	unloading,	/// weapon is being unloaded
 	// only loading and unloading states are reversible, that is you can abort unloading
-	// and load currently loaded weapon back with less time wasted.
+	// and load currently loaded weapon back with less time spent.
 	flooding,
 	drying,
 	opening,
@@ -423,8 +423,7 @@ enum MapElementType: ubyte
 {
 	circle,
 	text,
-	lineSegment,
-	rectangle
+	lineSegment
 }
 
 struct MapCircle
@@ -441,28 +440,17 @@ struct MapText
 {
 	/// world-space center
 	vec2d center;
-	/// screen-space font size
 	int fontSize;
 }
 
+// Flexible enough to build arbitrary shapes.
 struct MapLineSegment
 {
+	// world-space points
 	vec2d p1;
 	vec2d p2;
 	/// screen-space line width
 	float width;
-}
-
-struct MapRectangle
-{
-	/// world-space center
-	vec2d luCorner;
-	/// world-space width and height
-	vec2d size;
-	/// world-space rotation. Counter-clockwise is positive.
-	double rotation;
-	/// screen-space font size
-	float borderWidth;
 }
 
 union MapElementUnion
@@ -470,15 +458,14 @@ union MapElementUnion
 	MapCircle circle;
 	MapText text;
 	MapLineSegment lineSegment;
-	MapRectangle rectangle;
 }
 
 struct MapElement
 {
 	MapElementType type;
 	MapElementUnion value;
-	/// In case of text element it is it's content.
-	string label;
+	/// In case of text element this is it's content.
+	string textContent;
 	RgbaColor color;
 	alias value this;
 }
@@ -508,9 +495,25 @@ struct ChatMessage
 	string message;
 }
 
+
+enum ScenarioGoalStatus: ubyte
+{
+	unreached,
+	failed,
+	success
+}
+
+struct ScenarioGoal
+{
+	ScenarioGoalStatus status;
+	string shortText;
+	string longDescription;
+}
+
+
 struct WirePointSnapshot
 {
-	/// position of this point relative to the wire's attach position.
+	/// world position delta of this point relative to the wire's attach position.
 	vec2f position;
 	vec2f velocity;
 }

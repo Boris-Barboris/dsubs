@@ -155,6 +155,8 @@ struct ReconnectStateRes
 	AmmoRoomFullState[] ammoRoomStates;
 	/// Current list of all scenario map elements that must be rendered
 	MapElement[] mapElements;
+	/// List of all scenario goals
+	ScenarioGoal[] goals;
 	/// Tail of the chat log. Length is server-defined.
 	ChatMessage[] lastChatLogs;
 	/// True when the player can abandon the simulator.
@@ -317,6 +319,14 @@ struct WireDesiredLengthReq
 	__gshared const int g_marshIdx;
 	int wireIdx;
 	float desiredLength = 0.0f;
+}
+
+/// Goal set state is always updated as a whole.
+@Compressed
+struct ScenarioGoalUpdateRes
+{
+	__gshared const int g_marshIdx;
+	ScenarioGoal[] goals;
 }
 
 
