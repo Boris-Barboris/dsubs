@@ -17,3 +17,20 @@ public import dsubs_common.math: clamp;
 
 public import dsubs_server.rng;
 public import dsubs_server.globals;
+
+
+alias ObjVer = uint;
+
+
+class VersionedObject
+{
+	private ObjVer m_objVersion;
+
+	@property ObjVer objVersion() const { return m_objVersion; }
+
+	final protected void bumpObjVersion()
+	{
+		assert(m_objversion != ObjVer.max);
+		m_objversion++;
+	}
+}

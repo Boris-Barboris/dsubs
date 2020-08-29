@@ -360,13 +360,18 @@ final class ScenarioDatabase
 }
 
 
-/// Set of goals.
-class ScenarioGoalSet
+/// Set of goals that can be synchronized with clients based on object version.
+class ScenarioGoalSet: VersionedObject
 {
 	private
 	{
-		// if all these are satisfied, side has won
-		ScenarioGoal[] m_goals;
+		struct GoalVersionPair
+		{
+			int goalVersion;
+			ScenarioGoal goal;
+		}
+
+		GoalVersionPair[] m_goals;
 	}
 
 	final @property bool allGoalsSuccessfull() const
@@ -374,14 +379,31 @@ class ScenarioGoalSet
 		return m_goals.all!"a.status == ScenarioGoalStatus.success"();
 	}
 
+	/// Bump set's version if child goals have been updated
+	void updateVersion()
+	{
+		bool needBump = false;
+		foreach(ref pair; m_goals)
+		{
+			if (pair.version != pair.goal.objVersion)
+			{
+				pair.version = pair.goal.objVersion;
+				needBump = true;
+			}
+		}
+		if (needBump)
+			bumpObjVersion();
+	}
+
 	void addGoal(ScenarioGoal goal)
 	{
-		m_goals ~= goal;
+		m_goals ~= GoalVersionPair(goal.objVersion, goal);
+		bumpObjVersion();
 	}
 }
 
 
-abstract class ScenarioGoal
+abstract class ScenarioGoal: VersionedObject
 {
 	private
 	{
@@ -392,15 +414,32 @@ abstract class ScenarioGoal
 
 	abstract ScenarioGoal getGoalStruct();
 
-	void markSuccess()
+	final void markSuccess()
 	{
 		if (m_status == ScenarioGoalStatus.unreached)
+		{
 			m_status = ScenarioGoalStatus.success;
+			bumpObjVersion();
+		}
 	}
 
-	void markFailed()
+	final void markFailed()
 	{
 		// we can transition from success to failure
-		m_status = ScenarioGoalStatus.failed;
+		if (m_status == ScenarioGoalStatus.unreached)
+		{
+			m_status = ScenarioGoalStatus.failed;
+			bumpObjVersion();
+		}
+	}
+}
+
+
+abstract class ScenarioTrigger
+{
+	private
+	{
+		bool void() m_predicate;
+		msecs_t m_forHowLong;
 	}
 }
