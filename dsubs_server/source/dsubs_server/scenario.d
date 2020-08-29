@@ -360,17 +360,47 @@ final class ScenarioDatabase
 }
 
 
-/// Goal that needs to be achieved.
-final class ScenarioGoal
+/// Set of goals.
+class ScenarioGoalSet
+{
+	private
+	{
+		// if all these are satisfied, side has won
+		ScenarioGoal[] m_goals;
+	}
+
+	final @property bool allGoalsSuccessfull() const
+	{
+		return m_goals.all!"a.status == ScenarioGoalStatus.success"();
+	}
+
+	void addGoal(ScenarioGoal goal)
+	{
+		m_goals ~= goal;
+	}
+}
+
+
+abstract class ScenarioGoal
 {
 	private
 	{
 		ScenarioGoalStatus m_status;
 	}
 
-	@property ScenarioGoalStatus status() const { return m_status; }
+	final @property ScenarioGoalStatus status() const { return m_status; }
 
-	this()
+	abstract ScenarioGoal getGoalStruct();
+
+	void markSuccess()
 	{
+		if (m_status == ScenarioGoalStatus.unreached)
+			m_status = ScenarioGoalStatus.success;
+	}
+
+	void markFailed()
+	{
+		// we can transition from success to failure
+		m_status = ScenarioGoalStatus.failed;
 	}
 }
