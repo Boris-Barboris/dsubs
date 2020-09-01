@@ -421,6 +421,7 @@ Good luck!`;
 				ChatMessageRes textBcst;
 				generateBriefing(p, mapBcst.mapElements, textBcst.message);
 				textBcst.message = ChatMessage(unixTime,
+					ChatMessageType.scenarioNotice,
 					"Weapon racks reloaded. New reload point allocated.");
 				pcon.sendMessage(cast(immutable) mapBcst);
 				pcon.sendMessage(cast(immutable) textBcst);
@@ -527,6 +528,7 @@ Good luck!`;
 		{
 			briefing = ChatMessage(
 				unixTime,
+				ChatMessageType.scenarioNotice,
 				"New arena position, hurry to the dark-blue circle! " ~
 				"Time until forced navigation: " ~
 				((m_nextTransitionTime - m_simulator.worldTime) / 1000_000).
@@ -536,6 +538,7 @@ Good luck!`;
 		{
 			briefing = ChatMessage(
 				unixTime,
+				ChatMessageType.scenarioNotice,
 				"Navigation limited to dark-blue circle!");
 		}
 		// circle for reloading area

@@ -74,8 +74,20 @@ abstract class Killable
 }
 
 
+interface IHasTransform
+{
+	@property Transform2D transform();
+}
+
+
+interface IHasRidigBody
+{
+	@property RigidBody rigidBody();
+}
+
+
 /// Physically-simulated vessel with propulsor, rudder and reflector components
-class Vessel: Killable
+class Vessel: Killable, IHasTransform, IHasRidigBody
 {
 	protected
 	{

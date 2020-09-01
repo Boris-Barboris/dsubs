@@ -19,18 +19,18 @@ public import dsubs_server.rng;
 public import dsubs_server.globals;
 
 
-alias ObjVer = uint;
+alias ObjVerT = uint;
 
 
 class VersionedObject
 {
-	private ObjVer m_objVersion;
+	private ObjVerT m_objVersion;
 
-	@property ObjVer objVersion() const { return m_objVersion; }
+	final @property ObjVerT objVersion() const { return m_objVersion; }
 
 	final protected void bumpObjVersion()
 	{
-		assert(m_objversion != ObjVer.max);
-		m_objversion++;
+		assert(m_objVersion != ObjVerT.max);
+		m_objVersion++;
 	}
 }

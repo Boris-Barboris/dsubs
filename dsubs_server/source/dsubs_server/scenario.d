@@ -10,6 +10,7 @@ import std.uuid;
 import dsubs_common.math.angles;
 import dsubs_common.api.messages;
 import dsubs_common.api.entities;
+import dsubs_common.containers.array;
 
 import dsubs_server.common;
 import dsubs_server.vessel;
@@ -360,8 +361,8 @@ final class ScenarioDatabase
 }
 
 
-/// Set of goals that can be synchronized with clients based on object version.
-class ScenarioGoalSet: VersionedObject
+/// List of goals that can be synchronized with clients based on object version.
+class ScenarioGoalList: VersionedObject
 {
 	private
 	{
@@ -376,18 +377,23 @@ class ScenarioGoalSet: VersionedObject
 
 	final @property bool allGoalsSuccessfull() const
 	{
-		return m_goals.all!"a.status == ScenarioGoalStatus.success"();
+		return m_goals.all!(a => a.goal.status == ScenarioGoalStatus.success)();
 	}
 
-	/// Bump set's version if child goals have been updated
+	final @property bool anyGoalFailed() const
+	{
+		return m_goals.any!(a => a.goal.status == ScenarioGoalStatus.failed)();
+	}
+
+	/// Bump own version if child goals have been updated
 	void updateVersion()
 	{
 		bool needBump = false;
 		foreach(ref pair; m_goals)
 		{
-			if (pair.version != pair.goal.objVersion)
+			if (pair.goalVersion != pair.goal.objVersion)
 			{
-				pair.version = pair.goal.objVersion;
+				pair.goalVersion = pair.goal.objVersion;
 				needBump = true;
 			}
 		}
@@ -398,6 +404,12 @@ class ScenarioGoalSet: VersionedObject
 	void addGoal(ScenarioGoal goal)
 	{
 		m_goals ~= GoalVersionPair(goal.objVersion, goal);
+		bumpObjVersion();
+	}
+
+	void removeGoal(ScenarioGoal goal)
+	{
+		removeFirst!(a => a.goal is goal)(m_goals);
 		bumpObjVersion();
 	}
 }
@@ -425,7 +437,6 @@ abstract class ScenarioGoal: VersionedObject
 
 	final void markFailed()
 	{
-		// we can transition from success to failure
 		if (m_status == ScenarioGoalStatus.unreached)
 		{
 			m_status = ScenarioGoalStatus.failed;
@@ -435,11 +446,209 @@ abstract class ScenarioGoal: VersionedObject
 }
 
 
-abstract class ScenarioTrigger
+interface IScenarioCondition
+{
+	bool satisfied();
+}
+
+
+final class AndCondition: IScenarioCondition
+{
+	private IScenarioCondition left, right;
+
+	this(IScenarioCondition a, IScenarioCondition b)
+	{
+		left = a;
+		right = b;
+	}
+
+	override bool satisfied()
+	{
+		return left.satisfied() && right.satisfied();
+	}
+}
+
+
+AndCondition and(IScenarioCondition a, IScenarioCondition b)
+{
+	return new AndCondition(a, b);
+}
+
+
+final class OrCondition: IScenarioCondition
+{
+	private IScenarioCondition left, right;
+
+	this(IScenarioCondition a, IScenarioCondition b)
+	{
+		left = a;
+		right = b;
+	}
+
+	override bool satisfied()
+	{
+		return left.satisfied() || right.satisfied();
+	}
+}
+
+
+OrCondition or(IScenarioCondition a, IScenarioCondition b)
+{
+	return new OrCondition(a, b);
+}
+
+
+enum Comparator: ubyte
+{
+	less,
+	greaterOrEqual
+}
+
+
+/// Distance between two objects that have transforms
+final class DistanceCondition: IScenarioCondition
 {
 	private
 	{
-		bool void() m_predicate;
-		msecs_t m_forHowLong;
+		IHasTransform* a;
+		IHasTransform* b;
+		Comparator m_comparator;
+		double m_distanceSqr;
+	}
+
+	// Pointers to class references because we allow unallocated object
+	// bindings.
+	this(IHasTransform* obj1, IHasTransform* obj2, Comparator comparator, double distance)
+	{
+		assert(distance >= 0.0);
+		a = obj1;
+		b = obj2;
+		m_comparator = comparator;
+		m_distanceSqr = distance * distance;
+	}
+
+	override bool satisfied()
+	{
+		if (*a is null || *b is null)
+			return false;
+		double currentDistSqr =
+			((*a).transform.wposition - (*b).transform.wposition).squaredLength;
+		final switch (m_comparator)
+		{
+			case (Comparator.less):
+				return currentDistSqr < m_distanceSqr;
+			case (Comparator.greaterOrEqual):
+				return currentDistSqr >= m_distanceSqr;
+		}
+	}
+}
+
+
+/// Velocity vector magnitude comparison
+final class SpeedCondition: IScenarioCondition
+{
+	private
+	{
+		IHasRidigBody* obj;
+		Comparator m_comparator;
+		double m_speedSqr;
+	}
+
+	this(IHasRidigBody* obj1, Comparator comparator, double speed)
+	{
+		assert(speed >= 0.0);
+		obj = obj1;
+		m_comparator = comparator;
+		m_speedSqr = speed * speed;
+	}
+
+	override bool satisfied()
+	{
+		if (*obj)
+			return false;
+		double currentSpdSqr =
+			(*obj).rigidBody.kinet.vel.squaredLength;
+		final switch (m_comparator)
+		{
+			case (Comparator.less):
+				return currentSpdSqr < m_speedSqr;
+			case (Comparator.greaterOrEqual):
+				return currentSpdSqr >= m_speedSqr;
+		}
+	}
+}
+
+
+
+/// Thing that computes the condition and runs the delegate once/repeatedly.
+final class ScenarioTrigger
+{
+	private
+	{
+		// time since first condition satisfaction
+		// or since firing in multi-shot trigger.
+		usecs_t m_currentDuration = 0;
+
+		// time that must pass in simulator with condition being active
+		// to activate the trigger.
+		usecs_t m_activationTime;
+		// cooldown after re-trigger
+		usecs_t m_cooldown;
+		bool m_isCondActive;
+		bool m_oneShot;
+		bool m_isShot;
+		void delegate() m_action;
+		IScenarioCondition m_condition;
+	}
+
+	// oneShot and isShot means that trigger can be discarded
+	@property bool oneShot() const { return m_oneShot; }
+	@property bool isShot() const { return m_isShot; }
+
+	this(IScenarioCondition condition, void delegate() action,
+		bool oneShot = true, usecs_t activationTime = 0,
+		usecs_t cooldown = 0)
+	{
+		m_condition = condition;
+		m_action = action;
+		m_oneShot = oneShot;
+		m_cooldown = cooldown;
+		m_activationTime = activationTime;
+	}
+
+	/// Returns true if the trigger was actually fired during this call.
+	bool process(usecs_t simTimePassed)
+	{
+		// cooldown logic
+		if (m_isShot && !m_oneShot)
+		{
+			m_currentDuration += simTimePassed;
+			if (m_currentDuration >= m_cooldown)
+				m_isShot = false;
+			else
+				return false;
+		}
+		if (m_condition.satisfied())
+		{
+			if (!m_isCondActive)
+			{
+				m_isCondActive = true;
+				m_currentDuration = 0;
+			}
+			else
+				m_currentDuration += simTimePassed;
+			if (m_currentDuration >= m_activationTime)
+			{
+				m_isShot = true;
+				if (!m_oneShot)
+					m_currentDuration = 0;
+				m_isCondActive = false;
+				m_action();
+				return true;
+			}
+		}
+		else
+			m_isCondActive = false;
+		return false;
 	}
 }

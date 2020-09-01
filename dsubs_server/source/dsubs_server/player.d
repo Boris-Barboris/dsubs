@@ -272,8 +272,10 @@ final class Player: Captain
 		if (s.simulator.scenario)
 		{
 			Scenario scenario = s.simulator.scenario;
+			ChatMessage briefingMsg;
 			scenario.generateBriefing(
-				this, recState.mapElements, recState.briefing);
+				this, recState.mapElements, briefingMsg);
+			recState.lastChatLogs = [briefingMsg];
 			trace(scenario.spawner.scenarioType);
 			recState.canAbandon =
 				scenario.spawner.scenarioType != ScenarioType.persistentSimulator;
