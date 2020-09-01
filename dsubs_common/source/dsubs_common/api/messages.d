@@ -229,7 +229,7 @@ struct EmitPingReq
 	float ilevel;	/// intensity level
 }
 
-/// Server sends when client's submarine is no longer alive or vicroty/loss
+/// Server sends when client's submarine is no longer alive or victory/loss
 /// condition is reached. May be followed by SimulatorTerminatingRes if generated
 /// by non-persistent scenario.
 /// To return to main menu, client should send AvailableScenariosReq.

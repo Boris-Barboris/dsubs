@@ -91,10 +91,15 @@ abstract class Scenario
 
 	abstract void onBeforeSimulation();
 
+	/// When true, players will get random refrence frames.
+	@property bool randomizeReferenceFrame() const { return true; }
+
 	/// scenario is responsible for sending SimFlowEndRes messages to players.
 	abstract ShouldSimTerminate onAfterSimulation();
 
 	/// Scenario is responsible for picking true world-space player spawn position.
+	/// This is also an entry point for scenario to register a participating
+	/// player.
 	abstract void selectPlayerSpawnPosition(Player player,
 		out vec2d position, out double rotation);
 
@@ -446,6 +451,34 @@ abstract class ScenarioGoal: VersionedObject
 }
 
 
+/// Collection to synchronize map elements with the client
+final class MapElementCollection: VersionedObject
+{
+	private
+	{
+		MapElement[string] m_elements;
+	}
+
+	void addElement(string key, MapElement el)
+	{
+		m_elements[key] = el;
+		bumpObjVersion();
+	}
+
+	// does nothing if already absent
+	void removeElement(string key)
+	{
+		if (m_elements.remove(key))
+			bumpObjVersion();
+	}
+
+	const(MapElement)[] getElementArray() const
+	{
+		return m_elements.values;
+	}
+}
+
+
 interface IScenarioCondition
 {
 	bool satisfied();
@@ -564,7 +597,7 @@ final class SpeedCondition: IScenarioCondition
 
 	override bool satisfied()
 	{
-		if (*obj)
+		if (*obj is null)
 			return false;
 		double currentSpdSqr =
 			(*obj).rigidBody.kinet.vel.squaredLength;
@@ -578,6 +611,29 @@ final class SpeedCondition: IScenarioCondition
 	}
 }
 
+
+final class DeadCondition: IScenarioCondition
+{
+	private
+	{
+		Killable* m_killable;
+		bool m_inverse;
+	}
+
+	/// Set inverse to true to get an 'AliveCondition'.
+	this(Killable* killable, bool inverse = false)
+	{
+		m_killable = killable;
+		m_inverse = inverse;
+	}
+
+	override bool satisfied()
+	{
+		if (*m_killable is null)
+			return false;
+		return m_inverse ^ (*m_killable).dead;
+	}
+}
 
 
 /// Thing that computes the condition and runs the delegate once/repeatedly.
@@ -605,6 +661,7 @@ final class ScenarioTrigger
 	@property bool oneShot() const { return m_oneShot; }
 	@property bool isShot() const { return m_isShot; }
 
+	/// Action must be thread-safe as scenario processes triggers in parallel.
 	this(IScenarioCondition condition, void delegate() action,
 		bool oneShot = true, usecs_t activationTime = 0,
 		usecs_t cooldown = 0)

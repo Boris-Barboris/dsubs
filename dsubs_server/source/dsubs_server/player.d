@@ -146,6 +146,13 @@ final class Player: Captain
 		timeShift = uniform(-MAX_TIME_SHIFT, MAX_TIME_SHIFT);
 	}
 
+	private void resetShiftToZero()
+	{
+		coordShift = vec2d(0.0, 0.0);
+		coordRot = 0.0;
+		timeShift = 0;
+	}
+
 	/// handle connection being closed.
 	private void onConnectionClose(PlayerConnection oldCon)
 	{
@@ -289,8 +296,11 @@ final class Player: Captain
 		{
 			Submarine s = m_submarine;
 			enforce(s is null, "Already spawned");
-			generateShift();
 			Scenario scen = Globals.scenarioDb.generateScenarioForSpawnReq(this, req);
+			if (scen.randomizeReferenceFrame)
+				generateShift();
+			else
+				resetShiftToZero();
 			// spawn submarine
 			synchronized(scen.simulator.simMut.reader)
 			{
