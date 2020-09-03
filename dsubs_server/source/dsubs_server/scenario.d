@@ -466,6 +466,42 @@ abstract class Goal: VersionedObject
 }
 
 
+/// Goal that can be describes with simple strings
+class SimpleGoal: Goal
+{
+	private
+	{
+		string m_shortText;
+		string m_longText;
+	}
+
+	this(string shortText, string longText)
+	{
+		m_shortText = shortText;
+		m_longText = longText;
+	}
+
+	/// Update short text. Will cause goal list send to the client.
+	@property void shortText(string rhs)
+	{
+		m_shortText = rhs;
+		bumpObjVersion();
+	}
+
+	/// Update longDescription. Will cause goal list send to the client.
+	@property void longText(string rhs)
+	{
+		m_longText = rhs;
+		bumpObjVersion();
+	}
+
+	ScenarioGoal getGoalStruct()
+	{
+		return ScenarioGoal(status, m_shortText, m_longText);
+	}
+}
+
+
 /// Collection to synchronize map elements with the client
 final class MapElementCollection: VersionedObject
 {
