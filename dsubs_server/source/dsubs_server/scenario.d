@@ -105,8 +105,16 @@ abstract class Scenario
 
 	/// Scenario is responsible for generating initial overlay state and briefing
 	/// for (re)connecting player.
-	abstract void generateBriefing(Player player, out MapElement[] mapOverlayEls,
-		out ChatMessage briefing);
+	abstract void generateBriefing(Player player, out MapElement[] mapElements,
+		out ScenarioGoal[] goals, out ChatMessage briefing);
+
+	/// Send scenario-specific updates to the player.
+	/// Will send nothing if called immediately again.
+	void sendChangesAndResetVersions(Player player, PlayerConnection con) {}
+
+	/// Reset internal versions of various scenario-specific collections, so that
+	/// sendChangesAndResetVersions will send nothing if called.
+	void resetVersions(Player player) {}
 }
 
 
@@ -367,14 +375,14 @@ final class ScenarioDatabase
 
 
 /// List of goals that can be synchronized with clients based on object version.
-class ScenarioGoalList: VersionedObject
+class GoalList: VersionedObject
 {
 	private
 	{
 		struct GoalVersionPair
 		{
 			int goalVersion;
-			ScenarioGoal goal;
+			Goal goal;
 		}
 
 		GoalVersionPair[] m_goals;
@@ -406,13 +414,20 @@ class ScenarioGoalList: VersionedObject
 			bumpObjVersion();
 	}
 
-	void addGoal(ScenarioGoal goal)
+	ScenarioGoal[] getGoalStructs()
+	{
+		return m_goals.map!(gvp => gvp.goal.getGoalStruct).array;
+	}
+
+	/// add goal to the end of the list
+	void addGoal(Goal goal)
 	{
 		m_goals ~= GoalVersionPair(goal.objVersion, goal);
 		bumpObjVersion();
 	}
 
-	void removeGoal(ScenarioGoal goal)
+	/// stable remove.
+	void removeGoal(Goal goal)
 	{
 		removeFirst!(a => a.goal is goal)(m_goals);
 		bumpObjVersion();
@@ -420,7 +435,7 @@ class ScenarioGoalList: VersionedObject
 }
 
 
-abstract class ScenarioGoal: VersionedObject
+abstract class Goal: VersionedObject
 {
 	private
 	{
@@ -472,7 +487,7 @@ final class MapElementCollection: VersionedObject
 			bumpObjVersion();
 	}
 
-	const(MapElement)[] getElementArray() const
+	const(MapElement)[] getElementStructs() const
 	{
 		return m_elements.values;
 	}
@@ -707,5 +722,40 @@ final class ScenarioTrigger
 		else
 			m_isCondActive = false;
 		return false;
+	}
+}
+
+
+/// Utility state of the player's submarine that is used to synchronize
+/// goals and map elements.
+struct PlayerScenarioSyncState
+{
+	/// Version that was sent to the client.
+	ObjVerT goalsVer;
+	/// Version that was sent to the client.
+	ObjVerT mapElementsVer;
+
+	MapElementCollection mapElements;
+	GoalList goals;
+
+	void sendChangesAndReset(PlayerConnection con)
+	{
+		if (goals)
+		{
+			goals.updateVersion();
+			if(goalsVer != goals.objVersion)
+			{
+				ScenarioGoalUpdateRes msg = ScenarioGoalUpdateRes(goals.getGoalStructs());
+				con.sendMessage(cast (immutable) msg);
+				goalsVer = goals.objVersion;
+			}
+		}
+		if (mapElements && mapElementsVer != mapElements.objVersion)
+		{
+			const MapOverlayUpdateRes msg =
+				const MapOverlayUpdateRes(mapElements.getElementStructs());
+			con.sendMessage(cast (immutable) msg);
+			mapElementsVer = mapElements.objVersion;
+		}
 	}
 }

@@ -418,8 +418,10 @@ Good luck!`;
 			if (pcon)
 			{
 				MapOverlayUpdateRes mapBcst;
+				ScenarioGoalUpdateRes goalBcst;
 				ChatMessageRes textBcst;
-				generateBriefing(p, mapBcst.mapElements, textBcst.message);
+				generateBriefing(p, mapBcst.mapElements, goalBcst.goals,
+					textBcst.message);
 				textBcst.message = ChatMessage(unixTime,
 					ChatMessageType.scenarioNotice,
 					"Weapon racks reloaded. New reload point allocated.");
@@ -492,8 +494,10 @@ Good luck!`;
 				(Player p, Submarine sub, PlayerConnection pcon)
 				{
 					MapOverlayUpdateRes mapBcst;
+					ScenarioGoalUpdateRes goalBcst;
 					ChatMessageRes textBcst;
-					generateBriefing(p, mapBcst.mapElements, textBcst.message);
+					generateBriefing(p, mapBcst.mapElements, goalBcst.goals,
+						textBcst.message);
 					pcon.sendMessage(cast(immutable) textBcst);
 					pcon.sendMessage(cast(immutable) mapBcst);
 				});
@@ -512,7 +516,8 @@ Good luck!`;
 	}
 
 	override void generateBriefing(Player player,
-		out MapElement[] mapOverlayEls, out ChatMessage briefing)
+		out MapElement[] mapOverlayEls, out ScenarioGoal[] goals,
+		out ChatMessage briefing)
 	{
 		long unixTime = longUnixTime();
 		// circle for next/active arena

@@ -118,7 +118,8 @@ final class SimulatorState: GameState
 		foreach (i, desiredLength; rawRecState.desiredWireLenghts)
 			m_gui.wireUis[i].updateDesiredLength(desiredLength);
 		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) rawRecState.subSnap);
-		m_gui.handleChatMessage(rawRecState.briefing);
+		if (rawRecState.lastChatLogs)
+			m_gui.handleChatMessage(rawRecState.lastChatLogs[$-1]);
 
 		// ammo room and tube initialization
 		foreach (AmmoRoomFullState roomState; rawRecState.ammoRoomStates)

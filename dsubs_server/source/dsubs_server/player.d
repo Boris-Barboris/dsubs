@@ -260,7 +260,7 @@ final class Player: Captain
 		return uname == m_username && pw == m_password;
 	}
 
-	// sim's lock must be held
+	// sim's lock must be held.
 	immutable(ReconnectStateRes) getReconnectState()
 	{
 		Submarine s = m_submarine;
@@ -268,7 +268,7 @@ final class Player: Captain
 		enforce(!s.dead, "user has a submarine, but it is dead");
 		ReconnectStateRes recState = ReconnectStateRes(
 			s.id.toString(), s.prototypeName, s.propulsor.prototypeName,
-			genSubSnapshot(), genSubWireSnapshots(),
+			genSubSnapshot(s), genSubWireSnapshots(s),
 			s.targetCourse + coordRot, s.targetThrottle,
 			s.hydrophones.map!(
 				h => float(h.listenDir + coordRot)).array,
@@ -281,13 +281,20 @@ final class Player: Captain
 			Scenario scenario = s.simulator.scenario;
 			ChatMessage briefingMsg;
 			scenario.generateBriefing(
-				this, recState.mapElements, briefingMsg);
+				this, recState.mapElements, recState.goals, briefingMsg);
 			recState.lastChatLogs = [briefingMsg];
 			trace(scenario.spawner.scenarioType);
 			recState.canAbandon =
 				scenario.spawner.scenarioType != ScenarioType.persistentSimulator;
 		}
 		return cast(immutable) recState;
+	}
+
+	void resetCollectionVersions()
+	{
+		Scenario scenario = m_submarine ? m_submarine.simulator.scenario : null;
+		if (scenario)
+			scenario.resetVersions(this);
 	}
 
 	void handleSpawnRequest(const SpawnReq req, PlayerConnection con)
@@ -473,10 +480,9 @@ final class Player: Captain
 		}
 	}
 
-	private KinematicSnapshot genSubSnapshot()
+	private KinematicSnapshot genSubSnapshot(Submarine s)
 	{
-		assert(m_submarine);
-		Submarine s = m_submarine;
+		assert(s);
 		vec2d shiftedPos = posToClientSpace(s.transform.wposition);
 		double shiftedRot = rotToClientSpace(s.transform.wrotation);
 		vec2d vel = dirToClientSpace(s.rigidBody.kinet.vel);
@@ -489,10 +495,9 @@ final class Player: Captain
 				angVel);
 	}
 
-	private WireSnapshot[] genSubWireSnapshots()
+	private WireSnapshot[] genSubWireSnapshots(Submarine s)
 	{
-		assert(m_submarine);
-		Submarine s = m_submarine;
+		assert(s);
 		WireSnapshot[] res;
 		usecs_t worldTime = s.simulator.worldTime;
 		for (size_t i = 0; i < s.rigidBody.wires.length; i++)
@@ -576,8 +581,13 @@ final class Player: Captain
 					SimFlowEndReason.death, s.causeOfDeath, ""));
 				return;
 			}
-			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(),
-				genSubWireSnapshots()));
+			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(s),
+				genSubWireSnapshots(s)));
+			// send scenario data (goals and map overlay)
+			Scenario scenario = s.simulator.scenario;
+			if (scenario)
+				scenario.sendChangesAndResetVersions(this, con);
+			// send hydrophone audio
 			immutable(HydrophoneData)[] hdata;
 			immutable(HydrophoneAudio)[] haudio;
 			foreach (i, h; s.hydrophones)

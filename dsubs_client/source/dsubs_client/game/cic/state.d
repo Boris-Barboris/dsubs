@@ -137,7 +137,7 @@ final class CICState: Persistable
 
 	void handleChatMessageRes(ChatMessageRes res)
 	{
-		m_recState.briefing = res.message;
+		m_recState.lastChatLogs ~= res.message;
 	}
 
 	/// Contact and it's data.
