@@ -574,6 +574,17 @@ final class Player: Captain
 
 		if (con && con.isOpen && con.simulatorFlow && (con.simFlowSub is s))
 		{
+			// send scenario data: goals, map overlay or simFlowEndRes.
+			Scenario scenario = s.simulator.scenario;
+			if (scenario)
+			{
+				if (scenario.sendChangesOrFinish(this, con))
+				{
+					con.simulatorFlow = false;
+					return;
+				}
+			}
+			// send death message
 			if (s.dead)
 			{
 				con.simulatorFlow = false;
@@ -581,12 +592,9 @@ final class Player: Captain
 					SimFlowEndReason.death, s.causeOfDeath, ""));
 				return;
 			}
+			// kinematic snapshot
 			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(s),
 				genSubWireSnapshots(s)));
-			// send scenario data (goals and map overlay)
-			Scenario scenario = s.simulator.scenario;
-			if (scenario)
-				scenario.sendChangesAndResetVersions(this, con);
 			// send hydrophone audio
 			immutable(HydrophoneData)[] hdata;
 			immutable(HydrophoneAudio)[] haudio;

@@ -415,7 +415,7 @@ Good luck!`;
 			m_playerReloadCircles.remove(p);
 			ensureReloadCircleForPlayer(p);
 			PlayerConnection pcon = p.connection;
-			if (pcon)
+			if (pcon && pcon.simulatorFlow)
 			{
 				MapOverlayUpdateRes mapBcst;
 				ScenarioGoalUpdateRes goalBcst;
@@ -450,7 +450,7 @@ Good luck!`;
 					room.putWeapon(weaponName);
 				}
 				// send room update if possible
-				if (pcon)
+				if (pcon && pcon.simulatorFlow)
 				{
 					pcon.sendMessage(cast(immutable)
 						AmmoRoomStateUpdateRes(room.fullState));
@@ -459,7 +459,7 @@ Good luck!`;
 		}
 	}
 
-	override ShouldSimTerminate onAfterSimulation()
+	override ShouldSimTerminate onAfterSimulation(usecs_t simTimePassed)
 	{
 		synchronizeReloadCircles();
 		triggerReloadCircles();

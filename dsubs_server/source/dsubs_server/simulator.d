@@ -415,7 +415,7 @@ final class Simulator
 			if (scenario)
 			{
 				profiler.start("scenario.onAfterSimulation");
-				ShouldSimTerminate signal = scenario.onAfterSimulation();
+				ShouldSimTerminate signal = scenario.onAfterSimulation(1000_000);
 				profiler.stopLast();
 				if (signal == ShouldSimTerminate.yes)
 				{
