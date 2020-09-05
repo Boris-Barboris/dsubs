@@ -174,7 +174,6 @@ private:
 				sub.incSubConRefCounter();
 				m_simFlowSub = sub;
 				p.enableSubSensors(sub);
-				p.resetCollectionVersions();
 				sendMessage(cast(immutable) res);
 				m_simulatorFlow = true;
 			}

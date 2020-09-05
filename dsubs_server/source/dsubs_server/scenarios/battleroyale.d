@@ -114,7 +114,6 @@ Good luck!`;
 `You cannot abandon online games. The only way out is to torpedo yourself or disconnect for 30 minutes.`;
 		}
 		constants.allowedEntities = Globals.entityDb.getCompleteShortDb();
-		trace(constants.allowedEntities);
 		return constants;
 	}
 

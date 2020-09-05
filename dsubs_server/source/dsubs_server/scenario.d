@@ -23,7 +23,9 @@ import dsubs_server.bots;
 import dsubs_server.simulator;
 import dsubs_server.ai.captain;
 import dsubs_server.ai.common;
+
 import dsubs_server.scenarios.battleroyale;
+import dsubs_server.scenarios.tutorials.navigation;
 
 
 /// Action to run after specified clock time.
@@ -311,6 +313,11 @@ final class ScenarioDatabase
 		StandaloneScenarioSpawner spawner = new StandaloneScenarioSpawner(
 			scenConstants, sim => new BattleRoyale(sim));
 		m_spawnableScenarios[scenConstants.name] = spawner;
+
+		scenConstants = NavigationTutorial.getConstants();
+		m_spawnableScenarios[scenConstants.name] =
+			new TutorialScenarioSpawner(scenConstants,
+				sim => new NavigationTutorial(sim));
 	}
 
 	PersistentScenarioSpawner getPersistentById(string simId)
@@ -387,7 +394,7 @@ class GoalList: VersionedObject
 	{
 		struct GoalVersionPair
 		{
-			int goalVersion;
+			ObjVerT goalVersion;
 			Goal goal;
 		}
 
@@ -492,7 +499,15 @@ class SimpleGoal: Goal
 	{
 		m_shortText = shortText;
 		m_longText = longText;
-		m_failureText = failText;
+		if (failText is null)
+			m_failureText = "you have failed to " ~ m_shortText;
+		else
+			m_failureText = failText;
+	}
+
+	override @property string failureText() const
+	{
+		return m_failureText;
 	}
 
 	/// Update short text. Will cause goal list send to the client.
@@ -608,20 +623,24 @@ enum Comparator: ubyte
 }
 
 
+alias TransformGetter = IHasTransform delegate();
+alias RigidBodyGetter = IHasRidigBody delegate();
+
+
 /// Distance between two objects that have transforms
 final class DistanceCondition: IScenarioCondition
 {
 	private
 	{
-		IHasTransform* a;
-		IHasTransform* b;
+		TransformGetter a;
+		TransformGetter b;
 		Comparator m_comparator;
 		double m_distanceSqr;
 	}
 
 	// Pointers to class references because we allow unallocated object
 	// bindings.
-	this(IHasTransform* obj1, IHasTransform* obj2, Comparator comparator, double distance)
+	this(TransformGetter obj1, TransformGetter obj2, Comparator comparator, double distance)
 	{
 		assert(distance >= 0.0);
 		a = obj1;
@@ -632,10 +651,10 @@ final class DistanceCondition: IScenarioCondition
 
 	override bool satisfied()
 	{
-		if (*a is null || *b is null)
+		if (a() is null || b() is null)
 			return false;
 		double currentDistSqr =
-			((*a).transform.wposition - (*b).transform.wposition).squaredLength;
+			(a().transform.wposition - b().transform.wposition).squaredLength;
 		enforce(!isNaN(currentDistSqr));
 		final switch (m_comparator)
 		{
@@ -653,32 +672,32 @@ final class SpeedCondition: IScenarioCondition
 {
 	private
 	{
-		IHasRidigBody* obj;
+		RigidBodyGetter obj;
 		Comparator m_comparator;
-		double m_speedSqr;
+		double m_speed;
 	}
 
-	this(IHasRidigBody* obj1, Comparator comparator, double speed)
+	this(RigidBodyGetter obj1, Comparator comparator, double speed)
 	{
 		assert(speed >= 0.0);
 		obj = obj1;
 		m_comparator = comparator;
-		m_speedSqr = speed * speed;
+		m_speed = speed;
 	}
 
 	override bool satisfied()
 	{
-		if (*obj is null)
+		if (obj() is null)
 			return false;
-		double currentSpdSqr =
-			(*obj).rigidBody.kinet.vel.squaredLength;
-		enforce(!isNaN(currentSpdSqr));
+		double currentProgradeSpeed =
+			obj().rigidBody.kinet.progradeSpeed;
+		enforce(!isNaN(currentProgradeSpeed));
 		final switch (m_comparator)
 		{
 			case (Comparator.less):
-				return currentSpdSqr < m_speedSqr;
+				return currentProgradeSpeed < m_speed;
 			case (Comparator.greaterOrEqual):
-				return currentSpdSqr >= m_speedSqr;
+				return currentProgradeSpeed >= m_speed;
 		}
 	}
 }
@@ -809,6 +828,8 @@ struct PlayerScenarioSyncState
 			goals.updateVersion();
 			if(goalsVer != goals.objVersion)
 			{
+				trace("Goal list version desync, sending to client: ",
+					goalsVer, " vs ", goals.objVersion);
 				ScenarioGoalUpdateRes msg = ScenarioGoalUpdateRes(goals.getGoalStructs());
 				con.sendMessage(cast (immutable) msg);
 				goalsVer = goals.objVersion;
@@ -856,9 +877,11 @@ abstract class SinglePlayerScenario: Scenario
 		double m_playerSpawnRotation = 0.0;
 
 		string m_failureLongReport;
-		string m_victoryShortReport;
+		string m_victoryShortReport = "You've succeeded in your mission";
 		string m_victoryLongReport;
 	}
+
+	override @property bool randomizeReferenceFrame() const { return false; }
 
 	final void addTrigger(ScenarioTrigger trigger)
 	{
@@ -904,7 +927,9 @@ abstract class SinglePlayerScenario: Scenario
 	override void resetVersions(Player player)
 	{
 		assert(player is m_player);
+		m_syncState.goals.updateVersion();
 		m_syncState.goalsVer = m_syncState.goals.objVersion;
+		trace(m_syncState.goalsVer, " vs ", m_syncState.goals.objVersion);
 		m_syncState.mapElementsVer = m_syncState.mapElements.objVersion;
 	}
 
@@ -931,6 +956,8 @@ abstract class SinglePlayerScenario: Scenario
 		m_endMsg.longReport = m_victoryLongReport;
 	}
 
+	override void onBeforeSimulation() {}
+
 	override ShouldSimTerminate onAfterSimulation(usecs_t simTimePassed)
 	{
 		if (m_playerSub.dead)
@@ -942,10 +969,17 @@ abstract class SinglePlayerScenario: Scenario
 		// walk over player goals and find if we have succeeded or failed
 		const Goal failedGoal = m_syncState.goals.findFailedGoal;
 		if (failedGoal)
+		{
+			trace("Shutting down scenario because of failed goal");
 			markDefeat(failedGoal.failureText);
+			return ShouldSimTerminate.yes;
+		}
 		// when all goals are successfull, we finish
 		if (m_syncState.goals.allGoalsSuccessfull)
+		{
+			trace("Shutting down scenario because all goals succeeded");
 			markVictory();
+		}
 		if (m_playerSub.dead || m_finished)
 			return ShouldSimTerminate.yes;
 		return ShouldSimTerminate.no;
@@ -969,7 +1003,6 @@ abstract class SinglePlayerScenario: Scenario
 		assert(m_player is player);
 		briefing = m_briefingMsg;
 		mapElements = m_syncState.mapElements.getElementStructs();
-		m_syncState.goals.updateVersion();
 		goals = m_syncState.goals.getGoalStructs();
 	}
 }

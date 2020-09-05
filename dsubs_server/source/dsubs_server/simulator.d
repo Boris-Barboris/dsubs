@@ -327,10 +327,17 @@ final class Simulator
 		}
 		foreach (SubPlayerPair pair; Globals.taskPool.parallel(playersToUpdate, 1))
 		{
-			if (finished && !pair.sub.dead)
-				pair.player.handleSimTerminating(pair.sub);
-			else
-				pair.player.sendUpdate(pair.sub);
+			pair.player.sendUpdate(pair.sub);
+		}
+	}
+
+	/// All players that own vessels in this sim receive message.
+	private void sendTerminatingToPlayers()
+	{
+		foreach (Submarine sub; vessels.submarines)
+		{
+			if (sub && sub.player && !sub.dead)
+				sub.player.handleSimTerminating(sub);
 		}
 	}
 
@@ -358,7 +365,7 @@ final class Simulator
 			// early exit
 			if (m_terminating)
 			{
-				sendUpdateToPlayers();
+				sendTerminatingToPlayers();
 				return;
 			}
 			// some user actions enqueue buffer commands on first queue,
@@ -415,9 +422,9 @@ final class Simulator
 			if (scenario)
 			{
 				profiler.start("scenario.onAfterSimulation");
-				ShouldSimTerminate signal = scenario.onAfterSimulation(1000_000);
+				ShouldSimTerminate sst = scenario.onAfterSimulation(1000_000);
 				profiler.stopLast();
-				if (signal == ShouldSimTerminate.yes)
+				if (sst == ShouldSimTerminate.yes)
 				{
 					info("Terminating simulator ", id);
 					m_terminating = true;
@@ -425,8 +432,13 @@ final class Simulator
 			}
 			// send updates to players
 			profiler.start("sendUpdateToPlayers");
+			// scenario is responsible for sending termination messages based on
+			// the reason of sim shutdown
 			sendUpdateToPlayers();
 			profiler.stopLast();
+			// additional logic for time-based termination
+			if (finished)
+				sendTerminatingToPlayers();
 			profiler.start("onSimulationPassEnd");
 			onSimulationPassEnd(this, m_worldTime);
 			profiler.stopLast();

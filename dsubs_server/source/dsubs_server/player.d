@@ -282,19 +282,13 @@ final class Player: Captain
 			ChatMessage briefingMsg;
 			scenario.generateBriefing(
 				this, recState.mapElements, recState.goals, briefingMsg);
+			scenario.resetVersions(this);
 			recState.lastChatLogs = [briefingMsg];
 			trace(scenario.spawner.scenarioType);
 			recState.canAbandon =
 				scenario.spawner.scenarioType != ScenarioType.persistentSimulator;
 		}
 		return cast(immutable) recState;
-	}
-
-	void resetCollectionVersions()
-	{
-		Scenario scenario = m_submarine ? m_submarine.simulator.scenario : null;
-		if (scenario)
-			scenario.resetVersions(this);
 	}
 
 	void handleSpawnRequest(const SpawnReq req, PlayerConnection con)

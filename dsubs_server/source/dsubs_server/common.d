@@ -13,7 +13,7 @@ public import gfm.math.vector;
 
 public import dsubs_common.api.constants: usecs_t;
 public import dsubs_common.utils;
-public import dsubs_common.math: clamp;
+public import dsubs_common.math: clamp, Transform2D;
 
 public import dsubs_server.rng;
 public import dsubs_server.globals;
