@@ -1020,3 +1020,4 @@ abstract class SinglePlayerScenario: Scenario
 
 
 immutable RgbaColor COLOR_WAYPOINT = RgbaColor(212, 201, 0, 150);
+immutable RgbaColor COLOR_HINT = RgbaColor(200, 200, 200, 150);

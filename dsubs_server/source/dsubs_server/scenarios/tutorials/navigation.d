@@ -87,5 +87,19 @@ final class NavigationTutorial: SinglePlayerScenario
 				Comparator.greaterOrEqual, 8.0),
 			{ m_speedGoal.markSuccess(); });
 		addTrigger(speedTrigger);
+
+		// text hints
+		m_syncState.mapElements.addElement("zoomhint",
+			MapElement.text(MapText(
+				vec2d(-30, 0), 16), COLOR_HINT,
+				"mouse wheel to zoom"));
+		m_syncState.mapElements.addElement("panhint",
+			MapElement.text(MapText(
+				vec2d(-400, 300), 16), COLOR_HINT,
+				"hold right mouse button to pan"));
+		m_syncState.mapElements.addElement("coursehint",
+			MapElement.text(MapText(
+				vec2d(500, 700), 16), COLOR_HINT,
+				"right mouse button -> set course towards"));
 	}
 }
