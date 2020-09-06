@@ -32,7 +32,8 @@ final class NavigationTutorial: SinglePlayerScenario
 
 	this(Simulator sim)
 	{
-		super(sim, ChatMessage(longUnixTime(), ChatMessageType.scenarioNotice, "asdf"));
+		super(sim, ChatMessage(longUnixTime(), ChatMessageType.scenarioNotice,
+			"Welcome to navigation tutorial"));
 		m_waypointTransforms ~= new Transform2D(vec2d(500.0, 1000.0));
 		m_waypointTransforms ~= new Transform2D(vec2d(1500.0, 1000.0));
 		m_waypointTransforms ~= new Transform2D(vec2d(1000.0, -500.0));

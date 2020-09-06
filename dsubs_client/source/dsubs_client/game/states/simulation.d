@@ -185,6 +185,7 @@ final class SimulationGUI
 		WaterfallGui[] m_passiveGuis;
 		SonarGui m_sonarGui;
 		Div m_topLevelDiv;
+		Div m_goalBeltDiv;
 		TubeUI[int] tubeUis;
 		WireUi[] m_wireUis;
 		Button m_abandonBtn;
@@ -239,6 +240,11 @@ final class SimulationGUI
 		m_sonarGui.sonar.handleSubKinematicRes(res);
 	}
 
+	void handleCICScenarioGoalUpdateRes(CICScenarioGoalUpdateRes msg)
+	{
+		// list of active scenario goals was updated
+	}
+
 	void handleChatMessage(ChatMessage msg)
 	{
 		auto stdTime = SysTime(unixTimeToStdTime(msg.sentOnUtc));
@@ -264,6 +270,20 @@ final class SimulationGUI
 	void handleCICWireDesiredLengthReq(CICWireDesiredLengthReq req)
 	{
 		m_wireUis[req.wireIdx].updateDesiredLength(req.desiredLength);
+	}
+
+	private Div buildGoalListDiv(ScenarioGoal[] goals)
+	{
+		Collapsable[] goalCollapsables;
+		foreach (ScenarioGoal goal; goals)
+		{
+			TextBox longDescBox = builder(new TextBox()).
+				content(goal.longDescription).build;
+			goalCollapsables ~= builder(
+				new Collapsable(longDescBox, goal.shortText)).build();
+		}
+		return builder(vDiv(cast(GuiElement[]) goalCollapsables)).
+			fixedSize(vec2i(250, 150)).build();
 	}
 
 	this(bool canAbandon)
@@ -489,7 +509,8 @@ final class SimulationGUI
 			m_wireUis.map!(wire => wire.rootDiv).array)).
 			borderWidth(4).fixedSize(vec2i(200, 230)).build;
 
-		GuiElement tabFiller = builder(vDiv([
+		GuiElement middleMainDiv = builder(vDiv([
+			m_goalBeltDiv,
 			filler(),
 			builder(hDiv(cast(GuiElement[]) tubeUiDivs ~ wireVertDiv)).
 			fixedSize(vec2i(100, 260)).
@@ -506,14 +527,14 @@ final class SimulationGUI
 
 		m_topLevelDiv = builder(vDiv([
 			tabDiv,
-			tabFiller,
+			middleMainDiv,
 			bottomDiv
 		])).build;
 
 		void setMiddlePane(GuiElement el)
 		{
 			m_topLevelDiv.setChild(el, 1);
-			if (el is tabFiller)
+			if (el is middleMainDiv)
 				Game.simState.tacticalOverlay.hidden = false;
 			else
 				Game.simState.tacticalOverlay.hidden = true;
@@ -523,7 +544,7 @@ final class SimulationGUI
 		tacticalTab.onClick += ()
 		{
 			Game.simState.activeSonarSound = null;
-			setMiddlePane(tabFiller);
+			setMiddlePane(middleMainDiv);
 		};
 		foreach (i, btn; hydrophoneTabs)
 		{

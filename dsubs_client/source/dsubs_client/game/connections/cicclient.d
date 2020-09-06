@@ -376,6 +376,14 @@ private:
 		}
 	}
 
+	void h_mapOverlayUpdateRes(CICScenarioGoalUpdateRes msg)
+	{
+		synchronized(Game.mainMutexWriter)
+		{
+			Game.simState.gui.handleCICScenarioGoalUpdateRes(msg);
+		}
+	}
+
 	void h_chatMessageRes(CICChatMessageRes msg)
 	{
 		info("received chat message: ", msg.res);

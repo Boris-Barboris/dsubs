@@ -138,6 +138,11 @@ private:
 		Game.cic.handleAmmoRoomStateUpdateRes(res);
 	}
 
+	void h_scenarioGoalUpdateRes(ScenarioGoalUpdateRes res)
+	{
+		Game.cic.handleScenarioGoalUpdateRes(res);
+	}
+
 	void h_mapOverlayUpdateRes(MapOverlayUpdateRes res)
 	{
 		Game.cic.handleMapOverlayUpdateRes(res);

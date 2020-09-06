@@ -305,7 +305,7 @@ final class Simulator
 	/// player observers.
 	bool runWithoutPlayers = false;
 
-	float timeAcceleration = 1.0f;
+	float timeAcceleration = 8.0f;
 
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassStart;
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassEnd;
@@ -331,7 +331,7 @@ final class Simulator
 		}
 	}
 
-	/// All players that own vessels in this sim receive message.
+	/// All players that own alive vessels in this sim receive message.
 	private void sendTerminatingToPlayers()
 	{
 		foreach (Submarine sub; vessels.submarines)
