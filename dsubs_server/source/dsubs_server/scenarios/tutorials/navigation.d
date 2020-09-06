@@ -27,7 +27,43 @@ final class NavigationTutorial: SinglePlayerScenario
 	private
 	{
 		Transform2D[] m_waypointTransforms;
-		Goal m_speedGoal, m_wpt1Goal, m_wpt2Goal, m_wpt3Goal;
+		Goal m_speedGoal;
+	}
+
+	void setupWaypoint(size_t idx)
+	{
+		string wptNum = (idx + 1).to!string;
+		SimpleGoal wptGoal = new SimpleGoal("approach WPT" ~ wptNum,
+			"Get into 100m distance from the WPT" ~ wptNum ~ " waypoint");
+		addVisibleGoal(wptGoal);
+		m_syncState.mapElements.addElement("wpt" ~ wptNum,
+			MapElement.circle(MapCircle(
+				m_waypointTransforms[idx].wposition, 100, 3), COLOR_WAYPOINT));
+		m_syncState.mapElements.addElement("wptlbl" ~ wptNum,
+			MapElement.text(MapText(
+				m_waypointTransforms[idx].wposition, 16), COLOR_WAYPOINT,
+				"WPT" ~ wptNum));
+		usecs_t activationTime = 0;
+		if (idx == m_waypointTransforms.length - 1)
+		{
+			activationTime = 30 * 1000_000;
+			wptGoal.shortText = "stop in WPT" ~ wptNum;
+			wptGoal.longText = wptGoal.longText ~
+				" and stay in the circle for 30 seconds";
+		}
+		ScenarioTrigger wptTrigger = new ScenarioTrigger(
+			new DistanceCondition(
+				{ return m_waypointTransforms[idx]; },
+				{ return m_playerSub.transform; },
+				Comparator.less, 100.0),
+			{
+				wptGoal.markSuccess();
+				m_syncState.mapElements.removeElement("wpt" ~ wptNum);
+				m_syncState.mapElements.removeElement("wptlbl" ~ wptNum);
+				if (idx < m_waypointTransforms.length - 1)
+					setupWaypoint(idx + 1);
+			}, true, activationTime);
+		addTrigger(wptTrigger);
 	}
 
 	this(Simulator sim)
@@ -36,20 +72,11 @@ final class NavigationTutorial: SinglePlayerScenario
 			"Welcome to navigation tutorial"));
 		m_victoryLongReport =
 		`Maneuvering on the theatre will now be an easy task for you.`;
-		m_waypointTransforms ~= new Transform2D(vec2d(0.0, 1500.0));
-		m_waypointTransforms ~= new Transform2D(vec2d(1500.0, 1500.0));
-		m_waypointTransforms ~= new Transform2D(vec2d(1000.0, -500.0));
+		m_waypointTransforms ~= new Transform2D(vec2d(0.0, 500.0));
+		m_waypointTransforms ~= new Transform2D(vec2d(750.0, 1000.0));
+		m_waypointTransforms ~= new Transform2D(vec2d(500.0, -300.0));
 
-		m_wpt1Goal = new SimpleGoal("approach waypoint",
-			"Get into 100m distance from the waypoint 1");
-		addVisibleGoal(m_wpt1Goal);
-		ScenarioTrigger wpt1Trigger = new ScenarioTrigger(
-			new DistanceCondition(
-				{ return m_waypointTransforms[0]; },
-				{ return m_playerSub.transform; },
-				Comparator.less, 200.0),
-			{ m_wpt1Goal.markSuccess(); });
-		addTrigger(wpt1Trigger);
+		setupWaypoint(0);
 
 		m_speedGoal = new SimpleGoal("build up speed of 8m/s",
 			"Using throttle control in the bottom of the screen, enter " ~

@@ -651,8 +651,17 @@ final class TacticalOverlay: Overlay
 		m_scenarioElements.length = 0;
 		foreach (const MapElement el; mapElements)
 		{
-			ScenarioCircleShape circle = new ScenarioCircleShape(this, el);
-			m_scenarioElements ~= circle;
+			switch (el.type)
+			{
+				case MapElementType.circle:
+					m_scenarioElements ~= new ScenarioCircleShape(this, el);
+					break;
+				case MapElementType.text:
+					m_scenarioElements ~= new ScenarioTextShape(this, el);
+					break;
+				default:
+					assert(0, "not supported element type");
+			}
 		}
 	}
 
@@ -916,7 +925,7 @@ final class ScenarioCircleShape: OverlayElement
 		assert(circleEl.type == MapElementType.circle);
 		super(to);
 		mouseTransparent = true;
-		m_circle = circleEl.circle;
+		m_circle = circleEl.value.circle;
 		m_shape = new CircleShape(10.0f, 90, cast(sfColor) circleEl.color,
 			m_circle.borderWidth);
 	}
@@ -934,6 +943,41 @@ final class ScenarioCircleShape: OverlayElement
 	{
 		super.draw(wnd, usecsDelta);
 		m_shape.render(wnd);
+	}
+}
+
+
+final class ScenarioTextShape: OverlayElement
+{
+	private
+	{
+		Label m_label;
+		MapText m_text;
+	}
+
+	this(TacticalOverlay to, const MapElement textEl)
+	{
+		assert(textEl.type == MapElementType.text);
+		super(to);
+		mouseTransparent = true;
+		m_text = textEl.value.text;
+		m_label = builder(new Label()).content(textEl.textContent).
+			fontSize(m_text.fontSize).fontColor(cast(sfColor) textEl.color).
+			vtextAlign(VTextAlign.TOP).enableScissorTest(false).build;
+	}
+
+	override void onPreDraw()
+	{
+		vec2d screenPos = owner.world2screenPos(m_text.center);
+		m_label.position = screenPos.to!vec2i;
+		size = vec2i(5, 5);
+		position = center2lu(screenPos);
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		m_label.draw(wnd, usecsDelta);
 	}
 }
 

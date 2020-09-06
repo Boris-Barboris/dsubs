@@ -517,12 +517,16 @@ class SimpleGoal: Goal
 		return m_failureText;
 	}
 
+	@property string shortText() const { return m_shortText; }
+
 	/// Update short text. Will cause goal list send to the client.
 	@property void shortText(string rhs)
 	{
 		m_shortText = rhs;
 		bumpObjVersion();
 	}
+
+	@property string longText() const { return m_longText; }
 
 	/// Update longDescription. Will cause goal list send to the client.
 	@property void longText(string rhs)
@@ -1013,3 +1017,6 @@ abstract class SinglePlayerScenario: Scenario
 		goals = m_syncState.goals.getGoalStructs();
 	}
 }
+
+
+immutable RgbaColor COLOR_WAYPOINT = RgbaColor(212, 201, 0, 150);

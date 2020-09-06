@@ -467,7 +467,36 @@ struct MapElement
 	/// In case of text element this is it's content.
 	string textContent;
 	RgbaColor color;
-	alias value this;
+
+	// helper constructors
+
+	static MapElement circle(MapCircle params, RgbaColor color)
+	{
+		MapElement res;
+		res.type = MapElementType.circle;
+		res.value.circle = params;
+		res.color = color;
+		return res;
+	}
+
+	static MapElement text(MapText params, RgbaColor color, string content)
+	{
+		MapElement res;
+		res.type = MapElementType.text;
+		res.value.text = params;
+		res.color = color;
+		res.textContent = content;
+		return res;
+	}
+
+	static MapElement lineSegment(MapLineSegment params, RgbaColor color)
+	{
+		MapElement res;
+		res.type = MapElementType.circle;
+		res.value.lineSegment = params;
+		res.color = color;
+		return res;
+	}
 }
 
 
