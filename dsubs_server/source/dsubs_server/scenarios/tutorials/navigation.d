@@ -34,19 +34,31 @@ final class NavigationTutorial: SinglePlayerScenario
 	{
 		super(sim, ChatMessage(longUnixTime(), ChatMessageType.scenarioNotice,
 			"Welcome to navigation tutorial"));
-		m_waypointTransforms ~= new Transform2D(vec2d(500.0, 1000.0));
-		m_waypointTransforms ~= new Transform2D(vec2d(1500.0, 1000.0));
-		m_waypointTransforms ~= new Transform2D(vec2d(1000.0, -500.0));
-		m_speedGoal = new SimpleGoal("build up speed of 8m/s",
-			"Using throttle control in the bottom of the screen, enter
-			a number from 50 to 100 to speed up to 8 m/s");
 		m_victoryLongReport =
-`Maneuvering on the battle theater will now be an easy task for you.`;
+		`Maneuvering on the theatre will now be an easy task for you.`;
+		m_waypointTransforms ~= new Transform2D(vec2d(0.0, 1500.0));
+		m_waypointTransforms ~= new Transform2D(vec2d(1500.0, 1500.0));
+		m_waypointTransforms ~= new Transform2D(vec2d(1000.0, -500.0));
+
+		m_wpt1Goal = new SimpleGoal("approach waypoint",
+			"Get into 100m distance from the waypoint 1");
+		addVisibleGoal(m_wpt1Goal);
+		ScenarioTrigger wpt1Trigger = new ScenarioTrigger(
+			new DistanceCondition(
+				{ return m_waypointTransforms[0]; },
+				{ return m_playerSub.transform; },
+				Comparator.less, 200.0),
+			{ m_wpt1Goal.markSuccess(); });
+		addTrigger(wpt1Trigger);
+
+		m_speedGoal = new SimpleGoal("build up speed of 8m/s",
+			"Using throttle control in the bottom of the screen, enter " ~
+			"a number from 70 to 100 to speed up to 8 m/s");
 		addVisibleGoal(m_speedGoal);
 		ScenarioTrigger speedTrigger = new ScenarioTrigger(
 			new SpeedCondition({ return m_playerSub; },
 				Comparator.greaterOrEqual, 8.0),
-			{ trace("speed achieved"); m_speedGoal.markSuccess(); });
+			{ m_speedGoal.markSuccess(); });
 		addTrigger(speedTrigger);
 	}
 }

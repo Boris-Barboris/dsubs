@@ -106,7 +106,9 @@ class GuiElement: IInputReceiver
 		m_size = rhs;
 		if ((m_layoutType == LayoutType.FIXED || m_layoutType == LayoutType.CONTENT) &&
 				m_parent)
+		{
 			m_parent.childChanged(this);
+		}
 		updateSize();
 		return m_size;
 	}
@@ -148,12 +150,18 @@ class GuiElement: IInputReceiver
 	Returns content size. */
 	package int fitContent(Axis fixedDim, int fixedDimSize)
 	{
-		assert(fixedDimSize >= 0);
 		assert(m_layoutType == LayoutType.CONTENT);
 		Axis contentDim = cast(Axis)(fixedDim ^ 1);	// xor 1 flips the bit
+		if (fixedDimSize < 0)
+			return m_size[contentDim];
 		m_size[fixedDim] = fixedDimSize;
 		m_size[contentDim] = doFitContent(fixedDim, contentDim);
 		updateSize();
+		if ((m_layoutType == LayoutType.FIXED || m_layoutType == LayoutType.CONTENT) &&
+				m_parent)
+		{
+			m_parent.childChanged(this);
+		}
 		return m_size[contentDim];
 	}
 

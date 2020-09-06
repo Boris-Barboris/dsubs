@@ -349,16 +349,18 @@ Good luck!`;
 		}
 	}
 
-	/// make sure each alive player submarine has a reload circle
+	/// make sure each player with a submarine in this simulator has a reload circle
 	private void synchronizeReloadCircles()
 	{
-		auto allPlayers = Globals.players.players.values;
-		foreach (Player p; allPlayers)
+		foreach (Submarine sub; simulator.vessels.submarines)
 		{
-			if (p.hasAliveSub)
-				ensureReloadCircleForPlayer(p);
-			else
-				m_playerReloadCircles.remove(p);
+			if (sub.player)
+			{
+				if (!sub.dead)
+					ensureReloadCircleForPlayer(sub.player);
+				else
+					m_playerReloadCircles.remove(sub.player);
+			}
 		}
 	}
 
@@ -489,17 +491,23 @@ Good luck!`;
 			}
 			m_inTransition = !m_inTransition;
 			// send message(s) to active players
-			Globals.players.forEachAliveConnectedPlayer(
-				(Player p, Submarine sub, PlayerConnection pcon)
+			foreach (Submarine sub; simulator.vessels.submarines)
+			{
+				if (sub.player && !sub.dead)
 				{
 					MapOverlayUpdateRes mapBcst;
 					ScenarioGoalUpdateRes goalBcst;
 					ChatMessageRes textBcst;
-					generateBriefing(p, mapBcst.mapElements, goalBcst.goals,
+					generateBriefing(sub.player, mapBcst.mapElements, goalBcst.goals,
 						textBcst.message);
-					pcon.sendMessage(cast(immutable) textBcst);
-					pcon.sendMessage(cast(immutable) mapBcst);
-				});
+					PlayerConnection pcon = sub.player.connection;
+					if (pcon)
+					{
+						pcon.sendMessage(cast(immutable) textBcst);
+						pcon.sendMessage(cast(immutable) mapBcst);
+					}
+				}
+			}
 			// give new destinations to bots
 			foreach (AICrewTemp crwTemp; m_simulator.bots.captains)
 			{

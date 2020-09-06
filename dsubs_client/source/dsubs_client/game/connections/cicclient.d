@@ -376,7 +376,7 @@ private:
 		}
 	}
 
-	void h_mapOverlayUpdateRes(CICScenarioGoalUpdateRes msg)
+	void h_scenarioGoalUpdateRes(CICScenarioGoalUpdateRes msg)
 	{
 		synchronized(Game.mainMutexWriter)
 		{

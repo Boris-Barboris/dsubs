@@ -2034,7 +2034,6 @@ final class HoveredContactDescription
 		TacticalContactElement m_followedContact;
 		int m_counter = UPDATE_FREQ - 1;
 
-		enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
 		enum int UPDATE_FREQ = 20;
 		enum int DIV_WIDTH = 150;
 	}
@@ -2062,7 +2061,7 @@ final class HoveredContactDescription
 		}
 		m_mainDiv = new Div(DivType.VERT, cast(GuiElement[]) m_labels);
 		m_mainDiv.backgroundVisible = true;
-		m_mainDiv.backgroundColor = DIV_BCKGROUND;
+		m_mainDiv.backgroundColor = COLORS.simOverlayDivBgnd;
 		m_mainDiv.mouseTransparent = true;
 		m_mainDiv.size = vec2i(DIV_WIDTH, (m_labels.length * 20).to!int);
 	}

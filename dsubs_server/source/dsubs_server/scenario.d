@@ -457,6 +457,12 @@ abstract class Goal: VersionedObject
 	private
 	{
 		ScenarioGoalStatus m_status;
+		string m_id;
+	}
+
+	this()
+	{
+		m_id = randomUUID.toString();
 	}
 
 	final @property ScenarioGoalStatus status() const { return m_status; }
@@ -497,6 +503,7 @@ class SimpleGoal: Goal
 
 	this(string shortText, string longText, string failText = null)
 	{
+		super();
 		m_shortText = shortText;
 		m_longText = longText;
 		if (failText is null)
@@ -531,7 +538,7 @@ class SimpleGoal: Goal
 
 	override ScenarioGoal getGoalStruct()
 	{
-		return ScenarioGoal(status, m_shortText, m_longText);
+		return ScenarioGoal(m_id, status, m_shortText, m_longText);
 	}
 }
 
@@ -623,7 +630,7 @@ enum Comparator: ubyte
 }
 
 
-alias TransformGetter = IHasTransform delegate();
+alias TransformGetter = Transform2D delegate();
 alias RigidBodyGetter = IHasRidigBody delegate();
 
 
@@ -654,7 +661,7 @@ final class DistanceCondition: IScenarioCondition
 		if (a() is null || b() is null)
 			return false;
 		double currentDistSqr =
-			(a().transform.wposition - b().transform.wposition).squaredLength;
+			(a().wposition - b().wposition).squaredLength;
 		enforce(!isNaN(currentDistSqr));
 		final switch (m_comparator)
 		{
@@ -828,8 +835,8 @@ struct PlayerScenarioSyncState
 			goals.updateVersion();
 			if(goalsVer != goals.objVersion)
 			{
-				trace("Goal list version desync, sending to client: ",
-					goalsVer, " vs ", goals.objVersion);
+				// trace("Goal list version desync, sending to client: ",
+				// 	goalsVer, " vs ", goals.objVersion);
 				ScenarioGoalUpdateRes msg = ScenarioGoalUpdateRes(goals.getGoalStructs());
 				con.sendMessage(cast (immutable) msg);
 				goalsVer = goals.objVersion;

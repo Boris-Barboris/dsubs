@@ -92,8 +92,10 @@ final class TextBox: GuiElement
 
 	override int doFitContent(Axis fixedDim, Axis contentDim)
 	{
-		assert(fixedDim == Axis.X, "Horizontal ContentSize layout is not implemented");
+		//assert(fixedDim == Axis.X, "Horizontal ContentSize layout is not implemented");
 		updateText();
+		if (fixedDim == Axis.Y)
+			return size.x;
 		return m_textFullHeight;
 	}
 

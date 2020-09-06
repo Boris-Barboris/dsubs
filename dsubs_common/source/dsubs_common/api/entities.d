@@ -505,6 +505,8 @@ enum ScenarioGoalStatus: ubyte
 
 struct ScenarioGoal
 {
+	/// immutable id to track goals with changing descriptions
+	string id;
 	ScenarioGoalStatus status;
 	string shortText;
 	string longDescription;

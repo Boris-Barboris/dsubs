@@ -31,6 +31,7 @@ struct ColorScheme
 	sfColor textFieldCursor = sfRed;
 	sfColor simPanelBgnd = sfColor(10, 0, 0, 100);
 	sfColor simButtonBgnd = sfColor(20, 14, 14, 200);
+	sfColor simOverlayDivBgnd = sfColor(10, 10, 0, 100);
 	sfColor simButtonDisabledBgnd = sfColor(255, 15, 15, 20);
 	sfColor simButtonDisabledFont = sfColor(0, 0, 0, 40);
 	sfColor simButtonSelectedStateBgnd = sfColor(86, 41, 41, 200);

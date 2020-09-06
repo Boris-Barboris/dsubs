@@ -712,25 +712,4 @@ final class PlayerCollection
 			}
 		}
 	}
-
-	/// Run dlg on each player in parallel.
-	void forEachPlayer(scope void delegate(Player) dlg)
-	{
-		foreach (Player p; Globals.taskPool.parallel(m_players.values, 1))
-			dlg(p);
-	}
-
-	/// Run dlg on each player with active connection and alive submarine, in
-	/// parallel.
-	void forEachAliveConnectedPlayer(scope void delegate(
-		Player p, Submarine s, PlayerConnection pcon) dlg)
-	{
-		foreach (Player p; Globals.taskPool.parallel(m_players.values, 1))
-		{
-			Submarine sub = p.submarine;
-			PlayerConnection pcon = p.connection;
-			if (sub !is null && !sub.dead && pcon !is null)
-				dlg(p, sub, pcon);
-		}
-	}
 }

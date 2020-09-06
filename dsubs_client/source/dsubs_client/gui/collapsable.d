@@ -32,6 +32,11 @@ final class Collapsable: Div
 
 	@property GuiElement child() { return m_child; }
 
+	@property title(string newTitle)
+	{
+		m_title.content = newTitle;
+	}
+
 	this(GuiElement child, string title)
 	{
 		m_titleTriangle = new CircleShape(5.0f, 3);
@@ -57,7 +62,7 @@ final class Collapsable: Div
 
 	private void recalculate()
 	{
-		int divSize = m_headerFontSize + 4;
+		int divSize = m_headerFontSize + 4 + m_headerFontSize / 8;
 		m_headerDiv.size = vec2i(divSize, divSize);
 		if (!m_collapsed)
 		{
