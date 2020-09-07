@@ -278,8 +278,12 @@ final class SimulationGUI
 	{
 		TextBox longDescBox = builder(new TextBox()).
 				content(goal.longDescription).fontSize(GOAL_TEXT_SIZE).build;
-		return builder(new Collapsable(longDescBox, goal.shortText)).
+		Collapsable res = builder(new Collapsable(longDescBox, goal.shortText)).
 			layoutType(LayoutType.CONTENT).build();
+		// we expand task list on main window by default.
+		if (Game.cic)
+			res.toggleCollapsed();
+		return res;
 	}
 
 	private Div buildGoalListDiv(ScenarioGoal[] goals)
@@ -298,10 +302,14 @@ final class SimulationGUI
 			.borderWidth(3).build();
 		m_divWithLeftPad = builder(hDiv([filler(6), goalListDiv])).
 			layoutType(LayoutType.CONTENT).contentLayoutIgnoreFixed(true).build();
-		return builder(new Collapsable(m_divWithLeftPad, "Objectives:")).
+		Collapsable res = builder(new Collapsable(m_divWithLeftPad, "Objectives:")).
 			backgroundColor(COLORS.simOverlayDivBgnd).
 			headerFontSize(OBJECTIVES_FONT_SIZE).
 			layoutType(LayoutType.CONTENT).build;
+		// we expand task list on main window by default.
+		if (Game.cic)
+			res.toggleCollapsed();
+		return res;
 	}
 
 	void handleCICScenarioGoalUpdateRes(CICScenarioGoalUpdateRes msg)

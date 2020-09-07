@@ -50,7 +50,7 @@ final class NavigationTutorial: SinglePlayerScenario
 			wptGoal.shortText = "stop in WPT" ~ wptNum;
 			wptGoal.longText = wptGoal.longText ~
 				" and stay in the circle for 30 seconds. " ~
-				"To order emergency reverse enter -100 to desired throttle field.";
+				"To break/reverse, enter -100 to 'tgt throttle' field.";
 		}
 		ScenarioTrigger wptTrigger = new ScenarioTrigger(
 			new DistanceCondition(

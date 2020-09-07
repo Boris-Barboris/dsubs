@@ -15,13 +15,14 @@ Needs listable text box with pages.
 Active sonar and TMA tutorial.
 
 Detect, mark, enter solution.
+Chase and keep in low range for a minute.
 Multiwindow feature tutorial.
 Reveal true solution in the end.
 
 Needs dynamic shape hints on TMA controls.
 Needs solution hint from server.
-Needs button input from client to reveal the solution.
-Needs client to send success or failure result for tutorial scenario.
+? Needs button input from client to reveal the solution.
+? Needs client to send success or failure result for tutorial scenario.
 
 
 Artillery tutorial.
