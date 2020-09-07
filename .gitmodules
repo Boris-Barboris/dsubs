@@ -1,3 +1,6 @@
 [submodule "DerelictSFML2"]
 	path = DerelictSFML2
 	url = https://github.com/Boris-Barboris/DerelictSFML2.git
+[submodule "dlang-requests"]
+	path = dlang-requests
+	url = git@github.com:Boris-Barboris/dlang-requests.git

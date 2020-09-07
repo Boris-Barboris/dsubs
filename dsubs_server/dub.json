@@ -11,7 +11,7 @@
 		"mysql-native": { "path": "../mysql-native" },
 		"dsubs_common": { "path": "../dsubs_common" },
 		"dsubs_sound": { "path": "../dsubs_sound" },
-		"requests": { "path": "../requests" }
+		"requests": { "path": "../dlang-requests" }
 	},
 	"subConfigurations": {
 		"requests": "std"
