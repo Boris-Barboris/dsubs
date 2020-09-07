@@ -49,7 +49,8 @@ final class NavigationTutorial: SinglePlayerScenario
 			activationTime = 30 * 1000_000;
 			wptGoal.shortText = "stop in WPT" ~ wptNum;
 			wptGoal.longText = wptGoal.longText ~
-				" and stay in the circle for 30 seconds";
+				" and stay in the circle for 30 seconds. " ~
+				"To order emergency reverse enter -100 to desired throttle field.";
 		}
 		ScenarioTrigger wptTrigger = new ScenarioTrigger(
 			new DistanceCondition(
@@ -73,8 +74,8 @@ final class NavigationTutorial: SinglePlayerScenario
 		m_victoryLongReport =
 		`Maneuvering on the theatre will now be an easy task for you.`;
 		m_waypointTransforms ~= new Transform2D(vec2d(0.0, 500.0));
-		m_waypointTransforms ~= new Transform2D(vec2d(750.0, 1000.0));
-		m_waypointTransforms ~= new Transform2D(vec2d(500.0, -300.0));
+		m_waypointTransforms ~= new Transform2D(vec2d(550.0, 750.0));
+		m_waypointTransforms ~= new Transform2D(vec2d(450.0, 0.0));
 
 		setupWaypoint(0);
 
@@ -99,7 +100,7 @@ final class NavigationTutorial: SinglePlayerScenario
 				"hold right mouse button to pan"));
 		m_syncState.mapElements.addElement("coursehint",
 			MapElement.text(MapText(
-				vec2d(500, 700), 16), COLOR_HINT,
+				vec2d(400, 600), 16), COLOR_HINT,
 				"right mouse button -> set course towards"));
 	}
 }
