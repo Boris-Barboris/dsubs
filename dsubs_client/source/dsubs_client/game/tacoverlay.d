@@ -1035,7 +1035,7 @@ final class ScenarioTextShape: OverlayElement
 {
 	private
 	{
-		Label m_label;
+		TextBox m_box;
 		MapText m_text;
 	}
 
@@ -1045,15 +1045,15 @@ final class ScenarioTextShape: OverlayElement
 		super(to);
 		mouseTransparent = true;
 		m_text = textEl.value.text;
-		m_label = builder(new Label()).content(textEl.textContent).
+		m_box = builder(new TextBox()).content(textEl.textContent).
 			fontSize(m_text.fontSize).fontColor(cast(sfColor) textEl.color).
-			vtextAlign(VTextAlign.TOP).enableScissorTest(false).build;
+			size(vec2i(5000, 5000)).enableScissorTest(false).build;
 	}
 
 	override void onPreDraw()
 	{
 		vec2d screenPos = owner.world2screenPos(m_text.center);
-		m_label.position = screenPos.to!vec2i;
+		m_box.position = screenPos.to!vec2i;
 		size = vec2i(5, 5);
 		position = center2lu(screenPos);
 	}
@@ -1061,7 +1061,7 @@ final class ScenarioTextShape: OverlayElement
 	override void draw(Window wnd, long usecsDelta)
 	{
 		super.draw(wnd, usecsDelta);
-		m_label.draw(wnd, usecsDelta);
+		m_box.draw(wnd, usecsDelta);
 	}
 }
 
@@ -1112,7 +1112,7 @@ final class PlayerSubIcon: OverlayElement
 		if (m_sub.getInterpolatedSnapshot(snap))
 		{
 			double velRot = m_to.world2screenRot(courseAngle(snap.velocity));
-			double velLen = snap.velocity.length;
+			double velLen = 5.0 + snap.velocity.length;
 			// LineShape is horizontal when transform rotation is zero, so we need
 			// to add PI_2 in order to match it with dsubs rotation frame
 			m_velLine.transform.rotation = velRot + PI_2;
@@ -1805,7 +1805,8 @@ final class PositionDataTacticalElement: DataTacticalElement
 	override protected Button[] dataContextMenuOptions()
 	{
 		Button[] res = super.dataContextMenuOptions();
-		Button btn = builder(new Button()).fontSize(15).content("move solution here").build();
+		Button btn = builder(new Button()).fontSize(15).content(
+			"pivot here").build();
 		btn.onClick += {
 			TacticalOverlay to = cast(TacticalOverlay) owner;
 			TacticalContactElement ce = to.selectedContact;

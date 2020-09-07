@@ -25,7 +25,8 @@ import dsubs_server.ai.captain;
 import dsubs_server.ai.common;
 
 import dsubs_server.scenarios.battleroyale;
-import dsubs_server.scenarios.tutorials.navigation;
+import dsubs_server.scenarios.tutorials.sonartutorial;
+import dsubs_server.scenarios.tutorials.navigationtutorial;
 
 
 /// Action to run after specified clock time.
@@ -298,6 +299,8 @@ final class ScenarioDatabase
 {
 	/// All non-perisstent scenarions, indexed by their name.
 	private ScenarioSpawner[string] m_spawnableScenarios;
+	// came shit but in array
+	private ScenarioSpawner[] m_spawnableScenariosOrdered;
 
 	/// Persistent scenarios, indexed by simulatorId.
 	private PersistentScenarioSpawner[string] m_persistentSims;
@@ -313,11 +316,19 @@ final class ScenarioDatabase
 		StandaloneScenarioSpawner spawner = new StandaloneScenarioSpawner(
 			scenConstants, sim => new BattleRoyale(sim));
 		m_spawnableScenarios[scenConstants.name] = spawner;
+		m_spawnableScenariosOrdered ~= spawner;
 
 		scenConstants = NavigationTutorial.getConstants();
 		m_spawnableScenarios[scenConstants.name] =
 			new TutorialScenarioSpawner(scenConstants,
 				sim => new NavigationTutorial(sim));
+		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
+
+		scenConstants = ActiveSonarTutorial.getConstants();
+		m_spawnableScenarios[scenConstants.name] =
+			new TutorialScenarioSpawner(scenConstants,
+				sim => new ActiveSonarTutorial(sim));
+		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
 	}
 
 	PersistentScenarioSpawner getPersistentById(string simId)
@@ -337,7 +348,7 @@ final class ScenarioDatabase
 	{
 		AvailableScenariosRes res;
 		// all non-campaign missions
-		res.scenarios = m_spawnableScenarios.byValue.filter!(
+		res.scenarios = m_spawnableScenariosOrdered.filter!(
 			spawner => spawner.scenarioType != ScenarioType.campaignMission
 		).map!((ScenarioSpawner spawner) {
 			AvailableScenario preparedScen;

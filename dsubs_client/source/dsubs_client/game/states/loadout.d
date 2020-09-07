@@ -491,7 +491,7 @@ final class LoadoutState: GameState
 			{
 				AvailableScenario[] scens = scenarioGroups[scenType];
 				// lexicographic sort
-				sort!((a, b) => a.name < b.name)(scens);
+				// sort!((a, b) => a.name < b.name)(scens);
 				foreach (AvailableScenario scen; scens)
 				{
 					// generate scenario selection buttons
@@ -516,10 +516,10 @@ final class LoadoutState: GameState
 			}
 			if (missionButtons.length == 0)
 				missionButtons ~= filler(10);
-			int sbDivHeight = ((MISSION_FONT + 6) * missionButtons.length).to!int;
+			int sbDivHeight = ((MISSION_FONT + 6 + 4) * missionButtons.length).to!int;
 			Div missionsDiv = builder(vDiv(missionButtons)).
 				fixedSize(vec2i(10, sbDivHeight)).backgroundColor(COLORS.simPanelBgnd).
-				build();
+				borderWidth(4).build();
 			ScrollBar missionsSb = new ScrollBar(missionsDiv);
 
 			missionTypeColumns ~= vDiv([

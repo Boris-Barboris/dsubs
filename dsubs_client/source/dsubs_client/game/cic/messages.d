@@ -147,6 +147,7 @@ struct CICAmmoRoomStateUpdateRes
 	AmmoRoomStateUpdateRes res;
 }
 
+@Compressed
 struct CICMapOverlayUpdateRes
 {
 	__gshared const int g_marshIdx;

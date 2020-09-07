@@ -299,6 +299,7 @@ struct AmmoRoomStateUpdateRes
 }
 
 /// Map overlay state is always updated as a whole.
+@Compressed
 struct MapOverlayUpdateRes
 {
 	__gshared const int g_marshIdx;

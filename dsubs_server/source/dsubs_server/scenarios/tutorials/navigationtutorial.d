@@ -1,4 +1,4 @@
-module dsubs_server.scenarios.tutorials.navigation;
+module dsubs_server.scenarios.tutorials.navigationtutorial;
 
 import std.algorithm;
 
@@ -19,7 +19,7 @@ final class NavigationTutorial: SinglePlayerScenario
 		constants.name = "Navigation";
 		constants.shortDescription = "Learn the basics of seamanship.";
 		constants.fullDescription =
-`You'll need to complete a set of simple navigational excercises for propulsion and helm control.`;
+`You'll need to complete a set of simple navigational excercises that develop propulsion and helm control.`;
 		constants.allowedEntities = EntityDbShort(["Stork"], ["Seven-blade screw"]);
 		return constants;
 	}
@@ -27,14 +27,14 @@ final class NavigationTutorial: SinglePlayerScenario
 	private
 	{
 		Transform2D[] m_waypointTransforms;
-		Goal m_speedGoal;
 	}
 
-	void setupWaypoint(size_t idx)
+	void setupWaypointGoal(size_t idx)
 	{
 		string wptNum = (idx + 1).to!string;
 		SimpleGoal wptGoal = new SimpleGoal("approach WPT" ~ wptNum,
-			"Get into 100m distance from the WPT" ~ wptNum ~ " waypoint");
+			"Get into 100m distance from the WPT" ~ wptNum ~ " waypoint. " ~
+			"Use 'C' hotkey to focus course control.");
 		addVisibleGoal(wptGoal);
 		m_syncState.mapElements.addElement("wpt" ~ wptNum,
 			MapElement.circle(MapCircle(
@@ -62,7 +62,7 @@ final class NavigationTutorial: SinglePlayerScenario
 				m_syncState.mapElements.removeElement("wpt" ~ wptNum);
 				m_syncState.mapElements.removeElement("wptlbl" ~ wptNum);
 				if (idx < m_waypointTransforms.length - 1)
-					setupWaypoint(idx + 1);
+					setupWaypointGoal(idx + 1);
 			}, true, activationTime);
 		addTrigger(wptTrigger);
 	}
@@ -77,22 +77,22 @@ final class NavigationTutorial: SinglePlayerScenario
 		m_waypointTransforms ~= new Transform2D(vec2d(550.0, 750.0));
 		m_waypointTransforms ~= new Transform2D(vec2d(450.0, 0.0));
 
-		setupWaypoint(0);
+		setupWaypointGoal(0);
 
-		m_speedGoal = new SimpleGoal("build up speed of 8m/s",
-			"Using throttle control in the bottom of the screen, enter " ~
-			"a number from 70 to 100 to speed up to 8 m/s");
-		addVisibleGoal(m_speedGoal);
+		Goal speedGoal = new SimpleGoal("build up speed of 8m/s",
+			"Using throttle control in the bottom of the screen (T hotkey), enter " ~
+			"a number from 70 to 100 to speed up to 8 m/s.");
+		addVisibleGoal(speedGoal);
 		ScenarioTrigger speedTrigger = new ScenarioTrigger(
 			new SpeedCondition({ return m_playerSub; },
 				Comparator.greaterOrEqual, 8.0),
-			{ m_speedGoal.markSuccess(); });
+			{ speedGoal.markSuccess(); });
 		addTrigger(speedTrigger);
 
 		// text hints
 		m_syncState.mapElements.addElement("zoomhint",
 			MapElement.text(MapText(
-				vec2d(-30, 0), 16), COLOR_HINT,
+				vec2d(-20, 0), 16), COLOR_HINT,
 				"mouse wheel to zoom"));
 		m_syncState.mapElements.addElement("panhint",
 			MapElement.text(MapText(

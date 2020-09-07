@@ -165,7 +165,7 @@ final class SimulatorState: GameState
 private
 {
 	enum int TAB_SIZE = 28;
-	enum int BIG_BTN_FONT = 25;
+	enum int BIG_BTN_FONT = 24;
 	enum int BTN_FONT = 20;
 	enum int MSG_FONT = 16;
 	enum int OBJECTIVES_FONT_SIZE = 16;
