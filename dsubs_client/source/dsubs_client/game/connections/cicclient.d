@@ -154,6 +154,7 @@ private:
 			Game.simState.playerSub.updateKinematics(res.snap);
 			Game.simState.playerSub.updateWireKinematics(res.wireSnaps);
 			Game.simState.gui.handleSubKinematicRes(res);
+			Game.simState.tacticalOverlay.removeOldPings();
 		}
 	}
 
@@ -228,6 +229,8 @@ private:
 		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.gui.sonardisp.putSliceData(res.data[0]);
+			if (res.data[0].sliceId == 0)
+				Game.simState.tacticalOverlay.registerPing(res.data[0].sonarIdx);
 		}
 	}
 

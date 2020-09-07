@@ -65,14 +65,14 @@ struct KinematicTrace
 	}
 
 	/// result of an interpolation
-	@property ref const(KinematicSnapshot) result() const
+	@property const(KinematicSnapshot) result() const
 	{
 		assert(canInterpolate);
 		return curState;
 	}
 
 	/// the most recent snapshot received
-	@property ref const(KinematicSnapshot) mostRecent() const
+	@property const(KinematicSnapshot) mostRecent() const
 	{
 		assert(canInterpolate);
 		return records[(oldest + len - 1) % maxLen];

@@ -471,6 +471,42 @@ final class TacticalOverlay: Overlay
 		TacticalContactElement m_mergeSourceElement;
 
 		MapGrid m_mapGrid;
+
+		// pings
+		PingWaveCircleShape[int] m_sonarPings;
+	}
+
+	void registerPing(int sensorIdx)
+	{
+		PingWaveCircleShape oldPing = m_sonarPings.get(sensorIdx, null);
+		if (oldPing)
+		{
+			remove(oldPing);
+			m_sonarPings.remove(sensorIdx);
+		}
+		KinematicSnapshot lastSnap;
+		bool gotSnap = Game.simState.playerSub.getLastSnapshot(lastSnap);
+		assert(gotSnap);
+		PingWaveCircleShape newPing = new PingWaveCircleShape(
+			this, sensorIdx,
+			Game.simState.playerSub.tmpl.sonar.maxDuration,
+			lastSnap);
+		m_sonarPings[sensorIdx] = newPing;
+	}
+
+	void removeOldPings()
+	{
+		PingWaveCircleShape[] pingsToRemove;
+		foreach (kv_pair; m_sonarPings.byKeyValue)
+		{
+			if (kv_pair.value.finished)
+				pingsToRemove ~= kv_pair.value;
+		}
+		foreach (PingWaveCircleShape shape; pingsToRemove)
+		{
+			m_sonarPings.remove(shape.sonarIdx);
+			remove(shape);
+		}
 	}
 
 	@property bool inMerge() const { return m_inMerge; }
@@ -908,6 +944,54 @@ final class MapGrid
 			line.render(wnd);
 		foreach (line; m_horLines)
 			line.render(wnd);
+	}
+}
+
+
+final class PingWaveCircleShape: OverlayElement
+{
+	private
+	{
+		CircleShape m_shape;
+		int m_sonarIdx;
+		KinematicSnapshot m_pingStartSnap;
+		int m_maxDurationSecs;
+	}
+
+	this(TacticalOverlay to, int sonarIdx, int maxDurationSecs,
+		KinematicSnapshot pingSnap)
+	{
+		super(to);
+		m_sonarIdx = sonarIdx;
+		m_pingStartSnap = pingSnap;
+		m_maxDurationSecs = maxDurationSecs;
+		mouseTransparent = true;
+		m_shape = new CircleShape(0.0f, 90, COLORS.pingWaveCircle, 2);
+	}
+
+	@property int sonarIdx() const { return m_sonarIdx; }
+
+	@property bool finished() const
+	{
+		return m_maxDurationSecs <=
+			(Game.simState.lastServerTime - m_pingStartSnap.atTime) / 1000_000L;
+	}
+
+	override void onPreDraw()
+	{
+		vec2d screenPos = owner.world2screenPos(m_pingStartSnap.position);
+		m_shape.center = cast(vec2f) screenPos;
+		usecs_t estTime = Game.simState.extrapolatedServerTime - m_pingStartSnap.atTime;
+		double radius = SonarDisplay.SOUND_SPD / 2.0 * estTime / 1000_000.0;
+		m_shape.radius = cast(float) owner.world2screenLength(radius);
+		size = (2 * vec2f(m_shape.radius, m_shape.radius)).to!vec2i;
+		position = center2lu(screenPos);
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		m_shape.render(wnd);
 	}
 }
 
