@@ -44,6 +44,10 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 		mixinHandlers(this);
 	}
 
+	private string m_url;
+
+	@property string url() const { return m_url; }
+
 	/// synchronous (in caller thread) connect to CIC server
 	static CICClientConnection connect(string url, string password)
 	{
@@ -53,6 +57,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 		info("Attempting to connect to CIC server ", addr);
 		clientSock.connect(addr);
 		auto con = new CICClientConnection(clientSock);
+		con.m_url = url;
 		con.start();
 		con.sendMessage(immutable CICLoginReq(password));
 		return con;
@@ -74,6 +79,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 				scope(failure) clientSock.close();
 				clientSock.connect(addr);
 				auto con = new CICClientConnection(clientSock);
+				con.m_url = url;
 				con.start();
 				con.sendMessage(immutable CICLoginReq(password));
 				onSuccess(con);

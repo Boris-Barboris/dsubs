@@ -5,6 +5,7 @@ import std.array;
 import std.range: enumerate, retro;
 import std.datetime: unixTimeToStdTime, DateTime, SysTime;
 import std.format;
+import std.process: spawnProcess, Config;
 
 import core.time;
 
@@ -372,7 +373,18 @@ final class SimulationGUI
 		}
 		Button asonarTab = builder(new Button()).content("F" ~ tabId.to!string ~
 			" Active sonar").fontSize(BIG_BTN_FONT).build;
-		tabs ~= [tacticalTab] ~ hydrophoneTabs ~ [asonarTab];
+
+		Button splitWindowTab = builder(new Button()).fontName("STIX2Math").content("⧉").
+			fontSize(BIG_BTN_FONT).fixedSize(vec2i(BIG_BTN_FONT + 4, BIG_BTN_FONT)).build;
+
+		splitWindowTab.onClick += {
+			string cicAddr = Game.ciccon.url;
+			spawnProcess(
+				["./dsubs_client", "--coop", cicAddr],
+				null, Config.detached | Config.suppressConsole);
+		};
+
+		tabs ~= [tacticalTab] ~ hydrophoneTabs ~ [asonarTab, splitWindowTab];
 
 		int[] tabIdxToHotkeyKey;
 		tabIdxToHotkeyKey.length = 8;

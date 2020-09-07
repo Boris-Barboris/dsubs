@@ -2,6 +2,8 @@ module dsubs_client.app;
 
 import core.stdc.stdlib;
 
+import std.getopt;
+
 import dsubs_client.common;
 import dsubs_client.lib.sfml;
 import dsubs_client.lib.openal;
@@ -22,6 +24,8 @@ void main(string[] argv)
 		SetConsoleOutputCP(65001);
 	}
 	version(unittest) info("Unit tests OK");
+	string coopAdr;
+	getopt(argv, "coop", &coopAdr);
 	version(linux)
 	{
 		initXLib();
@@ -34,7 +38,7 @@ void main(string[] argv)
 	scope(exit) unloadAudioLib();
 	try
 	{
-		Game.start();
+		Game.start(coopAdr);
 	}
 	catch (Throwable t)
 	{

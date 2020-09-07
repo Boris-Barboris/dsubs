@@ -114,7 +114,7 @@ __gshared:
 	}
 
 	/// start the game (blocks caller thread)
-	static void start()
+	static void start(string coopAddr = null)
 	{
 		assert(window is null);
 		window = new Window();
@@ -154,7 +154,7 @@ __gshared:
 
 		// setup login screen
 		synchronized (mainMutexWriter)
-			activeState = new LoginScreenState();
+			activeState = new LoginScreenState(coopAddr);
 
 		// Start render thread and serve the windows event pump. Render takes
 		// reader lock and has low priority.

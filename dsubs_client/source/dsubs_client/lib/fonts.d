@@ -66,6 +66,7 @@ shared static this()
 		"Sans": "fonts/LiberationSans-Regular.ttf",
 		"SansMono": "fonts/LiberationMono-Regular.ttf",
 		"UbuntuMono": "fonts/ubuntu.mono.ttf",
+		"STIX2Math": "fonts/STIX2Math.otf"
 	];
 }
 
