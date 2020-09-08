@@ -75,9 +75,10 @@ This tutorial provides a simple cruising civilian to experiment on. Victory is a
 				vec2d(200, -200), 14), COLOR_HINT,
 `Press F4 and press 'Ping'. Create contact by right-clicking a blip on sonar
 image and selecting 'new contact'. Verify contact position on tactical map (F1).
-Go back to sonar. Wait for 20 seconds and ping again, then drag a
-contact's pictogram to follow the blip. You can zoom and pan sonar image
-just like a tactical map.
+Go back to sonar. You can zoom and pan sonar image, just like on a tactical map.
+Wait for 20 seconds and ping again, then drag a contact's pictogram to
+follow the blip. You do not need to wait until the image update reaches
+the top of active sonar screen: pings can be made each 5 seconds.
 Repeat this process 4-5 times, then click on the contact's yellow pictogram
 on a tactical map.
 

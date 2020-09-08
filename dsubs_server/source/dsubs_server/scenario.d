@@ -27,6 +27,7 @@ import dsubs_server.ai.common;
 import dsubs_server.scenarios.battleroyale;
 import dsubs_server.scenarios.tutorials.sonartutorial;
 import dsubs_server.scenarios.tutorials.navigationtutorial;
+import dsubs_server.scenarios.tutorials.torpedotutorial;
 
 
 /// Action to run after specified clock time.
@@ -305,6 +306,14 @@ final class ScenarioDatabase
 	/// Persistent scenarios, indexed by simulatorId.
 	private PersistentScenarioSpawner[string] m_persistentSims;
 
+	void addTutorial(T)()
+	{
+		AvailableScenarioConstants scenConstants = T.getConstants();
+		m_spawnableScenarios[scenConstants.name] =
+			new TutorialScenarioSpawner(scenConstants, sim => new T(sim));
+		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
+	}
+
 	/// Build scenario database. Globals.entityDb must be built at this point.
 	this()
 	{
@@ -318,17 +327,9 @@ final class ScenarioDatabase
 		m_spawnableScenarios[scenConstants.name] = spawner;
 		m_spawnableScenariosOrdered ~= spawner;
 
-		scenConstants = NavigationTutorial.getConstants();
-		m_spawnableScenarios[scenConstants.name] =
-			new TutorialScenarioSpawner(scenConstants,
-				sim => new NavigationTutorial(sim));
-		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
-
-		scenConstants = ActiveSonarTutorial.getConstants();
-		m_spawnableScenarios[scenConstants.name] =
-			new TutorialScenarioSpawner(scenConstants,
-				sim => new ActiveSonarTutorial(sim));
-		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
+		addTutorial!NavigationTutorial();
+		addTutorial!ActiveSonarTutorial();
+		addTutorial!TorpedoTutorial();
 	}
 
 	PersistentScenarioSpawner getPersistentById(string simId)
@@ -647,6 +648,7 @@ enum Comparator: ubyte
 
 alias TransformGetter = Transform2D delegate();
 alias RigidBodyGetter = IHasRidigBody delegate();
+alias KillableGetter = Killable delegate();
 
 
 /// Distance between two objects that have transforms
@@ -729,12 +731,12 @@ final class DeadCondition: IScenarioCondition
 {
 	private
 	{
-		Killable* m_killable;
+		KillableGetter m_killable;
 		bool m_inverse;
 	}
 
 	/// Set inverse to true to get an 'AliveCondition'.
-	this(Killable* killable, bool inverse = false)
+	this(KillableGetter killable, bool inverse = false)
 	{
 		m_killable = killable;
 		m_inverse = inverse;
@@ -742,9 +744,9 @@ final class DeadCondition: IScenarioCondition
 
 	override bool satisfied()
 	{
-		if (*m_killable is null)
+		if (m_killable() is null)
 			return false;
-		return m_inverse ^ (*m_killable).dead;
+		return m_inverse ^ m_killable().dead;
 	}
 }
 
@@ -899,7 +901,7 @@ abstract class SinglePlayerScenario: Scenario
 		double m_playerSpawnRotation = 0.0;
 
 		string m_failureLongReport;
-		string m_victoryShortReport = "You've succeeded in your mission";
+		string m_victoryShortReport = "You have succeeded in your mission";
 		string m_victoryLongReport;
 	}
 

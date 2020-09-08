@@ -616,7 +616,7 @@ Active sonars:
 	sp.name = "Lima";
 	sp.description = `Extremely fast light attack submarine. It's bow is too narrow to
 hold reasonably sensitive hydrophone array, so it's main ears are hull-mounted
-linear arrays.
+linear arrays and an active sonar. Favors agressive, non-stealthy combat.
 
 Length: 60m
 Displacement: 700t

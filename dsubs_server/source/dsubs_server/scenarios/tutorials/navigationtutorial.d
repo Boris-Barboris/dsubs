@@ -16,7 +16,7 @@ final class NavigationTutorial: SinglePlayerScenario
 	static AvailableScenarioConstants getConstants()
 	{
 		AvailableScenarioConstants constants;
-		constants.name = "Navigation";
+		constants.name = "Navigation, camera";
 		constants.shortDescription = "Learn the basics of seamanship.";
 		constants.fullDescription =
 `You'll need to complete a set of simple navigational excercises that develop propulsion and helm control.`;
