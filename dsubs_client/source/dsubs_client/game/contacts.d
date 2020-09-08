@@ -221,6 +221,8 @@ final class ClientContact
 	{
 		if (m_sonarDispEl && m_sonarDispEl.data is cdata)
 			m_sonarDispEl.updateFromData();
+		if (cdata.id in m_rayWaterfallEls)
+			assert(0, "update of ray data not implemented");
 	}
 
 	void updateTracker(HydrophoneTracker ht)
