@@ -50,6 +50,9 @@ final class ContactOverlayShapeCahe
 		m_posDataMainShape = new RectangleShape(vec2f(5, 5), sfRed);
 		m_posDataOnHoverRect = new RectangleShape(vec2f(11.0f, 11.0f), sfWhite);
 		m_posDataOnHoverRect.position = -vec2f(1, 1);
+		m_wfRayDataMainShape = new RectangleShape(vec2f(2, 2), sfRed);
+		m_wfRayDataOnHoverRect = new RectangleShape(vec2f(11.0f, 11.0f), sfWhite);
+		m_wfRayDataOnHoverRect.position = -vec2f(1, 1);
 		m_velCircle = new CircleShape(TacticalContactElement.ZERO_SPD_PIXEL_MARGIN,
 			30, sfColor(255, 255, 255, 150), 6);
 		m_tubeCircle = new CircleShape(10, 30, COLORS.tubeCircle, 3);
@@ -62,6 +65,8 @@ final class ContactOverlayShapeCahe
 			sfColor(21, 216, 230, 200), 2);
 		m_rayTracker = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(117, 79, 255, 100), 1.0);
+		m_rayChainLine = new LineShape(vec2d(0, 0), vec2d(0, 0),
+			sfColor(255, 0, 0, 100), 0.5);
 	}
 
 	private
@@ -72,12 +77,15 @@ final class ContactOverlayShapeCahe
 	mixin Readonly!(RectangleShape, "onHoverRect");
 	mixin Readonly!(RectangleShape, "posDataMainShape");
 	mixin Readonly!(RectangleShape, "posDataOnHoverRect");
+	mixin Readonly!(RectangleShape, "wfRayDataMainShape");
+	mixin Readonly!(RectangleShape, "wfRayDataOnHoverRect");
 	mixin Readonly!(CircleShape, "velCircle");
 	mixin Readonly!(CircleShape, "tubeCircle");
 	mixin Readonly!(LineShape, "velDragLine");
 	mixin Readonly!(LineShape, "pastTrailLine");
 	mixin Readonly!(LineShape, "dataTrailDelta");
 	mixin Readonly!(LineShape, "rayTracker");
+	mixin Readonly!(LineShape, "rayChainLine");
 	mixin Readonly!(LineShape, "shortestToSolution");
 
 	// https://stackoverflow.com/a/8509802/3084875
@@ -178,6 +186,7 @@ class ContactDataOverlayElement: OverlayElementWithHover
 	/// When the contact data updates from CIC message, this method is called;
 	abstract void updateFromData();
 }
+
 
 /// Active sonar data sample on sonar display.
 final class SonarDispContactDataElement: ContactDataOverlayElement
@@ -1749,7 +1758,7 @@ final class TacticalContactElement: OverlayElementWithHover
 
 class DataTacticalElement: ContactDataOverlayElement
 {
-	this(TacticalOverlay owner, ClientContactData* data)
+	this(Overlay owner, ClientContactData* data)
 	{
 		super(owner, data);
 		onMouseUp += &processMouseUp;
@@ -1781,6 +1790,77 @@ class DataTacticalElement: ContactDataOverlayElement
 		return res;
 	}
 }
+
+
+/// Waterfall ray sample element.
+final class WaterfallRaySampleElement: DataTacticalElement
+{
+	this(Waterfall.WaterfallOverlay owner, ClientContactData* data)
+	{
+		assert(data.type == DataType.Ray);
+		super(owner, data);
+		m_mainShape = ctcOverlayCache.wfRayDataMainShape;
+		m_onHoverRect = ctcOverlayCache.wfRayDataOnHoverRect;
+		m_chainLine = ctcOverlayCache.rayChainLine;
+		size = cast(vec2i) (m_onHoverRect.size);
+	}
+
+	private @property Waterfall.WaterfallOverlay owner()
+	{
+		return cast(Waterfall.WaterfallOverlay) super.owner;
+	}
+
+	private
+	{
+		RectangleShape m_mainShape;
+		RectangleShape m_onHoverRect;
+		// line to connect to m_next sample on waterfall screen
+		LineShape m_chainLine;
+		// closest sample in time
+		WaterfallRaySampleElement m_next;
+	}
+
+	@property WaterfallRaySampleElement next()
+	{
+		return m_next;
+	}
+
+	@property void next(WaterfallRaySampleElement el)
+	{
+		m_next = el;
+	}
+
+	override void updateFromData() {}
+
+	override void onPreDraw()
+	{
+		double bearing = data.data.ray.bearing;
+		long timeDelta = (Game.simState.lastServerTime - data.time) / 1000_000L;
+		vec2d screenPos = owner.world2screenPos(vec2d(bearing, timeDelta));
+		position = center2lu(screenPos);
+		m_mainShape.center = cast(vec2f) screenPos;
+		if (m_hovered)
+			m_onHoverRect.center = cast(vec2f) screenPos;
+		if (m_next && !m_next.hidden)
+		{
+			bearing = m_next.data.data.ray.bearing;
+			timeDelta = (Game.simState.lastServerTime - m_next.data.time) / 1000_000L;
+			vec2d screenPosNext = owner.world2screenPos(vec2d(bearing, timeDelta));
+			m_chainLine.setPoints(screenPos, screenPosNext, true);
+		}
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		if (m_hovered)
+			m_onHoverRect.render(wnd);
+		if (m_next && !m_next.hidden)
+			m_chainLine.render(wnd);
+		m_mainShape.render(wnd);
+	}
+}
+
 
 /// Tactical overlay element, bound to positional data.
 final class PositionDataTacticalElement: DataTacticalElement
