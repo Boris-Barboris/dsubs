@@ -35,7 +35,7 @@ You pass the test when you can shadow the target by only using your hydrophones.
 	this(Simulator sim)
 	{
 		super(sim, ChatMessage(longUnixTime(), ChatMessageType.scenarioNotice,
-			"Welcome to active sonar tutorial"));
+			"Welcome to hydrophone tutorial"));
 		m_victoryLongReport =
 		`You now know how to use hydrophones to gain an edge on your enemy.`;
 
