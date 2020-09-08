@@ -24,6 +24,8 @@ final class AcousticEnv
 
 	@property Reflector[] reflectors() { return m_reflectors; }
 
+	@property SoundSource[] sources() { return m_sources; }
+
 	// all register and unregister calls are supposed to
 	// be called while holding simMut.reader
 

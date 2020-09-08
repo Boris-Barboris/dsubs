@@ -19,6 +19,7 @@ import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.connections.playercon: PlayerConnection;
 import dsubs_server.player;
+import dsubs_sound.activesonar: SonarPing;
 import dsubs_server.bots;
 import dsubs_server.simulator;
 import dsubs_server.ai.captain;
@@ -28,6 +29,7 @@ import dsubs_server.scenarios.battleroyale;
 import dsubs_server.scenarios.tutorials.sonartutorial;
 import dsubs_server.scenarios.tutorials.navigationtutorial;
 import dsubs_server.scenarios.tutorials.torpedotutorial;
+import dsubs_server.scenarios.tutorials.hydrophonetutorial;
 
 
 /// Action to run after specified clock time.
@@ -330,6 +332,7 @@ final class ScenarioDatabase
 		addTutorial!NavigationTutorial();
 		addTutorial!ActiveSonarTutorial();
 		addTutorial!TorpedoTutorial();
+		addTutorial!HydrophoneTmaTutorial();
 	}
 
 	PersistentScenarioSpawner getPersistentById(string simId)
@@ -648,6 +651,7 @@ enum Comparator: ubyte
 
 alias TransformGetter = Transform2D delegate();
 alias RigidBodyGetter = IHasRidigBody delegate();
+alias SubmarineGetter = Submarine delegate();
 alias KillableGetter = Killable delegate();
 
 
@@ -675,10 +679,13 @@ final class DistanceCondition: IScenarioCondition
 
 	override bool satisfied()
 	{
-		if (a() is null || b() is null)
+		Transform2D ta, tb;
+		ta = a();
+		tb = b();
+		if (ta is null || tb is null)
 			return false;
 		double currentDistSqr =
-			(a().wposition - b().wposition).squaredLength;
+			(ta.wposition - tb.wposition).squaredLength;
 		enforce(!isNaN(currentDistSqr));
 		final switch (m_comparator)
 		{
@@ -744,9 +751,45 @@ final class DeadCondition: IScenarioCondition
 
 	override bool satisfied()
 	{
-		if (m_killable() is null)
+		Killable kb = m_killable();
+		if (kb is null)
 			return false;
-		return m_inverse ^ m_killable().dead;
+		return m_inverse ^ kb.dead;
+	}
+}
+
+
+/// Is satisfied when there is a ping, owned by the submarine
+final class SubPingsCondition: IScenarioCondition
+{
+	private
+	{
+		SubmarineGetter m_sub;
+		Simulator m_sim;
+	}
+
+	/// Set inverse to true to get an 'AliveCondition'.
+	this(SubmarineGetter sub, Simulator sim)
+	{
+		m_sub = sub;
+		m_sim = sim;
+	}
+
+	// linear search, unfortunately
+	override bool satisfied()
+	{
+		Submarine s = m_sub();
+		if (s is null)
+			return false;
+		foreach (source; m_sim.acous.sources)
+		{
+			SonarPing ping = cast(SonarPing) source;
+			if (ping is null)
+				continue;
+			if (ping.owner is s)
+				return true;
+		}
+		return false;
 	}
 }
 

@@ -66,7 +66,7 @@ final class ContactOverlayShapeCahe
 		m_rayTracker = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(117, 79, 255, 100), 1.0);
 		m_rayChainLine = new LineShape(vec2d(0, 0), vec2d(0, 0),
-			sfColor(255, 0, 0, 100), 0.5);
+			sfColor(255, 0, 0, 150), 1.0);
 	}
 
 	private

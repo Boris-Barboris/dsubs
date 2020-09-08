@@ -73,14 +73,14 @@ This tutorial provides a simple cruising civilian to experiment on. Victory is a
 		m_syncState.mapElements.addElement("activesonar",
 			MapElement.text(MapText(
 				vec2d(200, -200), 14), COLOR_HINT,
-`Press F4 and press 'Ping'. Create contact by right-clicking a blip on sonar
-image and selecting 'new contact'. Verify contact position on tactical map (F1).
+`Press F4 and click 'Ping' button in upper left corner. Create contact by
+right-clicking a blip on sonar image and selecting 'new contact'.
+Verify contact position on tactical map (F1).
+
 Go back to sonar. You can zoom and pan sonar image, just like on a tactical map.
 Wait for 20 seconds and ping again, then drag a contact's pictogram to
-follow the blip. You do not need to wait until the image update reaches
-the top of active sonar screen: pings can be made each 5 seconds.
-Repeat this process 4-5 times, then click on the contact's yellow pictogram
-on a tactical map.
+follow the blip. Repeat this process 4-5 times, then click on the contact's
+yellow pictogram on a tactical map.
 
 This is the TMA mode. Drag the edge of a yellow rhombus around using left mouse button.
 Drag the edge of a big white circle to edit solution velocity. These manipulations
@@ -91,12 +91,15 @@ predicted by your solution. Click on empty space to finalize the solution.
 The solution is good if it conforms to sensor data. Enter TMA mode by clicking
 on the contact icon again. Now drag it and change it's velocity in such a way that
 the purple 'legs' that are tied to small red squares have minimal sweep.
-These red squares are the sonar data samples. You generate them by dragging
+Small red squares are the sonar data samples. You generate them by dragging
 contact pictogram on the sonar screen after each new ping.
 Velocity can be edited more precisely by dragging the yellow 'tail ray'
 of the selected contact.
 Try clicking with right mouse button on the red square and selecting 'pivot here'.
 This will move solution to precisely match sonar data sample in space and time.
+
+Tip: you do not need to wait until the image update reaches
+the top of active sonar screen, pings can be made every 5 seconds.
 
 Ping some more, check that new red squares are close to your solution.
 When satisfied with precision, complete the mission's objective.`));
