@@ -271,6 +271,7 @@ final class Simulator
 	// }
 
 	private usecs_t m_worldTime = 0;
+
 	@property usecs_t worldTime() const { return m_worldTime; }
 
 	// Must be called while holding simMut.
@@ -280,9 +281,11 @@ final class Simulator
 	}
 
 	private bool m_terminating;
+
 	/// simulator will report as finished when it's wordTime exceeds worldTimeLimit, or
 	/// when it's asked to terminate by scenario.
 	usecs_t worldTimeLimit = usecs_t.max;
+
 	@property bool finished() const
 	{
 		return m_terminating || m_worldTime > worldTimeLimit;
@@ -324,10 +327,17 @@ final class Simulator
 		}
 		foreach (SubPlayerPair pair; Globals.taskPool.parallel(playersToUpdate, 1))
 		{
-			if (finished && !pair.sub.dead)
-				pair.player.handleSimTerminating(pair.sub);
-			else
-				pair.player.sendUpdate(pair.sub);
+			pair.player.sendUpdate(pair.sub);
+		}
+	}
+
+	/// All players that own alive vessels in this sim receive message.
+	private void sendTerminatingToPlayers()
+	{
+		foreach (Submarine sub; vessels.submarines)
+		{
+			if (sub && sub.player && !sub.dead)
+				sub.player.handleSimTerminating(sub);
 		}
 	}
 
@@ -355,7 +365,7 @@ final class Simulator
 			// early exit
 			if (m_terminating)
 			{
-				sendUpdateToPlayers();
+				sendTerminatingToPlayers();
 				return;
 			}
 			// some user actions enqueue buffer commands on first queue,
@@ -412,9 +422,9 @@ final class Simulator
 			if (scenario)
 			{
 				profiler.start("scenario.onAfterSimulation");
-				ShouldSimTerminate signal = scenario.onAfterSimulation();
+				ShouldSimTerminate sst = scenario.onAfterSimulation(1000_000);
 				profiler.stopLast();
-				if (signal == ShouldSimTerminate.yes)
+				if (sst == ShouldSimTerminate.yes)
 				{
 					info("Terminating simulator ", id);
 					m_terminating = true;
@@ -422,8 +432,13 @@ final class Simulator
 			}
 			// send updates to players
 			profiler.start("sendUpdateToPlayers");
+			// scenario is responsible for sending termination messages based on
+			// the reason of sim shutdown
 			sendUpdateToPlayers();
 			profiler.stopLast();
+			// additional logic for time-based termination
+			if (finished)
+				sendTerminatingToPlayers();
 			profiler.start("onSimulationPassEnd");
 			onSimulationPassEnd(this, m_worldTime);
 			profiler.stopLast();

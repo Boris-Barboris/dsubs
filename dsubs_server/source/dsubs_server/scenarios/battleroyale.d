@@ -114,7 +114,6 @@ Good luck!`;
 `You cannot abandon online games. The only way out is to torpedo yourself or disconnect for 30 minutes.`;
 		}
 		constants.allowedEntities = Globals.entityDb.getCompleteShortDb();
-		trace(constants.allowedEntities);
 		return constants;
 	}
 
@@ -350,16 +349,18 @@ Good luck!`;
 		}
 	}
 
-	/// make sure each alive player submarine has a reload circle
+	/// make sure each player with a submarine in this simulator has a reload circle
 	private void synchronizeReloadCircles()
 	{
-		auto allPlayers = Globals.players.players.values;
-		foreach (Player p; allPlayers)
+		foreach (Submarine sub; simulator.vessels.submarines)
 		{
-			if (p.hasAliveSub)
-				ensureReloadCircleForPlayer(p);
-			else
-				m_playerReloadCircles.remove(p);
+			if (sub.player)
+			{
+				if (!sub.dead)
+					ensureReloadCircleForPlayer(sub.player);
+				else
+					m_playerReloadCircles.remove(sub.player);
+			}
 		}
 	}
 
@@ -415,12 +416,15 @@ Good luck!`;
 			m_playerReloadCircles.remove(p);
 			ensureReloadCircleForPlayer(p);
 			PlayerConnection pcon = p.connection;
-			if (pcon)
+			if (pcon && pcon.simulatorFlow)
 			{
 				MapOverlayUpdateRes mapBcst;
+				ScenarioGoalUpdateRes goalBcst;
 				ChatMessageRes textBcst;
-				generateBriefing(p, mapBcst.mapElements, textBcst.message);
+				generateBriefing(p, mapBcst.mapElements, goalBcst.goals,
+					textBcst.message);
 				textBcst.message = ChatMessage(unixTime,
+					ChatMessageType.scenarioNotice,
 					"Weapon racks reloaded. New reload point allocated.");
 				pcon.sendMessage(cast(immutable) mapBcst);
 				pcon.sendMessage(cast(immutable) textBcst);
@@ -447,7 +451,7 @@ Good luck!`;
 					room.putWeapon(weaponName);
 				}
 				// send room update if possible
-				if (pcon)
+				if (pcon && pcon.simulatorFlow)
 				{
 					pcon.sendMessage(cast(immutable)
 						AmmoRoomStateUpdateRes(room.fullState));
@@ -456,7 +460,7 @@ Good luck!`;
 		}
 	}
 
-	override ShouldSimTerminate onAfterSimulation()
+	override ShouldSimTerminate onAfterSimulation(usecs_t simTimePassed)
 	{
 		synchronizeReloadCircles();
 		triggerReloadCircles();
@@ -487,15 +491,23 @@ Good luck!`;
 			}
 			m_inTransition = !m_inTransition;
 			// send message(s) to active players
-			Globals.players.forEachAliveConnectedPlayer(
-				(Player p, Submarine sub, PlayerConnection pcon)
+			foreach (Submarine sub; simulator.vessels.submarines)
+			{
+				if (sub.player && !sub.dead)
 				{
 					MapOverlayUpdateRes mapBcst;
+					ScenarioGoalUpdateRes goalBcst;
 					ChatMessageRes textBcst;
-					generateBriefing(p, mapBcst.mapElements, textBcst.message);
-					pcon.sendMessage(cast(immutable) textBcst);
-					pcon.sendMessage(cast(immutable) mapBcst);
-				});
+					generateBriefing(sub.player, mapBcst.mapElements, goalBcst.goals,
+						textBcst.message);
+					PlayerConnection pcon = sub.player.connection;
+					if (pcon)
+					{
+						pcon.sendMessage(cast(immutable) textBcst);
+						pcon.sendMessage(cast(immutable) mapBcst);
+					}
+				}
+			}
 			// give new destinations to bots
 			foreach (AICrewTemp crwTemp; m_simulator.bots.captains)
 			{
@@ -511,7 +523,8 @@ Good luck!`;
 	}
 
 	override void generateBriefing(Player player,
-		out MapElement[] mapOverlayEls, out ChatMessage briefing)
+		out MapElement[] mapOverlayEls, out ScenarioGoal[] goals,
+		out ChatMessage briefing)
 	{
 		long unixTime = longUnixTime();
 		// circle for next/active arena
@@ -527,6 +540,7 @@ Good luck!`;
 		{
 			briefing = ChatMessage(
 				unixTime,
+				ChatMessageType.scenarioNotice,
 				"New arena position, hurry to the dark-blue circle! " ~
 				"Time until forced navigation: " ~
 				((m_nextTransitionTime - m_simulator.worldTime) / 1000_000).
@@ -536,6 +550,7 @@ Good luck!`;
 		{
 			briefing = ChatMessage(
 				unixTime,
+				ChatMessageType.scenarioNotice,
 				"Navigation limited to dark-blue circle!");
 		}
 		// circle for reloading area

@@ -40,10 +40,16 @@ final class LoginScreenState: GameState
 	{
 		bool canLogin, alreadySpawned;
 		Label infoLabel;
+		string m_coopAddr;
 		Button connectButton, cicConnectButton, replayButton;
 		void delegate() cicConnectCancellator;
 		bool m_scenariosReceived;
 		AvailableScenariosRes m_scenarios;
+	}
+
+	this(string coopAddr = null)
+	{
+		m_coopAddr = coopAddr;
 	}
 
 	override void setup()
@@ -51,6 +57,32 @@ final class LoginScreenState: GameState
 		Game.window.title = "dsubs";
 
 		JSONValue config = readConfig();
+
+		// we are in a short coop join mode
+		if (m_coopAddr)
+		{
+			CICClientConnection.connectAsync(
+				m_coopAddr, "",
+				(CICClientConnection c)
+				{
+					synchronized(Game.mainMutexWriter)
+					{
+						Game.ciccon = c;
+						info("stopping backend connection maintainer to focus on CIC");
+						Game.bconm.stop();
+						Game.window.title = "dsubs (coop client)";
+					}
+				},
+				(Exception ex)
+				{
+					error(ex.msg);
+					synchronized(Game.mainMutexWriter)
+					{
+						Game.window.stopEventProcessing();
+					}
+				});
+			return;
+		}
 
 		int btnSize = (MENU_BUTTON_FONTSIZE * 1.3).lrint.to!int;
 		connectButton = builder(new Button(ButtonType.ASYNC)).content("Authorize").
@@ -132,7 +164,8 @@ final class LoginScreenState: GameState
 			htextAlign(HTextAlign.LEFT).fontSize(LOGIN_FONT_SIZE).
 			fraction(LOGIN_FRACT).build();
 		TextField cicIpField = builder(new TextField()).fontSize(LOGIN_FONT_SIZE).build();
-		cicIpField.content = config.object.get("coopaddr", JSONValue("localhost:17900")).str;
+		cicIpField.content = config.object.get(
+			"coopaddr", JSONValue("localhost:17900")).str;
 
 		Label orLabel = builder(new Label()).content("OR").
 			htextAlign(HTextAlign.CENTER).fontSize(MENU_BUTTON_FONTSIZE / 2).

@@ -5,7 +5,7 @@ import std.container.rbtree;
 
 import derelict.sfml2.graphics;
 
-import gfm.math.vector: vec4i;
+import gfm.math.vector: vec4i, vec2f;
 
 import dsubs_client.lib.sfml;
 
@@ -66,6 +66,7 @@ shared static this()
 		"Sans": "fonts/LiberationSans-Regular.ttf",
 		"SansMono": "fonts/LiberationMono-Regular.ttf",
 		"UbuntuMono": "fonts/ubuntu.mono.ttf",
+		"STIX2Math": "fonts/STIX2Math.otf"
 	];
 }
 

@@ -4,12 +4,17 @@ import std.array: array, appender;
 import std.algorithm;
 import std.range;
 
+import core.time: seconds;
+
 import dsubs_common.math;
 import dsubs_common.api.entities;
+import dsubs_common.api.marshalling;
 
 import dsubs_client.game.cic.protocol;
+import dsubs_client.game.cic.persistence;
 import dsubs_client.game.cic.messages;
 import dsubs_client.game.cic.entities;
+import dsubs_client.game.cic.state;
 import dsubs_client.common;
 
 
@@ -89,29 +94,78 @@ struct RayGeneratorSynchronizer
 }
 
 
-final class WaterfallAnalyzer
+final class WaterfallAnalyzer: Persistable
 {
 	private
 	{
 		WaterfallSlice m_lastSlice;
 		int m_sensorIdx;
+		string m_subId;
 		const HydrophoneTemplate m_tmpl;
 		HydrophoneTrackerContext*[TrackerId] m_trackers;
 		RayGeneratorSynchronizer* m_sync;
 		Peak[] m_peaks, m_freePeaks;
+		// min signal value in the last slice
 		int m_min;
 		ushort m_detectMargin = ushort.max / 8;
 		bool m_noiseEstimated;
 		int m_noiseEstimationCounter;
 		float m_varianceEstimate;
+
+
+		@Compressed
+		struct OnDiskState
+		{
+			enum int g_marshIdx = 1;
+			HydrophoneTrackerContext[] trackers;
+		}
 	}
 
-	this(const HydrophoneTemplate tmpl, int sensorIdx, RayGeneratorSynchronizer* sync)
+	this(string subId, const HydrophoneTemplate tmpl,
+		int sensorIdx, RayGeneratorSynchronizer* sync)
 	{
+		m_subId = subId;
 		m_tmpl = tmpl;
+		super("trackers " ~ m_tmpl.name);
+		m_saveInterval = seconds(5);
 		m_sensorIdx = sensorIdx;
 		m_sync = sync;
 		m_peaks.reserve(32);
+	}
+
+	void recoverFromDisk(CICState mainState)
+	{
+		OnDiskState* recoveredState = loadFromFile!OnDiskState();
+		if (recoveredState)
+			loadFromMessage(*recoveredState, mainState);
+	}
+
+	override immutable(ubyte)[] buildOnDiskMessage()
+	{
+		OnDiskState stateStruct;
+		stateStruct.trackers = m_trackers.byValue.map!(tc => *tc).array;
+		return marshalMessage(cast(immutable) &stateStruct);
+	}
+
+	override string getFileName()
+	{
+		return m_subId ~ "_trackers_" ~ m_sensorIdx.to!string;
+	}
+
+	private void loadFromMessage(OnDiskState state, CICState mainState)
+	{
+		foreach (ref ctx; state.trackers)
+		{
+			ContactId ctcId = ctx.tracker.id.ctcId;
+			// Trackers and main CIC state data are saved with different frequencies.
+			// Contact list may become out of sync, hence we need to ignore trackers
+			// for phantom contacts.
+			if (mainState.contactExists(ctcId))
+			{
+				m_trackers[ctx.tracker.id] = &ctx;
+				m_sync.increase(ctcId);
+			}
+		}
 	}
 
 	/// Record new hydrophone data and analyze it. Move or deactivate trackers.

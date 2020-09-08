@@ -6,7 +6,7 @@ Preliminary market research results:
     players.
     * Casual audience genuinly cares about graphics.
     * There are no modern hardcore subsims on the market besides Cold Waters that fits the arcade niche.
-    * Cold waters has ~50k copies (probably about 25k) sold on steam at $20 = $500.000 approx gross revenue.
+    * Cold waters has ~50k copies (probably about 25k) sold on steam at $20 = $500k approx gross revenue.
     * Cold waters has ~200 concurrent players. Even the most popular game will fit on one server.
     * DW has <50k copies sold (probably way less, around 5k) at $7.5.
 

@@ -112,18 +112,18 @@ final class EntityDb
 	/// Build submarine object from the Spawn request message
 	Submarine buildSubFromLoadout(const SpawnReq req, Captain cpt, bool humanPlayer = false)
 	{
-		SubmarineFactory* sp = req.submarineName in m_submarines;
-		enforce(sp !is null, "Unknown submarine");
+		SubmarineFactory* sf = req.submarineName in m_submarines;
+		enforce(sf !is null, "Unknown submarine");
 		if (humanPlayer)
-			enforce(sp.playable, "sub is unplayable");
-		PropulsorFactory* pp = req.propulsorName in m_propulsors;
-		enforce(pp !is null, "Unknown propulsor");
+			enforce(sf.playable, "sub is unplayable");
+		PropulsorFactory* pf = req.propulsorName in m_propulsors;
+		enforce(pf !is null, "Unknown propulsor");
 		if (humanPlayer)
-			enforce(pp.playable, "propulsor is unplayable");
-		enforce(sp.tmpl.propulsors.any!(p => p == pp.tmpl.name)(),
+			enforce(pf.playable, "propulsor is unplayable");
+		enforce(sf.tmpl.propulsors.any!(p => p == pf.tmpl.name)(),
 			"Propulsor not allowed for submarine");
-		Propulsor prop = pp.build();
-		Submarine sub = sp.build(cpt, prop, req.ammoRoomLoadouts,
+		Propulsor prop = pf.build();
+		Submarine sub = sf.build(cpt, prop, req.ammoRoomLoadouts,
 			req.loadableTubeLoadouts);
 		trace("built new submarine from request ", req);
 		return sub;
@@ -616,7 +616,7 @@ Active sonars:
 	sp.name = "Lima";
 	sp.description = `Extremely fast light attack submarine. It's bow is too narrow to
 hold reasonably sensitive hydrophone array, so it's main ears are hull-mounted
-linear arrays.
+linear arrays and an active sonar. Favors agressive, non-stealthy combat.
 
 Length: 60m
 Displacement: 700t

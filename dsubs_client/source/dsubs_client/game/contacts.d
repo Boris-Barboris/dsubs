@@ -1,6 +1,7 @@
 module dsubs_client.game.contacts;
 
 import std.traits: EnumMembers;
+import std.container.rbtree: RedBlackTree;
 
 import derelict.sfml2.graphics;
 import derelict.sfml2.system;
@@ -45,6 +46,67 @@ final class ClientContact
 	private SonarDispContactDataElement m_sonarDispEl;
 	private TacticalContactElement m_tactDispEl;
 	private HydrophoneTrackerElement[] m_trackerEls;
+	private WaterfallRaySampleElement[int] m_rayWaterfallEls;
+
+	// ordered trees of ray contact datas that is used to build the chain of
+	// samples, ordered by sensorIdx
+	alias ClientContactDataTree = RedBlackTree!(const(ClientContactData)*,
+		"a.time < b.time || (a.time == b.time && a.id < b.id)", false);
+	private ClientContactDataTree[int] m_rayWaterfallDataTrees;
+
+	private WaterfallRaySampleElement getNextRayData(const(ClientContactData)* rayData)
+	{
+		ClientContactDataTree* treePtr =
+			rayData.source.sensorIdx in m_rayWaterfallDataTrees;
+		if (treePtr is null)
+			return null;
+		ClientContactDataTree tree = *treePtr;
+		auto largerRange = tree.upperBound(rayData);
+		if (largerRange.empty)
+			return null;
+		const(ClientContactData)* next = largerRange.front();
+		assert(next.id != rayData.id);
+		return m_rayWaterfallEls[next.id];
+	}
+
+	private WaterfallRaySampleElement getPrevRayData(const(ClientContactData)* rayData)
+	{
+		ClientContactDataTree* treePtr =
+			rayData.source.sensorIdx in m_rayWaterfallDataTrees;
+		if (treePtr is null)
+			return null;
+		ClientContactDataTree tree = *treePtr;
+		auto lessRange = tree.lowerBound(rayData);
+		if (lessRange.empty)
+			return null;
+		const(ClientContactData)* prev = lessRange.back();
+		assert(prev.id != rayData.id);
+		return m_rayWaterfallEls[prev.id];
+	}
+
+	private void insertRayDataInTree(WaterfallRaySampleElement el)
+	{
+		int sensorIdx = el.data.source.sensorIdx;
+		ClientContactDataTree* treePtr = sensorIdx in m_rayWaterfallDataTrees;
+		ClientContactDataTree tree;
+		if (treePtr is null)
+		{
+			tree = new ClientContactDataTree();
+			m_rayWaterfallDataTrees[sensorIdx] = tree;
+		}
+		else
+			tree = *treePtr;
+		tree.stableInsert(el.data);
+	}
+
+	private void removeRayDataFromTree(WaterfallRaySampleElement el)
+	{
+		int sensorIdx = el.data.source.sensorIdx;
+		ClientContactDataTree* treePtr = sensorIdx in m_rayWaterfallDataTrees;
+		ClientContactDataTree tree = *treePtr;
+		assert(treePtr !is null);
+		tree.removeKey(el.data);
+	}
 
 	mixin Readonly!(ClientContactData*, "lastRay");
 
@@ -71,6 +133,10 @@ final class ClientContact
 			if (hte !is null)
 				hte.drop();
 		}
+		foreach (wfEl; m_rayWaterfallEls.byValue)
+			wfEl.drop();
+		m_rayWaterfallEls.clear();
+		m_rayWaterfallDataTrees.clear();
 		m_dataHash.clear();
 	}
 
@@ -83,6 +149,28 @@ final class ClientContact
 				m_lastRay = cdata;
 			else if (m_lastRay.time <= cdata.time)
 				m_lastRay = cdata;
+			if (cdata.source.type == DataSourceType.Hydrophone)
+			{
+				int sensorId = cdata.source.sensorIdx;
+				WaterfallRaySampleElement newEl =
+					new WaterfallRaySampleElement(
+						Game.simState.gui.waterfalls[sensorId].overlay, cdata);
+				// tree-list update
+				WaterfallRaySampleElement prev = getPrevRayData(cdata);
+				if (prev)
+				{
+					// most common case: in-order append
+					newEl.next = prev.next;
+					prev.next = newEl;
+				}
+				else
+				{
+					WaterfallRaySampleElement next = getNextRayData(cdata);
+					newEl.next = next;
+				}
+				insertRayDataInTree(newEl);
+				m_rayWaterfallEls[cdata.id] = newEl;
+			}
 		}
 		switch (cdata.source.type)
 		{
@@ -133,6 +221,8 @@ final class ClientContact
 	{
 		if (m_sonarDispEl && m_sonarDispEl.data is cdata)
 			m_sonarDispEl.updateFromData();
+		if (cdata.id in m_rayWaterfallEls)
+			assert(0, "update of ray data not implemented");
 	}
 
 	void updateTracker(HydrophoneTracker ht)
@@ -167,6 +257,16 @@ final class ClientContact
 			m_sonarDispEl = null;
 		}
 		m_tactDispEl.removeData(dataId);
+		if (dataId in m_rayWaterfallEls)
+		{
+			WaterfallRaySampleElement el = m_rayWaterfallEls[dataId];
+			el.drop();
+			m_rayWaterfallEls.remove(dataId);
+			removeRayDataFromTree(el);
+			WaterfallRaySampleElement prevEl = getPrevRayData(el.data);
+			if (prevEl)
+				prevEl.next = el.next;
+		}
 	}
 }
 

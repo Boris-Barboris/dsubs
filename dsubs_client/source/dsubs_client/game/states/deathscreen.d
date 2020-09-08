@@ -26,6 +26,7 @@ private
 	enum int YOU_DIED_FONTSIZE = 60;
 	enum sfColor YOU_DIED_FONTCOLOR = sfColor(255, 50, 50, 255);
 	enum int CAUSE_FONTSIZE = 25;
+	enum int LONG_REPORT_FONTSIZE = 22;
 	enum int BUTTON_FONTSIZE = 40;
 }
 
@@ -43,7 +44,6 @@ final class DeathScreenState: GameState
 		m_deathRes = deathRes;
 	}
 
-	/// Used to handle in abrupt
 	this()
 	{
 		m_simTerminated = true;
@@ -84,6 +84,8 @@ final class DeathScreenState: GameState
 			shortReport = m_deathRes.shortReport;
 		Label causeLabel = builder(new Label()).content(shortReport).
 			htextAlign(HTextAlign.CENTER).fontSize(CAUSE_FONTSIZE).build();
+		TextBox longReportLabel = builder(new TextBox()).content(m_deathRes.longReport)
+			.fontSize(LONG_REPORT_FONTSIZE).fixedSize(vec2i(800, 100)).build();
 		Button goToMainMenu;
 		bool isCicClient = Game.bconm.stopped;
 		if (isCicClient)
@@ -99,9 +101,10 @@ final class DeathScreenState: GameState
 			goToMainMenu.onClick += () { Game.activeState = new LoadoutState(); };
 		}
 
-		Div textDiv = builder(vDiv([youDiedLabel, causeLabel, goToMainMenu])).borderWidth(20).
-			fixedSize(vec2i(50, 250)).build();
-		Div screenLayout = vDiv([
+		Div textDiv = builder(vDiv([filler(0.25f), youDiedLabel, causeLabel,
+			longReportLabel, goToMainMenu, filler(0.25f)])).borderWidth(20).
+			fixedSize(vec2i(800, 350)).build();
+		Div screenLayout = hDiv([
 			filler(),
 			textDiv,
 			filler()

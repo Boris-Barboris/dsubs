@@ -31,9 +31,11 @@ struct ColorScheme
 	sfColor textFieldCursor = sfRed;
 	sfColor simPanelBgnd = sfColor(10, 0, 0, 100);
 	sfColor simButtonBgnd = sfColor(20, 14, 14, 200);
+	sfColor simOverlayDivBgnd = sfColor(10, 10, 0, 100);
 	sfColor simButtonDisabledBgnd = sfColor(255, 15, 15, 20);
 	sfColor simButtonDisabledFont = sfColor(0, 0, 0, 40);
 	sfColor simButtonSelectedStateBgnd = sfColor(86, 41, 41, 200);
+	sfColor pingWaveCircle = sfColor(150, 150, 150, 50);
 	sfColor simLaunchButtonBgnd = sfColor(200, 50, 50, 255);
 	sfColor cancelButtonBgnd = sfColor(132, 119, 217, 255);
 	sfColor simMessageFont = sfColor(189, 135, 135, 255);

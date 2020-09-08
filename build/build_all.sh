@@ -8,7 +8,7 @@ echo "building Windows"
 echo "starting VM"
 sudo virsh start win7
 sleep 60
-ssh win7 "cd dsubs\\dsubs_client && git fetch --force && git fetch --tags --force && git checkout ${COMMIT} && dub upgrade && dub build --arch=x86 -c prod -b plain"
+ssh win7 "cd dsubs\\dsubs_client && git fetch --force && git fetch --tags --force && git checkout ${COMMIT} && git submodule update --init && dub upgrade && dub build --arch=x86 -c prod -b plain"
 scp win7:dsubs/dsubs_client/dsubs_client.exe ./dsubs_client.exe
 mkdir dsubs
 mv dsubs_client.exe dsubs/
@@ -29,11 +29,12 @@ sudo lxc start dsubstrusty
 sleep 10
 ssh dsubstrusty "
   set -e
-  . dlang/dmd-2.090.0/activate
+  . dlang/dmd-2.093.1/activate
   cd dsubs/dsubs_client
   git fetch --force
   git fetch --tags --force
   git checkout ${COMMIT}
+  git submodule update --init
   dub upgrade
   dub build -b plain -c prod
   cd ~
@@ -52,11 +53,12 @@ sudo virsh start ubuntu16.04
 sleep 60
 ssh dsubsxenial "
   set -e
-  . dlang/dmd-2.090.0/activate
+  . dlang/dmd-2.093.1/activate
   cd dsubs/dsubs_client
   git fetch --force
   git fetch --tags --force
   git checkout ${COMMIT}
+  git submodule update --init
   dub upgrade
   dub build -b plain -c prod
   cd ~
@@ -74,11 +76,12 @@ sudo virsh start ubuntu18.04
 sleep 60
 ssh dsubsbionic "
   set -e
-  . dlang/dmd-2.090.0/activate
+  . dlang/dmd-2.093.1/activate
   cd dsubs/dsubs_client
   git fetch --force
   git fetch --tags --force
   git checkout ${COMMIT}
+  git submodule update --init
   dub upgrade
   dub build -b plain -c prod
   cd ~

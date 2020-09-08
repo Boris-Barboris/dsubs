@@ -25,7 +25,7 @@ struct ServerStatusRes
 	__gshared const int g_marshIdx;
 	/// Total number of authorized players currently online.
 	int playersOnline;
-	int apiVersion = 13;
+	int apiVersion = 14;
 }
 
 /** This message requests authorization from the server.
@@ -153,8 +153,12 @@ struct ReconnectStateRes
 	float[] desiredWireLenghts;
 	TubeFullState[] tubeStates;
 	AmmoRoomFullState[] ammoRoomStates;
+	/// Current list of all scenario map elements that must be rendered
 	MapElement[] mapElements;
-	ChatMessage briefing;
+	/// List of all scenario goals
+	ScenarioGoal[] goals;
+	/// Tail of the chat log. Length is server-defined.
+	ChatMessage[] lastChatLogs;
 	/// True when the player can abandon the simulator.
 	bool canAbandon;
 }
@@ -225,7 +229,7 @@ struct EmitPingReq
 	float ilevel;	/// intensity level
 }
 
-/// Server sends when client's submarine is no longer alive or vicroty/loss
+/// Server sends when client's submarine is no longer alive or victory/loss
 /// condition is reached. May be followed by SimulatorTerminatingRes if generated
 /// by non-persistent scenario.
 /// To return to main menu, client should send AvailableScenariosReq.
@@ -295,6 +299,7 @@ struct AmmoRoomStateUpdateRes
 }
 
 /// Map overlay state is always updated as a whole.
+@Compressed
 struct MapOverlayUpdateRes
 {
 	__gshared const int g_marshIdx;
@@ -315,6 +320,14 @@ struct WireDesiredLengthReq
 	__gshared const int g_marshIdx;
 	int wireIdx;
 	float desiredLength = 0.0f;
+}
+
+/// Goal set state is always updated as a whole.
+@Compressed
+struct ScenarioGoalUpdateRes
+{
+	__gshared const int g_marshIdx;
+	ScenarioGoal[] goals;
 }
 
 

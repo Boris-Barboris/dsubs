@@ -26,8 +26,8 @@ final class Window
 	{
 		m_mode = sfVideoMode_getDesktopMode();
 		info("DesktopMode: ", m_mode);
-		m_mode.width = 640; // to!uint(m_mode.width / 1.4);
-		m_mode.height = 480; // to!uint(m_mode.height / 1.4);
+		m_mode.width = 800; // to!uint(m_mode.width / 1.4);
+		m_mode.height = 600; // to!uint(m_mode.height / 1.4);
 		m_ctxSettings.depthBits = 24;
 		m_ctxSettings.stencilBits = 8;
 		m_ctxSettings.antialiasingLevel = 4;
@@ -166,6 +166,6 @@ private:
 	{
 		m_mode.width = evt.size.width;
 		m_mode.height = evt.size.height;
-		trace("Resize event caught, w=", width, " h=", height);
+		// trace("Resize event caught, w=", width, " h=", height);
 	}
 }

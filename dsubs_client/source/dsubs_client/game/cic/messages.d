@@ -147,6 +147,7 @@ struct CICAmmoRoomStateUpdateRes
 	AmmoRoomStateUpdateRes res;
 }
 
+@Compressed
 struct CICMapOverlayUpdateRes
 {
 	__gshared const int g_marshIdx;
@@ -158,6 +159,13 @@ struct CICChatMessageRes
 {
 	__gshared const int g_marshIdx;
 	ChatMessageRes res;
+}
+
+@Compressed
+struct CICScenarioGoalUpdateRes
+{
+	__gshared const int g_marshIdx;
+	ScenarioGoalUpdateRes res;
 }
 
 /*

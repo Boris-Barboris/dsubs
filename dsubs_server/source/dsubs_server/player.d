@@ -146,6 +146,13 @@ final class Player: Captain
 		timeShift = uniform(-MAX_TIME_SHIFT, MAX_TIME_SHIFT);
 	}
 
+	private void resetShiftToZero()
+	{
+		coordShift = vec2d(0.0, 0.0);
+		coordRot = 0.0;
+		timeShift = 0;
+	}
+
 	/// handle connection being closed.
 	private void onConnectionClose(PlayerConnection oldCon)
 	{
@@ -253,7 +260,7 @@ final class Player: Captain
 		return uname == m_username && pw == m_password;
 	}
 
-	// sim's lock must be held
+	// sim's lock must be held.
 	immutable(ReconnectStateRes) getReconnectState()
 	{
 		Submarine s = m_submarine;
@@ -261,7 +268,7 @@ final class Player: Captain
 		enforce(!s.dead, "user has a submarine, but it is dead");
 		ReconnectStateRes recState = ReconnectStateRes(
 			s.id.toString(), s.prototypeName, s.propulsor.prototypeName,
-			genSubSnapshot(), genSubWireSnapshots(),
+			genSubSnapshot(s), genSubWireSnapshots(s),
 			s.targetCourse + coordRot, s.targetThrottle,
 			s.hydrophones.map!(
 				h => float(h.listenDir + coordRot)).array,
@@ -272,8 +279,11 @@ final class Player: Captain
 		if (s.simulator.scenario)
 		{
 			Scenario scenario = s.simulator.scenario;
+			ChatMessage briefingMsg;
 			scenario.generateBriefing(
-				this, recState.mapElements, recState.briefing);
+				this, recState.mapElements, recState.goals, briefingMsg);
+			scenario.resetVersions(this);
+			recState.lastChatLogs = [briefingMsg];
 			trace(scenario.spawner.scenarioType);
 			recState.canAbandon =
 				scenario.spawner.scenarioType != ScenarioType.persistentSimulator;
@@ -287,8 +297,11 @@ final class Player: Captain
 		{
 			Submarine s = m_submarine;
 			enforce(s is null, "Already spawned");
-			generateShift();
 			Scenario scen = Globals.scenarioDb.generateScenarioForSpawnReq(this, req);
+			if (scen.randomizeReferenceFrame)
+				generateShift();
+			else
+				resetShiftToZero();
 			// spawn submarine
 			synchronized(scen.simulator.simMut.reader)
 			{
@@ -461,10 +474,9 @@ final class Player: Captain
 		}
 	}
 
-	private KinematicSnapshot genSubSnapshot()
+	private KinematicSnapshot genSubSnapshot(Submarine s)
 	{
-		assert(m_submarine);
-		Submarine s = m_submarine;
+		assert(s);
 		vec2d shiftedPos = posToClientSpace(s.transform.wposition);
 		double shiftedRot = rotToClientSpace(s.transform.wrotation);
 		vec2d vel = dirToClientSpace(s.rigidBody.kinet.vel);
@@ -477,10 +489,9 @@ final class Player: Captain
 				angVel);
 	}
 
-	private WireSnapshot[] genSubWireSnapshots()
+	private WireSnapshot[] genSubWireSnapshots(Submarine s)
 	{
-		assert(m_submarine);
-		Submarine s = m_submarine;
+		assert(s);
 		WireSnapshot[] res;
 		usecs_t worldTime = s.simulator.worldTime;
 		for (size_t i = 0; i < s.rigidBody.wires.length; i++)
@@ -557,6 +568,17 @@ final class Player: Captain
 
 		if (con && con.isOpen && con.simulatorFlow && (con.simFlowSub is s))
 		{
+			// send scenario data: goals, map overlay or simFlowEndRes.
+			Scenario scenario = s.simulator.scenario;
+			if (scenario)
+			{
+				if (scenario.sendChangesOrFinish(this, con))
+				{
+					con.simulatorFlow = false;
+					return;
+				}
+			}
+			// send death message
 			if (s.dead)
 			{
 				con.simulatorFlow = false;
@@ -564,8 +586,10 @@ final class Player: Captain
 					SimFlowEndReason.death, s.causeOfDeath, ""));
 				return;
 			}
-			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(),
-				genSubWireSnapshots()));
+			// kinematic snapshot
+			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(s),
+				genSubWireSnapshots(s)));
+			// send hydrophone audio
 			immutable(HydrophoneData)[] hdata;
 			immutable(HydrophoneAudio)[] haudio;
 			foreach (i, h; s.hydrophones)
@@ -686,27 +710,6 @@ final class PlayerCollection
 				m_players[username] = np;
 				return np;
 			}
-		}
-	}
-
-	/// Run dlg on each player in parallel.
-	void forEachPlayer(scope void delegate(Player) dlg)
-	{
-		foreach (Player p; Globals.taskPool.parallel(m_players.values, 1))
-			dlg(p);
-	}
-
-	/// Run dlg on each player with active connection and alive submarine, in
-	/// parallel.
-	void forEachAliveConnectedPlayer(scope void delegate(
-		Player p, Submarine s, PlayerConnection pcon) dlg)
-	{
-		foreach (Player p; Globals.taskPool.parallel(m_players.values, 1))
-		{
-			Submarine sub = p.submarine;
-			PlayerConnection pcon = p.connection;
-			if (sub !is null && !sub.dead && pcon !is null)
-				dlg(p, sub, pcon);
 		}
 	}
 }

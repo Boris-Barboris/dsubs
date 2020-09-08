@@ -100,6 +100,16 @@ final class CircleShape: Shape
 		sfCircleShape_setOrigin(m_shape, sfVector2f(rhs, rhs));
 	}
 
+	@property float rotation() const
+	{
+		return sfCircleShape_getRotation(m_shape);
+	}
+
+	@property void rotation(float rhs)
+	{
+		sfCircleShape_setRotation(m_shape, rhs);
+	}
+
 	@property vec2f center() const
 	{
 		return cast(vec2f) sfCircleShape_getPosition(m_shape);

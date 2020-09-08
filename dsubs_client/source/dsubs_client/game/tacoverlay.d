@@ -50,6 +50,9 @@ final class ContactOverlayShapeCahe
 		m_posDataMainShape = new RectangleShape(vec2f(5, 5), sfRed);
 		m_posDataOnHoverRect = new RectangleShape(vec2f(11.0f, 11.0f), sfWhite);
 		m_posDataOnHoverRect.position = -vec2f(1, 1);
+		m_wfRayDataMainShape = new RectangleShape(vec2f(2, 2), sfRed);
+		m_wfRayDataOnHoverRect = new RectangleShape(vec2f(11.0f, 11.0f), sfWhite);
+		m_wfRayDataOnHoverRect.position = -vec2f(1, 1);
 		m_velCircle = new CircleShape(TacticalContactElement.ZERO_SPD_PIXEL_MARGIN,
 			30, sfColor(255, 255, 255, 150), 6);
 		m_tubeCircle = new CircleShape(10, 30, COLORS.tubeCircle, 3);
@@ -62,6 +65,8 @@ final class ContactOverlayShapeCahe
 			sfColor(21, 216, 230, 200), 2);
 		m_rayTracker = new LineShape(vec2d(0, 0), vec2d(0, 0),
 			sfColor(117, 79, 255, 100), 1.0);
+		m_rayChainLine = new LineShape(vec2d(0, 0), vec2d(0, 0),
+			sfColor(255, 0, 0, 150), 1.0);
 	}
 
 	private
@@ -72,12 +77,15 @@ final class ContactOverlayShapeCahe
 	mixin Readonly!(RectangleShape, "onHoverRect");
 	mixin Readonly!(RectangleShape, "posDataMainShape");
 	mixin Readonly!(RectangleShape, "posDataOnHoverRect");
+	mixin Readonly!(RectangleShape, "wfRayDataMainShape");
+	mixin Readonly!(RectangleShape, "wfRayDataOnHoverRect");
 	mixin Readonly!(CircleShape, "velCircle");
 	mixin Readonly!(CircleShape, "tubeCircle");
 	mixin Readonly!(LineShape, "velDragLine");
 	mixin Readonly!(LineShape, "pastTrailLine");
 	mixin Readonly!(LineShape, "dataTrailDelta");
 	mixin Readonly!(LineShape, "rayTracker");
+	mixin Readonly!(LineShape, "rayChainLine");
 	mixin Readonly!(LineShape, "shortestToSolution");
 
 	// https://stackoverflow.com/a/8509802/3084875
@@ -178,6 +186,7 @@ class ContactDataOverlayElement: OverlayElementWithHover
 	/// When the contact data updates from CIC message, this method is called;
 	abstract void updateFromData();
 }
+
 
 /// Active sonar data sample on sonar display.
 final class SonarDispContactDataElement: ContactDataOverlayElement
@@ -471,6 +480,42 @@ final class TacticalOverlay: Overlay
 		TacticalContactElement m_mergeSourceElement;
 
 		MapGrid m_mapGrid;
+
+		// pings
+		PingWaveCircleShape[int] m_sonarPings;
+	}
+
+	void registerPing(int sensorIdx)
+	{
+		PingWaveCircleShape oldPing = m_sonarPings.get(sensorIdx, null);
+		if (oldPing)
+		{
+			remove(oldPing);
+			m_sonarPings.remove(sensorIdx);
+		}
+		KinematicSnapshot lastSnap;
+		bool gotSnap = Game.simState.playerSub.getLastSnapshot(lastSnap);
+		assert(gotSnap);
+		PingWaveCircleShape newPing = new PingWaveCircleShape(
+			this, sensorIdx,
+			Game.simState.playerSub.tmpl.sonar.maxDuration,
+			lastSnap);
+		m_sonarPings[sensorIdx] = newPing;
+	}
+
+	void removeOldPings()
+	{
+		PingWaveCircleShape[] pingsToRemove;
+		foreach (kv_pair; m_sonarPings.byKeyValue)
+		{
+			if (kv_pair.value.finished)
+				pingsToRemove ~= kv_pair.value;
+		}
+		foreach (PingWaveCircleShape shape; pingsToRemove)
+		{
+			m_sonarPings.remove(shape.sonarIdx);
+			remove(shape);
+		}
 	}
 
 	@property bool inMerge() const { return m_inMerge; }
@@ -651,8 +696,17 @@ final class TacticalOverlay: Overlay
 		m_scenarioElements.length = 0;
 		foreach (const MapElement el; mapElements)
 		{
-			ScenarioCircleShape circle = new ScenarioCircleShape(this, el);
-			m_scenarioElements ~= circle;
+			switch (el.type)
+			{
+				case MapElementType.circle:
+					m_scenarioElements ~= new ScenarioCircleShape(this, el);
+					break;
+				case MapElementType.text:
+					m_scenarioElements ~= new ScenarioTextShape(this, el);
+					break;
+				default:
+					assert(0, "not supported element type");
+			}
 		}
 	}
 
@@ -903,6 +957,54 @@ final class MapGrid
 }
 
 
+final class PingWaveCircleShape: OverlayElement
+{
+	private
+	{
+		CircleShape m_shape;
+		int m_sonarIdx;
+		KinematicSnapshot m_pingStartSnap;
+		int m_maxDurationSecs;
+	}
+
+	this(TacticalOverlay to, int sonarIdx, int maxDurationSecs,
+		KinematicSnapshot pingSnap)
+	{
+		super(to);
+		m_sonarIdx = sonarIdx;
+		m_pingStartSnap = pingSnap;
+		m_maxDurationSecs = maxDurationSecs;
+		mouseTransparent = true;
+		m_shape = new CircleShape(0.0f, 90, COLORS.pingWaveCircle, 2);
+	}
+
+	@property int sonarIdx() const { return m_sonarIdx; }
+
+	@property bool finished() const
+	{
+		return m_maxDurationSecs <=
+			(Game.simState.lastServerTime - m_pingStartSnap.atTime) / 1000_000L;
+	}
+
+	override void onPreDraw()
+	{
+		vec2d screenPos = owner.world2screenPos(m_pingStartSnap.position);
+		m_shape.center = cast(vec2f) screenPos;
+		usecs_t estTime = Game.simState.extrapolatedServerTime - m_pingStartSnap.atTime;
+		double radius = SonarDisplay.SOUND_SPD / 2.0 * estTime / 1000_000.0;
+		m_shape.radius = cast(float) owner.world2screenLength(radius);
+		size = (2 * vec2f(m_shape.radius, m_shape.radius)).to!vec2i;
+		position = center2lu(screenPos);
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		m_shape.render(wnd);
+	}
+}
+
+
 final class ScenarioCircleShape: OverlayElement
 {
 	private
@@ -916,7 +1018,7 @@ final class ScenarioCircleShape: OverlayElement
 		assert(circleEl.type == MapElementType.circle);
 		super(to);
 		mouseTransparent = true;
-		m_circle = circleEl.circle;
+		m_circle = circleEl.value.circle;
 		m_shape = new CircleShape(10.0f, 90, cast(sfColor) circleEl.color,
 			m_circle.borderWidth);
 	}
@@ -934,6 +1036,41 @@ final class ScenarioCircleShape: OverlayElement
 	{
 		super.draw(wnd, usecsDelta);
 		m_shape.render(wnd);
+	}
+}
+
+
+final class ScenarioTextShape: OverlayElement
+{
+	private
+	{
+		TextBox m_box;
+		MapText m_text;
+	}
+
+	this(TacticalOverlay to, const MapElement textEl)
+	{
+		assert(textEl.type == MapElementType.text);
+		super(to);
+		mouseTransparent = true;
+		m_text = textEl.value.text;
+		m_box = builder(new TextBox()).content(textEl.textContent).
+			fontSize(m_text.fontSize).fontColor(cast(sfColor) textEl.color).
+			size(vec2i(5000, 5000)).enableScissorTest(false).build;
+	}
+
+	override void onPreDraw()
+	{
+		vec2d screenPos = owner.world2screenPos(m_text.center);
+		m_box.position = screenPos.to!vec2i;
+		size = vec2i(5, 5);
+		position = center2lu(screenPos);
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		m_box.draw(wnd, usecsDelta);
 	}
 }
 
@@ -984,7 +1121,7 @@ final class PlayerSubIcon: OverlayElement
 		if (m_sub.getInterpolatedSnapshot(snap))
 		{
 			double velRot = m_to.world2screenRot(courseAngle(snap.velocity));
-			double velLen = snap.velocity.length;
+			double velLen = 5.0 + snap.velocity.length;
 			// LineShape is horizontal when transform rotation is zero, so we need
 			// to add PI_2 in order to match it with dsubs rotation frame
 			m_velLine.transform.rotation = velRot + PI_2;
@@ -1621,7 +1758,7 @@ final class TacticalContactElement: OverlayElementWithHover
 
 class DataTacticalElement: ContactDataOverlayElement
 {
-	this(TacticalOverlay owner, ClientContactData* data)
+	this(Overlay owner, ClientContactData* data)
 	{
 		super(owner, data);
 		onMouseUp += &processMouseUp;
@@ -1654,6 +1791,77 @@ class DataTacticalElement: ContactDataOverlayElement
 	}
 }
 
+
+/// Waterfall ray sample element.
+final class WaterfallRaySampleElement: DataTacticalElement
+{
+	this(Waterfall.WaterfallOverlay owner, ClientContactData* data)
+	{
+		assert(data.type == DataType.Ray);
+		super(owner, data);
+		m_mainShape = ctcOverlayCache.wfRayDataMainShape;
+		m_onHoverRect = ctcOverlayCache.wfRayDataOnHoverRect;
+		m_chainLine = ctcOverlayCache.rayChainLine;
+		size = cast(vec2i) (m_onHoverRect.size);
+	}
+
+	private @property Waterfall.WaterfallOverlay owner()
+	{
+		return cast(Waterfall.WaterfallOverlay) super.owner;
+	}
+
+	private
+	{
+		RectangleShape m_mainShape;
+		RectangleShape m_onHoverRect;
+		// line to connect to m_next sample on waterfall screen
+		LineShape m_chainLine;
+		// closest sample in time
+		WaterfallRaySampleElement m_next;
+	}
+
+	@property WaterfallRaySampleElement next()
+	{
+		return m_next;
+	}
+
+	@property void next(WaterfallRaySampleElement el)
+	{
+		m_next = el;
+	}
+
+	override void updateFromData() {}
+
+	override void onPreDraw()
+	{
+		double bearing = data.data.ray.bearing;
+		long timeDelta = (Game.simState.lastServerTime - data.time) / 1000_000L;
+		vec2d screenPos = owner.world2screenPos(vec2d(bearing, timeDelta));
+		position = center2lu(screenPos);
+		m_mainShape.center = cast(vec2f) screenPos;
+		if (m_hovered)
+			m_onHoverRect.center = cast(vec2f) screenPos;
+		if (m_next && !m_next.hidden)
+		{
+			bearing = m_next.data.data.ray.bearing;
+			timeDelta = (Game.simState.lastServerTime - m_next.data.time) / 1000_000L;
+			vec2d screenPosNext = owner.world2screenPos(vec2d(bearing, timeDelta));
+			m_chainLine.setPoints(screenPos, screenPosNext, true);
+		}
+	}
+
+	override void draw(Window wnd, long usecsDelta)
+	{
+		super.draw(wnd, usecsDelta);
+		if (m_hovered)
+			m_onHoverRect.render(wnd);
+		if (m_next && !m_next.hidden)
+			m_chainLine.render(wnd);
+		m_mainShape.render(wnd);
+	}
+}
+
+
 /// Tactical overlay element, bound to positional data.
 final class PositionDataTacticalElement: DataTacticalElement
 {
@@ -1677,7 +1885,8 @@ final class PositionDataTacticalElement: DataTacticalElement
 	override protected Button[] dataContextMenuOptions()
 	{
 		Button[] res = super.dataContextMenuOptions();
-		Button btn = builder(new Button()).fontSize(15).content("move solution here").build();
+		Button btn = builder(new Button()).fontSize(15).content(
+			"pivot here").build();
 		btn.onClick += {
 			TacticalOverlay to = cast(TacticalOverlay) owner;
 			TacticalContactElement ce = to.selectedContact;
@@ -2034,7 +2243,6 @@ final class HoveredContactDescription
 		TacticalContactElement m_followedContact;
 		int m_counter = UPDATE_FREQ - 1;
 
-		enum sfColor DIV_BCKGROUND = sfColor(10, 10, 0, 100);
 		enum int UPDATE_FREQ = 20;
 		enum int DIV_WIDTH = 150;
 	}
@@ -2062,7 +2270,7 @@ final class HoveredContactDescription
 		}
 		m_mainDiv = new Div(DivType.VERT, cast(GuiElement[]) m_labels);
 		m_mainDiv.backgroundVisible = true;
-		m_mainDiv.backgroundColor = DIV_BCKGROUND;
+		m_mainDiv.backgroundColor = COLORS.simOverlayDivBgnd;
 		m_mainDiv.mouseTransparent = true;
 		m_mainDiv.size = vec2i(DIV_WIDTH, (m_labels.length * 20).to!int);
 	}

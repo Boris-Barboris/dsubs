@@ -13,7 +13,24 @@ public import gfm.math.vector;
 
 public import dsubs_common.api.constants: usecs_t;
 public import dsubs_common.utils;
-public import dsubs_common.math: clamp;
+public import dsubs_common.math: clamp, Transform2D;
 
 public import dsubs_server.rng;
 public import dsubs_server.globals;
+
+
+alias ObjVerT = uint;
+
+
+class VersionedObject
+{
+	private ObjVerT m_objVersion;
+
+	final @property ObjVerT objVersion() const { return m_objVersion; }
+
+	final protected void bumpObjVersion()
+	{
+		assert(m_objVersion != ObjVerT.max);
+		m_objVersion++;
+	}
+}

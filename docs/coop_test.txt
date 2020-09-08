@@ -1,4 +1,4 @@
-1). coop tcp connect timeout in menu.
+1). coop tcp connect timeout or cancellation in menu.
 2). ctrl+C to clipboard for in-game text fields.
 3). 212.45.15.173:17855
 4). crashes

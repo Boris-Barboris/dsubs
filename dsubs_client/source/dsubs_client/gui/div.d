@@ -26,7 +26,7 @@ enum DivType
 }
 
 /// Linear layout manager, rectangular one-dimentional array of elements
-final class Div: GuiElement
+class Div: GuiElement
 {
 	public
 	{
@@ -121,15 +121,21 @@ final class Div: GuiElement
 		newChild.parent = this;
 		newChild.parentViewport = &viewport();
 		m_children[idx] = newChild;
+		if (layoutType == LayoutType.CONTENT)
+			fitContent(fixedAxis, size[odim]);
 		updateChildren();
 		return old;
 	}
 
 	override void childChanged(GuiElement child)
 	{
-		// kids are expected to notify us on their property changes
+		// kids are expected to notify us on their size/layout property changes
 		if (!m_updatingKids)
+		{
+			if (layoutType == LayoutType.CONTENT)
+				fitContent(fixedAxis, size[odim]);
 			updateChildren();
+		}
 	}
 
 	private vec2i dimVec(int dimVal, int odimVal) const
@@ -158,6 +164,59 @@ final class Div: GuiElement
 	{
 		assert(dimVal >= 0);
 		return dimVec(dimVal, max(0, size[odim] - 2 * externalBorder));
+	}
+
+	/// Set to true in order to ignore FIXED layout-type elements
+	/// in doFitContent while determining required size.
+	bool contentLayoutIgnoreFixed = false;
+
+	override int doFitContent(Axis fixedDim, Axis contentDim)
+	{
+		int requiredSize = 0;
+		m_updatingKids = true;
+		scope(exit) m_updatingKids = false;
+
+		void function(ref int accumulSize, const int nextElSize)
+			accumulate;
+
+		if (fixedDim == odim)
+		{
+			// example: vdiv that can grow vertically and fixedDim is x.
+			requiredSize += m_borderWidth * (m_children.length.to!int - 1) +
+				2 * externalBorder;
+			// we calculate the summ of elements
+			accumulate = (ref int accumulSize, const int nextElSize)
+			{
+				accumulSize += nextElSize;
+			};
+		}
+		else
+		{
+			// example: vdiv that can grow vertically and fixedDim is y.
+			requiredSize += 2 * externalBorder;
+			accumulate = (ref int accumulSize, const int nextElSize)
+			{
+				accumulSize = max(accumulSize, nextElSize);
+			};
+		}
+
+		foreach (child; m_children)
+		{
+			switch (child.layoutType)
+			{
+				case LayoutType.FIXED:
+					if (!contentLayoutIgnoreFixed)
+						accumulate(requiredSize, child.size[contentDim]);
+					break;
+				case LayoutType.CONTENT:
+					accumulate(requiredSize, child.fitContent(
+						fixedDim, size[fixedDim] - 2 * externalBorder));
+					break;
+				default:
+					break;
+			}
+		}
+		return requiredSize;
 	}
 
 	// recalculate children layout
@@ -277,6 +336,8 @@ final class Div: GuiElement
 		super.onHide();
 	}
 
+	protected void onBeforeChildrenDraw(Window wnd, long usecsDelta) {}
+
 	override void draw(Window wnd, long usecsDelta)
 	{
 		super.draw(wnd, usecsDelta);
@@ -285,6 +346,7 @@ final class Div: GuiElement
 				sfRenderWindow_drawRectangleShape(wnd.wnd, rect, &m_sfRst);
 		foreach (rect; m_cellBorders)
 			sfRenderWindow_drawRectangleShape(wnd.wnd, rect, &m_sfRst);
+		onBeforeChildrenDraw(wnd, usecsDelta);
 		foreach (child; m_children)
 			child.draw(wnd, usecsDelta);
 	}

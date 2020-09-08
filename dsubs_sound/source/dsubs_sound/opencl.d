@@ -237,7 +237,7 @@ struct Buffer
 		cl_mem m_mem;
 	}
 
-	package @property const(cl_mem)* mem() const { return &m_mem; }
+	package @property const(cl_mem)* mem() const return { return &m_mem; }
 
 	/// buffer data size in bytes
 	@property size_t size() const { return m_size; }

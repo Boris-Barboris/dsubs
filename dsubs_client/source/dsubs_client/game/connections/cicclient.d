@@ -44,6 +44,10 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 		mixinHandlers(this);
 	}
 
+	private string m_url;
+
+	@property string url() const { return m_url; }
+
 	/// synchronous (in caller thread) connect to CIC server
 	static CICClientConnection connect(string url, string password)
 	{
@@ -53,6 +57,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 		info("Attempting to connect to CIC server ", addr);
 		clientSock.connect(addr);
 		auto con = new CICClientConnection(clientSock);
+		con.m_url = url;
 		con.start();
 		con.sendMessage(immutable CICLoginReq(password));
 		return con;
@@ -74,6 +79,7 @@ final class CICClientConnection: ProtocolConnection!CICProtocol
 				scope(failure) clientSock.close();
 				clientSock.connect(addr);
 				auto con = new CICClientConnection(clientSock);
+				con.m_url = url;
 				con.start();
 				con.sendMessage(immutable CICLoginReq(password));
 				onSuccess(con);
@@ -154,6 +160,7 @@ private:
 			Game.simState.playerSub.updateKinematics(res.snap);
 			Game.simState.playerSub.updateWireKinematics(res.wireSnaps);
 			Game.simState.gui.handleSubKinematicRes(res);
+			Game.simState.tacticalOverlay.removeOldPings();
 		}
 	}
 
@@ -228,6 +235,8 @@ private:
 		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.gui.sonardisp.putSliceData(res.data[0]);
+			if (res.data[0].sliceId == 0)
+				Game.simState.tacticalOverlay.registerPing(res.data[0].sonarIdx);
 		}
 	}
 
@@ -373,6 +382,14 @@ private:
 		synchronized(Game.mainMutexWriter)
 		{
 			Game.simState.tacticalOverlay.updateScenarioElements(msg.res.mapElements);
+		}
+	}
+
+	void h_scenarioGoalUpdateRes(CICScenarioGoalUpdateRes msg)
+	{
+		synchronized(Game.mainMutexWriter)
+		{
+			Game.simState.gui.handleCICScenarioGoalUpdateRes(msg);
 		}
 	}
 

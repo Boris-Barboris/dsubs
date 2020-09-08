@@ -16,7 +16,7 @@ import dsubs_server.acoustics;
 import dsubs_server.vessel;
 
 
-final class Animal: Killable
+final class Animal: Killable, IHasTransform, IHasRidigBody
 {
 	private
 	{

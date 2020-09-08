@@ -181,67 +181,84 @@ private:
 	}
 
 	/// Return false if not in simulator message flow.
-	void enforceAuth(Player p)
+	private void enforceAuth(Player p)
 	{
 		enforce!AuthException(p, "unauthorized");
 	}
 
-	void h_throttleReq(ThrottleReq req)
+	private Player simFlowValidation()
 	{
 		Player p = m_player;
 		enforceAuth(p);
-		p.handleThrottleRequest(req);
+		// This is a weak non-atomic guard because we don't really
+		// mind if the request goes through to the Player class.
+		// There it is properly guarded by m_submarine-based conditions under
+		// sim lock.
+		if (!m_simulatorFlow)
+			return null;
+		return p;
+	}
+
+	void h_throttleReq(ThrottleReq req)
+	{
+		Player p = simFlowValidation();
+		if (p)
+			p.handleThrottleRequest(req);
 	}
 
 	void h_courseReq(CourseReq req)
 	{
-		Player p = m_player;
-		enforceAuth(p);
-		p.handleCourseRequest(req);
+		Player p = simFlowValidation();
+		if (p)
+			p.handleCourseRequest(req);
 	}
 
 	void h_listenDirReq(ListenDirReq req)
 	{
-		Player p = m_player;
-		enforceAuth(p);
-		p.handleListenDirRequest(req);
+		Player p = simFlowValidation();
+		if (p)
+			p.handleListenDirRequest(req);
 	}
 
 	void h_emitPingReq(EmitPingReq req)
 	{
-		Player p = m_player;
-		enforceAuth(p);
-		info(p.name, " requests ping");
-		p.handleEmitPingRequest(req);
+		Player p = simFlowValidation();
+		if (p)
+		{
+			info(p.name, " requests ping");
+			p.handleEmitPingRequest(req);
+		}
 	}
 
 	void h_loadTubeReq(LoadTubeReq req)
 	{
-		Player p = m_player;
-		enforceAuth(p);
-		p.handleLoadTubeReq(req);
+		Player p = simFlowValidation();
+		if (p)
+			p.handleLoadTubeReq(req);
 	}
 
 	void h_setTubeStateReq(SetTubeStateReq req)
 	{
-		Player p = m_player;
-		enforceAuth(p);
-		p.handleSetTubeStateReq(req);
+		Player p = simFlowValidation();
+		if (p)
+			p.handleSetTubeStateReq(req);
 	}
 
 	void h_launchTubeReq(LaunchTubeReq req)
 	{
-		Player p = m_player;
-		enforceAuth(p);
-		info(p.name, " requests tube launch: ", req);
-		p.handleLaunchTubeReq(req);
+		Player p = simFlowValidation();
+		if (p)
+		{
+			info(p.name, " requests tube launch: ", req);
+			p.handleLaunchTubeReq(req);
+		}
 	}
 
 	void h_wireDesiredLengthReq(WireDesiredLengthReq req)
 	{
-		Player p = m_player;
-		enforceAuth(p);
-		p.handleWireDesiredLengthReq(req);
+		Player p = simFlowValidation();
+		if (p)
+			p.handleWireDesiredLengthReq(req);
 	}
 
 	void h_replayGetDataReq(ReplayGetDataReq req)

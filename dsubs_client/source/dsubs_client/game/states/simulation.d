@@ -2,9 +2,10 @@ module dsubs_client.game.states.simulation;
 
 import std.algorithm;
 import std.array;
-import std.range: enumerate;
+import std.range: enumerate, retro;
 import std.datetime: unixTimeToStdTime, DateTime, SysTime;
 import std.format;
+import std.process: spawnProcess, Config;
 
 import core.time;
 
@@ -118,7 +119,8 @@ final class SimulatorState: GameState
 		foreach (i, desiredLength; rawRecState.desiredWireLenghts)
 			m_gui.wireUis[i].updateDesiredLength(desiredLength);
 		m_gui.handleSubKinematicRes(cast(CICSubKinematicRes) rawRecState.subSnap);
-		m_gui.handleChatMessage(rawRecState.briefing);
+		if (rawRecState.lastChatLogs)
+			m_gui.handleChatMessage(rawRecState.lastChatLogs[$-1]);
 
 		// ammo room and tube initialization
 		foreach (AmmoRoomFullState roomState; rawRecState.ammoRoomStates)
@@ -163,9 +165,11 @@ final class SimulatorState: GameState
 private
 {
 	enum int TAB_SIZE = 28;
-	enum int BIG_BTN_FONT = 25;
+	enum int BIG_BTN_FONT = 24;
 	enum int BTN_FONT = 20;
 	enum int MSG_FONT = 16;
+	enum int OBJECTIVES_FONT_SIZE = 16;
+	enum int GOAL_TEXT_SIZE = 13;
 }
 
 
@@ -184,6 +188,8 @@ final class SimulationGUI
 		WaterfallGui[] m_passiveGuis;
 		SonarGui m_sonarGui;
 		Div m_topLevelDiv;
+		Div m_objectivesVdiv;
+		Div m_divWithLeftPad;
 		TubeUI[int] tubeUis;
 		WireUi[] m_wireUis;
 		Button m_abandonBtn;
@@ -265,6 +271,74 @@ final class SimulationGUI
 		m_wireUis[req.wireIdx].updateDesiredLength(req.desiredLength);
 	}
 
+	/// mapping from id of the goal to it's index in m_goalListDiv
+	private Collapsable[string] m_goalIdToCollapsable;
+
+	private Collapsable buildCollapsableForGoal(ScenarioGoal goal)
+	{
+		TextBox longDescBox = builder(new TextBox()).
+				content(goal.longDescription).fontSize(GOAL_TEXT_SIZE).build;
+		Collapsable res = builder(new Collapsable(longDescBox, goal.shortText)).
+			layoutType(LayoutType.CONTENT).build();
+		// we expand task list on main window by default.
+		if (Game.cic)
+			res.toggleCollapsed();
+		return res;
+	}
+
+	private Div buildGoalListDiv(ScenarioGoal[] goals)
+	{
+		GuiElement[] goalCollapsables;
+		goalCollapsables ~= filler();
+		foreach (ScenarioGoal goal; retro(goals))
+		{
+			if (goal.status != ScenarioGoalStatus.unreached)
+				continue;
+			goalCollapsables ~= buildCollapsableForGoal(goal);
+			m_goalIdToCollapsable[goal.id] = cast(Collapsable) goalCollapsables[$-1];
+		}
+		Div goalListDiv = builder(vDiv(cast(GuiElement[]) goalCollapsables)).
+			layoutType(LayoutType.CONTENT)
+			.borderWidth(3).build();
+		m_divWithLeftPad = builder(hDiv([filler(6), goalListDiv])).
+			layoutType(LayoutType.CONTENT).contentLayoutIgnoreFixed(true).build();
+		Collapsable res = builder(new Collapsable(m_divWithLeftPad, "Objectives:")).
+			backgroundColor(COLORS.simOverlayDivBgnd).
+			headerFontSize(OBJECTIVES_FONT_SIZE).
+			layoutType(LayoutType.CONTENT).build;
+		// we expand task list on main window by default.
+		if (Game.cic)
+			res.toggleCollapsed();
+		return res;
+	}
+
+	void handleCICScenarioGoalUpdateRes(CICScenarioGoalUpdateRes msg)
+	{
+		// rebuild list of collapsables while updating existing ones
+		Collapsable[] goalCollapsables;
+		Collapsable[string] newDict;
+		foreach (ScenarioGoal goal; retro(msg.res.goals))
+		{
+			if (goal.status != ScenarioGoalStatus.unreached)
+				continue;
+			if (goal.id in m_goalIdToCollapsable)
+			{
+				Collapsable c = m_goalIdToCollapsable[goal.id];
+				c.title = goal.shortText;
+				(cast(TextBox) c.child).content = goal.longDescription;
+				goalCollapsables ~= c;
+			}
+			else
+				goalCollapsables ~= buildCollapsableForGoal(goal);
+			newDict[goal.id] = goalCollapsables[$-1];
+		}
+		m_goalIdToCollapsable = newDict;
+		Div goalListDiv = builder(vDiv(cast(GuiElement[]) goalCollapsables)).
+			layoutType(LayoutType.CONTENT)
+			.borderWidth(3).build();
+		m_divWithLeftPad.setChild(goalListDiv, 1);
+	}
+
 	this(bool canAbandon)
 	{
 		Submarine playerSub = Game.simState.playerSub;
@@ -307,7 +381,18 @@ final class SimulationGUI
 		}
 		Button asonarTab = builder(new Button()).content("F" ~ tabId.to!string ~
 			" Active sonar").fontSize(BIG_BTN_FONT).build;
-		tabs ~= [tacticalTab] ~ hydrophoneTabs ~ [asonarTab];
+
+		Button splitWindowTab = builder(new Button()).fontName("STIX2Math").content("⧉").
+			fontSize(BIG_BTN_FONT).fixedSize(vec2i(BIG_BTN_FONT + 4, BIG_BTN_FONT)).build;
+
+		splitWindowTab.onClick += {
+			string cicAddr = Game.ciccon.url;
+			spawnProcess(
+				["./dsubs_client", "--coop", cicAddr],
+				null, Config.detached | Config.suppressConsole);
+		};
+
+		tabs ~= [tacticalTab] ~ hydrophoneTabs ~ [asonarTab, splitWindowTab];
 
 		int[] tabIdxToHotkeyKey;
 		tabIdxToHotkeyKey.length = 8;
@@ -488,11 +573,23 @@ final class SimulationGUI
 			m_wireUis.map!(wire => wire.rootDiv).array)).
 			borderWidth(4).fixedSize(vec2i(200, 230)).build;
 
-		GuiElement tabFiller = builder(vDiv([
-			filler(),
+		auto goals = Game.simState.m_recState.rawState.goals;
+		GuiElement goalsHdivEl;
+		if (goals)
+		{
+			m_objectivesVdiv = builder(vDiv([buildGoalListDiv(goals), filler()])).
+				fixedSize(vec2i(240, 50)).build;
+			goalsHdivEl = builder(hDiv([m_objectivesVdiv, filler()])).build;
+		}
+		else
+			goalsHdivEl = filler();
+
+		GuiElement middleMainDiv = builder(vDiv([
+			filler(20),
+			goalsHdivEl,
 			builder(hDiv(cast(GuiElement[]) tubeUiDivs ~ wireVertDiv)).
-			fixedSize(vec2i(100, 260)).
-			borderWidth(8).build
+				fixedSize(vec2i(100, 260)).
+				borderWidth(8).build
 		])).build;
 
 		bool[Div] passiveSonarDivs;
@@ -505,14 +602,14 @@ final class SimulationGUI
 
 		m_topLevelDiv = builder(vDiv([
 			tabDiv,
-			tabFiller,
+			middleMainDiv,
 			bottomDiv
 		])).build;
 
 		void setMiddlePane(GuiElement el)
 		{
 			m_topLevelDiv.setChild(el, 1);
-			if (el is tabFiller)
+			if (el is middleMainDiv)
 				Game.simState.tacticalOverlay.hidden = false;
 			else
 				Game.simState.tacticalOverlay.hidden = true;
@@ -522,7 +619,7 @@ final class SimulationGUI
 		tacticalTab.onClick += ()
 		{
 			Game.simState.activeSonarSound = null;
-			setMiddlePane(tabFiller);
+			setMiddlePane(middleMainDiv);
 		};
 		foreach (i, btn; hydrophoneTabs)
 		{

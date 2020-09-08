@@ -497,7 +497,11 @@ final class Waterfall: PanoramicDisplay!ushort
 		TrackerOverlay m_trackerOverlay;
 		/// Circular buffer to contain history of ray origins
 		CircQueue!(vec2d, true) m_originQueue;
+
+		WaterfallOverlay m_overlay;
 	}
+
+	@property WaterfallOverlay overlay() { return m_overlay; }
 
 	@property int hydrophoneIdx() const { return m_hydrophoneIdx; }
 
@@ -514,7 +518,8 @@ final class Waterfall: PanoramicDisplay!ushort
 		m_originQueue = CircQueue!(vec2d, true)(params.height.to!size_t);
 		blackLevel = 0.1f;
 		m_pyperworldy = 1.0f;		// 1 pixel = 1 second
-		super(params, new WaterfallOverlay());
+		m_overlay = new WaterfallOverlay();
+		super(params, m_overlay);
 		m_vertPos = -m_height - 1;
 		m_trackerOverlay = new TrackerOverlay();
 		m_trackerOverlay.onMouseScroll += &m_overlay.processMouseScroll;
@@ -604,7 +609,7 @@ final class Waterfall: PanoramicDisplay!ushort
 
 	private float delayToPixel(float delay)
 	{
-		float camCoord = m_camera.transform2screen(vec2d(0, m_height - delay - 0.5f)).y;
+		float camCoord = m_camera.transform2screen(vec2d(0, delay + 0.5f)).y;
 		return camCoord * contentHeight / m_camViewportHeight;
 	}
 
@@ -663,7 +668,7 @@ final class Waterfall: PanoramicDisplay!ushort
 					ContactData(
 						-1,
 						ContactId(),
-						Game.simState.lastServerTime - delayIdx,
+						Game.simState.lastServerTime - delayIdx * 1000_000L,
 						DataSource(DataSourceType.Hydrophone, this.outer.m_hydrophoneIdx),
 						DataType.Ray,
 						cdu));
