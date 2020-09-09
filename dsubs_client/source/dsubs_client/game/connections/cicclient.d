@@ -206,6 +206,7 @@ private:
 				}
 				Game.simState.gui.waterfalls[hdata.hydrophoneIdx].completeRow(&hdata.position);
 			}
+			Game.simState.contactManager.rayDataHousekeeping();
 			// data-less row finalizer for hydrophones that are off
 			foreach (waterfall; Game.simState.gui.waterfalls)
 				if (waterfall.hydrophoneIdx !in arrivedDataIdx)

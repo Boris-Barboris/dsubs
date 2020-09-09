@@ -501,6 +501,8 @@ final class Waterfall: PanoramicDisplay!ushort
 		WaterfallOverlay m_overlay;
 	}
 
+	enum int HEIGHT = 60 * 5;
+
 	@property WaterfallOverlay overlay() { return m_overlay; }
 
 	@property int hydrophoneIdx() const { return m_hydrophoneIdx; }
@@ -513,7 +515,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		m_hydrophoneIdx = hydrophoneIdx;
 		PanoramicParams params;
 		params.headerHeight = params.compassHeight + m_dirHeaderHeight;
-		params.height = 60 * 5;		// 5 minutes
+		params.height = HEIGHT;		// 5 minutes
 		params.camViewPortHeight = params.height;
 		m_originQueue = CircQueue!(vec2d, true)(params.height.to!size_t);
 		blackLevel = 0.1f;

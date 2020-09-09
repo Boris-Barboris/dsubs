@@ -108,6 +108,24 @@ final class ClientContact
 		tree.removeKey(el.data);
 	}
 
+	void trimRayTrees(usecs_t before)
+	{
+		ContactData timeBarrier;
+		timeBarrier.time = before;
+		ClientContactData timeBarrier2 = ClientContactData(timeBarrier);
+		foreach (tree; m_rayWaterfallDataTrees.byValue)
+		{
+			auto olderDataRange = tree.lowerBound(&timeBarrier2);
+			auto savedRange = olderDataRange.save();
+			foreach (rayToRemove; olderDataRange)
+			{
+				m_rayWaterfallEls[rayToRemove.id].drop();
+				m_rayWaterfallEls.remove(rayToRemove.id);
+			}
+			tree.remove(savedRange);
+		}
+	}
+
 	mixin Readonly!(ClientContactData*, "lastRay");
 
 	/// collection of all data of this contact
@@ -395,6 +413,20 @@ final class ClientContactManager
 		}
 		cs.drop();
 		m_contactHash.remove(srcId);
+	}
+
+	private int m_rayCronCounter = 0;
+
+	void rayDataHousekeeping()
+	{
+		m_rayCronCounter = (m_rayCronCounter + 1) % 20;
+		if (m_rayCronCounter == 0)
+		{
+			usecs_t before = Game.simState.lastServerTime -
+				(Waterfall.HEIGHT + 20) * 1000_000L;
+			foreach (contact; m_contactHash.byValue)
+				contact.trimRayTrees(before);
+		}
 	}
 }
 
