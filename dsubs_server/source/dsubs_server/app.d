@@ -51,6 +51,7 @@ void main(string[] argv)
 		Globals.simulators.start();
 		Globals.cons.startListeners();
 		auto livenessThread = new Thread(&livenessWatchdog).start();
+		auto playerPurgerThread = new Thread(&playerPeriodicPurger).start();
 		Globals.simulators.join();		// blocks forever
 	}
 	catch (Throwable e)
@@ -74,5 +75,14 @@ void livenessWatchdog()
 		if (mainArenaSim.worldTime == lastWorldTime)
 			abort();
 		lastWorldTime = mainArenaSim.worldTime;
+	}
+}
+
+void playerPeriodicPurger()
+{
+	while(true)
+	{
+		Thread.sleep(minutes(6));
+		Globals.players.purgeDanglingPlayers();
 	}
 }

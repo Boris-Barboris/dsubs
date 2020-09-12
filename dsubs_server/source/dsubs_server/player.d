@@ -535,12 +535,9 @@ final class Player: Captain
 	// called while holding simulator's write lock
 	void handleSimTerminating(Submarine terminatedSub)
 	{
-		// Dangling submarine reference protection
-		if (terminatedSub !is m_submarine)
-			return;
 		PlayerConnection con = m_connection;
-		m_submarine = null;
-		if (con)
+		bool didUnset = unsetSubmarine(terminatedSub);
+		if (con && didUnset)
 		{
 			con.simulatorFlow = false;
 			if (con.isOpen)
@@ -660,6 +657,8 @@ final class PlayerCollection
 		if (username.length == 0)
 			throw new AuthException("Empty login");
 		scope(success) info("Player ", username, " authorized");
+		// db operations are placed outside of the lock to reduce
+		// LOC. Performance is irrelevant.
 		if (Globals.database)
 		{
 			PlayerDb* pdb = Globals.database.getPlayerByLogin(username);
@@ -709,6 +708,30 @@ final class PlayerCollection
 				Player np = new Player(con, username, password);
 				m_players[username] = np;
 				return np;
+			}
+		}
+	}
+
+	/// Remove dead subless connection-less player objects from the hash-table.
+	void purgeDanglingPlayers()
+	{
+		string[] playersToRemove;
+		synchronized(this)
+		{
+			foreach (Player p; m_players.byValue)
+			{
+				if (p.connection is null && p.submarine is null)
+					playersToRemove ~= p.name;
+			}
+			foreach (uname; playersToRemove)
+			{
+				// lock the player object and check purge condition again
+				Player p = m_players[uname];
+				synchronized(p)
+				{
+					if (p.connection is null && p.submarine is null)
+						m_players.remove(uname);
+				}
 			}
 		}
 	}
