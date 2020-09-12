@@ -44,7 +44,7 @@ CREATE TABLE simulator_destroy_reasons (
 );
 
 INSERT INTO simulator_destroy_reasons VALUES
-    ('timeout'), ('victory'), ('death'), ('abandon');
+    ('timeout'), ('scenario-initiated'), ('abandon');
 
 CREATE TABLE simulator_instances (
     id TEXT PRIMARY KEY,

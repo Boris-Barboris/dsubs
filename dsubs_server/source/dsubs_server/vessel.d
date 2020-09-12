@@ -204,6 +204,12 @@ final class VesselCollection
 	@property inout(Vessel)[] entities() inout { return m_entities; }
 	@property inout(Submarine)[] submarines() inout { return m_submarines; }
 
+	/// range of not-dead submarines that have a human player
+	@property auto alivePlayerSubmarines()
+	{
+		return m_submarines.filter!(sub => !sub.dead && sub.player !is null);
+	}
+
 	void registerEntity(Vessel e)
 	{
 		synchronized(this)

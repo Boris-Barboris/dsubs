@@ -824,8 +824,8 @@ final class Waterfall: PanoramicDisplay!ushort
 		{
 			float m_bearing;
 			LineShape m_line;
-			enum sfColor PEAK_COLOR = sfColor(100, 100, 100, 255);
-			enum float PEAK_HEIGHT = 8;
+			enum sfColor PEAK_COLOR = sfColor(255, 255, 255, 100);
+			enum float PEAK_HEIGHT = 14;
 		}
 
 		this(TrackerOverlay to, float bearing)

@@ -29,11 +29,13 @@ class Persistable
 		MonoTime m_lastSave;
 	}
 
+	@property void saveInterval(Duration rhs) { m_saveInterval = rhs; }
+
 	abstract immutable(ubyte)[] buildOnDiskMessage();
 
 	protected abstract string getFileName();
 
-	void saveToDiskIfNeeded()
+	void saveToDiskIfPossible()
 	{
 		// disk overload protection
 		if (MonoTime.currTime - m_lastSave <= m_saveInterval)

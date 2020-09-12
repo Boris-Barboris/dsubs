@@ -477,7 +477,7 @@ Good luck!`;
 			else
 			{
 				m_nextRadius = DEFAULT_RADIUS + PER_PLAYER_EXPANSION *
-					max(0, Player.getPlayersOnline() - 1);
+					max(0, m_simulator.vessels.alivePlayerSubmarines.walkLength - 1);
 				m_nextCenter = m_currentCenter + rotateVector(
 					vec2d(0, m_nextRadius),
 					uniform(0, 2 * PI));

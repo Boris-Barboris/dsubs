@@ -178,8 +178,11 @@ final class CICServer
 				ContactData[] newCdata = al.generateRayData(res.atTime);
 				foreach (cd; newCdata)
 					processContactData(cd);
-				al.saveToDiskIfNeeded();
+				al.saveToDiskIfPossible();
 			}
+			// hydrophone slices generate tracker data, so we simply periodically
+			// dump all contact data.
+			m_state.saveToDiskIfPossible();
 		}
 	}
 
@@ -277,7 +280,7 @@ final class CICServer
 			res.newContact = *ctc;
 			res.initialData = *data;
 			m_listener.broadcast(cast(immutable) res);
-			m_state.saveToDiskIfNeeded();
+			m_state.saveToDiskIfPossible();
 		}
 	}
 
@@ -294,7 +297,7 @@ final class CICServer
 			TrackerId tid = TrackerId(req.hydrophoneIdx, ctc.id);
 			res.tracker = m_wfAnalizers[req.hydrophoneIdx].createTracker(tid, req.bearing);
 			m_listener.broadcast(cast(immutable) res);
-			m_state.saveToDiskIfNeeded();
+			m_state.saveToDiskIfPossible();
 		}
 	}
 
@@ -308,7 +311,7 @@ final class CICServer
 			if (m_state.updateContact(req))
 			{
 				m_listener.broadcast(cast(immutable) req);
-				m_state.saveToDiskIfNeeded();
+				m_state.saveToDiskIfPossible();
 			}
 		}
 	}
@@ -325,7 +328,7 @@ final class CICServer
 			{
 				m_listener.broadcast(immutable CICContactUpdateSolutionReq(
 					updatedContact.id, updatedContact.solution));
-				m_state.saveToDiskIfNeeded();
+				m_state.saveToDiskIfPossible();
 			}
 		}
 		// we do not throw here because contact could be deleted right after the
@@ -353,7 +356,7 @@ final class CICServer
 				foreach (WaterfallAnalyzer wa; m_wfAnalizers)
 					wa.dropTracker(req.ctcId);
 				m_listener.broadcast(cast(immutable) req);
-				m_state.saveToDiskIfNeeded();
+				m_state.saveToDiskIfPossible();
 			}
 		}
 	}
@@ -385,7 +388,7 @@ final class CICServer
 				Contact destCtc = m_state.getContact(req.destCtcId);
 				m_listener.broadcast(immutable CICContactUpdateReq(
 					destCtc.id, destCtc.type, destCtc.solution, destCtc.description));
-				m_state.saveToDiskIfNeeded();
+				m_state.saveToDiskIfPossible();
 			}
 		}
 	}
@@ -430,7 +433,7 @@ final class CICServer
 			if (m_state.trimData(req.ctcId, req.olderThan))
 			{
 				m_listener.broadcast(req);
-				m_state.saveToDiskIfNeeded();
+				m_state.saveToDiskIfPossible();
 			}
 		}
 	}
