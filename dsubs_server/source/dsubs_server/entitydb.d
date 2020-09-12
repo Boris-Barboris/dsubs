@@ -164,7 +164,7 @@ private:
 		bp.shaftRotFreq = 2.19f;
 		bp.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/std_propeller.png", 1.0f, 80, 140),
+				"../dsubs_sound/std_propeller.png", 1.0f, 65, 135),
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/std_propeller_cav.png", 1.0f, 60, 140),
 			cast(immutable) new TrochoidModulatorParams([
@@ -173,8 +173,11 @@ private:
 				Harmonic(3.0f, 0.01f),
 				Harmonic(7.0f, 0.8f)],
 				0.5, 0.7, -0.4),
-			4.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
+			4.2f, dgr2rad(30), 15.0f, 0.03f, 0.4f
 		);
+
+		info(bp.name, " cavitates on throttle ",
+			PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
 		bp.playable = true;
 		m_propulsors[bp.name] = bp;
 
@@ -196,7 +199,7 @@ private:
 		bp.rotAcceleration = 0.36f;
 		bp.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/lima_propeller.png", 1.0f, 80, 140),
+				"../dsubs_sound/lima_propeller.png", 1.0f, 75, 135),
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/lima_propeller_cav.png", 1.0f, 60, 140),
 			cast(immutable) new TrochoidModulatorParams([
@@ -205,8 +208,11 @@ private:
 				Harmonic(3.0f, 0.005f),
 				Harmonic(5.0f, 0.76f)],
 				0.5, 0.7, -0.4),
-			2.2f, dgr2rad(30), 5.0f, 0.03f, 0.4f
+			2.2f, dgr2rad(30), 13.0f, 0.03f, 0.4f
 		);
+
+		info(bp.name, " cavitates on throttle ",
+			PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
 		bp.playable = true;
 		m_propulsors[bp.name] = bp;
 
@@ -228,8 +234,11 @@ private:
 				Harmonic(2.0f, 0.04f),
 				Harmonic(3.0f, 0.8f)],
 				0.5, 0.7, -0.4),
-			3.4f, dgr2rad(30), 6.0f, 0.03f, 0.4f
+			3.4f, dgr2rad(30), 15.0f, 0.03f, 0.4f
 		);
+
+		info(bp.name, " cavitates on throttle ",
+			PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
 		bp.playable = false;
 		m_propulsors[bp.name] = bp;
 	}

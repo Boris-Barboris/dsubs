@@ -3,6 +3,7 @@ module dsubs_sound.soundsource;
 import std.algorithm;
 
 import dsubs_common.event;
+import dsubs_common.math;
 
 import dsubs_sound.common;
 import dsubs_sound.filter;
@@ -156,14 +157,16 @@ final class PropellerSound: SoundSource
 		assert(!isNaN(shaftFreqStart));
 		assert(!isNaN(waterSpeedStart));
 		m_shaftFreqStart = shaftFreqStart;
-		m_normalVelStart = caclNormalVel(shaftFreqStart, waterSpeedStart);
+		m_normalVelStart = caclNormalVel(shaftFreqStart, waterSpeedStart,
+			m_bladeRadius, m_bladeAoA);
 	}
 
-	private float caclNormalVel(float freq, float waterSpeed) const
+	private static float caclNormalVel(float freq, float waterSpeed,
+		float bladeRadius, float bladeAoA)
 	{
-		vec2f bladeVel = vec2f(0.0f, -freq * 2 * PI * m_bladeRadius);
+		vec2f bladeVel = vec2f(0.0f, -freq * 2 * PI * bladeRadius);
 		vec2f waterVel = bladeVel + vec2f(waterSpeed, 0.0f);
-		vec2f bladeNormal = vec2f(-cos(m_bladeAoA), -sin(m_bladeAoA));
+		vec2f bladeNormal = vec2f(-cos(bladeAoA), -sin(bladeAoA));
 		return fabs(dot(bladeNormal, waterVel));
 	}
 
@@ -174,7 +177,8 @@ final class PropellerSound: SoundSource
 		assert(!isNaN(endShaftFreq));
 		assert(!isNaN(waterSpeedEnd));
 		m_shaftFreqEnd = endShaftFreq;
-		m_normalVelEnd = caclNormalVel(endShaftFreq, waterSpeedEnd);
+		m_normalVelEnd = caclNormalVel(endShaftFreq, waterSpeedEnd,
+			m_bladeRadius, m_bladeAoA);
 		m_tm.updateFundFreq(m_shaftFreqStart, m_shaftFreqEnd);
 		m_tm.updateStartPhase(dt);
 		m_transform.ensureNotDirty();
@@ -227,6 +231,20 @@ final class PropellerSound: SoundSource
 		assert(kavg > 0.0f);
 		modulateIInterp(q, tds, kstart / kavg, kend / kavg);
 		m_tm.modulate(q, tds);
+	}
+
+	static float estCavitationShaftFreq(
+		const PropellerSoundPrototype proto,
+		float waterSpeed = 0.0f)
+	{
+		float criticalSpdFunc(float shaftFreq)
+		{
+			float normalVel = caclNormalVel(shaftFreq, waterSpeed,
+				proto.bladeRadius, proto.bladeAoA);
+			return proto.critNormalVel - normalVel;
+		}
+
+		return binarySearch(&criticalSpdFunc, 0.0, 1.0f, 10);
 	}
 
 	override void buildSignals(CommandQueue q,

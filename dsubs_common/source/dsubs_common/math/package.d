@@ -105,3 +105,45 @@ auto chspline(FT, TT)(FT p0, FT p1, FT m0, FT m1, TT t, TT dt)
 		(-2 * t_3 + 3 * t_2) * p1 +
 		(t_3 - t_2) * dt * m1;
 }
+
+
+@system:
+
+/// Searches the root of f with binary division
+float binarySearch(float delegate(float x) f, float startX = 0.0f,
+	float startStep = 1.0f, int maxIter = 10)
+{
+	float res = startX;
+	float leftFuncValue = f(startX);
+	if (leftFuncValue == 0.0f)
+		return res;
+	float rightFuncValue;
+	float step = startStep;
+	int iter;
+	while (++iter <= maxIter)
+	{
+		rightFuncValue = f(res + step);
+		if (rightFuncValue == 0.0f)
+		{
+			res += step;
+			break;
+		}
+		if (leftFuncValue * rightFuncValue < 0.0f)
+		{
+			// opposite sides of the root
+			step /= 2.0f;
+			continue;
+		}
+		if (fabs(leftFuncValue) > fabs(rightFuncValue))
+		{
+			// we're moving in the right direction
+			res += step;
+		}
+		else
+		{
+			// we're moving in the wrong direction
+			step = -step;
+		}
+	}
+	return res;
+}
