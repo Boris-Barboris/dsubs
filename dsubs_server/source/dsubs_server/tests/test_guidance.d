@@ -135,7 +135,7 @@ unittest
 
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	s.transform.position = vec2d(-2000, 3000);
 	s.transform.rotation = -dgr2rad(90);
 	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
@@ -196,7 +196,7 @@ unittest
 
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	s.transform.position = vec2d(0, 2500);
 	s.transform.rotation = dgr2rad(180);
 	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
@@ -260,7 +260,7 @@ unittest
 
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = 0.4 * maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = 0.4 * speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	s.transform.position = vec2d(-1300, 3000);
 	s.transform.rotation = -dgr2rad(90);
 	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
@@ -325,7 +325,7 @@ unittest
 
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = 0.9 * maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = 0.9 * speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	s.transform.position = vec2d(-1500, 3000);
 	s.transform.rotation = -dgr2rad(90);
 	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
@@ -390,7 +390,7 @@ unittest
 
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	s.transform.position = vec2d(300, 4000);
 	s.transform.rotation = dgr2rad(180);
 	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;
@@ -450,7 +450,7 @@ unittest
 
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = 0.4 * maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = 0.4 * speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	s.transform.position = vec2d(0.0, 0.0);
 	s.transform.rotation = 0.0;
 	s.rigidBody.kinet.vel = vec2d(0, 0);
@@ -551,7 +551,7 @@ unittest
 
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	s.transform.position = vec2d(-2800, 3000);
 	s.transform.rotation = -dgr2rad(90);
 	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * mspd;

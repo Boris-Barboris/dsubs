@@ -25,7 +25,7 @@ unittest
 		Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
 		s.transform.rotation = dgr2rad(-45);
 		s.rigidBody.kinet.vel = throttle * courseVector(s.transform.rotation) *
-			maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+			speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 		s.targetThrottle = throttle;
 		s.targetCourse = dgr2rad(-90);
 		s.register();
@@ -45,7 +45,7 @@ unittest
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Globals.buildForTests();
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	trace("max stork speed: ", mspd);
 	s.rigidBody.kinet.vel = courseVector(0) * mspd;
 	s.targetThrottle = 1.0f;
@@ -81,7 +81,7 @@ unittest
 	SpawnReq req = SpawnReq("Lima", "Five-blade Lima screw");
 	Globals.buildForTests();
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	double mspd = speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	trace("max Lima speed: ", mspd);
 	s.rigidBody.kinet.vel = courseVector(0) * mspd;
 	s.targetThrottle = 1.0f;

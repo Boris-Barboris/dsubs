@@ -8,7 +8,7 @@ import dsubs_sound.soundsource;
 import dsubs_server.common;
 import dsubs_server.dynamics;
 import dsubs_server.simulator;
-import dsubs_server.vessel: Vessel;
+import dsubs_server.vessel: Vessel, VesselRigidBodyTemplate;
 
 
 /// module that is responsible for forward\backwards thrust
@@ -245,9 +245,10 @@ final class BasicRudder: Rudder
 
 
 /// Given a hydrodynamics force model and basic propulsor, calculate flank speed
-double maxSpeed(const HydroForceModel hfm, const BasicPropulsor bp)
+double speedForThrottle(T)(const T hfm, const BasicPropulsor bp, float throttle = 1.0f)
+	if (is(T == VesselRigidBodyTemplate) || is(T == HydroForceModel))
 {
-	double maxT = bp.posThrustK;
+	double maxT = bp.posThrustK * throttle;
 	// maxT = Cd0 * v + Cd1 * v * v
 	// Cd1 * v * v + Cd0 * v - maxT = 0
 	double D = pow(hfm.Cd0, 2) + 4 * hfm.Cd1 * maxT;
@@ -256,9 +257,9 @@ double maxSpeed(const HydroForceModel hfm, const BasicPropulsor bp)
 	return vmax;
 }
 
-double maxSpeed(float Cd0, float Cd1, float posThrustK)
+double speedForThrottle(float Cd0, float Cd1, float posThrustK, float throttle = 1.0f)
 {
-	double maxT = posThrustK;
+	double maxT = posThrustK * throttle;
 	double D = pow(Cd0, 2) + 4 * Cd1 * maxT;
 	double vmax = (-Cd0 + sqrt(D)) / (2 * Cd1);
 	assert(!isNaN(vmax));

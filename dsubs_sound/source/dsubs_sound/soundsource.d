@@ -247,6 +247,23 @@ final class PropellerSound: SoundSource
 		return binarySearch(&criticalSpdFunc, 0.0, 1.0f, 10);
 	}
 
+	// same but more dynamic, accounts for submarine speed
+	static float estCavitationSustainedSpeed(
+		const PropellerSoundPrototype proto,
+		float delegate(float freq) freq2waterSpeed)
+	{
+		float criticalSpdFunc(float shaftFreq)
+		{
+			float normalVel = caclNormalVel(
+				shaftFreq, freq2waterSpeed(shaftFreq),
+				proto.bladeRadius, proto.bladeAoA);
+			return proto.critNormalVel - normalVel;
+		}
+
+		float cavFreq = binarySearch(&criticalSpdFunc, 0.0, 1.0f, 10);
+		return freq2waterSpeed(cavFreq);
+	}
+
 	override void buildSignals(CommandQueue q,
 		vec2d listenerPos, vec2d prevListenerPos,
 		scope void delegate(Intensity* bandIntensitySumReady,

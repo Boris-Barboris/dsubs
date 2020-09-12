@@ -18,7 +18,7 @@ import dsubs_server.tests.common;
 double getSpawnReqMaxSpeed(SpawnReq req)
 {
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	return maxSpeed(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	return speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 }
 
 /*
