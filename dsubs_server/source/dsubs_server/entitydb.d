@@ -587,7 +587,7 @@ Active sonars:
 		sp.rigidBody.hullLength = dims.y;
 		sp.hprots = hydroProtos;
 		sp.asprot = new SubSonarPrototype(MountPoint(vec2f(0.0f, 31.0f)), asp);
-		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-25.0f, -23.0f, -15.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-28.0f, -23.0f, -15.0f]);
 		sp.playable = true;
 		m_submarines[sp.name] = sp;
 
@@ -813,7 +813,7 @@ Active sonars:
 		sp.rigidBody.hullLength = dims.y;
 		sp.hprots = hydroProtos;
 		sp.asprot = new SubSonarPrototype(MountPoint(vec2f(0.0f, 23.2f)), asp);
-		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-21.0f, -19.0f, -11.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-24.0f, -19.0f, -11.0f]);
 		sp.playable = true;
 		m_submarines[sp.name] = sp;
 
