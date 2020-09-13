@@ -400,9 +400,10 @@ dB getILatRange2(float wrdk, dB il, float range, float dissMod)
 
 dB flowNoise(int freq, float kts)
 {
-	dB res = 90.0f;
+	dB res = 68.0f;
 	// 18 db per knot doubling
-	res += log2(fabs(kts) / 10.0f) * 18.0f;
+	//res += log2(fabs(kts) / 10.0f) * 18.0f;
+	res += fabs(kts) * 1.8f;
 	// 9db per octave fall
 	res -= 9.0f * log2(max(freq, 100) / 1000.0f);
 	return res;
