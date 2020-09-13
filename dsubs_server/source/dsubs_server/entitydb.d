@@ -323,10 +323,11 @@ Search patterns: straight, snake, spiral.
 		tf.hprot = new HydrophonePrototype([0.0f], 250, 3000, dgr2rad(120),
 				30, 4 / 90.0f, 3.0f);
 		tf.hydrophoneNoiseMargin = ushort.max / 12;
-		tf.hprot.imageBlackLevel = 35.0f;
+		tf.hprot.imageBlackLevel = 45.0f;
+		tf.hprot.imageWhiteLevel = 80.0f;
 		tf.hprot.omniNoiseMult = 0.0025f;
 		tf.hprot.localNoiseRangeCutoff = 100.0f;
-		tf.hprot.flowNoiseMult = 1e-8f;
+		tf.hprot.flowNoiseMult = 1e-9f;
 		tf.defaultSensorMode = WeaponSensorMode.active;
 		tf.fuelEffExponent = 2.5f;
 		tf.snakeArm = 300.0f;

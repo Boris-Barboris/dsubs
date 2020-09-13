@@ -22,6 +22,7 @@ double getSpawnReqMaxSpeed(SpawnReq req)
 	return speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 }
 
+/*
 
 unittest
 {
@@ -104,3 +105,4 @@ unittest
 		17.0f);
 }
 
+*/
