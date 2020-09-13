@@ -45,6 +45,7 @@ final class SimulatorScheduler
 		Condition m_cond;
 		bool m_stopFlag;
 		bool m_joined;
+		bool m_started;
 
 		alias SimulatorDeadlineTree = RedBlackTree!(Simulator,
 			(a, b) => (a.nextStart < b.nextStart) || (a.nextStart == b.nextStart && a.id < b.id), false);
@@ -90,6 +91,7 @@ final class SimulatorScheduler
 	/// start the main thread
 	void start()
 	{
+		m_started = true;
 		m_thread.start();
 	}
 
@@ -121,8 +123,11 @@ final class SimulatorScheduler
 	void join()
 	{
 		assert(!m_joined, "already joined");
-		m_thread.join();
-		m_joined = true;
+		if (m_started)
+		{
+			m_thread.join();
+			m_joined = true;
+		}
 	}
 
 	private void schedulingLoop()

@@ -83,6 +83,7 @@ __gshared:
 		Simulator sim = new Simulator();
 		sim.printTimings = false;
 		sim.doSleep = false;
+		sim.runWithoutPlayers = true;
 		simulators.add(sim);
 		return sim;
 	}

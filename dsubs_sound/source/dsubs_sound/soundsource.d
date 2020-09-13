@@ -298,7 +298,7 @@ final class PropellerSound: SoundSource
 		assert(!isNaN(cavSqrEnd));
 		float kavg = 0.5f * (freqCubeStart.fabs + freqCubeEnd.fabs);
 		// broadband component
-		if (kavg > 0.0f)
+		if (kavg > 0.0f && m_baseBBSpectrum !is null)
 		{
 			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec,
 				*m_baseBBSpectrum, minFreq, maxFreq, kavg, dissMod);
@@ -326,7 +326,7 @@ final class PropellerSound: SoundSource
 		}
 		// cavitation component
 		kavg = 0.5f * (cavSqrStart.fabs + cavSqrEnd.fabs);
-		if (kavg > 0.0f)
+		if (kavg > 0.0f && m_baseCavSpectrum !is null)
 		{
 			float kavgScaled = genISpec(q, avgRange, relBearing, q.s_ispec,
 				*m_baseCavSpectrum, minFreq, maxFreq, kavg, dissMod);

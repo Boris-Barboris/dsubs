@@ -242,7 +242,11 @@ final class LoadoutState: GameState
 					if (!canFind(scenario.allowedEntities.weaponNames, weaponName))
 						continue;
 					int count = 0;
-					if (i == 0)
+					if (ammoRoom.name == "decoy rack")
+					{
+						count = ammoRoom.capacity / 2;
+					}
+					else if (i == 0)
 						count = ammoRoom.capacity;
 					defaultLoadout[weaponName] = count;
 					divElements ~= buildWeaponCountDiv(ammoRoom.id, weaponName, count);
@@ -269,9 +273,9 @@ final class LoadoutState: GameState
 				Label roomHeader = builder(new Label()).content(ammoRoom.name ~ " tubes").
 					fontSize(BTN_FONT).fontColor(COLORS.loadoutHint).fixedSize(vec2i(1, 30)).build;
 				divElements ~= roomHeader;
-				foreach (const TubeTemplate tt; roomTubes)
+				foreach (i, const TubeTemplate tt; roomTubes)
 				{
-					tubeLoadouts[tt.id] = filteredWeaponSet[0];
+					tubeLoadouts[tt.id] = filteredWeaponSet[i % filteredWeaponSet.length];
 					divElements ~= buildTubeLoadDiv(tt.id, tubeLoadouts[tt.id],
 						filteredWeaponSet);
 				}

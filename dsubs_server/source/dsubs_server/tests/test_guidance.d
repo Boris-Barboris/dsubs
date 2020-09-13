@@ -18,7 +18,7 @@ import dsubs_sound.activesonar;
 import dsubs_server.tests.common;
 
 
-
+/*
 
 unittest
 {
@@ -48,7 +48,6 @@ unittest
 	Globals.simulators.join();
 }
 
-/*
 
 unittest
 {
@@ -512,6 +511,8 @@ unittest
 */
 
 
+/*
+
 unittest
 {
 	auto sim = Globals.buildForTests();
@@ -579,3 +580,5 @@ unittest
 		" meters away from stork in minoga_snake_passive test");
 	assert(s.dead);
 }
+
+*/

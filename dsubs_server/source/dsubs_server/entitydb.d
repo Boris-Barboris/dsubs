@@ -176,8 +176,8 @@ private:
 			4.2f, dgr2rad(30), 15.0f, 0.03f, 0.4f
 		);
 
-		info(bp.name, " cavitates on throttle ",
-			PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
+		// info(bp.name, " cavitates on throttle ",
+		// 	PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
 		bp.playable = true;
 		m_propulsors[bp.name] = bp;
 
@@ -211,8 +211,8 @@ private:
 			2.2f, dgr2rad(30), 13.0f, 0.03f, 0.4f
 		);
 
-		info(bp.name, " cavitates on throttle ",
-			PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
+		// info(bp.name, " cavitates on throttle ",
+		// 	PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
 		bp.playable = true;
 		m_propulsors[bp.name] = bp;
 
@@ -237,8 +237,8 @@ private:
 			3.4f, dgr2rad(30), 15.0f, 0.03f, 0.4f
 		);
 
-		info(bp.name, " cavitates on throttle ",
-			PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
+		// info(bp.name, " cavitates on throttle ",
+		// 	PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
 		bp.playable = false;
 		m_propulsors[bp.name] = bp;
 	}
@@ -357,7 +357,7 @@ Search patterns: straight, snake, spiral.
 		ActiveDecoyFactory adf = new ActiveDecoyFactory();
 		adf.name = "Decoy(active)";
 		adf.playable = true;
-		adf.description = "Active sonar decoy. Lasts 90 seconds.",
+		adf.description = "Active sonar decoy. Lasts approximately 90 seconds.",
 		adf.fuel = RolledF(90, 5);
 		adf.rigidBody.mass = RolledF(1.0f, 1e-3);
 		adf.rigidBody.Cd0 = RolledF(0.05f, 1e-5f);
@@ -370,12 +370,55 @@ Search patterns: straight, snake, spiral.
 		adf.rigidBody.Cm = RolledF(0.005f, 0);
 		adf.steering.rudderKp = 0.0f;
 		adf.steering.rudderKd = 0.0f;
-		adf.steering.rudderPosChangeSpeed = 2.0f;
 		adf.rigidBody.hullLength = 4.0f;
 		adf.reflprot = ReflectorPrototype(vec2f(0.6f, 4.0f), [-22.0f, -22.0f, -22.0f]);
 		adf.activeReflectorProto = ReflectorPrototype(vec2f(30, 30), [-7.0f, -7.0f, -7.0f]);
 		adf.generateParamDescs();
 		m_weapons[adf.name] = adf;
+
+		// Passive decoy
+
+		PassiveDecoyFactory pdf = new PassiveDecoyFactory();
+
+		pf = new PropulsorFactory();
+		pf.name = "Passive decoy sound source";
+		pf.bladeCount = 2;
+		pf.posThrustK = RolledF(0.0f, 0.0f);
+		pf.rotAcceleration = 0.3f;
+		pf.negThrustK = RolledF(0.0f, 0.0f);
+		pf.mass = 0.0f;
+		pf.shaftRotFreq = 3.1f;
+		pf.soundPrototype = PropellerSoundPrototype(
+			null,
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/passive_decoy_cav.png", 1.0f, 60, 140),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.25f),
+				Harmonic(2.0f, 0.75f)],
+				0.5, 0.7, -0.4),
+			1.0f, dgr2rad(30), 2.0f, 0.03f, 1.0f
+		);
+
+		pdf.name = "Decoy(passive)";
+		pdf.playable = true;
+		pdf.propFactory = pf;
+		pdf.description = "Passive sonar decoy. Lasts approximately 2 minutes.",
+		pdf.fuel = RolledF(120, 5);
+		pdf.rigidBody.mass = RolledF(0.9f, 1e-3);
+		pdf.rigidBody.Cd0 = RolledF(0.05f, 1e-5f);
+		pdf.rigidBody.Cd1 = RolledF(0.01f, 1e-5f);
+		pdf.rigidBody.Cda = 0.0f;
+		pdf.steering.equilDrift = 0.0f;
+		pdf.rigidBody.Cl = RolledF(0.01f, 0.0f);
+		pdf.rigidBody.Cr0 = RolledF(0.05f, 0);
+		pdf.rigidBody.Cr1 = RolledF(0.25f, 0);
+		pdf.rigidBody.Cm = RolledF(0.005f, 0);
+		pdf.steering.rudderKp = 0.0f;
+		pdf.steering.rudderKd = 0.0f;
+		pdf.rigidBody.hullLength = 2.0f;
+		pdf.reflprot = ReflectorPrototype(vec2f(0.6f, 4.0f), [-20.0f, -20.0f, -20.0f]);
+		pdf.generateParamDescs();
+		m_weapons[pdf.name] = pdf;
 	}
 
 
@@ -390,7 +433,7 @@ Search patterns: straight, snake, spiral.
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 16,
 			TubeType.standard, ["Minoga": true]);
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 30,
-			TubeType.decoy, ["Decoy(active)": true]);
+			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		TubePrototype bowProtoTemplate = TubePrototype(TubeTemplate(0,
 			MountPoint(vec2f(-4.7, 25.0), dgr2rad(20)),
 			0, TubeType.standard, false),
@@ -555,7 +598,7 @@ Active sonars:
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 14,
 			TubeType.standard, ["Minoga": true]);
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 24,
-			TubeType.decoy, ["Decoy(active)": true]);
+			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		bowProtoTemplate = TubePrototype(TubeTemplate(0,
 			MountPoint(vec2f(-1.0, 25.1), 0.0),
 			0, TubeType.standard, false),

@@ -144,6 +144,44 @@ final class ActiveDecoyGuidance: IGuidance
 }
 
 
+final class PassiveDecoyGuidance: IGuidance
+{
+	private
+	{
+		StaticDecoy m_decoy;
+		bool m_active;
+		usecs_t m_activateAfter;
+		float m_fuelLeft;
+	}
+
+	void update(usecs_t dt)
+	{
+		if (!m_active)
+		{
+			m_activateAfter -= dt;
+			if (m_activateAfter <= 0)
+			{
+				m_active = true;
+				assert(m_decoy.propulsor);
+				m_decoy.propulsor.targetThrottle = uniform(0.8f, 1.0f);
+			}
+		}
+		else
+		{
+			m_fuelLeft -= dt / 1e6;
+			if (m_fuelLeft < 0.0f)
+			{
+				m_decoy.kill("fuel exhausted");
+			}
+		}
+	}
+
+	void shutdown() {}
+
+	void setUnassignedParams() {}
+}
+
+
 /// Server-side torpedo model
 final class Torpedo: Weapon
 {
@@ -870,6 +908,28 @@ final class ActiveDecoyFactory: WeaponFactory
 		guidance.m_fuelLeft = fuel;
 		guidance.m_activateAfter = activateAfter;
 		guidance.m_activeReflectorProto = activeReflectorProto;
+		return res;
+	}
+}
+
+
+final class PassiveDecoyFactory: WeaponFactory
+{
+	PropulsorFactory propFactory;	/// passive decoys have predefined propulsors
+	usecs_t activateAfter = 4_000_000;
+
+	/// Verify launch params, build torpedo entity and assign launch params to guidance
+	override StaticDecoy build(Submarine shooter,
+		const(WeaponParamValue)[] launchParams) const
+	{
+		enforce(launchParams.length == 0, "decoy is not configurable");
+		PassiveDecoyGuidance guidance = new PassiveDecoyGuidance();
+		StaticDecoy res = new StaticDecoy(shooter, name, guidance);
+		res.propulsor = propFactory.build();
+		super.bootstrap(res);
+		guidance.m_decoy = res;
+		guidance.m_fuelLeft = fuel;
+		guidance.m_activateAfter = activateAfter;
 		return res;
 	}
 }

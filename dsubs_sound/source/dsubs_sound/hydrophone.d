@@ -1018,13 +1018,13 @@ void hydrophoneVsPropellerBalancingPlot(CommandQueue q,
 		{
 			h.onPreKinematics();
 			h.ktsStart = h.ktsEnd = dspd * k;
-			h.transform.rotation = -(i.to!double * 0.05);
+			// h.transform.rotation = -(i.to!double * 0.05);
 			h.resetAndStartIsotropic(q);
 			foreach (j, float spd; propSpeeds)
 			{
 				float shaftFreq = spd * shaftFreqPerMs;
 				propTrans.position = rotateVector(vec2d(0.0, (i + 1) * drange),
-					relBearings[j] + i * 0.03);
+					relBearings[j]);	// + i * 0.03
 				prop.onPreKinematics();
 				prop.preUpdate(shaftFreq, spd);
 				prop.postUpdate(shaftFreq, spd, 1.0f);
