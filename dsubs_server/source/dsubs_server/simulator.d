@@ -349,8 +349,8 @@ final class Simulator
 	private
 	{
 		long m_abandonedCounter;
-		// 3 days
-		enum long ABANDON_COUNT_LIMIT = 60 * 60 * 24 * 3;
+		// 21 days
+		enum long ABANDON_COUNT_LIMIT = 60 * 60 * 24 * 21;
 	}
 
 	/// run one iteration of simulation
