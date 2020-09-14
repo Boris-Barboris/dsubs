@@ -373,7 +373,7 @@ final class AICaptain
 	private
 	{
 		AICrew m_crew;
-		BehavourTreeNode m_btRoot;
+		BehaviourTreeNode m_btRoot;
 		BOT_DIFFICULTY m_difficulty;
 		int m_ticksPerExecute;
 
@@ -493,7 +493,7 @@ final class AICaptain
 		}
 	}
 
-	private BehavourTreeNode orderExecutionTree()
+	private BehaviourTreeNode orderExecutionTree()
 	{
 		FallbackNode fb = new FallbackNode("for different orders...", [
 			new OrderHelmsmanToSwimToDest(),
@@ -1187,9 +1187,9 @@ final class AICaptain
 		}
 	}
 
-	private BehavourTreeNode easyCombatTree()
+	private BehaviourTreeNode easyCombatTree()
 	{
-		BehavourTreeNode node = new SequenceNode("Simply attack if possible", [
+		BehaviourTreeNode node = new SequenceNode("Simply attack if possible", [
 			new ConditionNode("if we have ammo",
 				() => m_crew.submarine.haveTorpedoes),
 			new FallbackNode("use or find main target", [
@@ -1223,9 +1223,9 @@ final class AICaptain
 		return node;
 	}
 
-	private BehavourTreeNode mediumCombatTree()
+	private BehaviourTreeNode mediumCombatTree()
 	{
-		BehavourTreeNode node = new RoundRobinNode(
+		BehaviourTreeNode node = new RoundRobinNode(
 			"Medium captain decouples navigation from firing",
 			[
 				new ChooseMostDangerousTorp(),
@@ -1286,7 +1286,7 @@ final class AICaptain
 					])
 				])
 		], 200);
-		BehavourTreeNode wrapper = new SequenceNode(
+		BehaviourTreeNode wrapper = new SequenceNode(
 			"return Seccess only when no main target", [
 				node,
 				new ConditionNode(null, () => m_mainTarget is null && m_mainDanger is null)
@@ -1294,15 +1294,15 @@ final class AICaptain
 		return wrapper;
 	}
 
-	private static BehavourTreeNode[] removeNulls(BehavourTreeNode[] nodes)
+	private static BehaviourTreeNode[] removeNulls(BehaviourTreeNode[] nodes)
 	{
 		return nodes.filter!(a => a !is null).array;
 	}
 
-	private BehavourTreeNode buildEasyCaptainBt()
+	private BehaviourTreeNode buildEasyCaptainBt()
 	{
 		bool combatShip = isCombatCapable(m_crew.submarine);
-		BehavourTreeNode[] rootParallelNodes = [
+		BehaviourTreeNode[] rootParallelNodes = [
 			new FallbackNode("static priorities", removeNulls([
 				new ProcessNewOrder(),
 				combatShip ? easyCombatTree() : null,
@@ -1310,15 +1310,15 @@ final class AICaptain
 			])),
 			combatShip ? new UpdateSolutions() : null
 		];
-		BehavourTreeNode res = new ParallelNode("Easy captain AI",
+		BehaviourTreeNode res = new ParallelNode("Easy captain AI",
 			removeNulls(rootParallelNodes));
 		return res;
 	}
 
-	private BehavourTreeNode buildMediumCaptainBt()
+	private BehaviourTreeNode buildMediumCaptainBt()
 	{
 		bool combatShip = isCombatCapable(m_crew.submarine);
-		BehavourTreeNode[] rootParallelNodes = [
+		BehaviourTreeNode[] rootParallelNodes = [
 			new FallbackNode("static priorities", removeNulls([
 				new ProcessNewOrder(),
 				combatShip ? mediumCombatTree() : null,
@@ -1326,7 +1326,7 @@ final class AICaptain
 			])),
 			combatShip ? new UpdateSolutions() : null
 		];
-		BehavourTreeNode res = new ParallelNode("Medium captain AI",
+		BehaviourTreeNode res = new ParallelNode("Medium captain AI",
 			removeNulls(rootParallelNodes));
 		return res;
 	}

@@ -23,7 +23,7 @@ bool isFinalResult(ExecutionResult res)
 }
 
 
-class BehavourTreeNode
+class BehaviourTreeNode
 {
 	private
 	{
@@ -42,7 +42,7 @@ class BehavourTreeNode
 }
 
 
-class ControlFlowNode: BehavourTreeNode
+class ControlFlowNode: BehaviourTreeNode
 {
 	this(string description, string file, size_t line)
 	{
@@ -55,14 +55,14 @@ abstract class LinearChildrenNode: ControlFlowNode
 {
 	protected
 	{
-		BehavourTreeNode[] m_children;
+		BehaviourTreeNode[] m_children;
 		size_t m_lastIdxMemory;
 	}
 
 	/// Sequence simulator
 	bool memory;
 
-	this(string description, BehavourTreeNode[] children, bool memory = false,
+	this(string description, BehaviourTreeNode[] children, bool memory = false,
 		string file = __FILE__, size_t line = __LINE__)
 	{
 		super(description, file, line);
@@ -70,7 +70,7 @@ abstract class LinearChildrenNode: ControlFlowNode
 		this.memory = memory;
 	}
 
-	final @property void children(BehavourTreeNode[] newChildrenArray)
+	final @property void children(BehaviourTreeNode[] newChildrenArray)
 	{
 		m_lastIdxMemory = 0;
 		m_children = newChildrenArray;
@@ -82,21 +82,21 @@ abstract class DecoratorNode: ControlFlowNode
 {
 	protected
 	{
-		BehavourTreeNode m_child;
+		BehaviourTreeNode m_child;
 	}
 
-	this(string description, BehavourTreeNode child, string file, size_t line)
+	this(string description, BehaviourTreeNode child, string file, size_t line)
 	{
 		super(description, file, line);
 		m_child = child;
 	}
 
-	final @property BehavourTreeNode child()
+	final @property BehaviourTreeNode child()
 	{
 		return m_child;
 	}
 
-	final @property void child(BehavourTreeNode rhs)
+	final @property void child(BehaviourTreeNode rhs)
 	{
 		m_child = rhs;
 	}
@@ -106,7 +106,7 @@ abstract class DecoratorNode: ControlFlowNode
 final class SequenceNode: LinearChildrenNode
 {
 
-	this(string description, BehavourTreeNode[] children, bool memory = false,
+	this(string description, BehaviourTreeNode[] children, bool memory = false,
 		string file = __FILE__, size_t line = __LINE__)
 	{
 		super(description, children, memory, file, line);
@@ -121,7 +121,7 @@ final class SequenceNode: LinearChildrenNode
 				m_lastIdxMemory = i;
 			if (ticks <= 0)
 				return ExecutionResult.running;
-			BehavourTreeNode child = m_children[i];
+			BehaviourTreeNode child = m_children[i];
 			ExecutionResult res = child.execute(ticks);
 			if (res == ExecutionResult.running || res == ExecutionResult.failure)
 				return res;
@@ -148,7 +148,7 @@ bool consumeLocalTicks(int consume, ref int ticksLeftLocal, ref int ticksLeftGlo
 
 final class FallbackNode: LinearChildrenNode
 {
-	this(string description, BehavourTreeNode[] children, bool memory = false,
+	this(string description, BehaviourTreeNode[] children, bool memory = false,
 		string file = __FILE__, size_t line = __LINE__)
 	{
 		super(description, children, memory, file, line);
@@ -163,7 +163,7 @@ final class FallbackNode: LinearChildrenNode
 				m_lastIdxMemory = i;
 			if (ticks <= 0)
 				return ExecutionResult.running;
-			BehavourTreeNode child = m_children[i];
+			BehaviourTreeNode child = m_children[i];
 			ExecutionResult res = child.execute(ticks);
 			if (res == ExecutionResult.running || res == ExecutionResult.success)
 				return res;
@@ -180,7 +180,7 @@ final class FallbackNode: LinearChildrenNode
 /// if all children have returned failure.
 final class RoundRobinNode: LinearChildrenNode
 {
-	this(string description, BehavourTreeNode[] children, int timeSlice,
+	this(string description, BehaviourTreeNode[] children, int timeSlice,
 		string file = __FILE__, size_t line = __LINE__)
 	{
 		super(description, children, true, file, line);
@@ -207,7 +207,7 @@ final class RoundRobinNode: LinearChildrenNode
 			if (isFinalResult(childrenResults[i]))
 				continue;
 			int currentSlice = min(m_timeSlice, ticks);
-			BehavourTreeNode child = m_children[i];
+			BehaviourTreeNode child = m_children[i];
 			int ticksToSpend = currentSlice;
 			childrenResults[i] = child.execute(ticksToSpend);
 			int spentTicks = currentSlice - ticksToSpend;
@@ -233,7 +233,7 @@ final class ParallelNode: LinearChildrenNode
 {
 	int successThreshold;
 
-	this(string description, BehavourTreeNode[] children, int successThreshold = 1,
+	this(string description, BehaviourTreeNode[] children, int successThreshold = 1,
 		string file = __FILE__, size_t line = __LINE__)
 	{
 		super(description, children, false, file, line);
@@ -268,7 +268,7 @@ final class ParallelNode: LinearChildrenNode
 }
 
 
-final class ConditionNode: BehavourTreeNode
+final class ConditionNode: BehaviourTreeNode
 {
 	bool delegate() predicate;
 
@@ -292,7 +292,7 @@ final class ConditionNode: BehavourTreeNode
 }
 
 
-abstract class ActionNode: BehavourTreeNode
+abstract class ActionNode: BehaviourTreeNode
 {
 	protected
 	{

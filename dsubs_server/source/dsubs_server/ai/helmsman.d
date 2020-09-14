@@ -59,7 +59,7 @@ final class AIHelmsman
 	private
 	{
 		AICrew m_crew;
-		BehavourTreeNode m_btRoot;
+		BehaviourTreeNode m_btRoot;
 		BOT_DIFFICULTY m_difficulty;
 		int m_ticksPerExecute;
 
@@ -184,7 +184,7 @@ final class AIHelmsman
 		}
 	}
 
-	private BehavourTreeNode buildEasyBt()
+	private BehaviourTreeNode buildEasyBt()
 	{
 		return new ParallelNode("Helmsman operations", [
 			new ProcessOrder(),

@@ -35,7 +35,7 @@ final class AIAcoustic
 	private
 	{
 		AICrew m_crew;
-		BehavourTreeNode m_btRoot;
+		BehaviourTreeNode m_btRoot;
 		BOT_DIFFICULTY m_difficulty;
 		int m_ticksPerExecute;
 	}
@@ -256,7 +256,7 @@ final class AIAcoustic
 		}
 	}
 
-	private BehavourTreeNode buildEasyBt()
+	private BehaviourTreeNode buildEasyBt()
 	{
 		return new SequenceNode("Acoustic operations", [
 			new ReceiveHydrophoneData(),
