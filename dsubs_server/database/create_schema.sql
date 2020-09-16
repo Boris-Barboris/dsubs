@@ -60,8 +60,7 @@ CREATE TABLE simulator_instances (
     FOREIGN KEY (scenario_type) REFERENCES scenario_types(`name`)
 );
 
-ALTER TABLE kill_records ADD CONSTRAINT FOREIGN KEY (simulator_id)
-    REFERENCES simulator_instances(id);
+ALTER TABLE kill_records ADD COLUMN simulator_id TEXT;
 
 CREATE INDEX IF NOT EXISTS sim_instance_creator_id_idx ON
     simulator_instances(creator_id);

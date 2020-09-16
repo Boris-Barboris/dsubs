@@ -46,13 +46,74 @@ Needs same features as active sonar tutorial.
 
 
 Campaign starts with routine ecological tasks and anti-smuggling patrols.
+cool things:
+* dangerous area that must be left periodacally
+* swift currents.
+* leviathan
 
 
 Mission 1.
 
-* Whale identification and tracker injection with special torpedo.
-* Smuggler search and traffic inspection. Music-based identification.
-* Smuggler chase and kill after authorization.
+Smuggler patrol.
+
+* Whale health inspection. Approach 3 whales.
+* One of the whales is terminally sick (meteorism) and needs to be killed by torpedo. Other whales must stay alive.
+* Smuggler search and traffic inspection. Music-based identification. Techno for smuggler,
+    country/blues/instrumental for normal traders.
+* Ping as a warning shot.
+* Smuggler starts running away. Chase and kill after authorization.
+* Inspect the husk by staying close to it for 30 seconds.
+
 
 Mission 2.
 
+SoS signal investigation.
+
+There is a tanker missing in the area. It went off the charts
+and an acoustic SoS signal appeared.
+* Find and approach the signal.
+* Give marines time to investigate (60 seconds). -> It is a pirate attack.
+* Alarm, torpedo inbound. Inform the player that he needs to dodge on flank.
+* Seek and destroy the target: lone pirate.
+* Investigate pirate husk: it turns out to be an attack submarine of the nation that we are
+on the brink of war with.
+
+Enemies: 1 shitty Kilo.
+
+
+Mission 3.
+
+Militarization, advanced training recommendations.
+Retaliation. While diplomats argue, you are tasked with a symmetric response.
+You must remain anonymous.
+
+* Approach trade route.
+* Designate enemy traders by their transmitter morse signal.
+* No frindly traders must die.
+* Kill one enemy trader.
+* You are authorized to kill enemy patrols.
+* Escape to the designated area alive.
+
+Enemies: 2-3 shitty Kilo.
+
+
+Mission 4.
+
+War has been declared. New submarine (Stork) allowed.
+Convoy attack. Economical harassment.
+
+* Look for the Convoy.
+* Destroy at least 6 commercial ships.
+* Escape to the designated area alive.
+
+Enemies: 2-3 shitty Kilo, 1 medium November.
+
+
+Mission 5.
+
+Twin pack scirmish. Force through the front line and kill the
+early-detection submarine search station. Extract to the designated area alive.
+
+Allies: 1 Stork.
+Enemies: 5-6 shitty kilos, pair of Novembers near the target.
+Allied stork must not be killed by you.
