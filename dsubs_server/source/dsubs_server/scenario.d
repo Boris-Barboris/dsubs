@@ -302,8 +302,10 @@ final class ScenarioDatabase
 {
 	/// All non-perisstent scenarions, indexed by their name.
 	private ScenarioSpawner[string] m_spawnableScenarios;
-	// came shit but in array
+	// same shit but in array
 	private ScenarioSpawner[] m_spawnableScenariosOrdered;
+	/// list of campaigns
+	private AvailableCampaign[] m_availableCampaigns;
 
 	/// Persistent scenarios, indexed by simulatorId.
 	private PersistentScenarioSpawner[string] m_persistentSims;
@@ -333,6 +335,13 @@ final class ScenarioDatabase
 		addTutorial!ActiveSonarTutorial();
 		addTutorial!TorpedoTutorial();
 		addTutorial!HydrophoneTmaTutorial();
+
+		AvailableCampaign campaign1 = AvailableCampaign(
+			"Unwanted peace",
+"Rapid chain of events takes you from the peaceful maritime patrol duty straight to the
+maelstrom of war between two superpowers.",
+			false);
+
 	}
 
 	PersistentScenarioSpawner getPersistentById(string simId)
@@ -351,8 +360,11 @@ final class ScenarioDatabase
 	immutable(AvailableScenariosRes) getScenarioResForPlayer(Player player)
 	{
 		AvailableScenariosRes res;
+		// all campaigns
+		res.campaigns = m_availableCampaigns;
+
 		// all non-campaign missions
-		res.scenarios = m_spawnableScenariosOrdered.filter!(
+		res.scenarios ~= m_spawnableScenariosOrdered.filter!(
 			spawner => spawner.scenarioType != ScenarioType.campaignMission
 		).map!((ScenarioSpawner spawner) {
 			AvailableScenario preparedScen;

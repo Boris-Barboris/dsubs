@@ -121,8 +121,24 @@ Allied stork must not be killed by you.
 
 Mission 6.
 
+Rapid intercept. Time-constrained flunk sprint to intercept the
+fleeing spy vessel. Multiple enemy contacts on the way to the intercept point.
+
+* Neutral shipping must not be killed by you
+* Kill enemy cutter.
+* Cutter must not reach a point of no return.
+* Escape to the designated area alive.
+
+Enemies: 2-3 shitty Kilo, 2 medium Novembers.
 
 
-Allies: 1 Stork.
-Enemies: 5-6 shitty kilos, pair of Novembers near the target.
-Allied stork must not be killed by you.
+Mission 7.
+
+Acheron. High-skilled experimental Lima captain terrorizes
+our convoys. We have developed the new Minoga torpedo to
+outrun the Lima. Detect Lima, kill it, don't let more than 4 convoy vessels die.
+
+Allies: 1 Puffin in readguard.
+7 tankers under guard.
+
+Enemy: 1 hard Lima, 2 Novembers.
