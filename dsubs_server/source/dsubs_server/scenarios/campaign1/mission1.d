@@ -21,13 +21,52 @@ final class Cmp1Mission1: SinglePlayerScenario
 	static AvailableScenarioConstants getConstants()
 	{
 		AvailableScenarioConstants constants;
-		constants.name = "Whale health inspection";
-		constants.shortDescription = "Routine marine mammal health inspection, coastal partol";
+		constants.name = "Whale's Health";
+		constants.shortDescription = "Coast Guard duties and marine mammal health inspection";
 		constants.fullDescription =
 `
-.`;
+                         CLASSIFIED
+
+FSC-94/O-65        SUBMARINE SQUADRON SIX
+
+Patrol order to CWS RUSTBUCKET (SS13).
+
+From:       The Commander in Chief, Commonwealth Fleet.
+To:         The Commander Submarine RUSTBUCKET.
+Via:        The Commander Submarines, FIRST FLEET.
+
+Subject:    CWS RUSTBUCKET (SS13) - Partrol order.
+
+    Situation:  Moderate civilian vessel traffic. No military-capable vessels
+in the area. Dispersed single whales, vocalize lively. Sea state gentle.
+
+    Objective 1:  Conduct routine civilian traffic monitoring in the
+Simmons bay. Perform selective boarding inspection, if directed by
+Coast Guard and Customs operations center.
+
+    Objective 2:  Marine Life Department has requested our assistance with mammal
+health monitoring routines. Three local humpback whales, LIAM, GRACE and SAMUEL
+must be inspected. Annuall rabies wave that makes poor animals scream from
+virus-induced pain, is kept in check by rigorous termination of infected
+individuals. First Fleet staff was eager to help due to torpedo-related
+opportunities, that are opened by the necessity of large mammal disposal.
+
+    Operations mode:  You are to conduct your patrol duty according to peace time
+regulations. Attack torpedoes are to be fired in anger in self-defense or
+maritime border violation situations, after sufficient number of communication
+attempts. Active sonar ping at close (less than 500m) distance is
+considered a sufficient warning for the inspected ship to halt.
+You are NOT TO USE your main active sonar at ranges less than 500m from a
+whale, as prescribed by Marine Life Perseverance Act.
+
+    Signalling: Mainline bi-directional acoustic communications will be maintained
+by station OX-4. Reserve broadcast-only acoustic station OX-6.
+
+    Good luck, Captain!
+`;
 		constants.allowedEntities = EntityDbShort(
-			["Lima"], ["Five-blade Lima screw"], ["Minoga"]);
+			["Stork"], ["Seven-blade screw"],
+			["Minoga", "Decoy(active)", "Decoy(passive)"]);
 		return constants;
 	}
 
