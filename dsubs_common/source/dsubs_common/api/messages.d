@@ -25,7 +25,7 @@ struct ServerStatusRes
 	__gshared const int g_marshIdx;
 	/// Total number of authorized players currently online.
 	int playersOnline;
-	int apiVersion = 14;
+	int apiVersion = 15;
 }
 
 /** This message requests authorization from the server.
