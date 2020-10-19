@@ -104,7 +104,7 @@ final class Player: Captain
 		vec2d coordShift;
 		double coordRot;
 		usecs_t timeShift;
-		usecs_t m_lastPingEmit = ulong.min;
+		usecs_t m_lastPingEmit = -6_000_000L;
 
 		PlayerConnection m_connection;
 
@@ -382,7 +382,7 @@ final class Player: Captain
 				return;
 			enforce(req.sonarIdx == 0, "no such sonar");
 			usecs_t worldTime = s.simulator.worldTime;
-			if (worldTime - m_lastPingEmit >= 5_000_000)
+			if ((worldTime - m_lastPingEmit) >= 5_000_000L)
 			{
 				auto ping = s.sonar.startPing(req.ilevel);
 				if (ping)

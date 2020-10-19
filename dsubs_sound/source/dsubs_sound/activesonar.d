@@ -620,7 +620,6 @@ final class ActiveSonar
 
 	@property bool pingJustStarted() const { return m_pingJustStarted; }
 
-
 	/// CPU-side version of drawReflectors that is very approximate and
 	/// does not actually generate an image. Call either this or
 	/// drawReflectors after startPing. Ping is assumed to be instant,
