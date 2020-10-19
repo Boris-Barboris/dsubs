@@ -598,6 +598,9 @@ final class SimulationGUI
 			m_passiveGuis ~= createWaterfallPanel(hydroTmpl, i.to!int);
 			passiveSonarDivs[m_passiveGuis[$-1].root] = true;
 		}
+		// synchronize waterfall cameras
+		for (int i = 1; i < m_passiveGuis.length; i++)
+			m_passiveGuis[i].wf.camera = m_passiveGuis[0].wf.camera;
 		m_sonarGui = createSonarGui(playerSub.tmpl.sonar);
 
 		m_topLevelDiv = builder(vDiv([
@@ -626,6 +629,7 @@ final class SimulationGUI
 			btn.onClick += ((i) => {
 				Game.simState.activeSonarSound = Game.simState.sonarSounds[i];
 				setMiddlePane(m_passiveGuis[i].root);
+				m_passiveGuis[i].wf.onShowRebuildFromCamera();
 			})(i);
 		}
 		asonarTab.onClick += ()

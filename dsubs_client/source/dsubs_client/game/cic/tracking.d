@@ -46,10 +46,10 @@ private struct Peak
 private
 {
 	/// ray data will be generated after each TRACKER_GEN_FREQ data were received
-	enum short TRACKER_GEN_FREQ = 8;
+	enum short TRACKER_GEN_FREQ = 15;
 	/// tracker is automatically switched to inactive state after this many update cycles with
 	/// no signal found.
-	enum short TRACKER_LOSS_TIMEOUT = 15;
+	enum short TRACKER_LOSS_TIMEOUT = 20;
 	enum float CAPTURE_SEEK_AREA_PERSEC = dgr2rad(4);
 	enum float CAPTURE_SEEK_MAX_AREA = dgr2rad(8);
 	enum float ANGVEL_FILTER_K = 0.66;

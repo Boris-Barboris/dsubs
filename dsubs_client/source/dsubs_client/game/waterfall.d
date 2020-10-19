@@ -114,6 +114,14 @@ class PanoramicDisplay(DataIntType): GuiElement
 		Label m_underCursorLabel;
 	}
 
+	@property Camera2D camera() { return m_camera; }
+
+	@property void camera(Camera2D rhs)
+	{
+		m_camera = rhs;
+		onCameraChange();
+	}
+
 	private PanoramicOverlay m_overlay;
 
 	/// For normalized data [0, 1] this level and darker will be rendered as black.
@@ -281,6 +289,12 @@ class PanoramicDisplay(DataIntType): GuiElement
 		constraintCamera();
 		updateTexCoords();
 		updateHeaderElements();
+	}
+
+	/// Dirty hack to rebuild view from external camera
+	final void onShowRebuildFromCamera()
+	{
+		onCameraChange();
 	}
 
 	private void constraintCamera()
