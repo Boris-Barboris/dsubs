@@ -574,7 +574,7 @@ Good luck!`;
 		int attempts = 16;
 		vec2d bestCandidate;
 		double bestMinDistance;
-		enum double passMinDist = 4000.0;
+		enum double passMinDist = 4500.0;
 		for (int i = 0; i < attempts; i++)
 		{
 			// favor map edge
