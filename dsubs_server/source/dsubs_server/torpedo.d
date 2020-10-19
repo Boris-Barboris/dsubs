@@ -982,6 +982,13 @@ final class TorpedoFactory: WeaponFactory
 		// tune fuel to match expected range
 		fuel.mean = tgtMaxRangeOnMaxSpd / fullThrottleSpd;
 		fuel.stddev = fuel.mean * balancingStddev;
+		float minThrottle = throttleForSpeed(
+			rigidBody.Cd0, rigidBody.Cd1, propFactory.posThrustK.mean,
+			marchSpeedRange.min);
+		trace("Max range of ", propFactory.name, " on min speed ", activeSpeedRange.min,
+			": ", activeSpeedRange.min * (fuel.mean / pow(minThrottle, fuelEffExponent)));
+		trace("Max range of ", propFactory.name, " on max speed ", activeSpeedRange.max,
+			": ", activeSpeedRange.max * (fuel.mean / pow(1.0f, fuelEffExponent)));
 	}
 
 	private void bootstrap(Torpedo res) const

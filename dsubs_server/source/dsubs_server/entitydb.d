@@ -279,14 +279,14 @@ private:
 Sensors: active sonar or passive hydrophone.
 Effective speed range (active): 21-29 m/s.
 Effective speed range (passive): 21-26 m/s.
-Max range (29m/s): 7000m.
-Max range (21m/s): 9500m.
+Max range (29m/s): 8000m.
+Max range (21m/s): 11200m.
 Search patterns: straight, snake, spiral.
 `;
 		tf.turningRadius = 90.0f;
 		tf.marchSpeedRange = MinMax(21, 29);
 		tf.activeSpeedRange = MinMax(21, 29);
-		tf.activationRange = MinMax(200, 10_000);
+		tf.activationRange = MinMax(200, 11_200);
 		tf.sensorModes = cast(WeaponSensorMode) (
 			WeaponSensorMode.active | WeaponSensorMode.passive);
 		tf.searchPatterns = WeaponParamDescSearchPatterns(
@@ -312,7 +312,7 @@ Search patterns: straight, snake, spiral.
 		tf.asprot.dissMod = 1.0f;
 		tf.asprot.span = 120.0f;
 		tf.asprot.radialRes = 20;
-		tf.asprot.maxSec = 2;
+		tf.asprot.maxSec = 1;
 		tf.asprot.zeroLevel = flowNoise(3600, mps2kts(20)) +
 			tf.asprot.flowNoiseGain - 10.0f;
 		tf.asprot.endScale = 1.0f / 60.0f;
@@ -329,14 +329,14 @@ Search patterns: straight, snake, spiral.
 		tf.hprot.localNoiseRangeCutoff = 100.0f;
 		tf.hprot.flowNoiseMult = 1e-9f;
 		tf.defaultSensorMode = WeaponSensorMode.active;
-		tf.fuelEffExponent = 2.5f;
+		tf.fuelEffExponent = 3.0f;
 		tf.snakeArm = 300.0f;
 		tf.snakeArmInitial = -40.0f;
 		tf.snakeAngle = dgr2rad(60.0f);
 		tf.spiralStartTarget = 1.0f;
 		tf.spiralTargetRedPerRange = 0.08f;
 		tf.fullThrottleSpd = 29.0f;
-		tf.tgtMaxRangeOnMaxSpd = 7000.0f;
+		tf.tgtMaxRangeOnMaxSpd = 8000.0f;
 		tf.rigidBody.mass = RolledF(1.5f, 2e-3);
 		tf.rigidBody.Cd0 = RolledF(0.2f, 1e-3f);
 		tf.rigidBody.Cda = 1.5f;
