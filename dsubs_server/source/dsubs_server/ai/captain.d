@@ -1,6 +1,6 @@
 module dsubs_server.ai.captain;
 
-import std.algorithm: any, filter, map, sort;
+import std.algorithm: any, filter, map, sort, startsWith;
 import std.array: array;
 
 import dsubs_common.containers.circqueue;
@@ -869,13 +869,26 @@ final class AICaptain
 		{
 			// FIXME: room number.
 			AmmoRoom room = m_crew.submarine.getAmmoRoom(1);
-			if (room.getWeaponCount("Decoy(active)") == 0)
+			if (room.getWeaponCount("Decoy(active)") == 0 &&
+				room.getWeaponCount("Decoy(passive)") == 0)
 				return false;
 			auto tubes = m_crew.submarine.tubeRange;
 			return tubes.any!(t =>
 				t.state == TubeState.dry &&
 				t.type == TubeType.decoy &&
 				t.loadedWeapon == null);
+		}
+
+		private string selectDecoyWeHaveMost()
+		{
+			// FIXME: shitty selection
+			AmmoRoom room = m_crew.submarine.getAmmoRoom(1);
+			int passiveCount = room.getWeaponCount("Decoy(passive)");
+			int activeCount = room.getWeaponCount("Decoy(active)");
+			if (passiveCount > activeCount)
+				return "Decoy(passive)";
+			else
+				return "Decoy(active)";
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -887,7 +900,8 @@ final class AICaptain
 					tube.loadedWeapon == null)
 				{
 					trace("AI captain requesting decoy tube load for tube ", tube.id);
-					TubeOperationResult res = tube.processLoadRequest("Decoy(active)");
+					TubeOperationResult res = tube.processLoadRequest(
+						selectDecoyWeHaveMost());
 					assert(res.tubeChanged);
 				}
 			}
@@ -909,7 +923,7 @@ final class AICaptain
 				t.desiredState != TubeState.open &&
 				t.state == TubeState.dry &&
 				t.type == TubeType.decoy &&
-				t.loadedWeapon == "Decoy(active)");
+				t.loadedWeapon.startsWith("Decoy"));
 		}
 
 		override ExecutionResult onTicksConsumed()
@@ -1054,28 +1068,30 @@ final class AICaptain
 			return tubes.any!(t =>
 				t.state == TubeState.open &&
 				t.type == TubeType.decoy &&
-				t.loadedWeapon == "Decoy(active)");
+				t.loadedWeapon.startsWith("Decoy"));
 		}
 
 		override ExecutionResult onTicksConsumed()
 		{
 			auto tubes = m_crew.submarine.tubeRange;
 			Tube chosenTube;
+			string weapon;
 			foreach (Tube tube; tubes)
 			{
 				if (tube.state == TubeState.open &&
 					tube.type == TubeType.decoy &&
-					tube.loadedWeapon == "Decoy(active)")
+					tube.loadedWeapon.startsWith("Decoy"))
 				{
 					// we have found the tube that can be launched
 					chosenTube = tube;
+					weapon = tube.loadedWeapon;
 					break;
 				}
 			}
 			if (chosenTube is null)
 				return ExecutionResult.failure;
-			trace("AI launching active decoy");
-			TubeOperationResult res = chosenTube.processLaunchRequest("Decoy(active)", null);
+			trace("AI launching ", weapon);
+			TubeOperationResult res = chosenTube.processLaunchRequest(weapon, null);
 			assert(res.tubeChanged);
 			m_lastDecoyFire = simulator.worldTime;
 			return ExecutionResult.success;

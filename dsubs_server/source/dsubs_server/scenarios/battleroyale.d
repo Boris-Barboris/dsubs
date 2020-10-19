@@ -35,14 +35,18 @@ SpawnReq randomCombatSub()
 		variations = [
 			SpawnReq("Stork", "Seven-blade screw",
 						[AmmoRoomFullState(0, [WeaponCount("Minoga", 14)]),
-						AmmoRoomFullState(1, [WeaponCount("Decoy(active)", 25)])],
+						AmmoRoomFullState(1, [
+							WeaponCount("Decoy(active)", 13),
+							WeaponCount("Decoy(passive)", 12)])],
 						[TubeSpawnState(2, "Decoy(active)"),
-						TubeSpawnState(3, "Decoy(active)")]),
+						TubeSpawnState(3, "Decoy(passive)")]),
 			SpawnReq("Lima", "Five-blade Lima screw",
 						[AmmoRoomFullState(0, [WeaponCount("Minoga", 12)]),
-						AmmoRoomFullState(1, [WeaponCount("Decoy(active)", 15)])],
+						AmmoRoomFullState(1, [
+							WeaponCount("Decoy(active)", 7),
+							WeaponCount("Decoy(passive)", 8)])],
 						[TubeSpawnState(2, "Decoy(active)"),
-						TubeSpawnState(3, "Decoy(active)")]),
+						TubeSpawnState(3, "Decoy(passive)")]),
 		];
 	}
 	return variations[uniform(0, variations.length)];
@@ -70,7 +74,7 @@ final class BattleRoyale: Scenario
 		}
 		ReloadCircle[Player] m_playerReloadCircles;
 
-		enum float DEFAULT_RADIUS = 5000.0f;
+		enum float DEFAULT_RADIUS = 7000.0f;
 		enum float ESTIMATE_SPD = 12.0f;
 		enum float PER_PLAYER_EXPANSION = 500.0f;
 		enum float RELOAD_CIRCLE_RADIUS = 120.0f;
@@ -80,7 +84,7 @@ final class BattleRoyale: Scenario
 		enum usecs_t STABLE_TIME = cast(usecs_t) 60 * 60 * 1000_000;
 		enum int ACTIVE_CIVILIAN_BOTS = 3;
 		enum int MAX_ACTIVE_EASY_BOTS = 3;
-		enum int MAX_ACTIVE_MEDIUM_BOTS = 4;
+		enum int MAX_ACTIVE_MEDIUM_BOTS = 3;
 
 		/// we despawn combat bots after this time of zero active
 		/// players.
@@ -264,11 +268,11 @@ Good luck!`;
 		}
 
 		// remove dead submarines from collections
-		void clearDeadSubs(ref bool[Submarine] collection)
+		void clearDeadSubs(ref bool[Submarine] dict)
 		{
-			Submarine[] deadSubs = collection.byKey.filter!(s => s.dead).array;
+			Submarine[] deadSubs = dict.byKey.filter!(s => s.dead).array;
 			foreach (Submarine sub; deadSubs)
-				collection.remove(sub);
+				dict.remove(sub);
 		}
 
 		clearDeadSubs(m_civilianBots);
@@ -288,12 +292,9 @@ Good luck!`;
 				subsToKill ~= sub;
 			foreach (Submarine sub; m_mediumBots.byKey)
 				subsToKill ~= sub;
-			foreach (Submarine sub; m_simulator.vessels.entities.
-				filter!(v => !v.dead).filter!(v => (cast(Submarine) v)).
-				map!(v => cast(Submarine) v))
+			foreach (Submarine sub; m_simulator.vessels.alivePlayerSubmarines)
 			{
-				if (cast(Player) sub.captain)
-					subsToKill ~= sub;
+				subsToKill ~= sub;
 			}
 			foreach (Submarine sub; subsToKill)
 			{
@@ -312,7 +313,7 @@ Good luck!`;
 			if (crew.goal is null || crew.goal.status == GoalStatus.succeeded)
 			{
 				crew.goal = new SwimToDestinationGoal(crew,
-					getDistantPos(getDistantPos(crew.submarine.transform.wposition)));
+					getDistantPos(crew.submarine.transform.wposition));
 			}
 		}
 		// spawn animals if necessary
@@ -369,7 +370,7 @@ Good luck!`;
 		return ReloadCircle(getDistantPos(sub.transform.wposition));
 	}
 
-	private vec2d getDistantPos(vec2d pos)
+	private vec2d getDistantPos(vec2d from)
 	{
 		double dist = 0.0;
 		vec2d res;
@@ -379,10 +380,10 @@ Good luck!`;
 			res = m_nextCenter + rotateVector(
 				vec2d(0, m_nextRadius * (0.65 + 0.3 * uniform01)),
 				uniform(0, 2 * PI));
-			dist = (pos - res).length;
+			dist = (from - res).length;
 		}
 		if (attempts <= 0)
-			warning("getDistantPos got into infinite loop");
+			warning("getDistantPos loop too many iterations");
 		return res;
 	}
 
@@ -446,6 +447,7 @@ Good luck!`;
 				string[] allowedWeapons = room.prototype.allowedWeaponSet.keys;
 				while (weaponsToLoad-- > 0)
 				{
+					// select random allowed weapon to put in the room
 					string weaponName = allowedWeapons[
 						uniform(0, allowedWeapons.length)];
 					room.putWeapon(weaponName);
@@ -479,10 +481,10 @@ Good luck!`;
 				m_nextRadius = DEFAULT_RADIUS + PER_PLAYER_EXPANSION *
 					max(0, m_simulator.vessels.alivePlayerSubmarines.walkLength - 1);
 				m_nextCenter = m_currentCenter + rotateVector(
-					vec2d(0, m_nextRadius),
+					0.5 * vec2d(0, m_nextRadius),
 					uniform(0, 2 * PI));
 				usecs_t transitionTime = cast(usecs_t)
-					((m_currentRadius + m_nextRadius) / ESTIMATE_SPD) * 1000_000;
+					(m_nextRadius / ESTIMATE_SPD) * 1000_000;
 				m_nextTransitionTime = m_simulator.worldTime + transitionTime;
 				info("Scenario arena transition has started: ", m_simulator.worldTime);
 				// regenerate reload circles
@@ -514,7 +516,7 @@ Good luck!`;
 				AICrew crew = cast(AICrew) crwTemp;
 				assert(crew);
 				crew.goal = new SwimToDestinationGoal(crew,
-					getDistantPos(getDistantPos(crew.submarine.transform.wposition)));
+					getDistantPos(crew.submarine.transform.wposition));
 			}
 			foreach (Animal an; m_simulator.animals.entities)
 				an.destination = getDistantPos(an.transform.wposition);
@@ -566,11 +568,38 @@ Good luck!`;
 			RgbaColor(212, 201, 0, 150));
 	}
 
+	private vec2d getRandSubSpawnPos()
+	{
+		// try to find position that is far away from other alive submarines
+		int attempts = 16;
+		vec2d bestCandidate;
+		double bestMinDistance;
+		enum double passMinDist = 4000.0;
+		for (int i = 0; i < attempts; i++)
+		{
+			// favor map edge
+			vec2d pos = m_nextCenter + rotateVector(
+				vec2d(0, m_nextRadius * (0.6 + 0.37 * uniform01)),
+				uniform(0, 2 * PI));
+			if (m_simulator.vessels.aliveSubmarines.walkLength == 0)
+				return pos;
+			double minDist = m_simulator.vessels.aliveSubmarines.map!(
+				s => (s.transform.wposition - pos).length).minElement;
+			if (minDist >= passMinDist)
+				return pos;
+			if (i == 0 || minDist > bestMinDistance)
+			{
+				bestMinDistance = minDist;
+				bestCandidate = pos;
+			}
+		}
+		warning("getRandSubSpawnPos loop too many iterations");
+		return bestCandidate;
+	}
+
 	private void getRandomSpawn(out vec2d position, out double rotation)
 	{
-		float fromCenter = (0.6f + (uniform01 * 0.35f)) * m_nextRadius;
-		float angularCoord = uniform(0.0f, 2 * PI);
-		position = m_nextCenter + fromCenter * courseVector(angularCoord);
+		position = getRandSubSpawnPos();
 		rotation = uniform(0.0f, 2 * PI);
 	}
 
