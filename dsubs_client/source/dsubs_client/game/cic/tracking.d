@@ -53,7 +53,7 @@ private
 	enum float CAPTURE_SEEK_AREA_PERSEC = dgr2rad(4);
 	enum float CAPTURE_SEEK_MAX_AREA = dgr2rad(8);
 	enum float ANGVEL_FILTER_K = 0.66;
-	enum float DETECTION_MARGIN_TO_NOISE = 2.6f;
+	enum float DETECTION_MARGIN_TO_NOISE = 2.45f;
 	/// after how many data slices we redo our noise estimation
 	enum int NOISE_ESTIMATION_FREQUENCY = 3;
 }
