@@ -133,7 +133,7 @@ Good luck!`;
 			uniform(-float(DEFAULT_RADIUS), float(DEFAULT_RADIUS)));
 		m_nextCenter = m_currentCenter;
 		m_nextRadius = m_currentRadius;
-		//m_nextTransitionTime = m_simulator.worldTime + 120_000_000;
+		//m_nextTransitionTime = m_simulator.worldTime + 5_000_000;
 		m_nextTransitionTime = m_simulator.worldTime + STABLE_TIME;
 		m_botSide = new SideOfConflict("bots");
 	}
@@ -479,12 +479,12 @@ Good luck!`;
 			else
 			{
 				m_nextRadius = DEFAULT_RADIUS + PER_PLAYER_EXPANSION *
-					max(0, m_simulator.vessels.alivePlayerSubmarines.walkLength - 1);
+					max(0, m_simulator.vessels.alivePlayerSubmarines.walkLength.to!int - 1);
 				m_nextCenter = m_currentCenter + rotateVector(
 					0.5 * vec2d(0, m_nextRadius),
 					uniform(0, 2 * PI));
 				usecs_t transitionTime = cast(usecs_t)
-					(m_nextRadius / ESTIMATE_SPD) * 1000_000;
+					(m_nextRadius / ESTIMATE_SPD) * 1000_000L;
 				m_nextTransitionTime = m_simulator.worldTime + transitionTime;
 				info("Scenario arena transition has started: ", m_simulator.worldTime);
 				// regenerate reload circles
@@ -581,7 +581,7 @@ Good luck!`;
 			vec2d pos = m_nextCenter + rotateVector(
 				vec2d(0, m_nextRadius * (0.6 + 0.37 * uniform01)),
 				uniform(0, 2 * PI));
-			if (m_simulator.vessels.aliveSubmarines.walkLength == 0)
+			if (m_simulator.vessels.aliveSubmarines.empty)
 				return pos;
 			double minDist = m_simulator.vessels.aliveSubmarines.map!(
 				s => (s.transform.wposition - pos).length).minElement;
