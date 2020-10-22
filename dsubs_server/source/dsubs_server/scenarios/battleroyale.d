@@ -579,7 +579,7 @@ Good luck!`;
 		{
 			// favor map edge
 			vec2d pos = m_nextCenter + rotateVector(
-				vec2d(0, m_nextRadius * (0.6 + 0.37 * uniform01)),
+				vec2d(0, m_nextRadius * (0.6 + 0.33 * uniform01)),
 				uniform(0, 2 * PI));
 			if (m_simulator.vessels.aliveSubmarines.empty)
 				return pos;
