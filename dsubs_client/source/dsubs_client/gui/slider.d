@@ -169,9 +169,7 @@ final class Slider: GuiElement
 	{
 		if (btn != sfMouseLeft)
 			return;
-		/// transform x and y to local
-		int origx = x;
-		int origy = y;
+		// transform x and y to local
 		x -= position.x;
 		y -= position.y;
 		sfVector2f hpos = sfRectangleShape_getPosition(m_handle);
@@ -189,12 +187,12 @@ final class Slider: GuiElement
 			// direct move to the position
 			if (m_axis == Axis.X)
 			{
-				x = origx - rpos.x.to!int;
+				x = x - rpos.x.to!int;
 				value = max(0.0f, min(1.0f, x / rsize.x));
 			}
 			else
 			{
-				y = origy - rpos.y.to!int;
+				y = y - rpos.y.to!int;
 				value = max(0.0f, min(1.0f, y / rsize.y));
 			}
 		}
