@@ -84,9 +84,23 @@ final class ClientContact
 		return m_rayWaterfallEls[prev.id];
 	}
 
-	private void insertRayDataInTree(WaterfallRaySampleElement el)
+	// insert client contact data in the tree and
+	// update the linked list of waterfall elements, related to one contact
+	private void insertRayDataInTree(WaterfallRaySampleElement wfel)
 	{
-		int sensorIdx = el.data.source.sensorIdx;
+		WaterfallRaySampleElement prev = getPrevRayData(wfel.data);
+		if (prev)
+		{
+			// most common case: in-order append
+			wfel.next = prev.next;
+			prev.next = wfel;
+		}
+		else
+		{
+			WaterfallRaySampleElement next = getNextRayData(wfel.data);
+			wfel.next = next;
+		}
+		int sensorIdx = wfel.data.source.sensorIdx;
 		ClientContactDataTree* treePtr = sensorIdx in m_rayWaterfallDataTrees;
 		ClientContactDataTree tree;
 		if (treePtr is null)
@@ -96,7 +110,7 @@ final class ClientContact
 		}
 		else
 			tree = *treePtr;
-		tree.stableInsert(el.data);
+		tree.stableInsert(wfel.data);
 	}
 
 	private void removeRayDataFromTree(WaterfallRaySampleElement el)
@@ -106,6 +120,10 @@ final class ClientContact
 		ClientContactDataTree tree = *treePtr;
 		assert(treePtr !is null);
 		tree.removeKey(el.data);
+		// maintain list connectivity
+		WaterfallRaySampleElement prevEl = getPrevRayData(el.data);
+		if (prevEl)
+			prevEl.next = el.next;
 	}
 
 	void trimRayTrees(usecs_t before)
@@ -173,19 +191,6 @@ final class ClientContact
 				WaterfallRaySampleElement newEl =
 					new WaterfallRaySampleElement(
 						Game.simState.gui.waterfalls[sensorId].overlay, cdata);
-				// tree-list update
-				WaterfallRaySampleElement prev = getPrevRayData(cdata);
-				if (prev)
-				{
-					// most common case: in-order append
-					newEl.next = prev.next;
-					prev.next = newEl;
-				}
-				else
-				{
-					WaterfallRaySampleElement next = getNextRayData(cdata);
-					newEl.next = next;
-				}
 				insertRayDataInTree(newEl);
 				m_rayWaterfallEls[cdata.id] = newEl;
 			}
@@ -240,7 +245,15 @@ final class ClientContact
 		if (m_sonarDispEl && m_sonarDispEl.data is cdata)
 			m_sonarDispEl.updateFromData();
 		if (cdata.id in m_rayWaterfallEls)
-			assert(0, "update of ray data not implemented");
+		{
+			WaterfallRaySampleElement wfel = m_rayWaterfallEls[cdata.id];
+			if (cdata.time != wfel.data.time)
+			{
+				removeRayDataFromTree(wfel);
+				insertRayDataInTree(wfel);
+			}
+			wfel.updateFromData();
+		}
 	}
 
 	void updateTracker(HydrophoneTracker ht)
@@ -281,9 +294,6 @@ final class ClientContact
 			el.drop();
 			m_rayWaterfallEls.remove(dataId);
 			removeRayDataFromTree(el);
-			WaterfallRaySampleElement prevEl = getPrevRayData(el.data);
-			if (prevEl)
-				prevEl.next = el.next;
 		}
 	}
 }
@@ -417,6 +427,8 @@ final class ClientContactManager
 
 	private int m_rayCronCounter = 0;
 
+	/// Periodically call this to keep the list of rendered ray samples
+	/// on the waterfall screen small. Effectively culls the tree.
 	void rayDataHousekeeping()
 	{
 		m_rayCronCounter = (m_rayCronCounter + 1) % 20;

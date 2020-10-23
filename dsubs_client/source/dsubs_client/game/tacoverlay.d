@@ -1802,7 +1802,11 @@ final class WaterfallRaySampleElement: DataTacticalElement
 		m_mainShape = ctcOverlayCache.wfRayDataMainShape;
 		m_onHoverRect = ctcOverlayCache.wfRayDataOnHoverRect;
 		m_chainLine = ctcOverlayCache.rayChainLine;
+		m_bearing = data.data.ray.bearing;
 		size = cast(vec2i) (m_onHoverRect.size);
+		onMouseUp += &processMouseUp;
+		onMouseDown += &processMouseDown;
+		onMouseMove += &processMouseMove;
 	}
 
 	private @property Waterfall.WaterfallOverlay owner()
@@ -1812,6 +1816,8 @@ final class WaterfallRaySampleElement: DataTacticalElement
 
 	private
 	{
+		// mutable copy
+		double m_bearing;
 		RectangleShape m_mainShape;
 		RectangleShape m_onHoverRect;
 		// line to connect to m_next sample on waterfall screen
@@ -1830,11 +1836,56 @@ final class WaterfallRaySampleElement: DataTacticalElement
 		m_next = el;
 	}
 
-	override void updateFromData() {}
+	private void processMouseDown(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseLeft)
+		{
+			m_dragging = true;
+			g_dragOffset = vec2i(x, y) - position;
+			requestMouseFocus();
+		}
+	}
+
+	private void processMouseMove(int x, int y)
+	{
+		if (m_dragging)
+		{
+			vec2i newPos = vec2i(x, y) - g_dragOffset;
+			vec2d newCenter = owner.clampInsideRect(lu2center(newPos));
+			// we only update bearing for waterfall ray data
+			// because waterfall moves down every second
+			vec2d newWorldCoord = owner.screen2worldPos(newCenter);
+			m_bearing = newWorldCoord.x;
+		}
+	}
+
+	private void processMouseUp(int x, int y, sfMouseButton btn)
+	{
+		if (btn == sfMouseLeft && m_dragging)
+		{
+			m_dragging = false;
+			if (!m_panning)
+				returnMouseFocus();
+			requestDataUpdate();
+		}
+	}
+
+	private void requestDataUpdate()
+	{
+		ContactData updated = data.cdata;
+		updated.data.ray.bearing = m_bearing;
+		Game.ciccon.sendMessage(immutable CICContactDataReq(updated));
+	}
+
+	override void updateFromData()
+	{
+		returnMouseFocus();
+		m_bearing = data.data.ray.bearing;
+	}
 
 	override void onPreDraw()
 	{
-		double bearing = data.data.ray.bearing;
+		double bearing = m_bearing;
 		long timeDelta = (Game.simState.lastServerTime - data.time) / 1000_000L;
 		vec2d screenPos = owner.world2screenPos(vec2d(bearing, timeDelta));
 		position = center2lu(screenPos);
@@ -1843,7 +1894,7 @@ final class WaterfallRaySampleElement: DataTacticalElement
 			m_onHoverRect.center = cast(vec2f) screenPos;
 		if (m_next && !m_next.hidden)
 		{
-			bearing = m_next.data.data.ray.bearing;
+			bearing = m_next.m_bearing;
 			timeDelta = (Game.simState.lastServerTime - m_next.data.time) / 1000_000L;
 			vec2d screenPosNext = owner.world2screenPos(vec2d(bearing, timeDelta));
 			m_chainLine.setPoints(screenPos, screenPosNext, true);
