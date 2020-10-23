@@ -219,8 +219,19 @@ final class WaterfallAnalyzer: Persistable
 					ilevel >= ilevelPrev && ilevel > ilevelNext)
 				{
 					// we've found the peak
-					double beamRot = clampAngle(andLeftWrot -
-						(j + 0.5f) * (m_tmpl.fov / beamCount));
+					float beamRot, beamFractIdx;
+					// if we're the middle pixel we can try peak interpolation
+					if (j > 0 && j < beams.length - 2)
+					{
+						float centerOfMass = (
+							-cast(int)(ilevelPrev - m_min) + (ilevelNext - m_min)) /
+							(ilevel + ilevelPrev + ilevelNext - 3 * m_min).to!float;
+						beamFractIdx = j + centerOfMass;
+					}
+					else
+						beamFractIdx = j;
+					beamRot = clampAngle(andLeftWrot -
+							(beamFractIdx + 0.5f) * (m_tmpl.fov / beamCount));
 					m_peaks ~= Peak(beamRot);
 				}
 			}
