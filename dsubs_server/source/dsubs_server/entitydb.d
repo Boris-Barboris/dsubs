@@ -537,7 +537,7 @@ Length: 70m
 Displacement: 1600t
 Top speed:
 	Seven-blade screw: 16.8m/s
-	Stork pumpjet: 16.8m/s
+	Stork pumpjet: 15.9m/s
 Armament:
   2x bow torpedo tubes (90 sec reload).
   2x broadside decoy launchers.
