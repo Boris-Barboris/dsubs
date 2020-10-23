@@ -146,7 +146,7 @@ private:
 	{
 		PropulsorFactory bp;
 
-		// Standard screw
+		// Standard Stork screw
 		bp = new PropulsorFactory();
 		bp.name = "Seven-blade screw";
 		bp.description = "Seven-blade screw with no outstanding traits, " ~
@@ -176,8 +176,45 @@ private:
 			4.2f, dgr2rad(30), 15.0f, 0.03f, 0.4f
 		);
 
-		// info(bp.name, " cavitates on throttle ",
-		// 	PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
+		info(bp.name, " cavitates on throttle ",
+			PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
+		bp.playable = true;
+		m_propulsors[bp.name] = bp;
+
+		// Stork pump-jet
+		bp = new PropulsorFactory();
+		bp.name = "Stork pumpjet";
+		bp.description = "Massive assembly of counter-rotating impellers, " ~
+			"designed to raise cavitation speed at the cost of mass, top speed and " ~
+			"lackluster reverse capability.\n\nMass: 250t";
+		bp.type = PropulsorType.pump;
+		bp.bladeCount = 9;
+		bp.model = ConvexPolygon([
+					vec2f(-4.0f, 2.5f),
+					vec2f(-2.0f, -1.7f),
+					vec2f(2.0f, -1.7f),
+					vec2f(4.0f, 2.5f)
+				], RgbaColor(70, 70, 70), 0.2f, RgbaColor(100, 100, 100));
+		bp.posThrustK = RolledF(2300.0f, 15.0f);
+		bp.negThrustK = RolledF(700.0f, 5.0f);
+		bp.mass = 250.0f;
+		bp.shaftRotFreq = 2.45f;
+		bp.soundPrototype = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/std_pumpjet.png", 1.0f, 60, 130),
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/std_pumpjet_cav.png", 1.0f, 58, 138),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.45f),
+				Harmonic(2.0f, 0.09f),
+				Harmonic(3.0f, 0.01f),
+				Harmonic(9.0f, 0.6f)],
+				0.5, 0.7, -0.4),
+			3.0f, dgr2rad(30), 16.1f, 0.03f, 0.36f
+		);
+
+		info(bp.name, " cavitates on throttle ",
+			PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
 		bp.playable = true;
 		m_propulsors[bp.name] = bp;
 
@@ -484,7 +521,7 @@ Search patterns: straight, snake, spiral.
 		hprotoInternal.omniNoiseMult = 0.05f;
 		hprotoInternal.localNoiseRangeCutoff = 250.0f;
 		hydroProtos ~= SubHydrophonePrototype(
-			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -35.0f)),
+			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -30.0f)),
 			hprotoInternal);
 		hydroProtos[$-1].hydroProto.mirrored = true;
 		hydroProtos[$-1].hydroProto.filterName = "octaveBp50_2500";
@@ -500,6 +537,7 @@ Length: 70m
 Displacement: 1600t
 Top speed:
 	Seven-blade screw: 16.8m/s
+	Stork pumpjet: 16.8m/s
 Armament:
   2x bow torpedo tubes (90 sec reload).
   2x broadside decoy launchers.
@@ -512,10 +550,10 @@ Active sonars:
 			[
 				// right towed array pylon
 				ConvexPolygon(arr2vec2f([
-						6.0f, -35.0f,
-						6.0f, -34.0f,
-						1.0f, -27.0f,
-						1.0f, -31.0f
+						6.0f, -30.0f,
+						6.0f, -29.0f,
+						1.0f, -22.0f,
+						1.0f, -26.0f
 					]), RgbaColor(70, 70, 70), 0.2f, RgbaColor(100, 100, 100)),
 				ConvexPolygon(xSymmetry([
 						0.0, 35.0,
@@ -571,7 +609,7 @@ Active sonars:
 			2
 		);
 		sp.propulsionMounts = [MountPoint(vec2f(0.0, -34.0f))];
-		sp.allowedPropulsors = ["Seven-blade screw"];
+		sp.allowedPropulsors = ["Seven-blade screw", "Stork pumpjet"];
 		sp.roomProtos = roomProtos;
 		sp.tubeProtos = tubeProtos;
 		sp.rigidBody.mass = RolledF(1700.0f, 10.0f);
