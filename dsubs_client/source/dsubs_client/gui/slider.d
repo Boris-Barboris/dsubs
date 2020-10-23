@@ -195,6 +195,7 @@ final class Slider: GuiElement
 				y = y - rpos.y.to!int;
 				value = max(0.0f, min(1.0f, y / rsize.y));
 			}
+			onDragEnd(m_value);
 		}
 	}
 
