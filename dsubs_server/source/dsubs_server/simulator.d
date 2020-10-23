@@ -3,6 +3,7 @@ module dsubs_server.simulator;
 import std.container.rbtree: RedBlackTree;
 import std.datetime;
 import std.parallelism: task;
+import std.range: walkLength;
 import std.uuid;
 
 import core.atomic;
@@ -458,7 +459,7 @@ final class Simulator
 				task(&Globals.metrics.writeMetrics,
 						profiler, Player.getPlayersOnline()));
 			// do not send data to influx when no-one is here
-			if (Player.getPlayersOnline())
+			if (vessels.alivePlayerSubmarines.walkLength)
 			{
 				Globals.auxTaskPool.put(
 					task(&Globals.metrics.writeReplayData, this));

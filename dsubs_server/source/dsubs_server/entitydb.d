@@ -312,7 +312,7 @@ Search patterns: straight, snake, spiral.
 		tf.asprot.dissMod = 1.0f;
 		tf.asprot.span = 120.0f;
 		tf.asprot.radialRes = 20;
-		tf.asprot.maxSec = 1;
+		tf.asprot.maxSec = 2;
 		tf.asprot.zeroLevel = flowNoise(3600, mps2kts(20)) +
 			tf.asprot.flowNoiseGain - 10.0f;
 		tf.asprot.endScale = 1.0f / 60.0f;
