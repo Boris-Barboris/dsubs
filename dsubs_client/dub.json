@@ -15,6 +15,7 @@
 	"buildRequirements": [
 		"requireBoundsCheck"
 	],
+	"libs-windows": ["user32"],
 	"configurations": [
 		{
 			"name": "dev"
@@ -26,5 +27,5 @@
 	],
 	"description": "dsubs client",
 	"copyright": "Copyright (C) 2017-2020, Alexander Baranin",
-	"copyFiles-windows": ["libs-win-x86/*.dll"]
+	"copyFiles-windows": ["libs-win-x64/*.dll"]
 }
