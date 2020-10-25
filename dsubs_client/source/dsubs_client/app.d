@@ -14,7 +14,6 @@ import dsubs_client.game;
 version(Windows)
 {
 	extern(Windows) int SetConsoleOutputCP(uint);
-	extern(C) __gshared string[] rt_options = [ "gcopt=gc:precise", "scanDataSeg=precise" ];
 }
 
 void main(string[] argv)
