@@ -249,8 +249,8 @@ void __kernel reduceSum(
 	const uint g_offset = get_global_offset(0);
 	const uint g_size = get_global_size(0);
 	const uint frame_id = id - g_offset;
-	uint frame_start = g_offset + frame_id * 16;
-	uint frame_end = min(frame_start + 16, end);
+	uint frame_start = g_offset + frame_id * 32;
+	uint frame_end = min(frame_start + 32, end);
 	uint frame_size = frame_end - frame_start;
 	float res = 0.0f;
 
@@ -333,8 +333,8 @@ void __kernel reduceSumSquared(
 	const uint g_offset = get_global_offset(0);
 	const uint g_size = get_global_size(0);
 	const uint frame_id = id - g_offset;
-	uint frame_start = g_offset + frame_id * 16;
-	uint frame_end = min(frame_start + 16, end);
+	uint frame_start = g_offset + frame_id * 32;
+	uint frame_end = min(frame_start + 32, end);
 	uint frame_size = frame_end - frame_start;
 	float res = 0.0f;
 
