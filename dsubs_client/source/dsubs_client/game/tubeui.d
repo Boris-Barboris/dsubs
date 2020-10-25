@@ -406,7 +406,10 @@ final class TubeUI
 				Button loadWeaponBtn = builder(new Button()).
 					content(weaponName ~ " x" ~ weaponCountPair.value.to!string).
 					fontSize(FONT).build;
-				loadWeaponBtn.onClick += { m_tube.sendDesiredWeaponRequest(weaponName); };
+				loadWeaponBtn.onClick += (string wpnNameVal)
+					{
+						return { m_tube.sendDesiredWeaponRequest(wpnNameVal); };
+					} (weaponName);
 				contextButtons ~= loadWeaponBtn;
 			}
 		}
