@@ -150,8 +150,6 @@ final class LoginScreenState: GameState
 			infoLabel.content = "Authorizing...";
 			writeConfigField("login", loginField.content.str);
 			writeConfigField("password", pwField.content.str);
-			// eager request to minimize latency
-			Game.bconm.con.sendMessage(immutable EntityDbReq());
 		};
 
 		replayButton.onClick += ()
@@ -283,6 +281,7 @@ final class LoginScreenState: GameState
 		m_scenariosReceived = false;
 		Game.entityDbHash = res.dbHash;
 		infoLabel.content = "Requesting entity database";
+		Game.bconm.con.sendMessage(immutable EntityDbReq());
 		// check if we are already swimming out there on the server
 		if (res.alreadySpawned)
 		{
