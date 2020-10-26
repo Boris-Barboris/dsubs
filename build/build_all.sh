@@ -8,7 +8,7 @@ echo "building Windows"
 echo "starting VM"
 sudo virsh start win7
 sleep 60
-ssh win7 "cd dsubs\\dsubs_client && git fetch --force && git fetch --tags --force && git checkout ${COMMIT} && git submodule update --init && dub upgrade && dub build --arch=x86_64 -c prod -b plain"
+ssh win7 "cd dsubs\\dsubs_client && git fetch --force && git fetch --tags --force && git checkout ${COMMIT} && git submodule update --init && dub upgrade && dub build --arch=x86_64 -c prod -b debug"
 scp win7:dsubs/dsubs_client/dsubs_client.exe ./dsubs_client.exe
 mkdir dsubs
 mv dsubs_client.exe dsubs/
@@ -36,7 +36,7 @@ ssh dsubstrusty "
   git checkout ${COMMIT}
   git submodule update --init
   dub upgrade
-  dub build -b plain -c prod
+  dub build -b debug -c prod
   cd ~
   bash bundle.sh
   sync
@@ -60,7 +60,7 @@ ssh dsubsxenial "
   git checkout ${COMMIT}
   git submodule update --init
   dub upgrade
-  dub build -b plain -c prod
+  dub build -b debug -c prod
   cd ~
   bash bundle.sh
   sync
@@ -83,7 +83,7 @@ ssh dsubsbionic "
   git checkout ${COMMIT}
   git submodule update --init
   dub upgrade
-  dub build -b plain -c prod
+  dub build -b debug -c prod
   cd ~
   bash bundle.sh
   sync
