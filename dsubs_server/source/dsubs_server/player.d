@@ -302,6 +302,7 @@ final class Player: Captain
 				generateShift();
 			else
 				resetShiftToZero();
+			m_lastPingEmit = -6_000_000L;
 			// spawn submarine
 			synchronized(scen.simulator.simMut.reader)
 			{
