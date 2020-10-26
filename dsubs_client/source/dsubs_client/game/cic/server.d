@@ -1,5 +1,10 @@
 module dsubs_client.game.cic.server;
 
+import std.random;
+
+import core.time: msecs;
+import core.thread;
+
 import dsubs_common.api.messages;
 
 import dsubs_client.common;
@@ -28,6 +33,8 @@ final class CICServer
 		WaterfallAnalyzer[] m_wfAnalizers;
 		RayGeneratorSynchronizer* m_raySyncer;
 		bool m_dead;
+
+		Thread m_fuzzerThread;
 	}
 
 	@property BackendConnection bcon() { return m_bcon; }
@@ -72,6 +79,31 @@ final class CICServer
 			m_wfAnalizers ~= alz;
 		}
 		m_state.signalStateReady();
+		m_fuzzerThread = new Thread(&fuzzyContactDropper);
+		m_fuzzerThread.start();
+	}
+
+	private void fuzzyContactDropper()
+	{
+		int postfix = 0;
+		while(true)
+		{
+			CICCreateContactFromDataReq req;
+			req.ctcIdPrefix = 'F';
+			req.initialData.time = 0;
+			req.initialData.source.type = DataSourceType.Manual;
+			req.initialData.type = DataType.Position;
+			req.initialData.data.position =
+				PositionData(vec2d(0, 0));
+			postfix++;
+			handleCICCreateContactFromDataReq(req);
+			Thread.sleep(msecs(10));
+			ContactId ctcId = ContactId('F', postfix);
+			CICDropContactReq dropReq;
+			dropReq.ctcId = ctcId;
+			handleCICDropContactReq(dropReq);
+			Thread.sleep(msecs(10));
+		}
 	}
 
 	void handleSubKinematicRes(SubKinematicRes res)
