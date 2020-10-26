@@ -541,7 +541,7 @@ final class CommandQueue
 		s_ilspec = ILevelSpectrum(ctx);
 		s_pcbBuf = Buffer(ctx, GLOBAL_SRATE * short.sizeof);
 		s_bandSumBuf = Buffer(ctx, float.sizeof);
-		s_reduceBuf = Buffer(ctx, float.sizeof * GLOBAL_SRATE * 2 / 16);
+		s_reduceBuf = Buffer(ctx, float.sizeof * GLOBAL_SRATE * 2 / 32);
 	}
 
 	private

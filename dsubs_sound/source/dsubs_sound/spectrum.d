@@ -100,10 +100,10 @@ struct Tds
 		uint startIndex, uint endIndex)
 	{
 		size_t globalSize = endIndex - startIndex;
-		if (globalSize % 16)
-			globalSize = (globalSize + 16 - globalSize % 16) / 16;
+		if (globalSize % 32)
+			globalSize = (globalSize + 32 - globalSize % 32) / 32;
 		else
-			globalSize = globalSize / 16;
+			globalSize = globalSize / 32;
 		// Buffer globReduceBuf = Buffer(q.ctx, float.sizeof * groupCount);
 		Kernel k = q.mk_reduceSumSquared;
 		k.setArg(0, buf.mem);
@@ -344,10 +344,10 @@ struct EnergySpectrum(SpectrumType stype)
 		assert(endFreq <= MAX_FREQ);
 		size_t offset = minFreq.to!uint - 1;
 		size_t globalSize = endFreq.to!size_t - offset;
-		if (globalSize % 16)
-			globalSize = (globalSize + 16 - globalSize % 16) / 16;
+		if (globalSize % 32)
+			globalSize = (globalSize + 32 - globalSize % 32) / 32;
 		else
-			globalSize = globalSize / 16;
+			globalSize = globalSize / 32;
 		// Buffer globReduceBuf = Buffer(q.ctx, float.sizeof * groupCount);
 		Kernel k = q.mk_reduceSum;
 		k.setArg(0, buf.mem);
