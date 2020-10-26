@@ -79,8 +79,8 @@ final class CICServer
 			m_wfAnalizers ~= alz;
 		}
 		m_state.signalStateReady();
-		m_fuzzerThread = new Thread(&fuzzyContactDropper);
-		m_fuzzerThread.start();
+		// m_fuzzerThread = new Thread(&fuzzyContactDropper);
+		// m_fuzzerThread.start();
 	}
 
 	private void fuzzyContactDropper()

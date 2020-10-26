@@ -136,7 +136,6 @@ class Overlay: GuiElement
 		m_elements.remove(el);
 		if (!el.hidden)
 			el.onHide();
-		el.m_owner = null;
 	}
 
 	void clear()
