@@ -161,19 +161,19 @@ private:
 		bp.posThrustK = RolledF(2500.0f, 20.0f);
 		bp.negThrustK = RolledF(1000.0f, 10.0f);
 		bp.mass = 50.0f;
-		bp.shaftRotFreq = 2.19f;
+		bp.shaftRotFreq = 2.89f;
 		bp.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/std_propeller.png", 1.0f, 65, 135),
+				"../dsubs_sound/std_propeller.png", 1.0f, 55, 125),
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/std_propeller_cav.png", 1.0f, 60, 140),
+				"../dsubs_sound/std_propeller_cav.png", 1.0f, 75, 155),
 			cast(immutable) new TrochoidModulatorParams([
 				Harmonic(1.0f, 0.35f),
 				Harmonic(2.0f, 0.1f),
 				Harmonic(3.0f, 0.01f),
 				Harmonic(7.0f, 0.8f)],
 				0.5, 0.7, -0.4),
-			4.2f, dgr2rad(30), 15.0f, 0.03f, 0.4f
+			4.2f, dgr2rad(30), 16.0f, 0.03f, 0.4f
 		);
 
 		info(bp.name, " cavitates on throttle ",
@@ -188,7 +188,7 @@ private:
 			"designed to raise cavitation speed at the cost of mass, top speed and " ~
 			"lackluster reverse capability.\n\nMass: 250t";
 		bp.type = PropulsorType.pump;
-		bp.bladeCount = 9;
+		bp.bladeCount = 14;
 		bp.model = ConvexPolygon([
 					vec2f(-4.0f, 2.5f),
 					vec2f(-2.0f, -1.7f),
@@ -198,19 +198,19 @@ private:
 		bp.posThrustK = RolledF(2300.0f, 15.0f);
 		bp.negThrustK = RolledF(700.0f, 5.0f);
 		bp.mass = 250.0f;
-		bp.shaftRotFreq = 2.45f;
+		bp.shaftRotFreq = 4.5f;
 		bp.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/std_pumpjet.png", 1.0f, 60, 130),
+				"../dsubs_sound/std_pumpjet.png", 1.0f, 52, 122),
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/std_pumpjet_cav.png", 1.0f, 58, 138),
+				"../dsubs_sound/std_pumpjet_cav.png", 1.0f, 70, 150),
 			cast(immutable) new TrochoidModulatorParams([
 				Harmonic(1.0f, 0.45f),
 				Harmonic(2.0f, 0.09f),
 				Harmonic(3.0f, 0.01f),
 				Harmonic(9.0f, 0.6f)],
 				0.5, 0.7, -0.4),
-			3.0f, dgr2rad(30), 16.1f, 0.03f, 0.36f
+			3.0f, dgr2rad(35), 27.0f, 0.03f, 0.36f
 		);
 
 		info(bp.name, " cavitates on throttle ",
@@ -232,24 +232,24 @@ private:
 		bp.posThrustK = RolledF(2400.0f, 20.0f);
 		bp.negThrustK = RolledF(1100.0f, 10.0f);
 		bp.mass = 30.0f;
-		bp.shaftRotFreq = 4.11f;
-		bp.rotAcceleration = 0.36f;
+		bp.shaftRotFreq = 4.8f;
+		bp.rotAcceleration = 0.25f;
 		bp.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/lima_propeller.png", 1.0f, 75, 135),
+				"../dsubs_sound/lima_propeller.png", 1.0f, 62, 122),
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/lima_propeller_cav.png", 1.0f, 60, 140),
+				"../dsubs_sound/lima_propeller_cav.png", 1.0f, 75, 155),
 			cast(immutable) new TrochoidModulatorParams([
 				Harmonic(1.0f, 0.30f),
 				Harmonic(2.0f, 0.05f),
 				Harmonic(3.0f, 0.005f),
 				Harmonic(5.0f, 0.76f)],
 				0.5, 0.7, -0.4),
-			2.2f, dgr2rad(30), 13.0f, 0.03f, 0.4f
+			2.2f, dgr2rad(38), 12.0f, 0.03f, 0.4f
 		);
 
-		// info(bp.name, " cavitates on throttle ",
-		// 	PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
+		info(bp.name, " cavitates on throttle ",
+			PropellerSound.estCavitationShaftFreq(bp.soundPrototype) / bp.shaftRotFreq);
 		bp.playable = true;
 		m_propulsors[bp.name] = bp;
 
@@ -265,13 +265,13 @@ private:
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/civ_propeller.png", 1.0f, 80, 140),
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/civ_propeller_cav.png", 1.0f, 60, 140),
+				"../dsubs_sound/civ_propeller_cav.png", 1.0f, 75, 155),
 			cast(immutable) new TrochoidModulatorParams([
 				Harmonic(1.0f, 0.29f),
 				Harmonic(2.0f, 0.04f),
 				Harmonic(3.0f, 0.8f)],
 				0.5, 0.7, -0.4),
-			3.4f, dgr2rad(30), 15.0f, 0.03f, 0.4f
+			3.4f, dgr2rad(30), 17.0f, 0.03f, 0.4f
 		);
 
 		// info(bp.name, " cavitates on throttle ",
@@ -482,10 +482,10 @@ Search patterns: straight, snake, spiral.
 		bowProtoTemplate.openFlowNoiseMult = 3.0f;
 		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
-			4.0f, 80.0f);
+			4.0f, 85.0f);
 		bowProtoTemplate.openSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
-			4.0f, 80.0f);
+			4.0f, 82.0f);
 		bowProtoTemplate.firingSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
 			4.0f, 95.0f);
@@ -648,10 +648,10 @@ Active sonars:
 		bowProtoTemplate.openFlowNoiseMult = 1.0f;
 		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
-			4.0f, 80.0f);
+			4.0f, 85.0f);
 		bowProtoTemplate.openSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
-			4.0f, 80.0f);
+			4.0f, 82.0f);
 		bowProtoTemplate.firingSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
 			4.0f, 95.0f);
@@ -899,7 +899,7 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale5_8192.wav"),
 				9.0f, 95.0f)
 		];
-		af.meanSongPause = cast(usecs_t) 5 * 60 * 1000_000;
+		af.meanSongPause = cast(usecs_t) 7 * 60 * 1000_000;
 		af.songPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
 		af.mass = 30.0f;
 		af.maxSpeed = 7.0f;
@@ -947,9 +947,9 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/mulloway1_8192.wav"),
 				5.0f, 92.0f)
 		];
-		af.songMinLength = 10;
-		af.songMaxLength = 30;
-		af.meanSongPause = cast(usecs_t) 4 * 60 * 1000_000;
+		af.songMinLength = 7;
+		af.songMaxLength = 24;
+		af.meanSongPause = cast(usecs_t) 6 * 60 * 1000_000;
 		af.songPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
 		af.mass = 0.04f;
 		af.maxSpeed = 6.0f;
@@ -972,7 +972,7 @@ Active sonars:
 		af.songMinLength = 2;
 		af.songMaxLength = 10;
 		af.intrasongPause = 6_000_000L;
-		af.meanSongPause = cast(usecs_t) 6 * 60 * 1000_000;
+		af.meanSongPause = cast(usecs_t) 7 * 60 * 1000_000;
 		af.songPauseVariance = cast(usecs_t) 3 * 60 * 1000_000;
 		af.mass = 5.6f;
 		af.maxSpeed = 8.0f;

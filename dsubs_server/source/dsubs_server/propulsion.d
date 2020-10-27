@@ -80,6 +80,8 @@ final class BasicPropulsor: Propulsor
 		RigidBody m_vesselRb;
 	}
 
+	@property PropellerSound sound() { return m_sound; }
+
 	private this() {}
 
 	vec2d getForce(const RigidBody b, ref const Kinematics c)
@@ -119,6 +121,11 @@ final class BasicPropulsor: Propulsor
 		{
 			m_sound.postUpdate(m_throttle * shaftRotFreq, m_vesselRb.kinet.progradeSpeed, dt);
 		};
+	}
+
+	float shaftFreq(float throttle) const
+	{
+		return throttle * shaftRotFreq;
 	}
 
 	override void register(Simulator sim)

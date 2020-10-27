@@ -508,9 +508,6 @@ unittest
 	Globals.sim.join();
 }
 
-*/
-
-
 
 
 unittest
@@ -581,3 +578,4 @@ unittest
 	assert(s.dead);
 }
 
+*/

@@ -1,10 +1,14 @@
 module dsubs_server.tests.test_sensor_balance;
 
+import std.file;
 import std.stdio;
 
 import dsubs_common.api.messages;
 import dsubs_common.math;
 
+import dsubs_sound.common: GLOBAL_SRATE;
+import dsubs_sound.units;
+import dsubs_sound.soundsource: calcPropellerIntensity;
 import dsubs_sound.hydrophone;
 
 import dsubs_server.common;
@@ -20,6 +24,53 @@ double getSpawnReqMaxSpeed(SpawnReq req)
 {
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
 	return speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+}
+
+void writePropellerNoiseVsSpeedCsv(Submarine v, string testName, int minFreq, int maxFreq,
+	int numSpeedPoints = 40, float dissMod = 4.0f)
+{
+	mkdirRecurse("test_data/propulsor_noise");
+	File* f = new File("test_data/propulsor_noise/" ~ testName ~
+		"_" ~ v.prototypeName ~ "_" ~ v.propulsor.prototypeName ~ ".csv", "w");
+	scope(exit) f.detach();
+	f.writeln("speed,noise_db");
+	float minSpeed = 0.1f;
+	float maxSpeed = speedForThrottle(v.rigidBody.hydroModel,
+		cast(BasicPropulsor) v.propulsor, 1.0f);
+	float dspeed = (maxSpeed - minSpeed) / (numSpeedPoints - 1);
+	float speed = minSpeed;
+	for (int i = 0; i < numSpeedPoints; i++)
+	{
+		float throttle = throttleForSpeed(v, speed);
+		float shaftFreq = (cast(BasicPropulsor) v.propulsor).shaftFreq(throttle);
+		trace("speed: ", speed, ", throttle: ", throttle);
+		Intensity bandSum = calcPropellerIntensity(
+			(cast(BasicPropulsor) v.propulsor).sound,
+			Globals.sctx.queue(0), 1000.0f, speed, shaftFreq, PI_2,
+			minFreq, maxFreq, dissMod);
+
+		f.writefln!"%f,%f"(speed, bandSum.toDb.val);
+		speed += dspeed;
+	}
+}
+
+unittest
+{
+	// draw propulsor noise levels
+	Globals.buildForTests();
+	scope(exit) Globals.resetForTests();
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine sub = Globals.entityDb.buildSubFromLoadout(req, null);
+	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);
+	req = SpawnReq("Stork", "Stork pumpjet");
+	sub = Globals.entityDb.buildSubFromLoadout(req, null);
+	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);
+	req = SpawnReq("Lima", "Five-blade Lima screw");
+	sub = Globals.entityDb.buildSubFromLoadout(req, null);
+	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);
+	req = SpawnReq("Bot trader", "Civilian three-blade screw");
+	sub = Globals.entityDb.buildSubFromLoadout(req, null);
+	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);
 }
 
 /*

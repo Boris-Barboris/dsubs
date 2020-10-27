@@ -286,6 +286,12 @@ final class PropellerSound: SoundSource
 		assert(!isNaN(freqCubeStart));
 		float freqCubeEnd = pow(m_shaftFreqEnd, 3);
 		assert(!isNaN(freqCubeEnd));
+		if (logMore)
+		{
+			trace(cast(void*) this,
+						", m_normalVelStart = ", m_normalVelStart,
+						", m_critNormalVel = ", m_critNormalVel);
+		}
 		bool cavitation = fabs(m_normalVelStart) > m_critNormalVel;
 		float cavSqrStart = cavitation ?
 			(m_normalVelStart - m_critNormalVel) * fabs(m_normalVelStart - m_critNormalVel) :
@@ -333,7 +339,7 @@ final class PropellerSound: SoundSource
 			assert(!isNaN(kavgScaled));
 			if (logMore)
 			{
-				trace(cast(void*) this,
+				trace(cast(void*) this, " cavitation ",
 						", source = ", this.owner.to!string,
 						", kavg = ", kavg,
 						", avgRange = ", avgRange,
@@ -353,6 +359,44 @@ final class PropellerSound: SoundSource
 				onTdsReady(null, &q.s_bandSumBuf, null);
 		}
 	}
+}
+
+
+Intensity calcPropellerIntensity(PropellerSound ps, CommandQueue q, float range,
+	float speed, float shaftFreq, float relBearing, int minFreq, int maxFreq,
+	float dissMod = 4.0f)
+{
+	ps.preUpdate(shaftFreq, speed);
+	ps.postUpdate(shaftFreq, speed, 1.0f);
+
+	Intensity res;
+
+	void onTdsReady(Intensity* bandIntensitySumReady,
+			Buffer* bandIntensitySumBuf, Tds* tds)
+	{
+		if (bandIntensitySumReady)
+		{
+			res.val += bandIntensitySumReady.val;
+		}
+		if (bandIntensitySumBuf)
+		{
+			Intensity bufRead;
+			AsyncEvent evt = bandIntensitySumBuf.enqueueFullRead(q, &bufRead, null);
+			evt.waitFor();
+			res.val += bufRead.val;
+		}
+	}
+
+	vec2d listenerPos = vec2d(0, 0);
+	vec2d soundPos = listenerPos + vec2d(0, range);
+	ps.transform.position = soundPos;
+	ps.transform.rotation = PI + relBearing;
+	ps.savePrevPos();
+
+	ps.buildSignals(q, listenerPos, listenerPos, &onTdsReady,
+		minFreq, maxFreq, false, dissMod, null, true);
+
+	return res;
 }
 
 

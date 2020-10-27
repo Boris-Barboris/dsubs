@@ -89,3 +89,7 @@ OR
 
 we do current source-based approach and write some command-line helpers for interactive development.
 I'm afraid the second way is just not viable.
+
+
+
+The flow noise strongly depends on the submarine's speed, and generally the SL is proportional to the speed raised to the sixth power. This means that doubling the speed will increase SL by 18 dB. It has been suggested that a submarine in transit is 15-20 dB noisier than one in the "quiet" mode.
