@@ -899,8 +899,8 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale5_8192.wav"),
 				9.0f, 95.0f)
 		];
-		af.meanSoundPause = cast(usecs_t) 5 * 60 * 1000_000;
-		af.soundPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
+		af.meanSongPause = cast(usecs_t) 5 * 60 * 1000_000;
+		af.songPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
 		af.mass = 30.0f;
 		af.maxSpeed = 7.0f;
 		af.reflprot = ReflectorPrototype(vec2f(4.0f, 15.0f), [-20.0f, -20.0f, -20.0f]);
@@ -913,12 +913,71 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/big_iron_8192.wav"),
 				9.0f, 88.0f)
 		];
-		af.meanSoundPause = cast(usecs_t) 30 * 60 * 1000_000;
-		af.soundPauseVariance = cast(usecs_t) 3 * 60 * 1000_000;
+		af.meanSongPause = cast(usecs_t) 30 * 60 * 1000_000;
+		af.songPauseVariance = cast(usecs_t) 3 * 60 * 1000_000;
 		af.mass = 30.0f;
 		af.maxSpeed = 6.0f;
 		af.reflprot = ReflectorPrototype(vec2f(4.5f, 15.0f), [-18.0f, -18.0f, -18.0f]);
 		af.species = "jukebox whale";
+		m_animals[af.species] = af;
+
+		af = new AnimalFactory();
+		af.randomSounds = [
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/orca1_8192.wav"),
+				9.0f, 95.0f),
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/orca2_8192.wav"),
+				9.0f, 95.0f),
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/orca3_8192.wav"),
+				9.0f, 95.0f)
+		];
+		af.meanSongPause = cast(usecs_t) 6 * 60 * 1000_000;
+		af.songPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
+		af.mass = 4.0f;
+		af.maxSpeed = 13.0f;
+		af.reflprot = ReflectorPrototype(vec2f(1.0f, 7.0f), [-20.0f, -20.0f, -20.0f]);
+		af.species = "orca";
+		m_animals[af.species] = af;
+
+		af = new AnimalFactory();
+		af.randomSounds = [
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/mulloway1_8192.wav"),
+				5.0f, 92.0f)
+		];
+		af.songMinLength = 10;
+		af.songMaxLength = 30;
+		af.meanSongPause = cast(usecs_t) 2 * 60 * 1000_000;
+		af.songPauseVariance = cast(usecs_t) 1 * 60 * 1000_000;
+		af.mass = 0.04f;
+		af.maxSpeed = 6.0f;
+		af.reflprot = ReflectorPrototype(vec2f(0.5f, 0.5f), [-20.0f, -20.0f, -20.0f]);
+		af.species = "mulloway";
+		m_animals[af.species] = af;
+
+		af = new AnimalFactory();
+		af.randomSounds = [
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/minke_whale1_8192.wav"),
+				9.0f, 95.0f),
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/minke_whale_boing1_8192.wav"),
+				9.0f, 95.0f),
+			PrerecordedSoundPrototype(
+				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/minke_whale_boing2_8192.wav"),
+				9.0f, 95.0f)
+		];
+		af.songMinLength = 2;
+		af.songMaxLength = 10;
+		af.intrasongPause = 6_000_000L;
+		af.meanSongPause = cast(usecs_t) 3 * 60 * 1000_000;
+		af.songPauseVariance = cast(usecs_t) 1 * 60 * 1000_000;
+		af.mass = 5.6f;
+		af.maxSpeed = 8.0f;
+		af.reflprot = ReflectorPrototype(vec2f(1.2f, 6.5f), [-20.0f, -20.0f, -20.0f]);
+		af.species = "minke whale";
 		m_animals[af.species] = af;
 	}
 

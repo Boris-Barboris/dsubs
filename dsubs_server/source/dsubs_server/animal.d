@@ -29,6 +29,8 @@ final class Animal: Killable, IHasTransform, IHasRidigBody
 		Reflector m_reflector;
 		vec2d m_velocity = vec2d(0, 0);
 		PrerecordedSoundSource m_currentSoundSource;
+		int songCounter;
+		int currentSongLength;
 	}
 
 	@property RigidBody rigidBody() { return m_rigidBody; }
@@ -57,9 +59,23 @@ final class Animal: Killable, IHasTransform, IHasRidigBody
 
 	usecs_t generateNextSoundStart()
 	{
-		return simulator.worldTime + max(0, uniform!"[]"(
-			m_factory.meanSoundPause - m_factory.soundPauseVariance,
-			m_factory.meanSoundPause + m_factory.soundPauseVariance));
+		usecs_t lowBound, highBound;
+		if (songCounter == 0)
+		{
+			currentSongLength = uniform!"[]"(
+				m_factory.songMinLength, m_factory.songMaxLength);
+			lowBound = m_factory.meanSongPause - m_factory.songPauseVariance;
+			highBound = m_factory.meanSongPause + m_factory.songPauseVariance;
+		}
+		else
+		{
+			lowBound = m_factory.intrasongPause;
+			highBound = m_factory.intrasongPause;
+		}
+		songCounter++;
+		if (songCounter >= currentSongLength)
+			songCounter = 0;
+		return simulator.worldTime + max(0, uniform!"[]"(lowBound, highBound));
 	}
 
 	void onPostKinematics(usecs_t dt)
@@ -71,6 +87,7 @@ final class Animal: Killable, IHasTransform, IHasRidigBody
 			// info("starting whale song");
 			m_currentSoundSource = new PrerecordedSoundSource(m_transform,
 				m_factory.randomSounds[sourceIdx]);
+			m_currentSoundSource.owner = this;
 			simulator.acous.registerSource(m_currentSoundSource);
 			m_nextSoundStart =
 				(1e6 * m_currentSoundSource.totalSamples / GLOBAL_SRATE).to!usecs_t +
@@ -156,12 +173,20 @@ final class AnimalCollection
 final class AnimalFactory
 {
 	PrerecordedSoundPrototype[] randomSounds;
-	usecs_t meanSoundPause;
-	usecs_t soundPauseVariance;
+	/// average pause between songs
+	usecs_t meanSongPause;
+	usecs_t songPauseVariance;
 	float maxSpeed = 0.0;
 	ReflectorPrototype reflprot;
 	float mass;
 	string species;
+	// if randomSounds are short and you want to compose
+	// a song from repeating the sounds, this is how many times
+	// the animal should repeat it.
+	int songMinLength = 1;
+	int songMaxLength = 1;
+	// pause between sounds inside one song.
+	usecs_t intrasongPause;
 
 	final Animal build(string name) const
 	{
