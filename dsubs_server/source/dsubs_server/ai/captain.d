@@ -9,6 +9,7 @@ import dsubs_common.api.entities;
 
 import dsubs_sound.activesonar;
 
+import dsubs_server.acoustics: AcousticEnv;
 import dsubs_server.common;
 import dsubs_server.globals;
 import dsubs_server.weaponry;
@@ -323,7 +324,7 @@ bool hasActiveSonar(Submarine sub)
 double effectiveFiringRange(const Submarine sub)
 {
 	// FIXME
-	return 6000.0;
+	return 7500.0;
 }
 
 /// Returns true if the weapon is a torpedo.
@@ -1022,7 +1023,9 @@ final class AICaptain
 			float minIlevel = sonar.proto.minPeakIlevel;
 			SonarPing ping = sonar.startPing(minIlevel + m_power * (maxIlevel - minIlevel));
 			simulator.acous.registerSource(ping);
-			ReflectorImprint[] imprints = sonar.estimateReflectors(simulator.acous.reflectors);
+			ReflectorImprint[] imprints = sonar.estimateReflectors(
+				simulator.acous.reflectors.filter!(
+					r => AcousticEnv.filterBySonarFilter(sonar, r)));
 			// ping returned imprints
 			trace("AI ping resulted in imprints: ", imprints);
 			// we go through all imprints and provide position data to CIC (crew state)

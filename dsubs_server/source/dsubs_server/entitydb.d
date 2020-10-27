@@ -949,8 +949,8 @@ Active sonars:
 		];
 		af.songMinLength = 10;
 		af.songMaxLength = 30;
-		af.meanSongPause = cast(usecs_t) 2 * 60 * 1000_000;
-		af.songPauseVariance = cast(usecs_t) 1 * 60 * 1000_000;
+		af.meanSongPause = cast(usecs_t) 4 * 60 * 1000_000;
+		af.songPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
 		af.mass = 0.04f;
 		af.maxSpeed = 6.0f;
 		af.reflprot = ReflectorPrototype(vec2f(0.5f, 0.5f), [-20.0f, -20.0f, -20.0f]);
@@ -972,8 +972,8 @@ Active sonars:
 		af.songMinLength = 2;
 		af.songMaxLength = 10;
 		af.intrasongPause = 6_000_000L;
-		af.meanSongPause = cast(usecs_t) 3 * 60 * 1000_000;
-		af.songPauseVariance = cast(usecs_t) 1 * 60 * 1000_000;
+		af.meanSongPause = cast(usecs_t) 6 * 60 * 1000_000;
+		af.songPauseVariance = cast(usecs_t) 3 * 60 * 1000_000;
 		af.mass = 5.6f;
 		af.maxSpeed = 8.0f;
 		af.reflprot = ReflectorPrototype(vec2f(1.2f, 6.5f), [-20.0f, -20.0f, -20.0f]);

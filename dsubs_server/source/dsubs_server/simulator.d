@@ -311,7 +311,7 @@ final class Simulator
 	/// player observers.
 	bool runWithoutPlayers = false;
 
-	float timeAcceleration = 1.0f;
+	float timeAcceleration = 8.0f;
 
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassStart;
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassEnd;

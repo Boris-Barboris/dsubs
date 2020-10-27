@@ -525,6 +525,9 @@ final class ActiveSonar
 	/// torpedo tubes want to modify flow noise by being open or closed
 	IFlowNoiseMultiplier[] flowNoiseMultipliers;
 
+	/// Predicate to use in server to filter out uninteresting reflectors.
+	bool delegate(Reflector s) reflectorFilter;
+
 	@property Transform2D transform() { return m_transform; }
 	@property const(ActiveSonarPrototype) proto() const { return m_proto; }
 	@property float maxRange() const { return m_secDur * SOUND_SPD / 2; }

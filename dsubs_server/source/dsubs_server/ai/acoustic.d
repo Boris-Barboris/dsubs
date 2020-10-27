@@ -7,6 +7,7 @@ import dsubs_common.math.angles;
 
 import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
+import dsubs_sound.soundsource: SoundSource;
 
 import dsubs_server.common;
 import dsubs_server.globals;
@@ -46,13 +47,49 @@ final class AIAcoustic
 		m_btRoot.execute(ticks);
 	}
 
+	private bool isInterestingSignalOwner(Object owner)
+	{
+		Submarine s = cast(Submarine) owner;
+		if (s)
+		{
+			if (m_crew.side && s.captain && s.captain.side)
+			{
+				ContactRelation relation = m_crew.side.relateTo(s.captain.side);
+				if (relation == ContactRelation.ally)
+					return false;
+			}
+			return true;
+		}
+		Vessel v = cast(Vessel) owner;
+		if (v)
+			return true;
+		return false;
+	}
+
+	private bool isSoundSourceInteresting(SoundSource s)
+	{
+		return isInterestingSignalOwner(s.owner);
+	}
+
+	private bool isReflectorInteresting(Reflector r)
+	{
+		return isInterestingSignalOwner(r.owner);
+	}
+
 	/// Prepare submarine's hydrophones for bot mode
 	void prepareSensors()
 	{
+		// prepare hydrophone filters
 		foreach (Hydrophone h; m_crew.submarine.hydrophones)
 		{
 			h.shouldBeActive = true;
 			h.maintainImprints = true;
+			h.soundSourceFilter = &isSoundSourceInteresting;
+		}
+		// prepare active sonar filters
+		if (m_crew.submarine.sonar)
+		{
+			m_crew.submarine.sonar.reflectorFilter = &isReflectorInteresting;
 		}
 		// if we are not an easy bot we use towed arrays
 		if (m_difficulty >= BOT_DIFFICULTY.medium)

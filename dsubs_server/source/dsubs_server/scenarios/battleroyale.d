@@ -317,13 +317,10 @@ Good luck!`;
 			}
 		}
 		// spawn animals if necessary
-		int whalesToSpawn = 1 - m_simulator.animals.entities.filter!(
-			a => a.species == "humpback whale").walkLength.to!int;
-		while (whalesToSpawn-- > 0)
+		void placeAnimal(string species, string name)
 		{
-			info("Spawning whale");
-			Animal animal = Globals.entityDb.getAnimalFactory("humpback whale").
-				build("Ahmed");
+			info("spawning ", species);
+			Animal animal = Globals.entityDb.getAnimalFactory(species).build(name);
 			vec2d spawnPos;
 			double spawnRot;
 			getRandomSpawn(spawnPos, spawnRot);
@@ -333,21 +330,30 @@ Good luck!`;
 			animal.register(m_simulator);
 		}
 
+		int whalesToSpawn = 1 - m_simulator.animals.entities.filter!(
+			a => a.species == "humpback whale").walkLength.to!int;
+		while (whalesToSpawn-- > 0)
+			placeAnimal("humpback whale", "Ahmed");
+
+		int orcasToSpawn = 1 - m_simulator.animals.entities.filter!(
+			a => a.species == "orca").walkLength.to!int;
+		while (orcasToSpawn-- > 0)
+			placeAnimal("orca", "Kutta");
+
+		int minkesToSpawn = 1 - m_simulator.animals.entities.filter!(
+			a => a.species == "minke whale").walkLength.to!int;
+		while (minkesToSpawn-- > 0)
+			placeAnimal("minke whale", "Tanya");
+
+		int mullowaysToSpawn = 2 - m_simulator.animals.entities.filter!(
+			a => a.species == "mulloway").walkLength.to!int;
+		while (mullowaysToSpawn-- > 0)
+			placeAnimal("mulloway", "mulloway");
+
 		int musicToSpawn = 1 - m_simulator.animals.entities.filter!(
 			a => a.species == "jukebox whale").walkLength.to!int;
 		while (musicToSpawn-- > 0)
-		{
-			info("Spawning jukebox whale");
-			Animal animal = Globals.entityDb.getAnimalFactory("jukebox whale").
-				build("Texas Red");
-			vec2d spawnPos;
-			double spawnRot;
-			getRandomSpawn(spawnPos, spawnRot);
-			animal.transform.position = spawnPos;
-			animal.transform.rotation = spawnRot;
-			animal.destination = getDistantPos(spawnPos);
-			animal.register(m_simulator);
-		}
+			placeAnimal("jukebox whale", "Texas Red");
 	}
 
 	/// make sure each player with a submarine in this simulator has a reload circle

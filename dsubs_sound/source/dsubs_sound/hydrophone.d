@@ -128,6 +128,9 @@ final class Hydrophone
 	/// invoked by simulator right after kinematic update happens
 	Event!(void delegate()) onPostKinematics;
 
+	/// Predicate to use in server to filter out uninteresting sound sources.
+	bool delegate(SoundSource s) soundSourceFilter;
+
 	private
 	{
 		Transform2D m_transform;

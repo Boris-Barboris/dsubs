@@ -143,11 +143,26 @@ final class AcousticEnv
 				int workerIdx = Globals.taskPool.workerIndex.to!int;
 				auto q = Globals.sctx.queue(workerIdx);
 				if (sonar.pingJustStarted)
-					sonar.drawReflectors(q, m_reflectors);
+					sonar.drawReflectors(q, m_reflectors.filter!(
+						r => filterBySonarFilter(sonar, r)));
 				if (sonar.canGenerateSlice)
 					sonar.startSliceGeneration(q);
 			}
 		}
+	}
+
+	static bool filterBySonarFilter(ActiveSonar sonar, Reflector reflector)
+	{
+		if (sonar.reflectorFilter)
+			return sonar.reflectorFilter(reflector);
+		return true;
+	}
+
+	static bool filterByHydrophoneFilter(TupleT)(TupleT tuple)
+	{
+		if (tuple[0].soundSourceFilter)
+			return tuple[0].soundSourceFilter(tuple[1]);
+		return true;
 	}
 
 	void applySourcesOnHydrophones()
@@ -171,7 +186,7 @@ final class AcousticEnv
 		auto hydrophoneSourceRange = cartesianProduct(
 			m_hydrophones.filter!(h => h.active),
 			m_sources
-		);
+		).filter!(tuple => filterByHydrophoneFilter(tuple));
 
 		// sources can be dispatched to one hydrophone in parallel
 		foreach (hpSourceTuple; Globals.taskPool.parallel(hydrophoneSourceRange, 1))
