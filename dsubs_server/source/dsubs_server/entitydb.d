@@ -925,13 +925,13 @@ Active sonars:
 		af.randomSounds = [
 			PrerecordedSoundPrototype(
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/orca1_8192.wav"),
-				9.0f, 95.0f),
+				9.0f, 100.0f),
 			PrerecordedSoundPrototype(
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/orca2_8192.wav"),
-				9.0f, 95.0f),
+				9.0f, 100.0f),
 			PrerecordedSoundPrototype(
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/orca3_8192.wav"),
-				9.0f, 95.0f)
+				9.0f, 100.0f)
 		];
 		af.meanSongPause = cast(usecs_t) 6 * 60 * 1000_000;
 		af.songPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
