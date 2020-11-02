@@ -7,7 +7,7 @@ import dsubs_common.utils;
 
 
 /// Simple cooperative profiling struct
-final class ProfTimer
+struct ProfTimer
 {
 	alias TimeT = typeof(MonoTime.currTime());
 

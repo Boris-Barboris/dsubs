@@ -133,7 +133,6 @@ final class SimulatorScheduler
 
 	private void schedulingLoop()
 	{
-		ProfTimer profiler = new ProfTimer();
 		scope(success) info("simulator thread exiting");
 		while (!m_stopFlag)
 		{
@@ -166,7 +165,7 @@ final class SimulatorScheduler
 			}
 			Duration late = now - simToRun.nextStart;
 			// the time has come
-			simToRun.runOnce(profiler);
+			simToRun.runOnce();
 			// now we calculate the next wakeup or remove the sim from tree
 			if (simToRun.finished)
 			{
@@ -355,7 +354,7 @@ final class Simulator
 	}
 
 	/// run one iteration of simulation
-	private void runOnce(ProfTimer profiler)
+	private void runOnce()
 	{
 		if (!runWithoutPlayers && getConnectedPlayers() == 0)
 		{
@@ -366,6 +365,7 @@ final class Simulator
 				return;
 		}
 		m_abandonedCounter = 0;
+		ProfTimer profiler = ProfTimer();
 		synchronized (simMut.writer)
 		{
 			// early exit
@@ -452,18 +452,22 @@ final class Simulator
 		profiler.stop();
 		if (printTimings)
 			profiler.printResult();
-		if (!finished && m_id == "main_arena" &&
+		if (!finished &&
 			Globals.metrics && (m_worldTime % 10_000_000 == 0))
 		{
-			Globals.auxTaskPool.put(
-				task(&Globals.metrics.writeMetrics,
-						profiler, Player.getPlayersOnline()));
-			// do not send data to influx when no-one is here
-			if (vessels.alivePlayerSubmarines.walkLength)
+			if (m_id == "main_arena")
 			{
 				Globals.auxTaskPool.put(
-					task(&Globals.metrics.writeReplayData, this));
+					task(&Globals.metrics.writePlayerStats, Player.getPlayersOnline()));
+				// do not send data to influx when no-one is here
+				if (vessels.alivePlayerSubmarines.walkLength)
+				{
+					Globals.auxTaskPool.put(
+						task(&Globals.metrics.writeReplayData, this));
+				}
 			}
+			Globals.auxTaskPool.put(
+				task(&Globals.metrics.writeSimulatorMetrics, id, profiler));
 		}
 	}
 }

@@ -39,11 +39,27 @@ final class MetricsService
 		m_influxReadUrl = influxUrl.replace("write", "query");
 	}
 
-	void writeMetrics(ProfTimer simTimer, int connectedPlayers)
+	void writePlayerStats(int connectedPlayers)
+	{
+		try
+		{
+			postContent(m_influxUrl,
+				"player_stats connected_players=" ~ connectedPlayers.to!string);
+		}
+		catch (Exception ex)
+		{
+			error("error writing player_stats to influx: ", ex.msg);
+		}
+	}
+
+	void writeSimulatorMetrics(string simulatorId, ProfTimer simTimer)
 	{
 		try
 		{
 			auto strBuf = appender!string();
+			strBuf ~= "simulator_stats,simulator_id=";
+			strBuf ~= simulatorId;
+			strBuf ~= " ";
 			// strBuf ~= "total_usecs=" ~ simTimer.getTotalUsecs.to!string;
 			bool first = true;
 			foreach (const ProfTimer.Interval interval; simTimer.readySubIntervals)
@@ -54,13 +70,11 @@ final class MetricsService
 					(interval.end - interval.start).total!"usecs".to!string;
 				first = false;
 			}
-			postContent(m_influxUrl,
-				"simulator_stats " ~ strBuf.data ~ "\n" ~
-				"player_stats connected_players=" ~ connectedPlayers.to!string);
+			postContent(m_influxUrl, strBuf.data);
 		}
 		catch (Exception ex)
 		{
-			error("error writing metrics to influx: ", ex.msg);
+			error("error writing simulator_stats to influx: ", ex.msg);
 		}
 	}
 
