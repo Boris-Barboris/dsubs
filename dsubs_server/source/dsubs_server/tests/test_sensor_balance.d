@@ -54,6 +54,39 @@ void writePropellerNoiseVsSpeedCsv(Submarine v, string testName, int minFreq, in
 	}
 }
 
+
+void writePropellerNoiseVsSpeedCsv(Torpedo v, string testName, int minFreq, int maxFreq,
+	int numSpeedPoints = 40, float dissMod = 4.0f)
+{
+	mkdirRecurse("test_data/propulsor_noise");
+	File* f = new File("test_data/propulsor_noise/" ~ testName ~
+		"_" ~ v.prototypeName ~ "_" ~ v.propulsor.prototypeName ~ ".csv", "w");
+	scope(exit) f.detach();
+	f.writeln("speed,noise_db");
+	// min speed should be taken from min march speed in guidance parameters
+	const WeaponFactory wf = Globals.entityDb.getWeaponFactory(v.prototypeName);
+	float minSpeed = wf.marchSpeedRange.min;
+	float maxSpeed = wf.marchSpeedRange.max;
+	float dspeed = (maxSpeed - minSpeed) / (numSpeedPoints - 1);
+	if (dspeed == 0.0f)
+		numSpeedPoints = 1;
+	float speed = minSpeed;
+	for (int i = 0; i < numSpeedPoints; i++)
+	{
+		float throttle = throttleForSpeed(v, speed);
+		float shaftFreq = (cast(BasicPropulsor) v.propulsor).shaftFreq(throttle);
+		trace("speed: ", speed, ", throttle: ", throttle);
+		Intensity bandSum = calcPropellerIntensity(
+			(cast(BasicPropulsor) v.propulsor).sound,
+			Globals.sctx.queue(0), 1000.0f, speed, shaftFreq, PI_2,
+			minFreq, maxFreq, dissMod);
+
+		f.writefln!"%f,%f"(speed, bandSum.toDb.val);
+		speed += dspeed;
+	}
+}
+
+
 unittest
 {
 	// draw propulsor noise levels
@@ -72,6 +105,18 @@ unittest
 	sub = Globals.entityDb.buildSubFromLoadout(req, null);
 	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);
 }
+
+
+unittest
+{
+	// draw torpedo noise levels
+	Globals.buildForTests();
+	scope(exit) Globals.resetForTests();
+	WeaponFactory wf = Globals.entityDb.getWeaponFactory("Minoga");
+	Torpedo w = cast(Torpedo) wf.build(null, null);
+	writePropellerNoiseVsSpeedCsv(w, "torpedoes", 250, GLOBAL_SRATE / 2);
+}
+
 
 /*
 
