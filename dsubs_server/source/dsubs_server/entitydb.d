@@ -484,13 +484,13 @@ Search patterns: straight, snake, spiral.
 		bowProtoTemplate.openFlowNoiseMult = 3.0f;
 		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
-			4.0f, 85.0f);
+			4.0f, 82.0f);
 		bowProtoTemplate.openSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
 			4.0f, 82.0f);
 		bowProtoTemplate.firingSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
-			4.0f, 95.0f);
+			4.0f, 92.0f);
 		TubePrototype[int] tubeProtos;
 		tubeProtos[0] = bowProtoTemplate;
 		bowProtoTemplate.tmpl.mount = MountPoint(vec2f(4.7, 25.0), -dgr2rad(20));

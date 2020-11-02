@@ -10,6 +10,7 @@ import dsubs_common.containers.array: removeFirstUnstable;
 
 import dsubs_sound.activesonar: Reflector, ReflectorPrototype;
 
+import dsubs_server.player: Captain;
 import dsubs_server.common;
 import dsubs_server.dynamics;
 import dsubs_server.propulsion;
@@ -27,6 +28,7 @@ abstract class Killable
 		usecs_t m_deathTime;
 		string m_causeOfDeath;
 		Simulator m_simulator;
+		Captain m_killer;
 	}
 
 	this()
@@ -41,6 +43,7 @@ abstract class Killable
 		@property usecs_t deathTime() const { return m_deathTime; }
 		@property usecs_t registerTime() const { return m_registerTime; }
 		@property string causeOfDeath() const { return m_causeOfDeath; }
+		@property Captain killer() { return m_killer; }
 		@property inout(Simulator) simulator() inout { return m_simulator; }
 	}
 
@@ -53,23 +56,23 @@ abstract class Killable
 	// called under (this) lock
 	protected void onFirstKill() {}
 
-	/// Ensure that the vessel is dead. Returns true if it was killed
-	/// in the first time.
-	bool kill(string cause)
+	/// Ensure that the vessel is dead. Returns true if it was killed first time.
+	bool kill(string cause, Captain killer)
 	{
 		synchronized(this)
 		{
 			if (!m_dead)
 			{
 				m_dead = true;
+				m_killer = killer;
+				m_deathTime = m_simulator.worldTime;
+				m_causeOfDeath = cause;
 				onFirstKill();
+				return true;
 			}
 			else
 				return false;
 		}
-		m_deathTime = m_simulator.worldTime;
-		m_causeOfDeath = cause;
-		return true;
 	}
 }
 
@@ -173,9 +176,9 @@ class Vessel: Killable, IHasTransform, IHasRidigBody
 	}
 
 	/// Ensure that the vessel is dead. Returns true if it was killed first time.
-	override bool kill(string cause)
+	override bool kill(string cause, Captain killer)
 	{
-		bool res = super.kill(cause);
+		bool res = super.kill(cause, killer);
 		if (res)
 		{
 			m_reapTime = m_deathTime + uniform!("[]", usecs_t, usecs_t)(240, 360) *

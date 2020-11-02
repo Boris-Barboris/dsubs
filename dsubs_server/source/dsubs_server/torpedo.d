@@ -124,7 +124,7 @@ final class ActiveDecoyGuidance: IGuidance
 			m_fuelLeft -= dt / 1e6;
 			if (m_fuelLeft < 0.0f)
 			{
-				m_decoy.kill("fuel exhausted");
+				m_decoy.kill("fuel exhausted", null);
 				if (m_activeReflector)
 				{
 					m_decoy.simulator.acous.unregisterReflector(m_activeReflector);
@@ -171,7 +171,7 @@ final class PassiveDecoyGuidance: IGuidance
 			m_fuelLeft -= dt / 1e6;
 			if (m_fuelLeft < 0.0f)
 			{
-				m_decoy.kill("fuel exhausted");
+				m_decoy.kill("fuel exhausted", null);
 			}
 		}
 	}
@@ -234,9 +234,9 @@ final class Torpedo: Weapon
 		}
 	}
 
-	override bool kill(string cause)
+	override bool kill(string cause, Captain killer)
 	{
-		bool res = super.kill(cause);
+		bool res = super.kill(cause, killer);
 		if (res)
 		{
 			if (m_hydrophone)
@@ -325,7 +325,7 @@ final class TorpedoGuidance: IGuidance
 		m_fuelLeft -= fuelSpent;
 		if (m_fuelLeft < 0.0f)
 		{
-			m_torpedo.kill("fuel exhausted");
+			m_torpedo.kill("fuel exhausted", null);
 			return;
 		}
 		// activation logic
@@ -476,7 +476,8 @@ final class TorpedoGuidance: IGuidance
 		foreach (v; inKillRadius)
 		{
 			bool isActuallyKilled = v.kill(
-				"Killed by " ~ m_torpedo.prototypeName ~ " torpedo");
+				"Killed by " ~ m_torpedo.prototypeName ~ " torpedo",
+				m_torpedo.m_shooterCaptain);
 			if (isActuallyKilled)
 			{
 				trace(v, " is killed in explosion");
@@ -504,7 +505,7 @@ final class TorpedoGuidance: IGuidance
 			else
 				trace(v, " is in explosion radius");
 		}
-		m_torpedo.kill("detonation");
+		m_torpedo.kill("detonation", null);
 		SoundSource detonationSoundSource = new PrerecordedSoundSource(
 			new Transform2D(m_torpedo.transform.wposition),
 			m_detonationSoundProto, null);

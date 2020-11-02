@@ -145,9 +145,9 @@ final class Submarine: Vessel
 		}
 	}
 
-	override bool kill(string cause)
+	override bool kill(string cause, Captain killer)
 	{
-		bool res = super.kill(cause);
+		bool res = super.kill(cause, killer);
 		if (res)
 		{
 			foreach (h; m_hydrophones)

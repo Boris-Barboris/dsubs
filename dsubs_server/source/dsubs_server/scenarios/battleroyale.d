@@ -123,6 +123,11 @@ Good luck!`;
 
 	@property usecs_t lastSeenPlayer() const { return m_lastSeenPlayer; }
 
+	static bool isHumanCaptain(Captain cpt)
+	{
+		return (cast(Player) cpt) !is null;
+	}
+
 	this(Simulator sim)
 	{
 		super(sim);
@@ -224,7 +229,7 @@ Good luck!`;
 
 		// easy combat bots
 		int deadBotTraders = m_civilianBots.byKey.filter!(s => s.dead &&
-			s.prototypeName == "Bot trader").count.to!int;
+			s.prototypeName == "Bot trader" && isHumanCaptain(s.killer)).count.to!int;
 		int aliveEasyBots = m_easyBots.byKey.filter!(s => !s.dead).count.to!int;
 		int easyBotsToSpawn = min(deadBotTraders, MAX_ACTIVE_EASY_BOTS - aliveEasyBots);
 		while (easyBotsToSpawn-- > 0)
@@ -257,7 +262,8 @@ Good luck!`;
 		}
 
 		// medium combat bots
-		int deadEasyBots = m_easyBots.byKey.filter!(s => s.dead).count.to!int;
+		int deadEasyBots = m_easyBots.byKey.filter!(s => s.dead &&
+			isHumanCaptain(s.killer)).count.to!int;
 		int aliveMediumBots = m_mediumBots.byKey.filter!(s => !s.dead).count.to!int;
 		int mediumBotsToSpawn = min(deadEasyBots, MAX_ACTIVE_MEDIUM_BOTS - aliveMediumBots);
 		while (mediumBotsToSpawn-- > 0)
@@ -299,7 +305,7 @@ Good luck!`;
 			foreach (Submarine sub; subsToKill)
 			{
 				trace("Killing submarine because of player inactivily: ", sub);
-				sub.kill("No players");
+				sub.kill("No players", null);
 			}
 			m_easyBots.clear();
 			m_mediumBots.clear();
