@@ -83,8 +83,8 @@ final class BattleRoyale: Scenario
 		enum usecs_t SPAWN_DELAY_BASE = cast(usecs_t) 1 * 60 * 1000_000;
 		enum usecs_t STABLE_TIME = cast(usecs_t) 60 * 60 * 1000_000;
 		enum int ACTIVE_CIVILIAN_BOTS = 3;
-		enum int MAX_ACTIVE_EASY_BOTS = 3;
-		enum int MAX_ACTIVE_MEDIUM_BOTS = 3;
+		enum int MAX_ACTIVE_EASY_BOTS = 2;
+		enum int MAX_ACTIVE_MEDIUM_BOTS = 2;
 
 		/// we despawn combat bots after this time of zero active
 		/// players.
