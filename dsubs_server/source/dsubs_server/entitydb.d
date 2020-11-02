@@ -168,7 +168,7 @@ private:
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/std_propeller_cav.png", 1.0f, 72, 152),
 			cast(immutable) new TrochoidModulatorParams([
-				Harmonic(1.0f, 0.35f),
+				Harmonic(1.0f, 0.25f),
 				Harmonic(2.0f, 0.1f),
 				Harmonic(3.0f, 0.01f),
 				Harmonic(7.0f, 0.8f)],
@@ -205,10 +205,10 @@ private:
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
 				"../dsubs_sound/std_pumpjet_cav.png", 1.0f, 68, 148),
 			cast(immutable) new TrochoidModulatorParams([
-				Harmonic(1.0f, 0.45f),
-				Harmonic(2.0f, 0.09f),
+				Harmonic(1.0f, 0.12f),
+				Harmonic(2.0f, 0.05f),
 				Harmonic(3.0f, 0.01f),
-				Harmonic(9.0f, 0.6f)],
+				Harmonic(14.0f, 0.6f)],
 				0.5, 0.7, -0.4),
 			3.0f, dgr2rad(35), 27.1f, 0.03f, 0.36f
 		);
@@ -468,6 +468,7 @@ Search patterns: straight, snake, spiral.
 		// Stork
 
 		ActiveSonarPrototype asp = ActiveSonarPrototype();
+		asp.zeroLevel = seaNoiseIL(2200).val - 5.0f;
 		AmmoRoomPrototype[int] roomProtos;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 16,
 			TubeType.standard, ["Minoga": true]);
@@ -517,16 +518,17 @@ Search patterns: straight, snake, spiral.
 			"bow", HydrophoneType.fixed, MountPoint(vec2f(0.0f, 31.0f)),
 			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(230),
 				230, 2 / 90.0f, 3.0f));
+		hydroProtos[$-1].hydroProto.imageBlackLevel = 8.0f;
 		HydrophonePrototype hprotoInternal = HydrophonePrototype(
 			[0.0f], 50, 2500, dgr2rad(320), 320, 1.6 / 90.0f, 2.8f);
 		hprotoInternal.omniNoiseMult = 0.05f;
 		hprotoInternal.localNoiseRangeCutoff = 250.0f;
+		hprotoInternal.mirrored = true;
+		hprotoInternal.filterName = "octaveBp50_2500";
+		hprotoInternal.imageBlackLevel = 11.0f;
 		hydroProtos ~= SubHydrophonePrototype(
 			"towed", HydrophoneType.towed, MountPoint(vec2f(6.0f, -30.0f)),
 			hprotoInternal);
-		hydroProtos[$-1].hydroProto.mirrored = true;
-		hydroProtos[$-1].hydroProto.filterName = "octaveBp50_2500";
-		hydroProtos[$-1].hydroProto.imageBlackLevel = 10.0f;
 		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(600.0f, 1);
 
 		sp = new SubmarineFactory();
@@ -689,7 +691,7 @@ Active sonars:
 		asp.directivity = 17.0f;
 		asp.flowNoiseGain = -6.0f;
 		asp.reflBearingNoise = 0.029f;
-		asp.zeroLevel = dB(seaNoiseIL(2200).val - 23.0f);
+		asp.zeroLevel = dB(seaNoiseIL(2200).val - 5.0f);
 		asp.endScale = 1 / 180.0f;
 		hydroProtos.length = 0;
 		hydroProtos ~= SubHydrophonePrototype(
