@@ -57,7 +57,6 @@ class TextField: Label
 
 	private void handleMouseDown(int x, int y, sfMouseButton btn)
 	{
-		returnKbFocus();
 		// first we capture mouse in order to handle text selection
 		requestMouseFocus();
 		// x and y to local space

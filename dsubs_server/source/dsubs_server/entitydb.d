@@ -312,6 +312,7 @@ private:
 		tf.name = "Minoga";
 		tf.playable = true;
 		tf.description = `"Minoga" heavy torpedo.
+Passive sensor is only effective against cavitating targets.
 
 Sensors: active sonar or passive hydrophone.
 Effective speed range (active): 21-29 m/s.

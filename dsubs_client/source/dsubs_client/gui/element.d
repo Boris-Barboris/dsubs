@@ -298,22 +298,26 @@ class GuiElement: IInputReceiver
 	mixin Readonly!(bool, "kbFocused");
 	void handleKbFocusGain()
 	{
+		assert(!m_kbFocused);
 		m_kbFocused = true;
 		onKbFocusGain();
 	}
 	void handleKbFocusLoss()
 	{
+		assert(m_kbFocused);
 		m_kbFocused = false;
 		onKbFocusLoss();
 	}
 	mixin Readonly!(bool, "mouseFocused");
 	void handleMouseFocusGain()
 	{
+		assert(!m_mouseFocused);
 		m_mouseFocused = true;
 		onMouseFocusGain();
 	}
 	void handleMouseFocusLoss()
 	{
+		assert(m_mouseFocused);
 		m_mouseFocused = false;
 		onMouseFocusLoss();
 	}
