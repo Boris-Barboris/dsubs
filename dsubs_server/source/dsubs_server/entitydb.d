@@ -20,6 +20,7 @@ import dsubs_sound.image;
 import dsubs_sound.common: GLOBAL_SRATE;
 
 import dsubs_server.common;
+import dsubs_server.objfile;
 import dsubs_server.propulsion;
 import dsubs_server.sensors;
 import dsubs_server.dynamics;
@@ -830,6 +831,7 @@ Active sonars:
 					vec2f(-2.25, -20.1),
 				].xreflect, RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
 		], 5);
+		// sp.model = loadSubModel("kilo.obj");
 		sp.propulsionMounts = [MountPoint(vec2f(0.0, -34.0f))];
 		sp.allowedPropulsors = ["Five-blade Lima screw"];
 
@@ -1044,4 +1046,70 @@ vec2f getHullDims(const ConvexPolygon[] pols)
 		}
 	}
 	return vec2f(xmax - xmin, ymax - ymin);
+}
+
+vec2f getPolygonDims(const ConvexPolygon pol)
+{
+	float xmin = float.max;
+	float xmax = -float.max;
+	float ymin = float.max;
+	float ymax = -float.max;
+	foreach (vec; pol.points)
+	{
+		if (xmin > vec[0])
+			xmin = vec[0];
+		if (xmax < vec[0])
+			xmax = vec[0];
+		if (ymin > vec[1])
+			ymin = vec[1];
+		if (ymax < vec[1])
+			ymax = vec[1];
+	}
+	return vec2f(xmax - xmin, ymax - ymin);
+}
+
+
+// automatically calculate border width
+float autoBorderWidth(vec2f dims)
+{
+	float minDim = dims.x;
+	if (dims.y < minDim)
+		minDim = dims.y;
+	return minDim > 5.0f ? 0.25f : (0.25f / 5.0f * minDim);
+}
+
+
+RgbaColor autoBorderColor(RgbaColor fillColor)
+{
+	ubyte[4] arrPtr = cast(ubyte[4]) fillColor;
+	foreach (ref ubyte col; arrPtr[0..3])
+		col = col / 2;
+	return cast(RgbaColor) arrPtr;
+}
+
+
+Submarine2DModel loadSubModel(string filename)
+{
+	ObjModel obj = readModelFromObj(filename);
+	Submarine2DModel res;
+	bool elevatedFound;
+
+	ConvexPolygon polygonBuilt;
+
+	foreach (i, face; obj.faces)
+	{
+		if (!elevatedFound && face.depth > 0.0f)
+		{
+			elevatedFound = true;
+			res.elevatedHullShapeIdx = i.to!int;
+		}
+		polygonBuilt.points = face.points;
+		polygonBuilt.fillColor = obj.materials[face.materialName].color;
+		vec2f dims = getPolygonDims(polygonBuilt);
+		polygonBuilt.borderWidth = autoBorderWidth(dims);
+		polygonBuilt.borderColor = autoBorderColor(polygonBuilt.fillColor);
+		res.hullModel ~= polygonBuilt;
+	}
+
+	return res;
 }

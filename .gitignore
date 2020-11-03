@@ -3,6 +3,7 @@
 
 # User-specific files
 *.suo
+*.blend1
 *.user
 *.userosscache
 *.sln.docstates
