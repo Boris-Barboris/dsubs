@@ -15,8 +15,9 @@ import dsubs_server.common;
 struct ObjModel
 {
 	ObjMaterial[string] materials;
-	// sorted by depth, ascending
+	/// visible faces, sorted by depth
 	ObjFace[] faces;
+	ObjFace[string] allFaces;
 }
 
 struct ObjFace
@@ -25,6 +26,16 @@ struct ObjFace
 	vec2f[] points;
 	float depth;
 	string materialName;
+
+	/// center of points, geometric mean
+	@property vec2f center() const
+	{
+		vec2f res = vec2f(0.0f, 0.0f);
+		foreach (point; points)
+			res += point;
+		res /= points.length;
+		return res;
+	}
 }
 
 struct ObjMaterial
@@ -90,7 +101,10 @@ ObjModel readModelFromObj(string filename, string directory = "models/")
 				size_t vertexIdx = splitResults[i].to!size_t;
 				faceFilled.points ~= vertices[vertexIdx - 1];
 			}
-			res.faces ~= faceFilled;
+			// objects that start from underscore are not rendered
+			if (faceFilled.objectName[0] != '_')
+				res.faces ~= faceFilled;
+			res.allFaces[faceFilled.objectName] = faceFilled;
 			continue;
 		}
 	}

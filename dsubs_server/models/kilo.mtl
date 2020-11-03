@@ -1,5 +1,13 @@
 # Blender MTL File: 'kilo.blend'
-# Material Count: 5
+# Material Count: 7
+
+newmtl None
+Ns 500
+Ka 0.8 0.8 0.8
+Kd 0.8 0.8 0.8
+Ks 0.8 0.8 0.8
+d 1
+illum 2
 
 newmtl bulb_color
 Ns 900.000000
@@ -25,6 +33,16 @@ newmtl plane_color
 Ns 900.000000
 Ka 1.000000 1.000000 1.000000
 Kd 0.075713 0.076580 0.049397
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl screw1
+Ns 323.999994
+Ka 1.000000 1.000000 1.000000
+Kd 0.052204 0.042027 0.025617
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
 Ni 1.000000

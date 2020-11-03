@@ -707,9 +707,9 @@ Active sonars:
 				100, 1.5 / 90.0f, 3.4f));
 		hydroProtos[1].hydroProto.flowNoiseMult = 1.4e-5f;
 
-	sp = new SubmarineFactory();
-	sp.name = "Lima";
-	sp.description = `Extremely fast light attack submarine. It's bow is too narrow to
+		sp = new SubmarineFactory();
+		sp.name = "Lima";
+		sp.description = `Extremely fast light attack submarine. It's bow is too narrow to
 hold reasonably sensitive hydrophone array, so it's main ears are hull-mounted
 linear arrays and an active sonar. Favors agressive, non-stealthy combat.
 
@@ -725,7 +725,7 @@ Hydrophones:
   Hull: 2 linear arrays, 120 deg FoV each.
 Active sonars:
   Bow: 2400Hz mid-freq pulse, 210 deg FoV`;
-	sp.model = Submarine2DModel(
+		sp.model = Submarine2DModel(
 		[
 			// bow planes
 			ConvexPolygon([
@@ -831,7 +831,6 @@ Active sonars:
 					vec2f(-2.25, -20.1),
 				].xreflect, RgbaColor(67, 67, 67), 0.15f, RgbaColor(50, 50, 50)),
 		], 5);
-		// sp.model = loadSubModel("kilo.obj");
 		sp.propulsionMounts = [MountPoint(vec2f(0.0, -34.0f))];
 		sp.allowedPropulsors = ["Five-blade Lima screw"];
 
@@ -858,6 +857,154 @@ Active sonars:
 		sp.hprots = hydroProtos;
 		sp.asprot = new SubSonarPrototype(MountPoint(vec2f(0.0f, 23.2f)), asp);
 		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-24.0f, -19.0f, -11.0f]);
+		sp.playable = true;
+		m_submarines[sp.name] = sp;
+
+
+
+		// Kilo
+		ObjModel objModel;
+		Submarine2DModel model2d = loadSubModel("kilo.obj", objModel);
+		roomProtos = roomProtos.dup;
+		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 16,
+			TubeType.standard, ["Minoga": true]);
+		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 22,
+			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
+		bowProtoTemplate = TubePrototype(TubeTemplate(0,
+			MountPoint(objModel.allFaces["tube1_Plane.006"].center, 0.0),
+			0, TubeType.standard, false),
+			cast(usecs_t)110 * 1000_000,
+			cast(usecs_t)STORK_FLOOD_SECS * 1000_000,
+			cast(usecs_t)STORK_OPEN_SECS * 1000_000,
+			cast(usecs_t)STORK_FIRING_SECS * 1000_000);
+		bowProtoTemplate.openFlowNoiseMult = 3.2f;
+		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
+			4.0f, 85.0f);
+		bowProtoTemplate.openSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
+			4.0f, 82.0f);
+		bowProtoTemplate.firingSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
+			4.0f, 95.0f);
+		tubeProtos = tubeProtos.dup();
+		tubeProtos[0] = bowProtoTemplate;
+		bowProtoTemplate.tmpl.mount = MountPoint(objModel.allFaces["tube2_Plane.007"].center, 0.0);
+		bowProtoTemplate.tmpl.id = 1;
+		tubeProtos[1] = bowProtoTemplate;
+		vec2f decoyTubeCenter = objModel.allFaces["_decoytube1_Plane.031"].center;
+		decoyTubePrototype = TubePrototype(TubeTemplate(2,
+			MountPoint(decoyTubeCenter, dgr2rad(90)),
+			1, TubeType.decoy, true),
+			cast(usecs_t)70e6, cast(usecs_t)5e6, cast(usecs_t)6e6, cast(usecs_t)3e6);
+		decoyTubePrototype.floodSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hissing2_5sec_8192.wav"),
+			4.0f, 75.0f);
+		decoyTubePrototype.openSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
+			4.0f, 75.0f);
+		decoyTubePrototype.firingSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
+			4.0f, 90.0f);
+		tubeProtos[2] = decoyTubePrototype;
+		decoyTubeCenter.x = -decoyTubeCenter.x;
+		decoyTubePrototype.tmpl.mount = MountPoint(decoyTubeCenter, -dgr2rad(90));
+		decoyTubePrototype.tmpl.id = 3;
+		tubeProtos[3] = decoyTubePrototype;
+		asp = ActiveSonarPrototype();
+		asp.pingParams = PingParameters(
+			[Chirp(2400, 2400, 0.2f), Chirp(2100, 2100, 0.5f)],
+			3, 2200, "octaveBp1900_2500");
+		asp.maxSec = 18;
+		asp.maxPeakIlevel = 215.0f;
+		asp.minPeakIlevel = 190.0f;
+		asp.baseNoise = 2.4f;
+		asp.directivity = 17.0f;
+		asp.flowNoiseGain = -6.0f;
+		asp.reflBearingNoise = 0.029f;
+		asp.zeroLevel = dB(seaNoiseIL(2200).val - 5.0f);
+		asp.endScale = 1 / 180.0f;
+		hydroProtos.length = 0;
+		hydroProtos ~= SubHydrophonePrototype(
+			"bow", HydrophoneType.fixed, MountPoint(
+				objModel.allFaces["_bowsensors_Plane.030"].center),
+			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(210),
+				160, 2.0 / 90.0f, 3.5f));
+		hydroProtos[0].hydroProto.flowNoiseMult = 2.0e-5f;
+
+		// Five-blade Kilo screw
+		PropulsorFactory pf = new PropulsorFactory();
+		pf.name = "Five-blade Kilo screw";
+		pf.description = "High RPM and low cavitation speed, optimized for flank performance.\n\nMass: 25t";
+		pf.type = PropulsorType.screw;
+		pf.bladeCount = 5;
+		pf.model = screwModelFromFace("_screw1_Plane.029",
+			"_propulsor_Plane.028", objModel);
+		pf.posThrustK = RolledF(2400.0f, 20.0f);
+		pf.negThrustK = RolledF(1100.0f, 10.0f);
+		pf.mass = 25.0f;
+		pf.shaftRotFreq = 5.1f;
+		pf.rotAcceleration = 0.22f;
+		pf.soundPrototype = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/lima_propeller.png", 1.0f, 62, 122),
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/lima_propeller_cav.png", 1.0f, 73, 153),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.30f),
+				Harmonic(2.0f, 0.05f),
+				Harmonic(3.0f, 0.005f),
+				Harmonic(5.0f, 0.76f)],
+				0.5, 0.7, -0.4),
+			2.2f, dgr2rad(38), 12.2f, 0.03f, 0.4f
+		);
+		pf.playable = true;
+		m_propulsors[pf.name] = pf;
+
+		sp = new SubmarineFactory();
+		sp.name = "Kilo";
+		sp.description = `WIP.
+
+Length: 57m
+Displacement: 700t
+Top speed:
+  Five-blade Kilo screw: 15.0m/s
+Armament:
+  2x bow torpedo tubes (110 sec reload).
+  2x broadside decoy launchers.
+Hydrophones:
+  Bow: spherical array, 210 deg FoV
+Active sonars:
+  Bow: 2400Hz mid-freq pulse, 210 deg FoV`;
+		sp.model = model2d;
+		sp.propulsionMounts = [MountPoint(
+			objModel.allFaces["_propulsor_Plane.028"].center)];
+		sp.allowedPropulsors = ["Five-blade Kilo screw"];
+
+				// SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
+				// 	asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
+				// 	asp.getSliceXResol(), asp.radialRes, asp.maxSec),
+
+		sp.roomProtos = roomProtos;
+		sp.tubeProtos = tubeProtos;
+		sp.steering.rudderKp = 8.0f;
+		sp.steering.rudderKd = -8.0f;
+		sp.rigidBody.mass = RolledF(700.0f, 4.0f);
+		sp.rigidBody.Cd0 = RolledF(25.0, 0.1f);
+		sp.rigidBody.Cd1 = RolledF(4.5, 0.042f);
+		sp.rigidBody.Cda = 0.8;
+		sp.rigidBody.Cl = RolledF(25.0, 0.1f);
+		sp.rigidBody.Cr0 = RolledF(5e4, 100);
+		sp.rigidBody.Cr1 = RolledF(0.5e6, 1e2);
+		sp.rigidBody.Cm = RolledF(330.0f, 2.0f);
+		sp.steering.equilDrift = dgr2rad(18);
+		dims = getHullDims(sp.model.hullModel);
+		trace("dims: ", dims);
+		sp.rigidBody.hullLength = dims.y;
+		sp.hprots = hydroProtos;
+		sp.asprot = new SubSonarPrototype(MountPoint(
+			objModel.allFaces["_bowsensors_Plane.030"].center), asp);
+		sp.reflprot = ReflectorPrototype(vec2f(9.0f, 55.0f), [-17.0f, -10.0f, -8.0f]);
 		sp.playable = true;
 		m_submarines[sp.name] = sp;
 
@@ -1088,9 +1235,27 @@ RgbaColor autoBorderColor(RgbaColor fillColor)
 }
 
 
-Submarine2DModel loadSubModel(string filename)
+ConvexPolygon screwModelFromFace(string screwFace, string propulsorPoint,
+	const ObjModel model)
 {
-	ObjModel obj = readModelFromObj(filename);
+	ConvexPolygon res;
+	const ObjFace face = model.allFaces[screwFace];
+	const ObjFace refFace = model.allFaces[propulsorPoint];
+	res.points = face.points.dup;
+	// offset points to move Y coordinate to zero
+	float yOffset = refFace.center.y;
+	foreach (ref vec2f point; res.points)
+		point.y -= yOffset;
+	res.fillColor = model.materials[face.materialName].color;
+	res.borderColor = autoBorderColor(res.fillColor);
+	res.borderWidth = autoBorderWidth(getPolygonDims(res));
+	return res;
+}
+
+
+Submarine2DModel loadSubModel(string filename, out ObjModel obj)
+{
+	obj = readModelFromObj(filename);
 	Submarine2DModel res;
 	bool elevatedFound;
 
