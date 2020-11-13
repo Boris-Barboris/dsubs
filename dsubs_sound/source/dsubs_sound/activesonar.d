@@ -425,7 +425,7 @@ struct ActiveSonarPrototype
 	/// main sound dissipation modifier
 	float dissMod = 6.0f;
 	/// gain for flow noise
-	dB flowNoiseGain = -5.0f;
+	dB flowNoiseGain = -4.0f;
 	/// contact bearing error magnitude
 	float reflBearingNoise = 0.025f;
 	/// contact range error magnitude gain per meter of range

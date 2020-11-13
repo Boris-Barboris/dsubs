@@ -690,7 +690,7 @@ Active sonars:
 		asp.minPeakIlevel = 190.0f;
 		asp.baseNoise = 2.4f;
 		asp.directivity = 17.0f;
-		asp.flowNoiseGain = -6.0f;
+		asp.flowNoiseGain = -5.0f;
 		asp.reflBearingNoise = 0.029f;
 		asp.zeroLevel = dB(seaNoiseIL(2200).val - 5.0f);
 		asp.endScale = 1 / 180.0f;
@@ -913,24 +913,28 @@ Active sonars:
 		tubeProtos[3] = decoyTubePrototype;
 		asp = ActiveSonarPrototype();
 		asp.pingParams = PingParameters(
-			[Chirp(2400, 2400, 0.2f), Chirp(2100, 2100, 0.5f)],
-			3, 2200, "octaveBp1900_2500");
-		asp.maxSec = 18;
-		asp.maxPeakIlevel = 215.0f;
+			[Chirp(2500, 2000, 0.9f)],
+			3, 2300, "octaveBp1900_2500");
+		asp.maxSec = 16;
+		asp.omniBeamCount = 280;
+		asp.span = 240.0f;
+		asp.maxPeakIlevel = 213.0f;
 		asp.minPeakIlevel = 190.0f;
-		asp.baseNoise = 2.4f;
-		asp.directivity = 17.0f;
-		asp.flowNoiseGain = -6.0f;
-		asp.reflBearingNoise = 0.029f;
-		asp.zeroLevel = dB(seaNoiseIL(2200).val - 5.0f);
-		asp.endScale = 1 / 180.0f;
+		asp.baseNoise = 3.1f;
+		asp.dissMod = 6.4f;
+		asp.directivity = 11.0f;
+		asp.flowNoiseGain = 0.0f;
+		asp.reflBearingNoise = 0.027f;
+		asp.perlinGain = [8.5f, 4.1f];
+		asp.zeroLevel = dB(seaNoiseIL(2300).val + 3.0f);
+		asp.endScale = 1 / 130.0f;
 		hydroProtos.length = 0;
 		hydroProtos ~= SubHydrophonePrototype(
 			"bow", HydrophoneType.fixed, MountPoint(
 				objModel.allFaces["_bowsensors"].center),
 			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(250),
-				160, 2.0 / 90.0f, 3.5f));
-		hydroProtos[0].hydroProto.flowNoiseMult = 2.0e-5f;
+				180, 3.0 / 90.0f, 3.5f));
+		hydroProtos[0].hydroProto.flowNoiseMult = 2.7e-5f;
 
 		// Five-blade Kilo screw
 		PropulsorFactory pf = new PropulsorFactory();
@@ -939,23 +943,23 @@ Active sonars:
 		pf.type = PropulsorType.screw;
 		pf.bladeCount = 5;
 		pf.model = screwModelFromFace("_screw1", "_propulsor", objModel);
-		pf.posThrustK = RolledF(2400.0f, 20.0f);
-		pf.negThrustK = RolledF(1100.0f, 10.0f);
+		pf.posThrustK = RolledF(1600.0f, 15.0f);
+		pf.negThrustK = RolledF(900.0f, 9.0f);
 		pf.mass = 25.0f;
 		pf.shaftRotFreq = 5.1f;
 		pf.rotAcceleration = 0.22f;
 		pf.soundPrototype = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/lima_propeller.png", 1.0f, 62, 122),
+				"../dsubs_sound/kilo_propeller.png", 1.0f, 66, 126),
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/lima_propeller_cav.png", 1.0f, 73, 153),
+				"../dsubs_sound/kilo_propeller_cav.png", 1.0f, 75, 158),
 			cast(immutable) new TrochoidModulatorParams([
 				Harmonic(1.0f, 0.30f),
 				Harmonic(2.0f, 0.05f),
 				Harmonic(3.0f, 0.005f),
 				Harmonic(5.0f, 0.76f)],
 				0.5, 0.7, -0.4),
-			2.2f, dgr2rad(38), 12.2f, 0.03f, 0.4f
+			2.0f, dgr2rad(34), 12.5f, 0.04f, 0.5f
 		);
 		pf.playable = true;
 		m_propulsors[pf.name] = pf;
@@ -967,14 +971,14 @@ Active sonars:
 Length: 57m
 Displacement: 700t
 Top speed:
-  Five-blade Kilo screw: 15.0m/s
+  Five-blade Kilo screw: 16.0m/s
 Armament:
   2x bow torpedo tubes (110 sec reload).
   2x broadside decoy launchers.
 Hydrophones:
   Bow: spherical array, 250 deg FoV
 Active sonars:
-  Bow: 2400Hz mid-freq pulse, 210 deg FoV`;
+  Bow: 2300Hz mid-freq pulse, 240 deg FoV`;
 		sp.model = model2d;
 		sp.propulsionMounts = [MountPoint(
 			objModel.allFaces["_propulsor"].center)];

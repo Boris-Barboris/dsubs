@@ -101,6 +101,9 @@ unittest
 	req = SpawnReq("Lima", "Five-blade Lima screw");
 	sub = Globals.entityDb.buildSubFromLoadout(req, null);
 	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);
+	req = SpawnReq("Kilo", "Five-blade Kilo screw");
+	sub = Globals.entityDb.buildSubFromLoadout(req, null);
+	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);
 	req = SpawnReq("Bot trader", "Civilian three-blade screw");
 	sub = Globals.entityDb.buildSubFromLoadout(req, null);
 	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);

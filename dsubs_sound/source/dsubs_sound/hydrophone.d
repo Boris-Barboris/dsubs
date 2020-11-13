@@ -47,6 +47,7 @@ struct HydrophonePrototype
 	float localNoiseRangeCutoff = 200.0f;
 	dB imageBlackLevel = 5.0f;
 	dB imageWhiteLevel = 90.0f;
+	/// clipping pressure for resulting tds
 	float pcbMaxPressure = 50.0f;
 	string filterName;
 }
@@ -1249,14 +1250,16 @@ unittest
 	Transform2D propTrans = new Transform2D();
 	PropellerSoundPrototype pp = PropellerSoundPrototype(
 			loadSpectrumFromImageAndWarp(q,
-				"../dsubs_sound/minoga.png", 1.0f, 60, 110),
+				"../dsubs_sound/kilo_propeller.png", 1.0f, 60, 120),
 			loadSpectrumFromImageAndWarp(q,
-				"../dsubs_sound/minoga_cav.png", 1.0f, 45, 130),
+				"../dsubs_sound/kilo_propeller_cav.png", 1.0f, 75, 155),
 			cast(immutable) new TrochoidModulatorParams([
-				Harmonic(1.0f, 0.25f),
-				Harmonic(3.0f, 0.75f)],
-				0.4, 0.7, -0.4),
-			0.25f, dgr2rad(30), 5.0f, 0.03f, 0.7f
+				Harmonic(1.0f, 0.30f),
+				Harmonic(2.0f, 0.05f),
+				Harmonic(3.0f, 0.005f),
+				Harmonic(5.0f, 0.76f)],
+				0.5, 0.7, -0.4),
+			2.0f, dgr2rad(34), 13.2f, 0.04f, 0.5f
 		);
 	PropellerSound prop = new PropellerSound(q, propTrans, pp);
 	HydrophonePrototype hp = HydrophonePrototype(
@@ -1265,8 +1268,8 @@ unittest
 	Hydrophone h = new Hydrophone(q, new Transform2D(), hp);
 	h.transform.rotation = PI; // good corner case
 	propTrans.position = vec2d(0.0, -1000.0);
-	float shaftRotFreq = 21.45f;
-	float spd = 29.0f;
+	float shaftRotFreq = 5.1f;
+	float spd = 15.0f;
 
 	// hydrophoneVsPropellerBalancingPlot(q, "std_hydrophone_vs_minoga_30km",
 	// 	hp, pp, shaftRotFreq / spd, 20.0f, 29.0f);
