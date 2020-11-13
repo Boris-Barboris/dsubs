@@ -523,7 +523,7 @@ Search patterns: straight, snake, spiral.
 				230, 2 / 90.0f, 3.0f));
 		hydroProtos[$-1].hydroProto.imageBlackLevel = 8.0f;
 		HydrophonePrototype hprotoInternal = HydrophonePrototype(
-			[0.0f], 50, 2500, dgr2rad(320), 320, 1.6 / 90.0f, 2.8f);
+			[0.0f], 50, 2500, dgr2rad(330), 330, 1.6 / 90.0f, 2.8f);
 		hprotoInternal.omniNoiseMult = 0.05f;
 		hprotoInternal.localNoiseRangeCutoff = 250.0f;
 		hprotoInternal.mirrored = true;
@@ -865,6 +865,7 @@ Active sonars:
 
 
 		// Kilo
+
 		ObjModel objModel;
 		Submarine2DModel model2d = loadSubModel("kilo.obj", objModel);
 		roomProtos = roomProtos.dup;
@@ -978,7 +979,7 @@ Armament:
   2x bow torpedo tubes (110 sec reload).
   2x broadside decoy launchers.
 Hydrophones:
-  Bow: spherical array, 250 deg FoV
+  Bow: cylindrical array, 250 deg FoV
 Active sonars:
   Bow: 2300Hz mid-freq pulse, 240 deg FoV`;
 		sp.model = model2d;
@@ -1010,6 +1011,176 @@ Active sonars:
 		sp.asprot = new SubSonarPrototype(MountPoint(
 			objModel.allFaces["_bowsensors"].center), asp);
 		sp.reflprot = ReflectorPrototype(vec2f(9.0f, 55.0f), [-17.0f, -10.0f, -8.0f]);
+		sp.playable = true;
+		m_submarines[sp.name] = sp;
+
+
+
+
+		// November
+		model2d = loadSubModel("november.obj", objModel);
+		roomProtos = roomProtos.dup;
+		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 22,
+			TubeType.standard, ["Minoga": true]);
+		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 32,
+			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
+		bowProtoTemplate = TubePrototype(TubeTemplate(0,
+			MountPoint(objModel.allFaces["tube0"].center, 0.0),
+			0, TubeType.standard, false),
+			cast(usecs_t)90 * 1000_000,
+			cast(usecs_t)9 * 1000_000,
+			cast(usecs_t)7 * 1000_000,
+			cast(usecs_t)4 * 1000_000);
+		bowProtoTemplate.openFlowNoiseMult = 4.0f;
+		bowProtoTemplate.floodSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hissing1_8192.wav"),
+			4.0f, 85.0f);
+		bowProtoTemplate.openSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
+			4.0f, 82.0f);
+		bowProtoTemplate.firingSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
+			4.0f, 95.0f);
+		tubeProtos = tubeProtos.dup();
+		tubeProtos[0] = bowProtoTemplate;
+		bowProtoTemplate.tmpl.mount = MountPoint(objModel.allFaces["tube1"].center, 0.0);
+		bowProtoTemplate.tmpl.id = 1;
+		tubeProtos[1] = bowProtoTemplate;
+		bowProtoTemplate.tmpl.mount = MountPoint(objModel.allFaces["tube2"].center, 0.0);
+		bowProtoTemplate.tmpl.id = 2;
+		tubeProtos[2] = bowProtoTemplate;
+		decoyTubeCenter = objModel.allFaces["decoytube"].center;
+		decoyTubePrototype = TubePrototype(TubeTemplate(3,
+			MountPoint(decoyTubeCenter, dgr2rad(90)),
+			1, TubeType.decoy, true),
+			cast(usecs_t)50e6, cast(usecs_t)5e6, cast(usecs_t)6e6, cast(usecs_t)3e6);
+		decoyTubePrototype.floodSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hissing2_5sec_8192.wav"),
+			4.0f, 75.0f);
+		decoyTubePrototype.openSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/hatchopen1_8192.wav"),
+			4.0f, 75.0f);
+		decoyTubePrototype.firingSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/launch1_8192.wav"),
+			4.0f, 90.0f);
+		tubeProtos[3] = decoyTubePrototype;
+		decoyTubeCenter.x = -decoyTubeCenter.x;
+		decoyTubePrototype.tmpl.mount = MountPoint(decoyTubeCenter, -dgr2rad(90));
+		decoyTubePrototype.tmpl.id = 4;
+		tubeProtos[4] = decoyTubePrototype;
+		asp = ActiveSonarPrototype();
+		asp.pingParams = PingParameters(
+			[Chirp(2400, 2400, 0.2f), Chirp(2000, 2000, 0.3f), Chirp(2350, 2350, 0.5f)],
+			3, 2350, "octaveBp1900_2500");
+		asp.maxSec = 18;
+		asp.omniBeamCount = 300;
+		asp.span = 210.0f;
+		asp.maxPeakIlevel = 220.0f;
+		asp.minPeakIlevel = 190.0f;
+		asp.baseNoise = 3.0f;
+		asp.dissMod = 6.2f;
+		asp.directivity = 14.0f;
+		asp.flowNoiseGain = -1.0f;
+		asp.reflBearingNoise = 0.028f;
+		asp.zeroLevel = dB(seaNoiseIL(2350).val + 3.0f);
+		asp.endScale = 1 / 130.0f;
+		hydroProtos.length = 0;
+		hydroProtos ~= SubHydrophonePrototype(
+			"bow", HydrophoneType.fixed, MountPoint(
+				objModel.allFaces["_bowsensors"].center),
+			HydrophonePrototype([0.0f], 200, GLOBAL_SRATE / 2, dgr2rad(210),
+				210, 2.6 / 90.0f, 3.2f));
+		hydroProtos[0].hydroProto.flowNoiseMult = 2.5e-5f;
+		// towed
+		hprotoInternal = HydrophonePrototype(
+			[0.0f], 50, 2300, dgr2rad(320), 320, 2.0 / 90.0f, 3.1f);
+		hprotoInternal.omniNoiseMult = 0.05f;
+		hprotoInternal.localNoiseRangeCutoff = 220.0f;
+		hprotoInternal.mirrored = true;
+		hprotoInternal.filterName = "octaveBp50_2500";
+		hprotoInternal.imageBlackLevel = 14.0f;
+		hydroProtos ~= SubHydrophonePrototype(
+			"towed", HydrophoneType.towed,
+			MountPoint(objModel.allFaces["_towedarray"].center),
+			hprotoInternal);
+		hydroProtos[$-1].wirePrototype = AttachedWirePrototype(500.0f, 1);
+
+		// Five-blade November screw
+		pf = new PropulsorFactory();
+		pf.name = "Five-blade November screw";
+		pf.description = "Balanced screw, optimized for tactical performance.\n\nMass: 35t";
+		pf.type = PropulsorType.screw;
+		pf.bladeCount = 5;
+		pf.model = screwModelFromFace("_screw1", "_propulsor0", objModel);
+		pf.posThrustK = RolledF(2150.0f, 15.0f);
+		pf.negThrustK = RolledF(1100.0f, 9.0f);
+		pf.mass = 35.0f;
+		pf.shaftRotFreq = 3.55f;
+		pf.rotAcceleration = 0.18f;
+		pf.soundPrototype = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/november_propeller.png", 1.0f, 59, 119),
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/november_propeller_cav.png", 1.0f, 61, 141),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.30f),
+				Harmonic(2.0f, 0.05f),
+				Harmonic(3.0f, 0.005f),
+				Harmonic(5.0f, 0.76f)],
+				0.5, 0.7, -0.4),
+			2.6f, dgr2rad(35), 14.0f, 0.04f, 0.5f
+		);
+		pf.playable = true;
+		m_propulsors[pf.name] = pf;
+
+		sp = new SubmarineFactory();
+		sp.name = "November";
+		sp.description = `WIP.
+
+Length: 94m
+Displacement: 3800t
+Top speed:
+  Five-blade November screw: 15.5m/s
+Armament:
+  3x bow torpedo tubes (90 sec reload).
+  2x broadside decoy launchers.
+Hydrophones:
+  Bow: cylindrical array, 210 deg FoV
+  Stern: 500m LF towed array, 320 deg FoV
+Active sonars:
+  Bow: 2500Hz mid-freq pulse, 210 deg FoV`,
+		sp.model = model2d;
+		sp.propulsionMounts = [
+			MountPoint(objModel.allFaces["_propulsor0"].center)];
+		// second propulsor mount
+		sp.propulsionMounts ~= sp.propulsionMounts[0];
+		sp.propulsionMounts[1].mountCenter.x = -sp.propulsionMounts[1].mountCenter.x;
+		sp.allowedPropulsors = ["Five-blade November screw"];
+
+				// SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
+				// 	asp.span.dgr2rad, asp.maxPeakIlevel, asp.minPeakIlevel,
+				// 	asp.getSliceXResol(), asp.radialRes, asp.maxSec),
+
+		sp.roomProtos = roomProtos;
+		sp.tubeProtos = tubeProtos;
+		sp.steering.rudderKp = 8.0f;
+		sp.steering.rudderKd = -15.0f;
+		sp.rigidBody.mass = RolledF(3800.0f, 10.0f);
+		sp.rigidBody.Cd0 = RolledF(80.0, 0.2f);
+		sp.rigidBody.Cd1 = RolledF(13.0, 0.05f);
+		sp.rigidBody.Cda = 0.8;
+		sp.rigidBody.Cl = RolledF(50.0, 0.3f);
+		sp.rigidBody.Cr0 = RolledF(15e4, 100);
+		sp.rigidBody.Cr1 = RolledF(1.5e6, 1e2);
+		sp.rigidBody.Cm = RolledF(750.0f, 3.0f);
+		sp.steering.equilDrift = dgr2rad(19);
+		dims = getHullDims(sp.model.hullModel);
+		trace("November dims: ", dims);
+		sp.rigidBody.hullLength = dims.y;
+		sp.hprots = hydroProtos;
+		sp.asprot = new SubSonarPrototype(MountPoint(
+			objModel.allFaces["_bowsensors"].center), asp);
+		sp.reflprot = ReflectorPrototype(vec2f(12.5f, 94.0f), [-20.0f, -17.0f, -12.0f]);
 		sp.playable = true;
 		m_submarines[sp.name] = sp;
 
@@ -1248,9 +1419,9 @@ ConvexPolygon screwModelFromFace(string screwFace, string propulsorPoint,
 	const ObjFace refFace = model.allFaces[propulsorPoint];
 	res.points = face.points.dup;
 	// offset points to move Y coordinate to zero
-	float yOffset = refFace.center.y;
+	vec2f offset = refFace.center;
 	foreach (ref vec2f point; res.points)
-		point.y -= yOffset;
+		point -= offset;
 	res.fillColor = model.materials[face.materialName].color;
 	res.borderColor = autoBorderColor(res.fillColor);
 	res.borderWidth = autoBorderWidth(getPolygonDims(res));

@@ -648,7 +648,12 @@ final class DsubsSoundOpenclCtx
 		VarTds*[string] m_wavFiles;
 	}
 
-	package FIRFilter* getFilter(string name) { return m_filters[name]; }
+	package FIRFilter* getFilter(string name)
+	{
+		if (name !in m_filters)
+			throw new Exception("Unable to find FIR filter " ~ name);
+		return m_filters[name];
+	}
 
 	VarTds* getWavFile(string filePath)
 	{

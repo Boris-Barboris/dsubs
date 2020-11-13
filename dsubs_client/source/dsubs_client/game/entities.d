@@ -60,11 +60,13 @@ final class ScrewPropulsor: Propulsor
 		Transform m_rotTransform;
 	}
 
-	this(EntityManager man, string propName, ubyte bladeCount, float flankRps, float throttleSpd)
+	this(EntityManager man, string propName, ubyte bladeCount, float flankRps, float throttleSpd, bool inverse = false)
 	{
 		super(man, propName);
 		m_bladeCount = bladeCount;
 		m_flankRps = flankRps;
+		if (inverse)
+			m_flankRps = -m_flankRps;
 		m_throttleSpd = throttleSpd;
 		m_rotTransform = new Transform();
 		transform.addChild(m_rotTransform);
@@ -91,7 +93,7 @@ final class ScrewPropulsor: Propulsor
 	override void update(CameraContext camCtx, long usecsDelta)
 	{
 		m_angVel = cmove(m_angVel, m_flankRps * targetThrottle * 2 * PI,
-			m_flankRps * m_throttleSpd * 2 * PI, usecsDelta / 1e6);
+			fabs(m_flankRps) * m_throttleSpd * 2 * PI, usecsDelta / 1e6);
 		double delta = m_angVel * 1e-6 * usecsDelta;
 		m_rotorAngle += delta;
 		m_rotorAngle = clampAngle(m_rotorAngle);
@@ -146,12 +148,12 @@ final class PumpPropulsor: Propulsor
 }
 
 
-private Propulsor createPropulsor(EntityManager man, string propName)
+private Propulsor createPropulsor(EntityManager man, string propName, bool inverse)
 {
 	auto tmpl = man.m_propTemplates[propName];
 	if (tmpl.type == PropulsorType.screw)
 		return new ScrewPropulsor(man, propName, tmpl.bladeCount, tmpl.flankRps,
-			tmpl.throttleSpd);
+			tmpl.throttleSpd, inverse);
 	else
 		return new PumpPropulsor(man, propName);
 }
@@ -579,9 +581,9 @@ final class Submarine: WorldRenderable
 			transform.removeChild(p.transform);
 		m_propulsors.length = 0;
 		// setup propulsors
-		foreach (mount; m_tmpl.propulsionMounts)
+		foreach (i, mount; m_tmpl.propulsionMounts)
 		{
-			Propulsor p = createPropulsor(man, propName);
+			Propulsor p = createPropulsor(man, propName, i % 2 == 1);
 			p.transform.scale = vec2d(mount.scale, mount.scale);
 			p.transform.rotation = mount.rotation;
 			p.transform.position = mount.mountCenter.tod;

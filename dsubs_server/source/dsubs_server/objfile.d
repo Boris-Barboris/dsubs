@@ -111,7 +111,9 @@ ObjModel readModelFromObj(string filename, string directory = "models/")
 			if (m.empty)
 				throw new Exception("object name " ~ faceFilled.objectName ~
 					" does not match *_Plane* pattern");
-			res.allFaces[m[1]] = faceFilled;
+			// only first face of the object gets into allFaces dict
+			if ((m[1] in res.allFaces) is null)
+				res.allFaces[m[1]] = faceFilled;
 			continue;
 		}
 	}
