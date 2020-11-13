@@ -197,9 +197,11 @@ final class SubmarineFactory: VesselFactory
 	{
 		super.bootstrap(res);
 		// propulsor shift according to first mount
-		assert(propulsionMounts.length == 1);
-		res.propulsor.transform.position = propulsionMounts[0].mountCenter.tod;
-		res.propulsor.transform.rotation = propulsionMounts[0].rotation;
+		foreach (i, prop; res.propulsors)
+		{
+			prop.transform.position = propulsionMounts[i].mountCenter.tod;
+			prop.transform.rotation = propulsionMounts[i].rotation;
+		}
 		// hydrophones
 		foreach (i, ref hp; hprots)
 		{
@@ -271,11 +273,12 @@ final class SubmarineFactory: VesselFactory
 	}
 
 	// untrusted roomStates and tubeStates input
-	Submarine build(Captain cpt, Propulsor prop,
+	Submarine build(Captain cpt, Propulsor[] propulsors,
 		const(AmmoRoomFullState)[] roomStates, const(TubeSpawnState)[] tubeStates) const
 	{
 		Submarine res = new Submarine(null, name);
-		res.propulsor = prop;
+		foreach (prop; propulsors)
+			res.addPropulsor(prop);
 		AmmoRoomFullState[int] specifiedRoomStates;
 		foreach (rs; roomStates)
 			specifiedRoomStates[rs.roomId] = cast() rs;

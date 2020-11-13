@@ -97,7 +97,7 @@ class Vessel: Killable, IHasTransform, IHasRidigBody
 		Transform2D m_transform;
 		RigidBody m_rigidBody;
 		BasicRudder m_rudder;
-		Propulsor m_propulsor;
+		Propulsor[] m_propulsors;
 		Reflector m_reflector;
 		string m_prototypeName;
 		usecs_t m_reapTime;
@@ -108,13 +108,12 @@ class Vessel: Killable, IHasTransform, IHasRidigBody
 		@property Transform2D transform() { return m_transform; }
 		@property RigidBody rigidBody() { return m_rigidBody; }
 		/// Propulsor is assigned before bootstrap, during spawn
-		@property void propulsor(Propulsor rhs)
+		void addPropulsor(Propulsor rhs)
 		{
-			assert(m_propulsor is null, "only can assign propulsor once");
-			m_propulsor = rhs;
+			m_propulsors ~= rhs;
 			m_transform.addChild(rhs.transform);
 		}
-		@property inout(Propulsor) propulsor() inout { return m_propulsor; }
+		@property inout(Propulsor)[] propulsors() inout { return m_propulsors; }
 		@property inout(BasicRudder) rudder() inout { return m_rudder; }
 		@property string prototypeName() const { return m_prototypeName; }
 		@property usecs_t reapTime() const { return m_reapTime; }
@@ -139,8 +138,8 @@ class Vessel: Killable, IHasTransform, IHasRidigBody
 		sim.vessels.registerEntity(this);
 		sim.phys.registerEntity(m_rigidBody);
 		sim.acous.registerReflector(m_reflector);
-		if (m_propulsor)
-			m_propulsor.register(sim);
+		foreach (prop; m_propulsors)
+			prop.register(sim);
 	}
 
 	/// call this when removing this submarine from the physical world to
@@ -150,19 +149,20 @@ class Vessel: Killable, IHasTransform, IHasRidigBody
 		simulator.vessels.unregisterEntity(this);
 		simulator.acous.unregisterReflector(m_reflector);
 		simulator.phys.unregisterEntity(m_rigidBody);
-		if (m_propulsor)
-			m_propulsor.shutdown();
+		foreach (prop; m_propulsors)
+			prop.shutdown();
 	}
 
-	final @property float targetThrottle() const { return m_propulsor.targetThrottle; }
+	final @property float targetThrottle() const { return m_propulsors[0].targetThrottle; }
 
 	/// set propulsor's target throttle
 	final @property void targetThrottle(float target)
 	{
 		enforce(!isNaN(target), "NaN target throttle");
-		enforce(m_propulsor, "vessel has no propulsor");
+		enforce(m_propulsors, "vessel has no propulsors");
 		enforce(target <= 1.0f && target >= -1.0f, "Throttle not in [-1, 1] interval");
-		m_propulsor.targetThrottle = target;
+		foreach (prop; m_propulsors)
+			prop.targetThrottle = target;
 	}
 
 	final @property float targetCourse() const { return m_rudder.targetCourse; }
@@ -183,8 +183,7 @@ class Vessel: Killable, IHasTransform, IHasRidigBody
 		{
 			m_reapTime = m_deathTime + uniform!("[]", usecs_t, usecs_t)(240, 360) *
 				1000_000L;
-			if (m_propulsor)
-				targetThrottle = 0.0f;
+			targetThrottle = 0.0f;
 			// optimization: do not simulate wires of dead vessels
 			if (m_rigidBody)
 				m_rigidBody.wires.length = 0;
@@ -331,19 +330,17 @@ class VesselFactory
 		res.m_reflector.owner = res;
 		// rudder and propulsor
 		assert(res.m_rudder !is null);
-		if (res.m_propulsor)
+		res.m_rigidBody.forces = [cast(IForce) res.m_rudder];
+		foreach(prop; res.m_propulsors)
 		{
-			res.m_rigidBody.forces = [
-				cast(IForce) res.m_rudder, cast(IForce) res.m_propulsor];
+			res.m_rigidBody.forces ~= cast(IForce) prop;
 			// add module masses to the hull
-			res.m_rigidBody.mass += res.m_propulsor.mass;
+			res.m_rigidBody.mass += prop.mass;
 		}
-		else
-			res.m_rigidBody.forces = [cast(IForce) res.m_rudder];
 		// calculate final MOI
 		res.m_rigidBody.moi = calcMoi(res.m_rigidBody.mass);
-		if (res.m_propulsor)
-			res.m_propulsor.bootstrap(res.m_rigidBody);
+		foreach(prop; res.m_propulsors)
+			prop.bootstrap(res.m_rigidBody);
 		assert(!isNaN(res.m_rigidBody.mass));
 		assert(!isNaN(res.m_rigidBody.moi));
 	}

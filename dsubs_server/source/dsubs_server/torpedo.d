@@ -162,8 +162,7 @@ final class PassiveDecoyGuidance: IGuidance
 			if (m_activateAfter <= 0)
 			{
 				m_active = true;
-				assert(m_decoy.propulsor);
-				m_decoy.propulsor.targetThrottle = uniform(0.8f, 1.0f);
+				m_decoy.targetThrottle = uniform(0.8f, 1.0f);
 			}
 		}
 		else
@@ -321,7 +320,8 @@ final class TorpedoGuidance: IGuidance
 	void update(usecs_t dt)
 	{
 		// perform fuel-related calculations
-		float fuelSpent = pow(m_torpedo.propulsor.throttle.fabs, m_fuelEffExponent);
+		assert(m_torpedo.propulsors.length == 1);
+		float fuelSpent = pow(m_torpedo.propulsors[0].throttle.fabs, m_fuelEffExponent);
 		m_fuelLeft -= fuelSpent;
 		if (m_fuelLeft < 0.0f)
 		{
@@ -926,7 +926,7 @@ final class PassiveDecoyFactory: WeaponFactory
 		enforce(launchParams.length == 0, "decoy is not configurable");
 		PassiveDecoyGuidance guidance = new PassiveDecoyGuidance();
 		StaticDecoy res = new StaticDecoy(shooter, name, guidance);
-		res.propulsor = propFactory.build();
+		res.addPropulsor(propFactory.build());
 		super.bootstrap(res);
 		guidance.m_decoy = res;
 		guidance.m_fuelLeft = fuel;
@@ -984,7 +984,7 @@ final class TorpedoFactory: WeaponFactory
 		fuel.mean = tgtMaxRangeOnMaxSpd / fullThrottleSpd;
 		fuel.stddev = fuel.mean * balancingStddev;
 		float minThrottle = throttleForSpeed(
-			rigidBody.Cd0.mean, rigidBody.Cd1.mean, propFactory.posThrustK.mean,
+			rigidBody.Cd0.mean, rigidBody.Cd1.mean, 1, propFactory.posThrustK.mean,
 			marchSpeedRange.min);
 		trace("Max range of ", propFactory.name, " on min speed ", activeSpeedRange.min,
 			": ", activeSpeedRange.min * (fuel.mean / pow(minThrottle, fuelEffExponent)));
@@ -996,8 +996,8 @@ final class TorpedoFactory: WeaponFactory
 	{
 		super.bootstrap(res);
 		assert(res.rigidBody.mass > 0.0f);
-		res.propulsor.transform.position = propMount.mountCenter.tod;
-		res.propulsor.transform.rotation = propMount.rotation;
+		res.propulsors[0].transform.position = propMount.mountCenter.tod;
+		res.propulsors[0].transform.rotation = propMount.rotation;
 		res.guidance.m_fuelLeft = fuel;
 		res.guidance.m_fuelEffExponent = fuelEffExponent;
 		res.guidance.m_snakeArm = snakeArm;
@@ -1115,7 +1115,7 @@ final class TorpedoFactory: WeaponFactory
 	override Torpedo build(Submarine shooter, const(WeaponParamValue)[] launchParams) const
 	{
 		Torpedo res = new Torpedo(shooter, name);
-		res.propulsor = propFactory.build();
+		res.addPropulsor(propFactory.build());
 		configureGuidance(res, launchParams);
 		bootstrap(res);
 		return res;

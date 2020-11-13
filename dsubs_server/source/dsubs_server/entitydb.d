@@ -123,8 +123,10 @@ final class EntityDb
 			enforce(pf.playable, "propulsor is unplayable");
 		enforce(sf.tmpl.propulsors.any!(p => p == pf.tmpl.name)(),
 			"Propulsor not allowed for submarine");
-		Propulsor prop = pf.build();
-		Submarine sub = sf.build(cpt, prop, req.ammoRoomLoadouts,
+		Propulsor[] propulsors;
+		for (int i = 0; i < sf.propulsionMounts.length; i++)
+			propulsors ~= pf.build();
+		Submarine sub = sf.build(cpt, propulsors, req.ammoRoomLoadouts,
 			req.loadableTubeLoadouts);
 		trace("built new submarine from request ", req);
 		return sub;

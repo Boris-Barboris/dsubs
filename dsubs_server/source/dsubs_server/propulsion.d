@@ -252,10 +252,11 @@ final class BasicRudder: Rudder
 
 
 /// Given a hydrodynamics force model and basic propulsor, calculate flank speed
-double speedForThrottle(T)(const T hfm, const BasicPropulsor bp, float throttle = 1.0f)
+double speedForThrottle(T)(const T hfm, size_t propCount, const BasicPropulsor bp,
+		float throttle = 1.0f)
 	if (is(T == VesselRigidBodyTemplate) || is(T == HydroForceModel))
 {
-	double maxT = bp.posThrustK * throttle;
+	double maxT = bp.posThrustK * throttle * propCount;
 	// maxT = Cd0 * v + Cd1 * v * v
 	// Cd1 * v * v + Cd0 * v - maxT = 0
 	double D = pow(hfm.Cd0, 2) + 4 * hfm.Cd1 * maxT;
@@ -264,9 +265,10 @@ double speedForThrottle(T)(const T hfm, const BasicPropulsor bp, float throttle 
 	return vmax;
 }
 
-double speedForThrottle(float Cd0, float Cd1, float posThrustK, float throttle = 1.0f)
+double speedForThrottle(float Cd0, float Cd1, size_t propCount, float posThrustK,
+	float throttle = 1.0f)
 {
-	double maxT = posThrustK * throttle;
+	double maxT = posThrustK * throttle * propCount;
 	double D = pow(Cd0, 2) + 4 * Cd1 * maxT;
 	double vmax = (-Cd0 + sqrt(D)) / (2 * Cd1);
 	assert(!isNaN(vmax));
@@ -280,13 +282,14 @@ float throttleForSpeed(Vessel v, float speed)
 	speed = fabs(speed);
 	double maxT = v.rigidBody.hydroModel.Cd0 * speed +
 		speed * speed * v.rigidBody.hydroModel.Cd1;
-	BasicPropulsor bp = cast(BasicPropulsor) v.propulsor;
-	return clamp(sqrt(maxT / bp.posThrustK), -1.0f, 1.0f);
+	BasicPropulsor bp = cast(BasicPropulsor) v.propulsors[0];
+	return clamp(sqrt(maxT / bp.posThrustK / v.propulsors.length), -1.0f, 1.0f);
 }
 
-float throttleForSpeed(float Cd0, float Cd1, float posThrustK, float speed)
+float throttleForSpeed(float Cd0, float Cd1, size_t propCount,
+	float posThrustK, float speed)
 {
 	speed = fabs(speed);
-	double maxT = Cd0 * speed + speed * speed * Cd1;
-	return clamp(sqrt(maxT / posThrustK), -1.0f, 1.0f);
+	double drag = Cd0 * speed + speed * speed * Cd1;
+	return clamp(sqrt(drag / posThrustK / propCount), -1.0f, 1.0f);
 }

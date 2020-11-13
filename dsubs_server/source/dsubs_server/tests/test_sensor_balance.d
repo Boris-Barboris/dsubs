@@ -23,7 +23,8 @@ import dsubs_server.tests.common;
 double getSpawnReqMaxSpeed(SpawnReq req)
 {
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	return speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
+	return speedForThrottle(s.rigidBody.hydroModel, s.propulsors.length,
+		cast(BasicPropulsor) s.propulsors[0]);
 }
 
 void writePropellerNoiseVsSpeedCsv(Submarine v, string testName, int minFreq, int maxFreq,
@@ -31,24 +32,24 @@ void writePropellerNoiseVsSpeedCsv(Submarine v, string testName, int minFreq, in
 {
 	mkdirRecurse("test_data/propulsor_noise");
 	File* f = new File("test_data/propulsor_noise/" ~ testName ~
-		"_" ~ v.prototypeName ~ "_" ~ v.propulsor.prototypeName ~ ".csv", "w");
+		"_" ~ v.prototypeName ~ "_" ~ v.propulsors[0].prototypeName ~ ".csv", "w");
 	scope(exit) f.detach();
 	f.writeln("speed,noise_db");
 	float minSpeed = 0.1f;
-	float maxSpeed = speedForThrottle(v.rigidBody.hydroModel,
-		cast(BasicPropulsor) v.propulsor, 1.0f);
+	float maxSpeed = speedForThrottle(v.rigidBody.hydroModel, v.propulsors.length,
+		cast(BasicPropulsor) v.propulsors[0], 1.0f);
 	float dspeed = (maxSpeed - minSpeed) / (numSpeedPoints - 1);
 	float speed = minSpeed;
 	for (int i = 0; i < numSpeedPoints; i++)
 	{
 		float throttle = throttleForSpeed(v, speed);
-		float shaftFreq = (cast(BasicPropulsor) v.propulsor).shaftFreq(throttle);
+		float shaftFreq = (cast(BasicPropulsor) v.propulsors[0]).shaftFreq(throttle);
 		trace("speed: ", speed, ", throttle: ", throttle);
 		Intensity bandSum = calcPropellerIntensity(
-			(cast(BasicPropulsor) v.propulsor).sound,
+			(cast(BasicPropulsor) v.propulsors[0]).sound,
 			Globals.sctx.queue(0), 1000.0f, speed, shaftFreq, PI_2,
 			minFreq, maxFreq, dissMod);
-
+		bandSum.val *= v.propulsors.length;
 		f.writefln!"%f,%f"(speed, bandSum.toDb.val);
 		speed += dspeed;
 	}
@@ -60,7 +61,7 @@ void writePropellerNoiseVsSpeedCsv(Torpedo v, string testName, int minFreq, int 
 {
 	mkdirRecurse("test_data/propulsor_noise");
 	File* f = new File("test_data/propulsor_noise/" ~ testName ~
-		"_" ~ v.prototypeName ~ "_" ~ v.propulsor.prototypeName ~ ".csv", "w");
+		"_" ~ v.prototypeName ~ "_" ~ v.propulsors[0].prototypeName ~ ".csv", "w");
 	scope(exit) f.detach();
 	f.writeln("speed,noise_db");
 	// min speed should be taken from min march speed in guidance parameters
@@ -74,10 +75,10 @@ void writePropellerNoiseVsSpeedCsv(Torpedo v, string testName, int minFreq, int 
 	for (int i = 0; i < numSpeedPoints; i++)
 	{
 		float throttle = throttleForSpeed(v, speed);
-		float shaftFreq = (cast(BasicPropulsor) v.propulsor).shaftFreq(throttle);
+		float shaftFreq = (cast(BasicPropulsor) v.propulsors[0]).shaftFreq(throttle);
 		trace("speed: ", speed, ", throttle: ", throttle);
 		Intensity bandSum = calcPropellerIntensity(
-			(cast(BasicPropulsor) v.propulsor).sound,
+			(cast(BasicPropulsor) v.propulsors[0]).sound,
 			Globals.sctx.queue(0), 1000.0f, speed, shaftFreq, PI_2,
 			minFreq, maxFreq, dissMod);
 
