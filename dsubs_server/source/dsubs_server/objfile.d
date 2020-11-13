@@ -4,6 +4,7 @@ import std.algorithm: startsWith, splitter, sort;
 import std.ascii: isWhite;
 import std.path;
 import std.file: read;
+import std.regex: regex, matchFirst;
 import std.string: lineSplitter;
 
 import dsubs_common.api.entities;
@@ -104,7 +105,13 @@ ObjModel readModelFromObj(string filename, string directory = "models/")
 			// objects that start from underscore are not rendered
 			if (faceFilled.objectName[0] != '_')
 				res.faces ~= faceFilled;
-			res.allFaces[faceFilled.objectName] = faceFilled;
+			// typical name
+			auto r = regex("(.+)_Plane.*");
+			auto m = matchFirst(faceFilled.objectName, r);
+			if (m.empty)
+				throw new Exception("object name " ~ faceFilled.objectName ~
+					" does not match *_Plane* pattern");
+			res.allFaces[m[1]] = faceFilled;
 			continue;
 		}
 	}

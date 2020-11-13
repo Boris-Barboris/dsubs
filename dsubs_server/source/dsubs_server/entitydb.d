@@ -871,7 +871,7 @@ Active sonars:
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 22,
 			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		bowProtoTemplate = TubePrototype(TubeTemplate(0,
-			MountPoint(objModel.allFaces["tube1_Plane.006"].center, 0.0),
+			MountPoint(objModel.allFaces["tube1"].center, 0.0),
 			0, TubeType.standard, false),
 			cast(usecs_t)110 * 1000_000,
 			cast(usecs_t)STORK_FLOOD_SECS * 1000_000,
@@ -889,10 +889,10 @@ Active sonars:
 			4.0f, 95.0f);
 		tubeProtos = tubeProtos.dup();
 		tubeProtos[0] = bowProtoTemplate;
-		bowProtoTemplate.tmpl.mount = MountPoint(objModel.allFaces["tube2_Plane.007"].center, 0.0);
+		bowProtoTemplate.tmpl.mount = MountPoint(objModel.allFaces["tube2"].center, 0.0);
 		bowProtoTemplate.tmpl.id = 1;
 		tubeProtos[1] = bowProtoTemplate;
-		vec2f decoyTubeCenter = objModel.allFaces["_decoytube1_Plane.031"].center;
+		vec2f decoyTubeCenter = objModel.allFaces["_decoytube1"].center;
 		decoyTubePrototype = TubePrototype(TubeTemplate(2,
 			MountPoint(decoyTubeCenter, dgr2rad(90)),
 			1, TubeType.decoy, true),
@@ -927,8 +927,8 @@ Active sonars:
 		hydroProtos.length = 0;
 		hydroProtos ~= SubHydrophonePrototype(
 			"bow", HydrophoneType.fixed, MountPoint(
-				objModel.allFaces["_bowsensors_Plane.030"].center),
-			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(210),
+				objModel.allFaces["_bowsensors"].center),
+			HydrophonePrototype([0.0f], 250, GLOBAL_SRATE / 2, dgr2rad(250),
 				160, 2.0 / 90.0f, 3.5f));
 		hydroProtos[0].hydroProto.flowNoiseMult = 2.0e-5f;
 
@@ -938,8 +938,7 @@ Active sonars:
 		pf.description = "High RPM and low cavitation speed, optimized for flank performance.\n\nMass: 25t";
 		pf.type = PropulsorType.screw;
 		pf.bladeCount = 5;
-		pf.model = screwModelFromFace("_screw1_Plane.029",
-			"_propulsor_Plane.028", objModel);
+		pf.model = screwModelFromFace("_screw1", "_propulsor", objModel);
 		pf.posThrustK = RolledF(2400.0f, 20.0f);
 		pf.negThrustK = RolledF(1100.0f, 10.0f);
 		pf.mass = 25.0f;
@@ -973,12 +972,12 @@ Armament:
   2x bow torpedo tubes (110 sec reload).
   2x broadside decoy launchers.
 Hydrophones:
-  Bow: spherical array, 210 deg FoV
+  Bow: spherical array, 250 deg FoV
 Active sonars:
   Bow: 2400Hz mid-freq pulse, 210 deg FoV`;
 		sp.model = model2d;
 		sp.propulsionMounts = [MountPoint(
-			objModel.allFaces["_propulsor_Plane.028"].center)];
+			objModel.allFaces["_propulsor"].center)];
 		sp.allowedPropulsors = ["Five-blade Kilo screw"];
 
 				// SonarTemplate(MountPoint(vec2f(0.0f, 31.0f)),
@@ -1003,7 +1002,7 @@ Active sonars:
 		sp.rigidBody.hullLength = dims.y;
 		sp.hprots = hydroProtos;
 		sp.asprot = new SubSonarPrototype(MountPoint(
-			objModel.allFaces["_bowsensors_Plane.030"].center), asp);
+			objModel.allFaces["_bowsensors"].center), asp);
 		sp.reflprot = ReflectorPrototype(vec2f(9.0f, 55.0f), [-17.0f, -10.0f, -8.0f]);
 		sp.playable = true;
 		m_submarines[sp.name] = sp;
