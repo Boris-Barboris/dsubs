@@ -22,6 +22,7 @@ import dsubs_client.render.shapes;
 import dsubs_client.render.worldmanager;
 import dsubs_client.math.transform;
 import dsubs_client.input.router: IInputReceiver;
+import dsubs_client.input.hotkeymanager: HotkeyManager, Modifier;
 import dsubs_client.gui;
 import dsubs_client.game;
 import dsubs_client.game.waterfall;
@@ -1799,14 +1800,36 @@ final class WaterfallRaySampleElement: DataTacticalElement
 	{
 		assert(data.type == DataType.Ray);
 		super(owner, data);
+		m_bearing = data.data.ray.bearing;
+		m_time = data.time;
+		commonInitialization();
+	}
+
+	private void commonInitialization()
+	{
 		m_mainShape = ctcOverlayCache.wfRayDataMainShape;
 		m_onHoverRect = ctcOverlayCache.wfRayDataOnHoverRect;
 		m_chainLine = ctcOverlayCache.rayChainLine;
-		m_bearing = data.data.ray.bearing;
 		size = cast(vec2i) (m_onHoverRect.size);
 		onMouseUp += &processMouseUp;
 		onMouseDown += &processMouseDown;
 		onMouseMove += &processMouseMove;
+	}
+
+	/// Clone constructor for drag-and-create flow
+	this(WaterfallRaySampleElement cloneFrom)
+	{
+		m_cloneMode = true;
+		ContactData dataCopy = cloneFrom.data.cdata;
+		// -1 means CIC will allocate new ID for data when sent
+		dataCopy.id = -1;
+		ClientContactData* fakeData = new ClientContactData(dataCopy);
+		super(cloneFrom.owner, fakeData);
+		m_next = cloneFrom;
+		m_bearing = cloneFrom.m_bearing;
+		m_time = cloneFrom.m_time;
+		commonInitialization();
+		onMouseFocusLoss += &cloneHandleMouseFocusLoss;
 	}
 
 	private @property Waterfall.WaterfallOverlay owner()
@@ -1816,8 +1839,12 @@ final class WaterfallRaySampleElement: DataTacticalElement
 
 	private
 	{
-		// mutable copy
+		// mutable copy of ray data fields
 		double m_bearing;
+		usecs_t m_time;
+
+		/// true when it is a temporary sample element that is dragged around
+		bool m_cloneMode;
 		RectangleShape m_mainShape;
 		RectangleShape m_onHoverRect;
 		// line to connect to m_next sample on waterfall screen
@@ -1840,8 +1867,19 @@ final class WaterfallRaySampleElement: DataTacticalElement
 	{
 		if (btn == sfMouseLeft)
 		{
-			m_dragging = true;
 			g_dragOffset = vec2i(x, y) - position;
+			// If shift is pressed, we enter new ray data sample creation mode.
+			// We create a ray phantom that the user can drag and when released, new
+			// ray sample will be sent to CIC.
+			Modifier kbModifiers = HotkeyManager.getCurMod();
+			if (kbModifiers & Modifier.SHIFT)
+			{
+				WaterfallRaySampleElement clone = new WaterfallRaySampleElement(this);
+				clone.m_dragging = true;
+				clone.requestMouseFocus();
+				return;
+			}
+			m_dragging = true;
 			requestMouseFocus();
 		}
 	}
@@ -1853,9 +1891,14 @@ final class WaterfallRaySampleElement: DataTacticalElement
 			vec2i newPos = vec2i(x, y) - g_dragOffset;
 			vec2d newCenter = owner.clampInsideRect(lu2center(newPos));
 			// we only update bearing for waterfall ray data
-			// because waterfall moves down every second
+			// because waterfall moves down every second and it's inconvenient
 			vec2d newWorldCoord = owner.screen2worldPos(newCenter);
 			m_bearing = newWorldCoord.x;
+			if (m_cloneMode)
+			{
+				m_time = Game.simState.lastServerTime -
+					1000_000L * newWorldCoord.y.to!usecs_t;
+			}
 		}
 	}
 
@@ -1870,23 +1913,35 @@ final class WaterfallRaySampleElement: DataTacticalElement
 		}
 	}
 
+	private void cloneHandleMouseFocusLoss()
+	{
+		this.drop();
+	}
+
 	private void requestDataUpdate()
 	{
 		ContactData updated = data.cdata;
 		updated.data.ray.bearing = m_bearing;
-		Game.ciccon.sendMessage(immutable CICContactDataReq(updated));
+		updated.time = m_time;
+		// clone mode simple protection against duplicate samples
+		if (!m_cloneMode || m_time != data.cdata.time)
+			Game.ciccon.sendMessage(immutable CICContactDataReq(updated));
+		// if this was a clone, we destroy it
+		if (m_cloneMode)
+			this.drop();
 	}
 
 	override void updateFromData()
 	{
 		returnMouseFocus();
 		m_bearing = data.data.ray.bearing;
+		m_time = data.time;
 	}
 
 	override void onPreDraw()
 	{
 		double bearing = m_bearing;
-		long timeDelta = (Game.simState.lastServerTime - data.time) / 1000_000L;
+		long timeDelta = (Game.simState.lastServerTime - m_time) / 1000_000L;
 		vec2d screenPos = owner.world2screenPos(vec2d(bearing, timeDelta));
 		position = center2lu(screenPos);
 		m_mainShape.center = cast(vec2f) screenPos;
@@ -1895,7 +1950,7 @@ final class WaterfallRaySampleElement: DataTacticalElement
 		if (m_next && !m_next.hidden)
 		{
 			bearing = m_next.m_bearing;
-			timeDelta = (Game.simState.lastServerTime - m_next.data.time) / 1000_000L;
+			timeDelta = (Game.simState.lastServerTime - m_next.m_time) / 1000_000L;
 			vec2d screenPosNext = owner.world2screenPos(vec2d(bearing, timeDelta));
 			m_chainLine.setPoints(screenPos, screenPosNext, true);
 		}

@@ -161,7 +161,8 @@ final class HotkeyManager: IWindowEventSubrouter, IInputReceiver
 			act(usecs, curMod);
 	}
 
-	private static Modifier getCurMod()
+	/// Get bitmask of currently active keyboard modifier keys
+	static Modifier getCurMod()
 	{
 		Modifier res;
 		if (sfKeyboard_isKeyPressed(sfKeyLShift))
