@@ -1811,6 +1811,12 @@ final class WaterfallRaySampleElement: DataTacticalElement
 		m_onHoverRect = ctcOverlayCache.wfRayDataOnHoverRect;
 		m_chainLine = ctcOverlayCache.rayChainLine;
 		size = cast(vec2i) (m_onHoverRect.size);
+		m_contactName = new Label();
+		m_contactName.enableScissorTest = false;
+		m_contactName.fontSize = 14;
+		m_contactName.content = data.ctcId.to!string;
+		m_contactName.size = cast(vec2i) vec2f(m_contactName.contentWidth + 10,
+			m_contactName.contentHeight + 2);
 		onMouseUp += &processMouseUp;
 		onMouseDown += &processMouseDown;
 		onMouseMove += &processMouseMove;
@@ -1849,6 +1855,8 @@ final class WaterfallRaySampleElement: DataTacticalElement
 		RectangleShape m_onHoverRect;
 		// line to connect to m_next sample on waterfall screen
 		LineShape m_chainLine;
+		// label to draw contact name on hover
+		Label m_contactName;
 		// closest sample in time
 		WaterfallRaySampleElement m_next;
 	}
@@ -1986,7 +1994,12 @@ final class WaterfallRaySampleElement: DataTacticalElement
 		position = center2lu(screenPos);
 		m_mainShape.center = cast(vec2f) screenPos;
 		if (m_hovered)
+		{
 			m_onHoverRect.center = cast(vec2f) screenPos;
+			m_contactName.position = vec2i(
+				position.x + size.x / 2 - m_contactName.size.x / 2,
+				position.y - m_contactName.size.y - 1);
+		}
 		if (m_next && !m_next.hidden)
 		{
 			bearing = m_next.m_bearing;
@@ -2000,7 +2013,10 @@ final class WaterfallRaySampleElement: DataTacticalElement
 	{
 		super.draw(wnd, usecsDelta);
 		if (m_hovered)
+		{
 			m_onHoverRect.render(wnd);
+			m_contactName.draw(wnd, usecsDelta);
+		}
 		if (m_next && !m_next.hidden)
 			m_chainLine.render(wnd);
 		m_mainShape.render(wnd);
