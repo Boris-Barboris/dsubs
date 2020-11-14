@@ -1863,6 +1863,37 @@ final class WaterfallRaySampleElement: DataTacticalElement
 		m_next = el;
 	}
 
+	override Button[] dataContextMenuOptions()
+	{
+		Button[] res = super.dataContextMenuOptions();
+		// if there are multiple hydrophones on our sub, we give the option to
+		// duplicate the ray sample on all others.
+		if (Game.simState.playerSub.tmpl.hydrophones.length > 1)
+		{
+			Button btn = builder(new Button()).fontSize(15).
+				content("dup to waterfalls").build();
+			btn.onClick += {
+				int originalSersorId = data.cdata.source.sensorIdx;
+				ContactData updated = data.cdata;
+				updated.id = -1;
+				foreach (i, h; Game.simState.playerSub.tmpl.hydrophones)
+				{
+					if (i != originalSersorId)
+					{
+						updated.source.sensorIdx = i.to!int;
+						Waterfall.WaterfallOverlay overlay =
+							Game.simState.gui.waterfalls[i].overlay;
+						// will be invalid if out of waterfall's origin buffer
+						overlay.getOrigin(updated.time, updated.data.ray.origin);
+						Game.ciccon.sendMessage(immutable CICContactDataReq(updated));
+					}
+				}
+			};
+		res ~= btn;
+		}
+		return res;
+	}
+
 	private void processMouseDown(int x, int y, sfMouseButton btn)
 	{
 		if (btn == sfMouseLeft)
@@ -1923,9 +1954,18 @@ final class WaterfallRaySampleElement: DataTacticalElement
 		ContactData updated = data.cdata;
 		updated.data.ray.bearing = m_bearing;
 		updated.time = m_time;
+		bool timeChanged = m_time != data.cdata.time;
 		// clone mode simple protection against duplicate samples
-		if (!m_cloneMode || m_time != data.cdata.time)
+		if (!m_cloneMode || timeChanged)
+		{
+			if (timeChanged)
+			{
+				// ray origin must be recalculated.
+				// will be invalid if out of waterfall's origin buffer.
+				owner.getOrigin(m_time, updated.data.ray.origin);
+			}
 			Game.ciccon.sendMessage(immutable CICContactDataReq(updated));
+		}
 		// if this was a clone, we destroy it
 		if (m_cloneMode)
 			this.drop();

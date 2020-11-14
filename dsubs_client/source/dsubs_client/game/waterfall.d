@@ -615,7 +615,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		updateTexCoords();
 	}
 
-	private float pixelToDelay(float px)
+	float pixelToDelay(float px)
 	{
 		if (contentHeight <= 0)
 			return 0.0f;
@@ -623,7 +623,7 @@ final class Waterfall: PanoramicDisplay!ushort
 		return m_camera.transform2world(vec2d(0, camCoord)).y;
 	}
 
-	private float delayToPixel(float delay)
+	float delayToPixel(float delay)
 	{
 		float camCoord = m_camera.transform2screen(vec2d(0, delay + 0.5f)).y;
 		return camCoord * contentHeight / m_camViewportHeight;
@@ -665,6 +665,17 @@ final class Waterfall: PanoramicDisplay!ushort
 			}
 			if (btn == sfMouseRight && !m_panned)
 				spawnContextMenu(x, y);
+		}
+
+		/// Returns false if no memory of this origin is in the internal circular buffer.
+		/// Does not interpolate.
+		bool getOrigin(usecs_t atTime, ref vec2d origin)
+		{
+			long delay = (Game.simState.lastServerTime - atTime) / 1000_000L;
+			if (delay < 0 || delay >= this.outer.m_originQueue.length)
+				return false;
+			origin = this.outer.m_originQueue.fromBack(delay.to!size_t);
+			return true;
 		}
 
 		private void spawnContextMenu(int x, int y)
