@@ -565,10 +565,10 @@ final class Submarine: WorldRenderable
 			prop.renderBack(wnd);
 		for (int i = 0; i < m_tmpl.elevatedHullShapeIdx; i++)
 			m_shapes[i].render(wnd, transform.world);
-		foreach (wire; m_wires)
-			wire.render(wnd);
 		foreach (prop; m_propulsors)
 			prop.renderFront(wnd);
+		foreach (wire; m_wires)
+			wire.render(wnd);
 		for (int i = m_tmpl.elevatedHullShapeIdx; i < m_shapes.length; i++)
 			m_shapes[i].render(wnd, transform.world);
 	}
