@@ -410,4 +410,12 @@ private:
 			Game.simState.gui.handleCICWireDesiredLengthReq(msg);
 		}
 	}
+
+	void h_simulatorPausedRes(CICSimulatorPausedRes msg)
+	{
+		synchronized(Game.mainMutexWriter)
+		{
+			Game.simState.gui.handleCICSimulatorPausedRes(msg);
+		}
+	}
 }

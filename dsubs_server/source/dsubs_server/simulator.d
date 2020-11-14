@@ -303,7 +303,8 @@ final class Simulator
 	private MonoTime nextStart;
 
 	/// if false, this is a greedy simulator that does not need periodic
-	/// scheduling and wants to be ran as often as possible (subject to fairness constraints).
+	/// scheduling and wants to be ran as often as possible
+	/// (subject to fairness constraints).
 	bool doSleep = true;
 
 	/// Set to true if this is a real-time simulator that needs to proceed even without
@@ -311,6 +312,21 @@ final class Simulator
 	bool runWithoutPlayers = false;
 
 	float timeAcceleration = 1.0f;
+
+	bool canBePaused = true;
+
+	private bool m_paused;
+	private bool m_pausedChanged;
+
+	@property bool paused() const { return m_paused; }
+
+	/// Must be called while holding simMut.reader
+	@property void paused(bool rhs)
+	{
+		enforce(canBePaused, "Cannot change paused state of simulator " ~ id);
+		m_pausedChanged = true;
+		m_paused = rhs;
+	}
 
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassStart;
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassEnd;
@@ -333,6 +349,27 @@ final class Simulator
 		foreach (SubPlayerPair pair; Globals.taskPool.parallel(playersToUpdate, 1))
 		{
 			pair.player.sendUpdate(pair.sub);
+		}
+	}
+
+	/// All players that own vessels in this sim receive update.
+	private void sendPauseUpdateToPlayers()
+	{
+		static struct SubPlayerPair
+		{
+			Player player;
+			Submarine sub;
+		}
+
+		SubPlayerPair[] playersToUpdate;
+		foreach (Submarine sub; vessels.submarines)
+		{
+			if (sub && sub.player)
+				playersToUpdate ~= SubPlayerPair(sub.player, sub);
+		}
+		foreach (SubPlayerPair pair; Globals.taskPool.parallel(playersToUpdate, 1))
+		{
+			pair.player.sendPauseStateUpdate(pair.sub, m_paused);
 		}
 	}
 
@@ -372,6 +409,18 @@ final class Simulator
 			if (m_terminating)
 			{
 				sendTerminatingToPlayers();
+				return;
+			}
+			// pause handling
+			if (m_pausedChanged)
+			{
+				// edge-triggered update to players,
+				// we guarantee response.
+				m_pausedChanged = false;
+				sendPauseUpdateToPlayers();
+			}
+			if (m_paused)
+			{
 				return;
 			}
 			// some user actions enqueue buffer commands on first queue,

@@ -261,6 +261,13 @@ private:
 			p.handleWireDesiredLengthReq(req);
 	}
 
+	void h_pauseSimulatorReq(PauseSimulatorReq req)
+	{
+		Player p = simFlowValidation();
+		if (p)
+			p.handlePauseSimulatorReq(req);
+	}
+
 	void h_replayGetDataReq(ReplayGetDataReq req)
 	{
 		if (Globals.metrics)

@@ -289,6 +289,15 @@ final class CICServer
 		m_listener.broadcast(cast(immutable) CICChatMessageRes(res));
 	}
 
+	void handleSimulatorPausedRes(SimulatorPausedRes res)
+	{
+		synchronized(m_state.rsMut)
+		{
+			m_state.handleSimulatorPausedRes(res);
+		}
+		m_listener.broadcast(cast(immutable) CICSimulatorPausedRes(res.isPaused));
+	}
+
 	/*
 	Contact management.
 	*/

@@ -140,6 +140,11 @@ final class CICState: Persistable
 		m_recState.lastChatLogs ~= res.message;
 	}
 
+	void handleSimulatorPausedRes(SimulatorPausedRes res)
+	{
+		m_recState.isPaused = res.isPaused;
+	}
+
 	/// Contact and it's data.
 	private struct ContactContext
 	{

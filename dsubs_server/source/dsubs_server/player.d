@@ -276,6 +276,8 @@ final class Player: Captain
 			s.tubeRange.map!(t => t.fullState).array,
 			s.ammoRoomRange.map!(r => r.fullState).array
 			);
+		recState.isPaused = s.simulator.paused;
+		recState.canBePaused = s.simulator.canBePaused;
 		if (s.simulator.scenario)
 		{
 			Scenario scenario = s.simulator.scenario;
@@ -447,6 +449,19 @@ final class Player: Captain
 		}
 	}
 
+	void handlePauseSimulatorReq(PauseSimulatorReq req)
+	{
+		Submarine s = m_submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
+		{
+			if (s.dead || s !is m_submarine)
+				return;
+			s.simulator.paused = req.shouldBePaused;
+		}
+	}
+
 	void handleLaunchTubeReq(LaunchTubeReq req)
 	{
 		Submarine s = m_submarine;
@@ -543,6 +558,23 @@ final class Player: Captain
 			con.simulatorFlow = false;
 			if (con.isOpen)
 				con.sendMessage(immutable SimulatorTerminatingRes());
+		}
+	}
+
+	// simMut.writer is held by the simulator
+	void sendPauseStateUpdate(Submarine subToUpdate, bool isSimPaused)
+	{
+		Submarine s = m_submarine;
+
+		// Dangling submarine reference protection
+		// TODO: verify the need in this check.
+		if (subToUpdate !is s)
+			return;
+
+		PlayerConnection con = m_connection;
+		if (con && con.isOpen && con.simulatorFlow && (con.simFlowSub is s))
+		{
+			con.sendMessage(immutable SimulatorPausedRes(isSimPaused));
 		}
 	}
 

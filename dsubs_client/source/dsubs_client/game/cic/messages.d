@@ -21,7 +21,7 @@ struct CICLoginRes
 {
 	__gshared const int g_marshIdx;
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
-	int apiVersion = 7;
+	int apiVersion = 8;
 }
 
 /// CIC client sends this to receive entity DB
@@ -320,4 +320,18 @@ struct CICWireDesiredLengthReq
 	__gshared const int g_marshIdx;
 	int wireIdx;
 	float desiredLength = 0.0f;
+}
+
+/// Non-persistent simulators can be paused by the player
+struct CICPauseSimulatorReq
+{
+	__gshared const int g_marshIdx;
+	PauseSimulatorReq req;
+}
+
+/// Simulator broadcasts it's pause state after PauseSimulatorReq.
+struct CICSimulatorPausedRes
+{
+	__gshared const int g_marshIdx;
+	bool isPaused;
 }

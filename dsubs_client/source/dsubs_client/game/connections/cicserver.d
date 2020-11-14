@@ -51,7 +51,7 @@ private:
 		return res;
 	}
 
-	// pass inlined .rec field of the message to backend connection of the CIC server.
+	// pass inlined .req field of the message to backend connection of the CIC server.
 	static string passToBackendMixin(MsgT)()
 	{
 		string conMethodName = "h_" ~ MsgT.stringof;
@@ -129,4 +129,5 @@ private:
 	mixin(passToBackendMixin!(CICLoadTubeReq));
 	mixin(passToBackendMixin!(CICSetTubeStateReq));
 	mixin(passToBackendMixin!(CICLaunchTubeReq));
+	mixin(passToBackendMixin!(CICPauseSimulatorReq));
 }

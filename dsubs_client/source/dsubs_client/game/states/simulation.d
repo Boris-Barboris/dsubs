@@ -56,6 +56,8 @@ final class SimulatorState: GameState
 	mixin Readonly!(TacticalOverlay, "tacticalOverlay");
 	mixin Readonly!(PlayerSubIcon, "playerSubIcon");
 
+	@property bool isPaused() const { return m_recState.rawState.isPaused; }
+
 	private
 	{
 		float[StreamingSoundSource] m_savedSoundGains;
@@ -113,7 +115,8 @@ final class SimulatorState: GameState
 		m_tacticalOverlay.updateScenarioElements(rawRecState.mapElements);
 
 		bool isCicClient = Game.bconm.stopped;
-		m_gui = new SimulationGUI(rawRecState.canAbandon && !isCicClient);
+		m_gui = new SimulationGUI(
+			rawRecState.canAbandon && !isCicClient, rawRecState.canBePaused);
 		foreach (i, listenDir; rawRecState.listenDirs)
 			m_gui.waterfalls[i].listenDir = listenDir;
 		foreach (i, desiredLength; rawRecState.desiredWireLenghts)
@@ -134,7 +137,8 @@ final class SimulatorState: GameState
 			m_savedSoundGains[m_sonarSounds[$-1]] = 1.0f;
 		}
 		m_contactOverlayShapeCache = new ContactOverlayShapeCahe();
-		m_contactManager = new ClientContactManager(m_recState, m_playerSub.tmpl.hydrophones.length.to!int);
+		m_contactManager = new ClientContactManager(
+			m_recState, m_playerSub.tmpl.hydrophones.length.to!int);
 	}
 
 	override void handleBackendDisconnect()
@@ -193,6 +197,7 @@ final class SimulationGUI
 		TubeUI[int] tubeUis;
 		WireUi[] m_wireUis;
 		Button m_abandonBtn;
+		Button m_pauseBtn;
 	}
 
 	@property WireUi[] wireUis() { return m_wireUis; }
@@ -312,6 +317,15 @@ final class SimulationGUI
 		return res;
 	}
 
+	void handleCICSimulatorPausedRes(CICSimulatorPausedRes res)
+	{
+		if (m_pauseBtn is null)
+			return;
+		Game.simState.m_recState.rawState.isPaused = res.isPaused;
+		m_pauseBtn.signalClickEnd();
+		m_pauseBtn.content = pauseBtnContent(res.isPaused);
+	}
+
 	void handleCICScenarioGoalUpdateRes(CICScenarioGoalUpdateRes msg)
 	{
 		// rebuild list of collapsables while updating existing ones
@@ -339,7 +353,16 @@ final class SimulationGUI
 		m_divWithLeftPad.setChild(goalListDiv, 1);
 	}
 
-	this(bool canAbandon)
+	private static string pauseBtnContent(bool isPaused)
+	{
+		// these are supported by LiberationMono-Regular.ttf
+		if (isPaused)
+			return "\u25ba";
+		else
+			return "\u05f0";
+	}
+
+	this(bool canAbandon, bool canPause)
 	{
 		Submarine playerSub = Game.simState.playerSub;
 
@@ -537,22 +560,35 @@ final class SimulationGUI
 		chatMessageBox = builder(new TextBox()).fontSize(MSG_FONT).
 			fontColor(COLORS.simMessageFont).layoutType(LayoutType.GREEDY).build;
 
-		Div bottomDiv = builder(
-			hDiv(
-				[
-					builder(
-							vDiv([curCourse, curSpeed])
-						).fixedSize(vec2i(150, 1)).build,
-					builder(
-							vDiv([tgtCourseLbl, tgtThrottleLbl])
-						).fixedSize(vec2i(180, 1)).build,
-					builder(
-							vDiv([tgtCourseField, tgtThrottleField])
-						).fixedSize(vec2i(65, 1)).build,
-					filler(20),
-					chatMessageBox
-				])
-			).fixedSize(vec2i(1, (BTN_FONT + 6) * 2)).
+		GuiElement[] bottomDivEls = [
+				builder(
+						vDiv([curCourse, curSpeed])
+					).fixedSize(vec2i(150, 1)).build,
+				builder(
+						vDiv([tgtCourseLbl, tgtThrottleLbl])
+					).fixedSize(vec2i(180, 1)).build,
+				builder(
+						vDiv([tgtCourseField, tgtThrottleField])
+					).fixedSize(vec2i(65, 1)).build,
+				filler(20),
+				chatMessageBox
+			];
+		if (canPause)
+		{
+			bool pausedNow = Game.simState.isPaused;
+			m_pauseBtn = builder(new Button(ButtonType.ASYNC)).
+				fontName("SansMono").
+				content(pauseBtnContent(pausedNow)).fontSize(BIG_BTN_FONT).
+				fixedSize(vec2i(BIG_BTN_FONT + 4, BIG_BTN_FONT)).build;
+			m_pauseBtn.onClick += () {
+				bool curPauseState = Game.simState.isPaused;
+				Game.ciccon.sendMessage(immutable CICPauseSimulatorReq(
+					PauseSimulatorReq(!curPauseState)));
+			};
+			bottomDivEls ~= m_pauseBtn;
+		}
+		Div bottomDiv = builder(hDiv(bottomDivEls)).
+			fixedSize(vec2i(1, (BTN_FONT + 6) * 2)).
 			backgroundColor(COLORS.simPanelBgnd).mouseTransparent(false).build;
 
 		Div[] tubeUiDivs;

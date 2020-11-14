@@ -41,6 +41,18 @@ final class BackendConnection: ProtocolConnection!BackendProtocol
 
 private:
 
+
+	// pass server response to handler of a CIC server.
+	static string passToCICMixin(MsgT)()
+	{
+		string conMethodName = "h_" ~ MsgT.stringof;
+		string res = "void " ~ conMethodName ~ "(" ~ MsgT.stringof ~ " res)";
+		res ~= `{
+			Game.cic.handle` ~ MsgT.stringof ~ `(res);
+		}`;
+		return res;
+	}
+
 	void h_serverStatus(ServerStatusRes res)
 	{
 		synchronized(Game.mainMutexWriter)
@@ -108,50 +120,16 @@ private:
 		}
 	}
 
-	void h_subKinematicRes(SubKinematicRes res)
-	{
-		Game.cic.handleSubKinematicRes(res);
-	}
-
-	void h_acousticStreamRes(AcousticStreamRes res)
-	{
-		Game.cic.handleAcousticStreamRes(res);
-	}
-
-	void h_sonarStreamRes(SonarStreamRes res)
-	{
-		Game.cic.handleSonarStreamRes(res);
-	}
-
-	void h_simFlowEndRes(SimFlowEndRes res)
-	{
-		Game.cic.handleSimFlowEndRes(res);
-	}
-
-	void h_tubeStateUpdateRes(TubeStateUpdateRes res)
-	{
-		Game.cic.handleTubeStateUpdateRes(res);
-	}
-
-	void h_ammoRoomStateUpdateRes(AmmoRoomStateUpdateRes res)
-	{
-		Game.cic.handleAmmoRoomStateUpdateRes(res);
-	}
-
-	void h_scenarioGoalUpdateRes(ScenarioGoalUpdateRes res)
-	{
-		Game.cic.handleScenarioGoalUpdateRes(res);
-	}
-
-	void h_mapOverlayUpdateRes(MapOverlayUpdateRes res)
-	{
-		Game.cic.handleMapOverlayUpdateRes(res);
-	}
-
-	void h_chatMessageRes(ChatMessageRes res)
-	{
-		Game.cic.handleChatMessageRes(res);
-	}
+	mixin(passToCICMixin!(SubKinematicRes));
+	mixin(passToCICMixin!(AcousticStreamRes));
+	mixin(passToCICMixin!(SonarStreamRes));
+	mixin(passToCICMixin!(SimFlowEndRes));
+	mixin(passToCICMixin!(TubeStateUpdateRes));
+	mixin(passToCICMixin!(AmmoRoomStateUpdateRes));
+	mixin(passToCICMixin!(ScenarioGoalUpdateRes));
+	mixin(passToCICMixin!(MapOverlayUpdateRes));
+	mixin(passToCICMixin!(ChatMessageRes));
+	mixin(passToCICMixin!(SimulatorPausedRes));
 
 	void h_simulatorTerminatingRes(SimulatorTerminatingRes res)
 	{

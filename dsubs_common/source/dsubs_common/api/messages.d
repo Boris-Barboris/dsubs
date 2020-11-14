@@ -25,7 +25,8 @@ struct ServerStatusRes
 	__gshared const int g_marshIdx;
 	/// Total number of authorized players currently online.
 	int playersOnline;
-	int apiVersion = 15;
+	/// Client and server values must match exactly.
+	int apiVersion = 16;
 }
 
 /** This message requests authorization from the server.
@@ -161,6 +162,10 @@ struct ReconnectStateRes
 	ChatMessage[] lastChatLogs;
 	/// True when the player can abandon the simulator.
 	bool canAbandon;
+	/// Is simulator paused.
+	bool isPaused;
+	/// Can the simulator be paused.
+	bool canBePaused;
 }
 
 /*
@@ -330,6 +335,19 @@ struct ScenarioGoalUpdateRes
 	ScenarioGoal[] goals;
 }
 
+/// Non-persistent simulators can be paused by the player
+struct PauseSimulatorReq
+{
+	__gshared const int g_marshIdx;
+	bool shouldBePaused;
+}
+
+/// Simulator broadcasts it's pause state after PauseSimulatorReq.
+struct SimulatorPausedRes
+{
+	__gshared const int g_marshIdx;
+	bool isPaused;
+}
 
 
 //
