@@ -159,7 +159,6 @@ class Vessel: Killable, IHasTransform, IHasRidigBody
 	final @property void targetThrottle(float target)
 	{
 		enforce(!isNaN(target), "NaN target throttle");
-		enforce(m_propulsors, "vessel has no propulsors");
 		enforce(target <= 1.0f && target >= -1.0f, "Throttle not in [-1, 1] interval");
 		foreach (prop; m_propulsors)
 			prop.targetThrottle = target;
