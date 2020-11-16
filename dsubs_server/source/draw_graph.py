@@ -6,7 +6,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import ntpath
-from numpy import genfromtxt
+from numpy import genfromtxt, atleast_2d
 
 testName = sys.argv[1]
 filePattern = "test_data/" + testName + "*.csv"
@@ -23,9 +23,10 @@ for entityDataFile in files:
     baseFileName = ntpath.basename(entityDataFile)
     data = genfromtxt(entityDataFile, delimiter=',', skip_header=1)
     # print(data)
+    data = atleast_2d(data)
     speeds = data[:, 0]
     noiselvls = data[:, 1]
-    plt.plot(speeds, noiselvls, label=baseFileName)
+    plt.scatter(speeds, noiselvls, label=baseFileName)
     legendList.append(baseFileName)
     i = i + 1
 

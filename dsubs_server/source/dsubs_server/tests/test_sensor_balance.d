@@ -88,6 +88,27 @@ void writePropellerNoiseVsSpeedCsv(Torpedo v, string testName, int minFreq, int 
 }
 
 
+void writePropellerNoiseVsSpeedCsv(StaticDecoy v, string testName, int minFreq, int maxFreq,
+	float dissMod = 4.0f)
+{
+	mkdirRecurse("test_data/propulsor_noise");
+	File* f = new File("test_data/propulsor_noise/" ~ testName ~
+		"_" ~ v.prototypeName ~ "_" ~ v.propulsors[0].prototypeName ~ ".csv", "w");
+	scope(exit) f.detach();
+	f.writeln("speed,noise_db");
+	// min speed should be taken from min march speed in guidance parameters
+	const WeaponFactory wf = Globals.entityDb.getWeaponFactory(v.prototypeName);
+	float throttle = 0.9f;
+	float shaftFreq = (cast(BasicPropulsor) v.propulsors[0]).shaftFreq(throttle);
+	Intensity bandSum = calcPropellerIntensity(
+		(cast(BasicPropulsor) v.propulsors[0]).sound,
+		Globals.sctx.queue(0), 1000.0f, 0.0f, shaftFreq, PI_2,
+		minFreq, maxFreq, dissMod);
+
+	f.writefln!"%f,%f"(0.0f, bandSum.toDb.val);
+}
+
+
 unittest
 {
 	// draw propulsor noise levels
@@ -122,6 +143,9 @@ unittest
 	WeaponFactory wf = Globals.entityDb.getWeaponFactory("Minoga");
 	Torpedo w = cast(Torpedo) wf.build(null, null);
 	writePropellerNoiseVsSpeedCsv(w, "torpedoes", 250, GLOBAL_SRATE / 2);
+	wf = Globals.entityDb.getWeaponFactory("Decoy(passive)");
+	StaticDecoy d = cast(StaticDecoy) wf.build(null, null);
+	writePropellerNoiseVsSpeedCsv(d, "torpedoes", 250, GLOBAL_SRATE / 2);
 }
 
 

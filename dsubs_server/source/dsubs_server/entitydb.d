@@ -433,7 +433,7 @@ Search patterns: straight, snake, spiral.
 		pf.soundPrototype = PropellerSoundPrototype(
 			null,
 			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
-				"../dsubs_sound/passive_decoy_cav.png", 1.0f, 65, 140),
+				"../dsubs_sound/passive_decoy_cav.png", 1.0f, 71, 146),
 			cast(immutable) new TrochoidModulatorParams([
 				Harmonic(1.0f, 0.25f),
 				Harmonic(2.0f, 0.75f)],
