@@ -243,8 +243,8 @@ final class PropellerSound: SoundSource
 				proto.bladeRadius, proto.bladeAoA);
 			return proto.critNormalVel - normalVel;
 		}
-
-		return binarySearch(&criticalSpdFunc, 0.0, 1.0f, 10);
+		float dummy;
+		return binarySearch(&criticalSpdFunc, dummy, 0.0, 1.0f, 10);
 	}
 
 	// same but more dynamic, accounts for submarine speed
@@ -259,8 +259,8 @@ final class PropellerSound: SoundSource
 				proto.bladeRadius, proto.bladeAoA);
 			return proto.critNormalVel - normalVel;
 		}
-
-		float cavFreq = binarySearch(&criticalSpdFunc, 0.0, 1.0f, 10);
+		float dummy;
+		float cavFreq = binarySearch(&criticalSpdFunc, dummy, 0.0, 1.0f, 10);
 		return freq2waterSpeed(cavFreq);
 	}
 

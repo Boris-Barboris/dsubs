@@ -165,7 +165,15 @@ final class SimulatorScheduler
 			}
 			Duration late = now - simToRun.nextStart;
 			// the time has come
-			simToRun.runOnce();
+			try
+			{
+				simToRun.runOnce();
+			}
+			catch (Error e)
+			{
+				error("Simulator ", simToRun.id, " crashed: ", e.toString());
+				throw e;
+			}
 			// now we calculate the next wakeup or remove the sim from tree
 			if (simToRun.finished)
 			{

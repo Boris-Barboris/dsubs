@@ -108,6 +108,7 @@ void writePropellerNoiseVsSpeedCsv(StaticDecoy v, string testName, int minFreq, 
 	f.writefln!"%f,%f"(0.0f, bandSum.toDb.val);
 }
 
+/*
 
 unittest
 {
@@ -149,7 +150,7 @@ unittest
 }
 
 
-/*
+
 
 unittest
 {

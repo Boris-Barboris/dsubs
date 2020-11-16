@@ -93,7 +93,7 @@ __gshared:
 		if (!simulators.joined)
 		{
 			simulators.stop();
-			simulators.join();
+			// simulators.join();
 		}
 		taskPool.finish(true);
 		auxTaskPool.finish(true);

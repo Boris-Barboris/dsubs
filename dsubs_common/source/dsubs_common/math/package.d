@@ -109,9 +109,9 @@ auto chspline(FT, TT)(FT p0, FT p1, FT m0, FT m1, TT t, TT dt)
 
 @system:
 
-/// Searches the root of f with binary division
-float binarySearch(float delegate(float x) f, float startX = 0.0f,
-	float startStep = 1.0f, int maxIter = 10)
+/// Searches the root of monotonic f with binary division
+float binarySearch(float delegate(float x) f, out float minFAbsValue,
+	float startX = 0.0f, float startStep = 1.0f, int maxIter = 10)
 {
 	float res = startX;
 	float leftFuncValue = f(startX);
@@ -142,8 +142,9 @@ float binarySearch(float delegate(float x) f, float startX = 0.0f,
 		else
 		{
 			// we're moving in the wrong direction
-			step = -step;
+			step = -step * 0.5f;
 		}
 	}
+	minFAbsValue = fmin(fabs(rightFuncValue), fabs(leftFuncValue));
 	return res;
 }

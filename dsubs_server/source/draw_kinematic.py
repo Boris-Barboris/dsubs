@@ -6,7 +6,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import ntpath
-from numpy import genfromtxt
+from numpy import genfromtxt, atleast_2d
 
 testName = sys.argv[1]
 filePattern = "test_data/" + testName + "*.csv"
@@ -27,6 +27,7 @@ for entityDataFile in files:
     if match:
         data = genfromtxt(entityDataFile, delimiter=',', skip_header=1)
         # print(data)
+        data = atleast_2d(data)
         times = data[:, 0] / 1000000
         speeds = np.linalg.norm(data[:, 5:7], axis=1)
         pos_x = data[:, 1]

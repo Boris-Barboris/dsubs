@@ -229,6 +229,7 @@ final class RoundRobinNode: LinearChildrenNode
 }
 
 
+/// Returns success if more than successThreshold have returned success.
 final class ParallelNode: LinearChildrenNode
 {
 	int successThreshold;

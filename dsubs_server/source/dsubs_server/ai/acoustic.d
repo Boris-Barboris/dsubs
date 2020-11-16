@@ -76,6 +76,11 @@ final class AIAcoustic
 		return isInterestingSignalOwner(r.owner);
 	}
 
+	@property bool isTowedArraysUsed() const
+	{
+		return m_difficulty >= BOT_DIFFICULTY.medium;
+	}
+
 	/// Prepare submarine's hydrophones for bot mode
 	void prepareSensors()
 	{
@@ -91,7 +96,7 @@ final class AIAcoustic
 		{
 			m_crew.submarine.sonar.reflectorFilter = &isReflectorInteresting;
 		}
-		// if we are not an easy bot we use towed arrays
+		// if we are not an easy bot, we use towed arrays
 		if (m_difficulty >= BOT_DIFFICULTY.medium)
 		{
 			foreach (wire; m_crew.submarine.rigidBody.wires)
@@ -136,7 +141,7 @@ final class AIAcoustic
 			{
 				if (!h.active)
 					continue;
-				// trace("Acoustic sees: ", h.imprints);
+				// trace(sub, " acoustic sees: ", h.imprints);
 				m_lastImprints ~= h.imprints.filter!(imp =>
 					imp.source.owner &&
 					cast(Vessel) imp.source.owner &&			// we are only interested in vessel sounds

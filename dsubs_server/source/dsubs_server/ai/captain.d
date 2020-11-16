@@ -321,10 +321,18 @@ bool hasActiveSonar(Submarine sub)
 	return sub.sonar !is null;
 }
 
-double effectiveFiringRange(const Submarine sub)
+double effectiveFiringRange(Submarine sub, const Solution tgt)
 {
 	// FIXME
-	return 7500.0;
+	float maxTorpRange = 8000.0f;
+	float medianTorpSpd = 25.0f;
+	float time = maxTorpRange / medianTorpSpd;
+	// we need a very simple, imprecise formula
+	vec2d deltaPos = tgt.extrapolatedPos(sub.simulator.worldTime) - sub.transform.wposition;
+	double dotVelValue = dot(tgt.velocity, deltaPos.normalizedz);
+	double effVel = clamp(medianTorpSpd - dotVelValue, 2.0f, 2 * medianTorpSpd);
+	double effRange = time * effVel;
+	return effRange;
 }
 
 /// Returns true if the weapon is a torpedo.
@@ -391,6 +399,7 @@ final class AICaptain
 	private void giveOrdersToHelmsman(WhereToSwim whereToSwim, NavigationSpeed navSpeed,
 		HelmsmanOrderGoal goal)
 	{
+		// trace(m_crew.submarine, " giving order to helmsman ", goal);
 		m_crew.m_helmsman.whereToSwimOrder.pushBack(whereToSwim);
 		m_crew.m_helmsman.navigationSpeedOrder.pushBack(navSpeed);
 		m_helmsmansOrderGoal = goal;
@@ -410,9 +419,39 @@ final class AICaptain
 	/// orders are to be put here
 	OrderQueue!CrewGoal captainOrder;
 
+	static float maxTorpedoBudgetForDifficulty(BOT_DIFFICULTY diff)
+	{
+		final switch (diff)
+		{
+			case BOT_DIFFICULTY.easy:
+				return 200.0f;
+			case BOT_DIFFICULTY.medium:
+				return 300.0f;
+			case BOT_DIFFICULTY.hard:
+				return 400.0f;
+		}
+	}
+
+	static float torpedoBudgetRegenPerSecDifficulty(BOT_DIFFICULTY diff)
+	{
+		final switch (diff)
+		{
+			case BOT_DIFFICULTY.easy:
+				return 0.3f;
+			case BOT_DIFFICULTY.medium:
+				return 0.6f;
+			case BOT_DIFFICULTY.hard:
+				return 1.0f;
+		}
+	}
+
 	void execute()
 	{
 		int ticks = m_ticksPerExecute;
+		// every second we increase budget
+		m_torpedoBudget = fmin(m_torpedoBudget +
+			torpedoBudgetRegenPerSecDifficulty(m_difficulty),
+			maxTorpedoBudgetForDifficulty(m_difficulty));
 		m_btRoot.execute(ticks);
 	}
 
@@ -512,7 +551,12 @@ final class AICaptain
 		usecs_t m_lastFire;
 		usecs_t m_lastDecoyFire;
 		usecs_t m_lastPing;
+
+		/// burst limiter to reduce torpedo spam.
+		float m_torpedoBudget = 150.0f;
 	}
+
+	@property bool torpedoBudgetOk() const { return m_torpedoBudget >= 100.0f; }
 
 	@property Contact* mainContact()
 	{
@@ -680,19 +724,25 @@ final class AICaptain
 		}
 	}
 
-	private final class EvadeMainDangerIfNeeded: FixedCostActionNode
+	private final class EvadeMainDangerIfNeededTangent: FixedCostActionNode
 	{
-		this(string file = __FILE__, size_t line = __LINE__)
+		this(NavigationSpeed speed, string file = __FILE__, size_t line = __LINE__)
 		{
 			super("If there is main danger, evade it", 600, false, file, line);
+			m_evasionSpeed = speed;
 		}
+
+		private NavigationSpeed m_evasionSpeed;
 
 		override @property bool shouldBeRunning()
 		{
-			invertShouldBeRunning = m_mainDanger !is null;
-			return invertShouldBeRunning &&
-				(!helmsmanOrderOnCooldown ||
-					m_helmsmansOrderGoal != HelmsmanOrderGoal.defense);
+			invertShouldBeRunning = false;
+			if (m_mainDanger is null)
+				return false;
+			// if we're already defending, helmsman's cooldown should not
+			// cause Failure, but success.
+			invertShouldBeRunning = m_helmsmansOrderGoal == HelmsmanOrderGoal.defense;
+			return !helmsmanOrderOnCooldown || !invertShouldBeRunning;
 		}
 
 		private vec2d getEvasionDirection()
@@ -712,7 +762,7 @@ final class AICaptain
 			WhereToSwim wts;
 			wts.type = WhereToSwimType.course;
 			wts.course = evasionCourse;
-			giveOrdersToHelmsman(wts, NavigationSpeed.flank, HelmsmanOrderGoal.defense);
+			giveOrdersToHelmsman(wts, m_evasionSpeed, HelmsmanOrderGoal.defense);
 			return ExecutionResult.success;
 		}
 	}
@@ -735,8 +785,8 @@ final class AICaptain
 					c.solutionAge < MAX_SOLUTION_AGE);
 		}
 
-		enum double MIN_MISS_WORRY = 1100.0;
-		enum float MAX_SOLUTION_AGE = 90.0f;
+		enum double MIN_MISS_WORRY = 1000.0;
+		enum float MAX_SOLUTION_AGE = 75.0f;
 
 		private double getDanger(Solution torpSol)
 		{
@@ -749,6 +799,7 @@ final class AICaptain
 				return 0.0;
 			double angle = angleBetween(relVel, relPos);
 			double totalMiss = relPos.length * sin(angle).fabs;
+			// trace(m_crew.submarine, " totalMiss: ", totalMiss);
 			if (totalMiss > MIN_MISS_WORRY)
 				return 0.0;
 			assert(!isNaN(totalMiss));
@@ -781,13 +832,14 @@ final class AICaptain
 			dangers.sort!((a, b) => a.danger < b.danger);
 			if (dangers[$-1].danger == 0.0)
 			{
+				// trace("AI resets main danger because most dangerous is not relevant");
 				m_mainDanger = null;
 				return ExecutionResult.failure;
 			}
-			if (m_mainDanger != dangers[$-1].v)
+			if (m_mainDanger !is dangers[$-1].v)
 			{
 				m_mainDanger = cast(Torpedo) dangers[$-1].v;
-				assert(m_mainDanger !is null);
+				assert(m_mainDanger !is null, "unexpected non-torpedo as danger");
 				trace("Choosing ", m_mainDanger, " as main danger");
 			}
 			else if (m_mainDanger && mainDanger.solutionAge > MAX_SOLUTION_AGE)
@@ -817,6 +869,7 @@ final class AICaptain
 			Contact* ctc = m_crew.state.contacts[m_mainTarget];
 			if (m_mainTarget.dead || ctc.solutionAge > MAX_SOLUTION_AGE_SEC)
 			{
+				trace(m_crew.submarine, " dropping main target ", m_mainTarget);
 				m_crew.state.contacts.remove(m_mainTarget);
 				m_mainTarget = null;
 				return ExecutionResult.success;
@@ -834,6 +887,7 @@ final class AICaptain
 
 		override @property bool shouldBeRunning()
 		{
+			// FIXME
 			bool haveMinogaInRacks = m_crew.submarine.ammoRoomRange.any!(ar =>
 				ar.getWeaponCount("Minoga") > 0);
 			auto tubes = m_crew.submarine.tubeRange;
@@ -944,6 +998,7 @@ final class AICaptain
 		}
 	}
 
+	/// Very stupid node that always turns towards the target and always swims
 	private final class SwimCloserToMainTarget: FixedCostActionNode
 	{
 		this(string file = __FILE__, size_t line = __LINE__)
@@ -959,9 +1014,10 @@ final class AICaptain
 
 		override ExecutionResult onTicksConsumed()
 		{
-			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal != HelmsmanOrderGoal.attack)
+			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal == HelmsmanOrderGoal.attack)
 				return ExecutionResult.success;
-			double firingRange = effectiveFiringRange(m_crew.submarine);
+			double firingRange = effectiveFiringRange(
+				m_crew.submarine, mainContact.solution);
 			vec2d posDiff = mainContact.solution.extrapolatedPos(simulator.worldTime) -
 				m_crew.submarine.transform.wposition;
 			double currentRange = posDiff.length;
@@ -971,25 +1027,90 @@ final class AICaptain
 				courseAngle(posDiff), m_crew.submarine.transform.wrotation).fabs)
 				needToSwimFast = true;
 			// speed up to approach
-			if (currentRange > firingRange)
+			if (currentRange > firingRange * 0.8)
 				needToSwimFast = true;
-			// trace("Giving order to approach main target's solution");
 			WhereToSwim whereToSwim;
 			whereToSwim.type = WhereToSwimType.destination;
 			whereToSwim.destination = mainContact.solution.extrapolatedPos(simulator.worldTime);
 			NavigationSpeed speed = needToSwimFast ?
 				NavigationSpeed.tactical : NavigationSpeed.silent;
 			giveOrdersToHelmsman(whereToSwim, speed, HelmsmanOrderGoal.attack);
-			// 	trace("helmsman message queue on cooldown");
 			return ExecutionResult.success;
 		}
 	}
+
+
+	/// A bit smarter approach/keep at range behaviour.
+	private final class KeepDistanceFromMainTarget: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Approach main target until the distance is right", 500,
+				false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			return m_mainTarget !is null;
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal == HelmsmanOrderGoal.attack)
+				return ExecutionResult.success;
+			double firingRange = effectiveFiringRange(
+				m_crew.submarine, mainContact.solution);
+			vec2d curTgtPos = mainContact.solution.extrapolatedPos(simulator.worldTime);
+			vec2d posDiff = curTgtPos - m_crew.submarine.transform.wposition;
+			double currentRange = posDiff.length;
+			bool needToTurnNose, needToSwimFast;
+			bool needToBoost;
+			// we do not turn if towed array is used
+			if (!m_crew.m_acoustic.isTowedArraysUsed)
+			{
+				float noseAngleToTgt = angleDist(
+					courseAngle(posDiff), m_crew.submarine.transform.wrotation).fabs;
+				if (dgr2rad(90.0) < noseAngleToTgt)
+				{
+					needToTurnNose = true;
+					needToSwimFast = true;
+				}
+			}
+			// speed up our approach
+			if (currentRange > firingRange * 0.85)
+			{
+				if (currentRange > firingRange)
+					needToBoost = true;
+				needToTurnNose = true;
+				needToSwimFast = true;
+			}
+			WhereToSwim whereToSwim;
+			whereToSwim.type = WhereToSwimType.destination;
+			if (needToTurnNose)
+			{
+				whereToSwim.destination = curTgtPos;
+			}
+			else
+			{
+				// we simply maintain our current course
+				whereToSwim.destination = m_crew.submarine.transform.wposition +
+					1000.0 * m_crew.submarine.transform.wforward;
+			}
+			NavigationSpeed speed = needToSwimFast ?
+				NavigationSpeed.tactical : NavigationSpeed.silent;
+			if (needToBoost)
+				speed = NavigationSpeed.fast;
+			giveOrdersToHelmsman(whereToSwim, speed, HelmsmanOrderGoal.attack);
+			return ExecutionResult.success;
+		}
+	}
+
 
 	private final class RequestPing: FixedCostActionNode
 	{
 		this(float power = 1.0f, string file = __FILE__, size_t line = __LINE__)
 		{
-			super("Emit one max-power sonar ping", 1000, false, file, line);
+			super("Emit one sonar ping", 1000, false, file, line);
 			m_power = power;
 			final switch (m_difficulty)
 			{
@@ -1109,14 +1230,21 @@ final class AICaptain
 			super(description, cost, false, file, line);
 		}
 
-		protected vec2d getTargetContactPos()
+		protected vec2d getTargetPos()
 		{
 			return mainContact().solution.extrapolatedPos(simulator.worldTime);
+		}
+
+		protected vec2d getTargetVel()
+		{
+			return mainContact().solution.velocity;
 		}
 
 		override ExecutionResult onTicksConsumed()
 		{
 			auto tubes = m_crew.submarine.tubeRange;
+			if (!torpedoBudgetOk)
+				return ExecutionResult.running;
 			Tube chosenTube;
 			foreach (Tube tube; tubes)
 			{
@@ -1138,19 +1266,203 @@ final class AICaptain
 			if (chosenTube is null)
 				return ExecutionResult.running;
 			WeaponParamValue[] wpValues = getFiringParameters(
-				getTargetContactPos(), chosenTube, "Minoga");
-			trace("AI launching Minoga torp with parameters ", wpValues);
-			TubeOperationResult res = chosenTube.processLaunchRequest("Minoga", wpValues);
+				getTargetPos(), getTargetVel(),
+				chosenTube, chosenTube.loadedWeapon);
+			if (wpValues is null)
+			{
+				trace("cannot launch, maybe too far");
+				return ExecutionResult.failure;
+			}
+			trace("AI launching ", chosenTube.loadedWeapon,
+				" torp with parameters ", wpValues);
+			TubeOperationResult res = chosenTube.processLaunchRequest(
+				chosenTube.loadedWeapon, wpValues);
 			assert(res.tubeChanged);
 			m_lastFire = simulator.worldTime;
+			m_torpedoBudget -= 100.0f;
 			return ExecutionResult.success;
 		}
 
-		private WeaponParamValue[] getFiringParameters(
-			vec2d tgtPos, Tube tube, string weapon)
+		/// Tries to find shooting solution that achieves minimal distance between
+		/// target and torpedo. Torpedo speed is assumed to be fixed beforehand.
+		void iterativeShootingRoutine(vec2d tgtPos, vec2d tgtVel,
+			vec2d torpStartPos, double torpSpd, double maxTorpDist,
+			out float initialCourseEst,
+			out double course, out float runDist, out float minFoundDist,
+			int iterCount = 10)
+		{
+			float distanceSeeker(float course)
+			{
+				vec2d tgt = tgtPos;
+				vec2d torp = torpStartPos;
+				vec2d torpVel = courseVector(course) * torpSpd;
+				float minDist = float.max;
+				float prevDist = float.max;
+				double distPassed = 0.0;
+				while (distPassed < maxTorpDist)
+				{
+					torp += torpVel;
+					tgt += tgtVel;
+					float dist = (torp - tgt).length;
+					if (dist < minDist)
+					{
+						minDist = dist;
+					}
+					else if (dist >= prevDist)
+					{
+						// we've found minimum. Thanks to binarySearch's structure
+						// the last call to this will be almost optimal
+						runDist = distPassed;
+						break;
+					}
+					prevDist = dist;
+					distPassed += torpSpd;
+				}
+				runDist = distPassed;
+				return minDist;
+			}
+
+			initialCourseEst = courseAngle(tgtPos - torpStartPos);
+			// trace("initialCourseEst: ", initialCourseEst);
+			float bestDistance;
+			float betterCourse = binarySearch(&distanceSeeker, bestDistance,
+				initialCourseEst, dgr2rad(10), iterCount);
+			course = betterCourse;
+			minFoundDist = bestDistance;
+			// trace(m_crew.submarine, " iterativeShootingRoutine course:", rad2dgr(course),
+			// 	" runDist: ", runDist, " minDist: ", minFoundDist);
+		}
+
+		protected WeaponParamValue[] getFiringParameters(
+			vec2d tgtPos, vec2d tgtVel, Tube tube, string weapon)
+		{
+			// FIXME
+			WeaponParamValue sensorMode = WeaponParamValue(WeaponParamType.sensorMode);
+			WeaponSensorMode chosenSensorMode = WeaponSensorMode.active;
+			sensorMode.sensorMode = chosenSensorMode;
+			if (m_difficulty != BOT_DIFFICULTY.easy)
+			{
+				if (uniform!"[]"(0, 2) == 0)
+				{
+					// 1 of 3 torps is passive
+					chosenSensorMode = WeaponSensorMode.passive;
+					sensorMode.sensorMode = chosenSensorMode;
+				}
+			}
+
+			WeaponSearchPattern pattern = WeaponSearchPattern.snake;
+			if (m_difficulty != BOT_DIFFICULTY.easy)
+			{
+				if (uniform!"[]"(0, 4) == 0)
+				{
+					// 1 of 4 torps is spiral
+					pattern = WeaponSearchPattern.spiral;
+				}
+			}
+			WeaponParamValue searchParam = WeaponParamValue(WeaponParamType.searchPattern);
+			searchParam.searchPattern = pattern;
+
+			WeaponFactory factory = Globals.entityDb.getWeaponFactory(weapon);
+
+			// choose active speed
+			WeaponParamValue marchSpeed = WeaponParamValue(WeaponParamType.marchSpeed);
+			marchSpeed.speed = uniform!"[]"(factory.marchSpeedRange.min,
+				factory.marchSpeedRange.max);
+			WeaponParamValue activeSpeed = WeaponParamValue(WeaponParamType.activeSpeed);
+			activeSpeed.speed = marchSpeed.speed;
+			if (chosenSensorMode == WeaponSensorMode.passive)
+			{
+				// passive sensors are not good on max speed
+				activeSpeed.speed = min(
+					activeSpeed.speed, factory.activeSpeedRange.max - 2.0f);
+			}
+
+			float noLeadCourse;
+			double course;
+			float runDist;
+			float minAchievedDist;
+			// trace("before iterativeShootingRoutine: ", tgtPos, " ", tgtVel);
+			iterativeShootingRoutine(tgtPos, tgtVel, tube.transform.wposition,
+				marchSpeed.speed, factory.activationRange.max, noLeadCourse, course,
+				runDist, minAchievedDist);
+
+			if (minAchievedDist > 400.0)
+			{
+				trace("failed to calculate torp launch course, minAchievedDist is ",
+					minAchievedDist);
+				return null;
+			}
+
+			if (runDist < 2000)
+			{
+				// trace("Cannot use spiral so close to own sub");
+				pattern = WeaponSearchPattern.snake;
+				searchParam.searchPattern = pattern;
+			}
+
+			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.marchCourse);
+			courseParam.course = course;
+
+			// easy bot always shoots with perfect lead
+			if (m_difficulty != BOT_DIFFICULTY.easy)
+			{
+				// it is dumb to always lead perfectly. One must randomize angle lead
+				float[2] courses;
+				float bumpedNoLeadCourse = noLeadCourse + (course - noLeadCourse) * 0.25f;
+				courses[] = [bumpedNoLeadCourse, course];
+				sort(courses[]);
+				// trace("cources: ", courses);
+				courseParam.course = uniform(courses[0], courses[1]);
+			}
+
+			WeaponParamValue activationRangeParam = WeaponParamValue(
+				WeaponParamType.activationRange);
+			if (pattern == WeaponSearchPattern.spiral)
+				activationRangeParam.range = runDist;
+			else
+			{
+				activationRangeParam.range = clamp(
+					runDist - (1000.0 + runDist / 10),
+					factory.activationRange.min, factory.activationRange.max);
+			}
+
+			WeaponParamValue[] res = [courseParam, activationRangeParam, searchParam,
+				marchSpeed, activeSpeed, sensorMode];
+			return res;
+		}
+	}
+
+	private final class FireOneTorpedoOnDanger: FireOneTorpedo
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("Open the tube and fire onto the main danger", 1000,
+				file, line);
+		}
+
+		protected override vec2d getTargetPos()
+		{
+			// fire at the point of danger's origin
+			return mainDanger().solution.extrapolatedPos(simulator.worldTime -
+				(mainDanger.age + 20.0f).to!usecs_t * 1_000_000L);
+		}
+
+		protected override vec2d getTargetVel()
+		{
+			return mainDanger().solution.velocity;
+		}
+
+		protected override WeaponParamValue[] getFiringParameters(
+			vec2d tgtPos, vec2d tgtVel, Tube tube, string weapon)
 		{
 			assert(weapon == "Minoga");
 			vec2d posDiff = tgtPos - tube.transform.wposition;
+			// first we check that the torp is not running away from us
+			if (dot(posDiff, tgtVel) >= 0.0)
+			{
+				trace("main danger is not approaching us, won't shoot there");
+				return null;
+			}
 			WeaponFactory factory = Globals.entityDb.getWeaponFactory(weapon);
 			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.marchCourse);
 			courseParam.course = courseAngle(posDiff);
@@ -1181,62 +1493,52 @@ final class AICaptain
 
 		protected @property float activationRangeGain()
 		{
-			return 0.5f;
-		}
-	}
-
-	private final class FireOneTorpedoOnDanger: FireOneTorpedo
-	{
-		this(string file = __FILE__, size_t line = __LINE__)
-		{
-			super("Open the tube and fire onto the main danger", 1000,
-				file, line);
-		}
-
-		protected override vec2d getTargetContactPos()
-		{
-			// fire at the point of danger's origin
-			return mainDanger().solution.extrapolatedPos(simulator.worldTime -
-				mainDanger.age.to!usecs_t * 1_000_000L);
-		}
-
-		protected override @property float activationRangeGain()
-		{
 			return 1.0f;
 		}
 	}
 
 	private BehaviourTreeNode easyCombatTree()
 	{
-		BehaviourTreeNode node = new SequenceNode("Simply attack if possible", [
-			new ConditionNode("if we have ammo",
-				() => m_crew.submarine.haveTorpedoes),
-			new FallbackNode("use or find main target", [
-				new ConditionNode("do we have main target?",
-					() => m_mainTarget !is null),
-				new ChooseClosestEnemyContact(),
-				new SequenceNode("Rare ping when in search mode", [
-					new ConditionNode("Ping not more than once in 5 minutes
-						and after 3 minutes alive", () =>
-						(simulator.worldTime - m_crew.submarine.registerTime > 180_000_000L) &&
-						(simulator.worldTime - m_lastPing > 300_000_000L)),
-					new RequestPing(0.4f)
+		BehaviourTreeNode node = new FallbackNode(
+			"Easy captain always defends itself first, then attacks",
+			[
+			new SequenceNode("Find dangers and dodge them",
+			[
+				new ChooseMostDangerousTorp(),
+				new EvadeMainDangerIfNeededTangent(NavigationSpeed.fast)
+			], true),	// memory true to sequence over them
+			new SequenceNode("Simply attack if possible", [
+				new ConditionNode("if we have ammo",
+					() => m_crew.submarine.haveTorpedoes),
+				new FallbackNode("use or find main target", [
+					new ConditionNode("do we have main target?",
+						() => m_mainTarget !is null),
+					new ChooseClosestEnemyContact(),
+					new SequenceNode("Rare ping when in search mode", [
+						new ConditionNode("Ping not more than once in 5 minutes
+							and after 3 minutes alive", () =>
+							(simulator.worldTime - m_crew.submarine.registerTime > 180_000_000L) &&
+							(simulator.worldTime - m_lastPing > 300_000_000L)),
+						new RequestPing(0.4f)
+					])
+				]),
+				new FallbackNode("when we have main target", [
+					new DropStaleMainTarget(),
+					new ParallelNode("Parallel navigation and fire control", [
+						new SwimCloserToMainTarget(),
+						new SequenceNode("Shoot while in range", [
+							new EnsureTorpedoesLoading(true),
+							new ConditionNode("Close enough", () =>
+								rangeFromContact(mainContact) <=
+									effectiveFiringRange(
+										m_crew.submarine, mainContact.solution)),
+							new ConditionNode("Haven't fired in the last 90 seconds", () =>
+								simulator.worldTime - m_lastFire > 90_000_000L),
+							new ConditionNode("Burst protection", () => torpedoBudgetOk()),
+							new FireOneTorpedo()
+						]),
+					], 0)
 				])
-			]),
-			new FallbackNode("when we have main target", [
-				new DropStaleMainTarget(),
-				new ParallelNode("Parallel navigation and fire control", [
-					new SwimCloserToMainTarget(),
-					new SequenceNode("Shoot while in range", [
-						new EnsureTorpedoesLoading(true),
-						new ConditionNode("Close enough", () =>
-							rangeFromContact(mainContact) <=
-								effectiveFiringRange(m_crew.submarine)),
-						new ConditionNode("Haven't fired in the last 90 seconds", () =>
-							simulator.worldTime - m_lastFire > 90_000_000L),
-						new FireOneTorpedo()
-					]),
-				], 0)
 			])
 		]);
 		return node;
@@ -1259,8 +1561,8 @@ final class AICaptain
 				new SequenceNode("Fire decoys when there is danger", [
 					new ConditionNode("There is main danger", () =>
 						m_mainDanger !is null),
-					new ConditionNode("Haven't fired in the last 90 seconds", () =>
-						simulator.worldTime - m_lastDecoyFire > 90_000_000L),
+					new ConditionNode("Haven't fired in the last 60 seconds", () =>
+						simulator.worldTime - m_lastDecoyFire > 60_000_000L),
 					new FireOneDecoy()
 				]),
 				new SequenceNode("Fire torpedo snapshot towards the main danger", [
@@ -1282,35 +1584,33 @@ final class AICaptain
 				new SequenceNode("Active ping when in danger", [
 					new ConditionNode("There is danger", () =>
 						m_mainDanger !is null),
-					new ConditionNode("Ping not more than once in 2 minutes", () =>
-						simulator.worldTime - m_lastPing > 120_000_000L),
+					new ConditionNode("Ping not more than once in 1 minutes", () =>
+						simulator.worldTime - m_lastPing > 60_000_000L),
 					new RequestPing()
 				]),
-				new SequenceNode("General attack sequence", [
+				new ParallelNode("Parallel navigation and fire control", [
 					new FallbackNode("we either move offensively or defensively", [
-						new EvadeMainDangerIfNeeded(),
-						new SwimCloserToMainTarget()
+						new EvadeMainDangerIfNeededTangent(NavigationSpeed.flank),
+						new KeepDistanceFromMainTarget()
 					]),
-					new ConditionNode("if we have ammo",
-						() => m_crew.submarine.haveTorpedoes),
-					new ConditionNode("We have main target", () => m_mainTarget !is null),
-					new FallbackNode("when we have main target", [
-						new DropStaleMainTarget(),
+					new DropStaleMainTarget(),
+					new SequenceNode("Attack sequence", [
+						new ConditionNode("if we have ammo",
+							() => m_crew.submarine.haveTorpedoes),
+						new ConditionNode("We have main target",
+							() => m_mainTarget !is null),
 						new ConditionNode("Close enough", () =>
 							rangeFromContact(mainContact) <=
-								effectiveFiringRange(m_crew.submarine)),
-						new ConditionNode("Haven't fired in the last 90 seconds", () =>
-							simulator.worldTime - m_lastFire > 90_000_000L),
+								effectiveFiringRange(
+									m_crew.submarine, mainContact.solution)),
+						new ConditionNode("Haven't fired in the last 60 seconds",
+							() => simulator.worldTime - m_lastFire > 60_000_000L),
+						new ConditionNode("Burst protection", () => torpedoBudgetOk()),
 						new FireOneTorpedo()
 					])
 				])
 		], 200);
-		BehaviourTreeNode wrapper = new SequenceNode(
-			"return Seccess only when no main target", [
-				node,
-				new ConditionNode(null, () => m_mainTarget is null && m_mainDanger is null)
-			]);
-		return wrapper;
+		return node;
 	}
 
 	private static BehaviourTreeNode[] removeNulls(BehaviourTreeNode[] nodes)
