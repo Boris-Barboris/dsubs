@@ -87,8 +87,9 @@ final class SimulatorState: GameState
 	@property usecs_t extrapolatedServerTime() const
 	{
 		return m_lastServerTime +
-			max(0, (Game.render.frameStartTime -
-				Game.simState.lastServerTimeOnClient).total!"usecs");
+			max(0,
+				min(1000_000L, (Game.render.frameStartTime -
+					Game.simState.lastServerTimeOnClient).total!"usecs"));
 	}
 
 	override void setup()
