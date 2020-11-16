@@ -109,10 +109,19 @@ final class ContactOverlayShapeCahe
 		return res;
 	}
 
-	LineShape rayDataLine(int sensorIdx)
+	LineShape rayDataLine(int sensorIdx, usecs_t sampleTime)
 	{
-		sfColor rayColor = rotateColor(sfColor(155, 244, 66, 75), sensorIdx * -65);
+		sfColor rayColor = dimRayColor(sensorIdx, sampleTime);
 		return new LineShape(vec2d(0, 0), vec2d(0, 0), rayColor, 0.5);
+	}
+
+	static sfColor dimRayColor(int sensorIdx, usecs_t sampleTime)
+	{
+		sfColor res = rotateColor(sfColor(155, 244, 66, 80), sensorIdx * -65);
+		float age = (Game.simState.extrapolatedServerTime - sampleTime) / 1e6f;
+		if (age > 0.0f)
+			res.a -= min(55.0f, age / 6.0f).to!ubyte;
+		return res;
 	}
 
 	@property LineShape weaponProjectionLine()
@@ -2092,7 +2101,7 @@ final class RayDataTacticalElement: DataTacticalElement
 	{
 		assert(data.type == DataType.Ray);
 		super(owner, data);
-		m_mainShape = ctcOverlayCache.rayDataLine(data.source.sensorIdx);
+		m_mainShape = ctcOverlayCache.rayDataLine(data.source.sensorIdx, data.time);
 		size = vec2i(0, 0);
 		mouseTransparent = true;
 		onPreDraw();	/// we rely on m_mainShape being initialized after construction
@@ -2116,6 +2125,12 @@ final class RayDataTacticalElement: DataTacticalElement
 	override void draw(Window wnd, long usecsDelta)
 	{
 		super.draw(wnd, usecsDelta);
+		// smear over frames
+		if (Game.render.frameCounter % (60 * 3) == (data.id % 16))
+		{
+			m_mainShape.color = ctcOverlayCache.dimRayColor(
+				data.source.sensorIdx, data.time);
+		}
 		m_mainShape.render(wnd);
 	}
 }

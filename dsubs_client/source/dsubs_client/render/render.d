@@ -96,6 +96,10 @@ final class Render
 	@property MonoTime frameEndTime() const { return m_frameEndTime; }
 	@property MonoTime frameStartTime() const { return m_frameStartTime; }
 
+	private uint m_frameCounter;
+	/// wraps around
+	@property uint frameCounter() const { return m_frameCounter; }
+
 	/// Thread function
 	private void render(scope Object.Monitor mutex)
 	{
@@ -105,7 +109,7 @@ final class Render
 			m_frameStartTime = m_frameEndTime = lastFpsMark;
 			MonoTime prevTime = m_frameEndTime;
 			long usecsDelta = 0;
-			int frameCounter = 0;
+			uint frameCounter = 0;
 			while (!m_stopFlag)
 			{
 				m_window.resetView();
@@ -137,12 +141,11 @@ final class Render
 				m_frameEndTime = MonoTime.currTime;
 				usecsDelta = (m_frameEndTime - prevTime).total!"usecs";
 				// update fps
-				if (++frameCounter > FPS_UPDATE_FREQ - 1)
+				if (++m_frameCounter % FPS_UPDATE_FREQ == 0)
 				{
 					long totalMsecs = (m_frameEndTime - lastFpsMark).total!"msecs";
 					m_avgFps = FPS_UPDATE_FREQ * 1000.0f / totalMsecs;
 					// trace("FPS: ", m_avgFps);
-					frameCounter = 0;
 					lastFpsMark = m_frameEndTime;
 				}
 			}
