@@ -1384,12 +1384,12 @@ final class AICaptain
 			// trace("before iterativeShootingRoutine: ", tgtPos, " ", tgtVel);
 			iterativeShootingRoutine(tgtPos, tgtVel, tube.transform.wposition,
 				marchSpeed.speed, factory.activationRange.max, noLeadCourse, course,
-				runDist, minAchievedDist);
+				runDist, minAchievedDist, 15);
 
-			if (minAchievedDist > 400.0)
+			if (minAchievedDist > 500.0)
 			{
 				trace("failed to calculate torp launch course, minAchievedDist is ",
-					minAchievedDist);
+					minAchievedDist, " runDist: ", runDist);
 				return null;
 			}
 

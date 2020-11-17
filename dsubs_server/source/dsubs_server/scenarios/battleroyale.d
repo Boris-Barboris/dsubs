@@ -34,19 +34,26 @@ SpawnReq randomCombatSub()
 	{
 		variations = [
 			SpawnReq("Stork", "Seven-blade screw",
-						[AmmoRoomFullState(0, [WeaponCount("Minoga", 14)]),
+						[AmmoRoomFullState(0, [WeaponCount("Minoga", 16)]),
 						AmmoRoomFullState(1, [
-							WeaponCount("Decoy(active)", 13),
-							WeaponCount("Decoy(passive)", 12)])],
+							WeaponCount("Decoy(active)", 14),
+							WeaponCount("Decoy(passive)", 14)])],
 						[TubeSpawnState(2, "Decoy(active)"),
 						TubeSpawnState(3, "Decoy(passive)")]),
 			SpawnReq("Lima", "Five-blade Lima screw",
-						[AmmoRoomFullState(0, [WeaponCount("Minoga", 12)]),
+						[AmmoRoomFullState(0, [WeaponCount("Minoga", 14)]),
 						AmmoRoomFullState(1, [
-							WeaponCount("Decoy(active)", 7),
-							WeaponCount("Decoy(passive)", 8)])],
+							WeaponCount("Decoy(active)", 11),
+							WeaponCount("Decoy(passive)", 11)])],
 						[TubeSpawnState(2, "Decoy(active)"),
 						TubeSpawnState(3, "Decoy(passive)")]),
+			SpawnReq("November", "Five-blade November screw",
+						[AmmoRoomFullState(0, [WeaponCount("Minoga", 22)]),
+						AmmoRoomFullState(1, [
+							WeaponCount("Decoy(active)", 15),
+							WeaponCount("Decoy(passive)", 15)])],
+						[TubeSpawnState(2, "Decoy(active)"),
+						TubeSpawnState(3, "Decoy(passive)")])
 		];
 	}
 	return variations[uniform(0, variations.length)];
