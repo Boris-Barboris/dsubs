@@ -52,8 +52,8 @@ SpawnReq randomCombatSub()
 						AmmoRoomFullState(1, [
 							WeaponCount("Decoy(active)", 15),
 							WeaponCount("Decoy(passive)", 15)])],
-						[TubeSpawnState(2, "Decoy(active)"),
-						TubeSpawnState(3, "Decoy(passive)")])
+						[TubeSpawnState(3, "Decoy(active)"),
+						TubeSpawnState(4, "Decoy(passive)")])
 		];
 	}
 	return variations[uniform(0, variations.length)];
