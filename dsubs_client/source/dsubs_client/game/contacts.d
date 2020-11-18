@@ -505,7 +505,7 @@ Button[] commonContactContextMenu(ClientContact ctc)
 	res ~= describebtn;
 	// trimming
 	Button[] trimmingBtns;
-	foreach (int secsToLeave; [30, 60, 180, 300, 600])
+	foreach (int secsToLeave; [30, 60, 180, 300, 900])
 	{
 		btn = builder(new TrimBtn(ctc.id, secsToLeave)).fontSize(15).
 			content(secsToLeave.to!string ~ "s").build();
