@@ -109,7 +109,7 @@ auto chspline(FT, TT)(FT p0, FT p1, FT m0, FT m1, TT t, TT dt)
 
 @system:
 
-/// Searches the root of monotonic f with binary division
+/// Searches the root of monotonic or convex f with binary division
 float binarySearch(float delegate(float x) f, out float minFAbsValue,
 	float startX = 0.0f, float startStep = 1.0f, int maxIter = 10)
 {

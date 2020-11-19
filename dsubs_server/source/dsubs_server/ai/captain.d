@@ -1291,6 +1291,10 @@ final class AICaptain
 			out double course, out float runDist, out float minFoundDist,
 			int iterCount = 10)
 		{
+			// There is an analythical solution to this, but we won't use it to keep
+			// the code unchanged in case we will wish to loosen the assumptions about
+			// torp trajectory
+
 			float distanceSeeker(float course)
 			{
 				vec2d tgt = tgtPos;
@@ -1322,11 +1326,16 @@ final class AICaptain
 				return minDist;
 			}
 
-			initialCourseEst = courseAngle(tgtPos - torpStartPos);
+			vec2d tgtVec = tgtPos - torpStartPos;
+			vec2d leftHandVec = rotateVector(tgtVec, PI_2);
+			float angleSign = sgn(dot(leftHandVec, tgtVel));
+			if (angleSign == 0.0f)
+				angleSign = 1.0f;
+			initialCourseEst = courseAngle(tgtVec);
 			// trace("initialCourseEst: ", initialCourseEst);
 			float bestDistance;
 			float betterCourse = binarySearch(&distanceSeeker, bestDistance,
-				initialCourseEst, dgr2rad(10), iterCount);
+				initialCourseEst, angleSign * dgr2rad(20), iterCount);
 			course = betterCourse;
 			minFoundDist = bestDistance;
 			// trace(m_crew.submarine, " iterativeShootingRoutine course:", rad2dgr(course),
