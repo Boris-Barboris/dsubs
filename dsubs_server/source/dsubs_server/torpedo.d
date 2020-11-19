@@ -952,7 +952,7 @@ final class TorpedoFactory: WeaponFactory
 	float spiralTargetRedPerRange = 1e-2f;
 	// guidance
 	float trackAngVelKi = 1.0f;
-	int pingIntervalSearch = 10;
+	int pingIntervalSearch = 6;
 	PrerecordedSoundPrototype detonationSoundProto;
 	// detection margins
 	int sonarNoiseMargin = 15;
