@@ -328,7 +328,7 @@ final class ScenarioDatabase
 
 		AvailableScenarioConstants scenConstants = BattleRoyale.getConstants(true);
 		StandaloneScenarioSpawner spawner = new StandaloneScenarioSpawner(
-			scenConstants, sim => new BattleRoyale(sim));
+			scenConstants, sim => new BattleRoyale(sim, true));
 		m_spawnableScenarios[scenConstants.name] = spawner;
 		m_spawnableScenariosOrdered ~= spawner;
 

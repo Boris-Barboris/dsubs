@@ -74,6 +74,8 @@ final class BattleRoyale: Scenario
 		AlarmCollection m_delayer;
 		int m_civBotSpawnRequests;
 		SideOfConflict m_botSide;
+		bool m_singlePlayer;
+		Submarine m_playerSub;
 
 		struct ReloadCircle
 		{
@@ -135,9 +137,10 @@ Good luck!`;
 		return (cast(Player) cpt) !is null;
 	}
 
-	this(Simulator sim)
+	this(Simulator sim, bool singlePlayer = false)
 	{
 		super(sim);
+		m_singlePlayer = singlePlayer;
 		m_delayer.initialize();
 		m_currentRadius = DEFAULT_RADIUS;
 		m_currentCenter = vec2d(
@@ -540,6 +543,8 @@ Good luck!`;
 			foreach (Animal an; m_simulator.animals.entities)
 				an.destination = getDistantPos(an.transform.wposition);
 		}
+		if (m_singlePlayer && m_playerSub.dead)
+			return ShouldSimTerminate.yes;
 		return ShouldSimTerminate.no;
 	}
 
@@ -624,6 +629,11 @@ Good luck!`;
 
 	override void selectPlayerSpawnPosition(Player p, out vec2d position, out double rotation)
 	{
+		if (m_singlePlayer)
+		{
+			m_playerSub = p.submarine;
+			assert(m_playerSub);
+		}
 		getRandomSpawn(position, rotation);
 	}
 }
