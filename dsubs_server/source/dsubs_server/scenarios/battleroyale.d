@@ -77,6 +77,8 @@ final class BattleRoyale: Scenario
 		bool m_singlePlayer;
 		Submarine m_playerSub;
 
+		Player[] m_newPlayers;
+
 		struct ReloadCircle
 		{
 			vec2d center;
@@ -370,6 +372,28 @@ Good luck!`;
 			a => a.species == "jukebox whale").walkLength.to!int;
 		while (musicToSpawn-- > 0)
 			placeAnimal("jukebox whale", "Texas Red");
+
+		// Notify players about new player spawns
+		if (m_newPlayers && !m_singlePlayer)
+		{
+			auto unixTime = longUnixTime();
+			foreach (Player newPlayer; m_newPlayers)
+			{
+				ChatMessageRes msg = ChatMessageRes(ChatMessage(unixTime,
+					ChatMessageType.scenarioNotice,
+					"Player " ~ newPlayer.name ~ " has joined in a new submarine"));
+				// broadcast to all alive players
+				foreach (Submarine sub; simulator.vessels.alivePlayerSubmarines)
+				{
+					if (sub.player is newPlayer)
+						continue;
+					PlayerConnection pcon = sub.player.connection;
+					if (pcon)
+						pcon.sendMessage(cast(immutable) msg);
+				}
+			}
+			m_newPlayers.length = 0;
+		}
 	}
 
 	/// make sure each player with a submarine in this simulator has a reload circle
@@ -579,6 +603,12 @@ Good luck!`;
 				ChatMessageType.scenarioNotice,
 				"Navigation limited to dark-blue circle!");
 		}
+		if (!m_singlePlayer)
+		{
+			// say, how many players are online
+			int playerCount = simulator.vessels.alivePlayerSubmarines.walkLength.to!int;
+			briefing.message ~= " Total players on arena: " ~ (playerCount - 1).to!string;
+		}
 		// circle for reloading area
 		ensureReloadCircleForPlayer(player);
 		MapElementUnion reloadCircleUnion;
@@ -633,6 +663,10 @@ Good luck!`;
 		{
 			m_playerSub = p.submarine;
 			assert(m_playerSub);
+		}
+		else
+		{
+			m_newPlayers ~= p;
 		}
 		getRandomSpawn(position, rotation);
 	}
