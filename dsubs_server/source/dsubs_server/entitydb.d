@@ -969,7 +969,7 @@ Active sonars:
 
 		sp = new SubmarineFactory();
 		sp.name = "Kilo";
-		sp.description = `WIP.
+		sp.description = `Old generation submarine for masochistic captains.
 
 Length: 57m
 Displacement: 700t
