@@ -475,9 +475,11 @@ final class TorpedoGuidance: IGuidance
 		m_torpedo.m_detonated = true;
 		foreach (v; inKillRadius)
 		{
-			bool isActuallyKilled = v.kill(
-				"Killed by " ~ m_torpedo.prototypeName ~ " torpedo",
-				m_torpedo.m_shooterCaptain);
+			string killNote = "Killed" ~
+				(m_torpedo.m_shooterCaptain ?
+					" by " ~ m_torpedo.m_shooterCaptain.name : "") ~
+				" with " ~ m_torpedo.prototypeName ~ " weapon";
+			bool isActuallyKilled = v.kill(killNote, m_torpedo.m_shooterCaptain);
 			if (isActuallyKilled)
 			{
 				trace(v, " is killed in explosion");
