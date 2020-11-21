@@ -360,7 +360,7 @@ final class Simulator
 		}
 	}
 
-	/// All players that own vessels in this sim receive update.
+	/// All players that own vessels in this sim receive pause/unpause notification.
 	private void sendPauseUpdateToPlayers()
 	{
 		static struct SubPlayerPair

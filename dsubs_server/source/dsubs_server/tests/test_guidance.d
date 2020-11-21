@@ -416,16 +416,17 @@ unittest
 	assert(s.dead);
 }
 
+*/
 
 unittest
 {
-	Globals.buildForTests();
+	auto sim = Globals.buildForTests();
 	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Minoga");
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
 	pv.type = WeaponParamType.activationRange;
-	pv.range = 600.0f;
+	pv.range = 450.0f;
 	pvs ~= pv;
 	pv.type = WeaponParamType.activeSpeed;
 	pv.speed = 29.0f;
@@ -439,7 +440,7 @@ unittest
 
 	Torpedo t = tf.build(null, pvs);
 	t.transform.rotation = dgr2rad(-20.0);
-	t.register();
+	t.register(sim);
 	int imageCounter;
 	cleanFolderForSonarImages("guidance", "minoga_spiral_stork");
 	t.guidance.onSonarImageReady += (img, w, h) {
@@ -449,34 +450,35 @@ unittest
 
 	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
 	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
-	double mspd = 0.4 * speedForThrottle(s.rigidBody.hydroModel, cast(BasicPropulsor) s.propulsor);
 	s.transform.position = vec2d(0.0, 0.0);
 	s.transform.rotation = 0.0;
 	s.rigidBody.kinet.vel = vec2d(0, 0);
 	s.targetCourse = 0.0f;
 	s.targetThrottle = 0.0f;
-	s.register();
+	s.register(sim);
 	File* storkFile = writeRbodyCsvHeader("guidance", "minoga_spiral_stork", "stork");
-	Globals.sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+	sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
 
 	File* minogaFile = writeRbodyCsvHeader("guidance", "minoga_spiral_stork", "minoga");
-	Globals.sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
-	Globals.sim.worldTimeLimit = 120 * cast(ulong)1e6;
+	sim.onSimulationPassStart += captureVesselRbCsv(minogaFile, t);
+	sim.worldTimeLimit = 180 * cast(ulong)1e6;
 
 	double minDist = double.max;
-	Globals.sim.onSimulationPassStart += (now) {
+	sim.onSimulationPassStart += (sim, now) {
 		if (t.guidance.activated)
 			minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
 	};
 
 	scope(exit) Globals.resetForTests();
-	Globals.sim.start();
-	Globals.sim.join();
+	Globals.simulators.start();
+	Globals.simulators.join();
 
 	trace("minoga was ", minDist, " meters away from stork in minoga_spiral_stork test");
 	assert(s.dead);
 }
 
+
+/*
 
 unittest
 {

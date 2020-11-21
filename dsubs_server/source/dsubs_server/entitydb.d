@@ -347,7 +347,7 @@ Search patterns: straight, snake, spiral.
 		tf.asprot.waterReflectivity = -100.0f;
 		tf.asprot.reflRangeNoise = 100 / 1e4;
 		tf.asprot.perlinCellSize = [23, 11];
-		tf.asprot.flowNoiseGain = -10.0f;
+		tf.asprot.flowNoiseGain = -24.0f;
 		tf.asprot.baseNoise = 1.5f;
 		tf.asprot.pingDirPower = 2.4f;
 		tf.asprot.dissMod = 1.0f;
@@ -356,7 +356,8 @@ Search patterns: straight, snake, spiral.
 		tf.asprot.maxSec = 2;
 		tf.asprot.zeroLevel = flowNoise(3600, mps2kts(20)) +
 			tf.asprot.flowNoiseGain - 10.0f;
-		tf.asprot.endScale = 1.0f / 60.0f;
+		tf.asprot.endScale = 1.0f /
+			(flowNoise(3600, mps2kts(31)) - flowNoise(3600, mps2kts(20)) + 20.0f);
 		tf.detonationSoundProto = PrerecordedSoundPrototype(
 			Globals.sctx.getWavFile("../dsubs_sound/explosion1_8192.wav"),
 			40.0f, 145.0f, 2e-3f);
@@ -632,7 +633,7 @@ Active sonars:
 		sp.rigidBody.hullLength = dims.y;
 		sp.hprots = hydroProtos;
 		sp.asprot = new SubSonarPrototype(MountPoint(vec2f(0.0f, 31.0f)), asp);
-		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-28.0f, -23.0f, -15.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(10.0f, 70.0f), [-27.0f, -20.0f, -19.0f]);
 		sp.playable = true;
 		m_submarines[sp.name] = sp;
 
@@ -858,7 +859,7 @@ Active sonars:
 		sp.rigidBody.hullLength = dims.y;
 		sp.hprots = hydroProtos;
 		sp.asprot = new SubSonarPrototype(MountPoint(vec2f(0.0f, 23.2f)), asp);
-		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-24.0f, -19.0f, -11.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(7.0f, 60.0f), [-24.0f, -19.0f, -16.5f]);
 		sp.playable = true;
 		m_submarines[sp.name] = sp;
 
@@ -1010,7 +1011,7 @@ Active sonars:
 		sp.hprots = hydroProtos;
 		sp.asprot = new SubSonarPrototype(MountPoint(
 			objModel.allFaces["_bowsensors"].center), asp);
-		sp.reflprot = ReflectorPrototype(vec2f(9.0f, 55.0f), [-17.0f, -10.0f, -8.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(9.0f, 55.0f), [-17.0f, -10.0f, -9.0f]);
 		sp.playable = true;
 		m_submarines[sp.name] = sp;
 
@@ -1180,7 +1181,7 @@ Active sonars:
 		sp.hprots = hydroProtos;
 		sp.asprot = new SubSonarPrototype(MountPoint(
 			objModel.allFaces["_bowsensors"].center), asp);
-		sp.reflprot = ReflectorPrototype(vec2f(12.5f, 94.0f), [-20.0f, -17.0f, -12.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(12.5f, 94.0f), [-20.0f, -17.0f, -15.5f]);
 		sp.playable = true;
 		m_submarines[sp.name] = sp;
 
@@ -1201,7 +1202,7 @@ Active sonars:
 		sp.rigidBody.Cm = RolledF(700.0f, 6.0f);
 		sp.steering.equilDrift = dgr2rad(20);
 		sp.rigidBody.hullLength = 100;
-		sp.reflprot = ReflectorPrototype(vec2f(15.0f, 100.0f), [-8.0f, -5.0f, -4.0f]);
+		sp.reflprot = ReflectorPrototype(vec2f(15.0f, 100.0f), [-8.0f, -4.0f, -5.0f]);
 		sp.playable = false;
 		m_submarines[sp.name] = sp;
 	}
