@@ -302,7 +302,7 @@ final class TorpedoGuidance: IGuidance
 	private this(Torpedo owner)
 	{
 		m_torpedo = owner;
-		m_pingTdsOffset = uniform(0, GLOBAL_SRATE);
+		m_pingTdsOffset = uniform(0, GLOBAL_SRATE - 1);
 	}
 
 	void shutdown() {}
