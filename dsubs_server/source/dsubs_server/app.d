@@ -73,9 +73,9 @@ void livenessWatchdog()
 	while (true)
 	{
 		Thread.sleep(seconds(10));
+		mainArenaSim = Globals.scenarioDb.getPersistentById("main_arena").simulator;
 		if (mainArenaSim.worldTime == lastWorldTime && lastUniqId == mainArenaSim.uniqId)
 			abort();
-		mainArenaSim = Globals.scenarioDb.getPersistentById("main_arena").simulator;
 		lastWorldTime = mainArenaSim.worldTime;
 		lastUniqId = mainArenaSim.uniqId;
 	}
