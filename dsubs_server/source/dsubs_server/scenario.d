@@ -1025,7 +1025,8 @@ abstract class SinglePlayerScenario: Scenario
 		markFinished();
 		m_endMsg.reason = SimFlowEndReason.defeat;
 		m_endMsg.shortReport = shortReport;
-		m_endMsg.longReport = m_failureLongReport;
+		m_endMsg.longReport = m_failureLongReport ~ "\n" ~
+			Player.generateKillRecordReport(m_playerSub);
 	}
 
 	void markVictory()
@@ -1033,7 +1034,8 @@ abstract class SinglePlayerScenario: Scenario
 		markFinished();
 		m_endMsg.reason = SimFlowEndReason.victory;
 		m_endMsg.shortReport = m_victoryShortReport;
-		m_endMsg.longReport = m_victoryLongReport;
+		m_endMsg.longReport = m_victoryLongReport ~ "\n" ~
+			Player.generateKillRecordReport(m_playerSub);
 	}
 
 	override void onBeforeSimulation() {}

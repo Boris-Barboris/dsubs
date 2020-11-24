@@ -469,6 +469,22 @@ final class TorpedoGuidance: IGuidance
 		return false;
 	}
 
+	bool getKillRecordForKillable(Killable k, out KillRecord res)
+	{
+		if (m_torpedo.shooter is null)
+			return false;
+		Vessel v = cast(Vessel) k;
+		if (v is null)
+			return false;
+		res.relation = m_torpedo.shooter.relationWith(v);
+		res.vesselType = v.prototypeName;
+		res.weaponType = m_torpedo.prototypeName;
+		Submarine sub = cast(Submarine) k;
+		if (sub && sub.captain)
+			res.submarineCaptain = sub.captain.name;
+		return true;
+	}
+
 	private void detonate(Killable[] inKillRadius)
 	{
 		trace("Torpedo detonated!!!");
@@ -483,6 +499,10 @@ final class TorpedoGuidance: IGuidance
 			if (isActuallyKilled)
 			{
 				trace(v, " is killed in explosion");
+				// add kill record to the shooter submarine
+				KillRecord record;
+				if (getKillRecordForKillable(v, record))
+					m_torpedo.shooter.addKillRecord(record);
 				if (Globals.database && m_torpedo.simulator.id == "main_arena")
 				{
 					void reportFunc(Killable killedVessel)

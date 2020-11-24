@@ -18,6 +18,7 @@ import dsubs_server.connections.playercon: PlayerConnection;
 import dsubs_server.connections.database;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.dynamics: AttachedWire, RigidBody, WirePoint;
+import dsubs_server.vessel: KillRecord;
 import dsubs_server.weaponry;
 import dsubs_server.scenario: Scenario;
 import dsubs_server.simulator: Simulator;
@@ -578,6 +579,20 @@ final class Player: Captain
 		}
 	}
 
+	static string generateKillRecordReport(Submarine sub)
+	{
+		string res = "Kills: \n\n";
+		foreach (const KillRecord record; sub.kills)
+		{
+			string recStr = record.relation.to!string ~ " " ~
+				record.vesselType ~ " " ~
+				(record.submarineCaptain ? "(" ~ record.submarineCaptain ~ ") " : "") ~
+				"with " ~ record.weaponType ~ "\n";
+			res ~= recStr;
+		}
+		return res;
+	}
+
 	// simMut.writer is held by the simulator
 	void sendUpdate(Submarine subToUpdate)
 	{
@@ -613,7 +628,8 @@ final class Player: Captain
 			{
 				con.simulatorFlow = false;
 				con.sendMessage(immutable SimFlowEndRes(
-					SimFlowEndReason.death, s.causeOfDeath, ""));
+					SimFlowEndReason.death, s.causeOfDeath,
+					generateKillRecordReport(s)));
 				return;
 			}
 			// kinematic snapshot

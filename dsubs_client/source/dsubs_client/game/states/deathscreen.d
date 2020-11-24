@@ -85,7 +85,9 @@ final class DeathScreenState: GameState
 		Label causeLabel = builder(new Label()).content(shortReport).
 			htextAlign(HTextAlign.CENTER).fontSize(CAUSE_FONTSIZE).build();
 		TextBox longReportLabel = builder(new TextBox()).content(m_deathRes.longReport)
-			.fontSize(LONG_REPORT_FONTSIZE).fixedSize(vec2i(800, 100)).build();
+			.fontSize(LONG_REPORT_FONTSIZE).build();
+		ScrollBar longReportScroll = builder(new ScrollBar(longReportLabel)).
+			fixedSize(vec2i(800, 200)).build();
 		Button goToMainMenu;
 		bool isCicClient = Game.bconm.stopped;
 		if (isCicClient)
@@ -102,8 +104,8 @@ final class DeathScreenState: GameState
 		}
 
 		Div textDiv = builder(vDiv([filler(0.25f), youDiedLabel, causeLabel,
-			longReportLabel, goToMainMenu, filler(0.25f)])).borderWidth(20).
-			fixedSize(vec2i(800, 350)).build();
+			longReportScroll, goToMainMenu, filler(0.25f)])).borderWidth(20).
+			fixedSize(vec2i(800, 450)).build();
 		Div screenLayout = hDiv([
 			filler(),
 			textDiv,

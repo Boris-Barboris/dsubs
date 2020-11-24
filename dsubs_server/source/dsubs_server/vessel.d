@@ -10,6 +10,7 @@ import dsubs_common.containers.array: removeFirstUnstable;
 
 import dsubs_sound.activesonar: Reflector, ReflectorPrototype;
 
+import dsubs_server.ai.captain: ContactRelation;
 import dsubs_server.player: Captain;
 import dsubs_server.common;
 import dsubs_server.dynamics;
@@ -74,6 +75,19 @@ abstract class Killable
 				return false;
 		}
 	}
+}
+
+
+struct KillRecord
+{
+	// relation at time of kill
+	ContactRelation relation;
+	// what did you kill?
+	string vesselType;
+	// who was the dead captain of the submarine?
+	string submarineCaptain;
+	// with what did you kill it?
+	string weaponType;
 }
 
 

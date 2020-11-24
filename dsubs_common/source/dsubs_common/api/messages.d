@@ -243,6 +243,7 @@ struct SimFlowEndRes
 	__gshared const int g_marshIdx;
 	SimFlowEndReason reason;
 	string shortReport;
+	// kill records are here
 	string longReport;
 }
 

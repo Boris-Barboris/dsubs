@@ -6,11 +6,13 @@ import dsubs_common.math;
 import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
 
+import dsubs_server.ai.captain: ContactRelation;
 import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.sensors;
 import dsubs_server.simulator;
 import dsubs_server.weaponry;
+import dsubs_server.torpedo: Weapon;
 import dsubs_server.dynamics: AttachedWire, AttachedWirePrototype;
 import dsubs_server.propulsion: Propulsor;
 import dsubs_server.player: Player, Captain;
@@ -26,6 +28,7 @@ final class Submarine: Vessel
 		Captain m_captain;
 		Tube[int] m_tubes;
 		AmmoRoom[int] m_rooms;
+		KillRecord[] m_kills;
 		// connection reference cnounter
 		int m_conRefCount;
 	}
@@ -72,8 +75,36 @@ final class Submarine: Vessel
 	@property Hydrophone[] hydrophones() { return m_hydrophones; }
 	@property ActiveSonar sonar() { return m_sonar; }
 
+	@property const(KillRecord)[] kills() const { return m_kills; }
+
+	void addKillRecord(KillRecord rec)
+	{
+		m_kills ~= rec;
+	}
+
 	@property Captain captain() { return m_captain; }
 	@property void captain(Captain rhs) { m_captain = rhs; }
+
+	ContactRelation relationWith(Vessel v)
+	{
+		if (captain is null || captain.side is null)
+			return ContactRelation.unknown;
+		Submarine sub = cast(Submarine) v;
+		if (sub)
+		{
+			if (sub.captain is null)
+				return ContactRelation.unknown;
+			return captain.side.relateTo(sub.captain.side);
+		}
+		Weapon wpn = cast(Weapon) v;
+		if (wpn)
+		{
+			if (wpn.shooterCaptain is null)
+				return ContactRelation.unknown;
+			return captain.side.relateTo(wpn.shooterCaptain.side);
+		}
+		return ContactRelation.unknown;
+	}
 
 	/// result of captain's cast to Player class. Effectively a human player, if not null.
 	@property inout(Player) player() inout { return cast(inout(Player)) m_captain; }
