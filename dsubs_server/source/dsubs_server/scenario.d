@@ -266,6 +266,7 @@ private final class PersistentScenarioSpawner: ScenarioSpawner
 	{
 		Simulator m_simulator;
 		Scenario m_scenario;
+		string m_persistentId;
 	}
 
 	@property Simulator simulator() { return m_simulator; }
@@ -276,7 +277,17 @@ private final class PersistentScenarioSpawner: ScenarioSpawner
 	{
 		super(constants, factory);
 		// eagerly builds the simulator
-		m_scenario = createSimulatorAndScenario(persistentSimId);
+		m_persistentId = persistentSimId;
+		m_scenario = createSimulatorAndScenario(m_persistentId);
+		m_simulator = scenario.simulator;
+		m_simulator.runWithoutPlayers = true;
+		m_simulator.canBePaused = false;
+	}
+
+	/// in case of crash we recreate the simulator
+	void recreateSimulator()
+	{
+		m_scenario = createSimulatorAndScenario(m_persistentId);
 		m_simulator = scenario.simulator;
 		m_simulator.runWithoutPlayers = true;
 		m_simulator.canBePaused = false;
@@ -357,6 +368,11 @@ maelstrom of war between two superpowers.",
 			Globals.simulators.add(spawner.simulator);
 	}
 
+	void startPersistentSimulator(string id)
+	{
+		Globals.simulators.add(m_persistentSims[id].simulator);
+	}
+
 	/// Prepare response for a player that filters out unavailable scenarios.
 	immutable(AvailableScenariosRes) getScenarioResForPlayer(Player player)
 	{
@@ -403,6 +419,7 @@ maelstrom of war between two superpowers.",
 				scen = spawner.createSimulatorAndScenario();
 				break;
 			case SpawnRequestType.existingSimulator:
+				// for now we only look in persistent sims
 				enforce(req.simulatorIdOrScenarioName in m_persistentSims,
 					"simulator not found");
 				spawner = m_persistentSims[req.simulatorIdOrScenarioName];

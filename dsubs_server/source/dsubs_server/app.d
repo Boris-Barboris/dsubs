@@ -69,12 +69,15 @@ void livenessWatchdog()
 {
 	Simulator mainArenaSim = Globals.scenarioDb.getPersistentById("main_arena").simulator;
 	usecs_t lastWorldTime = mainArenaSim.worldTime;
+	string lastUniqId = mainArenaSim.uniqId;
 	while (true)
 	{
 		Thread.sleep(seconds(10));
-		if (mainArenaSim.worldTime == lastWorldTime)
+		if (mainArenaSim.worldTime == lastWorldTime && lastUniqId == mainArenaSim.uniqId)
 			abort();
+		mainArenaSim = Globals.scenarioDb.getPersistentById("main_arena").simulator;
 		lastWorldTime = mainArenaSim.worldTime;
+		lastUniqId = mainArenaSim.uniqId;
 	}
 }
 

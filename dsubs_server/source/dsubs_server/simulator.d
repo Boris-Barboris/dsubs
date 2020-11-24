@@ -22,6 +22,7 @@ import dsubs_server.common;
 import dsubs_server.acoustics;
 import dsubs_server.animal;
 import dsubs_server.bots;
+import dsubs_server.email;
 import dsubs_server.dynamics;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.globals;
@@ -169,10 +170,13 @@ final class SimulatorScheduler
 			{
 				simToRun.runOnce();
 			}
-			catch (Error e)
+			catch (Throwable e)
 			{
 				error("Simulator ", simToRun.id, " crashed: ", e.toString());
-				throw e;
+				sendMail("dsubs_server simulator crash", e.msg);
+				simToRun.terminateAsync();
+				// immediate attempt to evict players
+				simToRun.runOnce();
 			}
 			// now we calculate the next wakeup or remove the sim from tree
 			if (simToRun.finished)
@@ -180,6 +184,13 @@ final class SimulatorScheduler
 				trace("Evicting ", simToRun.id, " finished simulator from scheduler");
 				synchronized(m_cond.mutex)
 					m_simulators.removeKey(simToRun);
+				// recreate main arena or any other persistent sim
+				if (simToRun.runWithoutPlayers)
+				{
+					auto spawner = Globals.scenarioDb.getPersistentById(simToRun.id);
+					spawner.recreateSimulator();
+					Globals.scenarioDb.startPersistentSimulator(simToRun.id);
+				}
 			}
 			else
 			{
@@ -215,8 +226,11 @@ final class SimulatorScheduler
 /// Simulator instance, that constitutes one particular game world.
 final class Simulator
 {
-	private string m_id;
+	private string m_id, m_uniqId;
+	/// non-unique
 	@property string id() const { return m_id; }
+	/// unique
+	@property string uniqId() const { return m_uniqId; }
 
 	public
 	{
@@ -257,8 +271,9 @@ final class Simulator
 	/// id will be a random UUID string if not specified.
 	this(string id = null)
 	{
+		m_uniqId = randomUUID().toString();
 		if (id is null)
-			id = randomUUID().toString();
+			id = m_uniqId;
 		m_id = id;
 		simMut = new ReadWriteMutex();
 		phys = new PhysicalEnv();
@@ -401,7 +416,7 @@ final class Simulator
 	/// run one iteration of simulation
 	private void runOnce()
 	{
-		if (!runWithoutPlayers && getConnectedPlayers() == 0)
+		if (!runWithoutPlayers && getConnectedPlayers() == 0 && !m_terminating)
 		{
 			m_abandonedCounter++;
 			if (m_abandonedCounter >= ABANDON_COUNT_LIMIT)
