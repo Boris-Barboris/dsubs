@@ -1283,6 +1283,44 @@ final class AICaptain
 			return ExecutionResult.success;
 		}
 
+		// https://wiki.unity3d.com/index.php/Calculating_Lead_For_Projectiles
+		static float interceptTime(float shotSpeed, vec2d tgtRelPos, vec2d tgtVel)
+		{
+			float velocitySquared = tgtVel.squaredLength;
+			if (velocitySquared < 0.001f)
+				return 0f;
+			float a = velocitySquared - shotSpeed * shotSpeed;
+			// handle similar velocities
+			if (fabs(a) < 0.001f)
+			{
+				float t = -tgtRelPos.squaredLength /
+						2.0f * dot(tgtRelPos, tgtVel);
+				return max(t, 0.0f); //don't shoot back in time
+			}
+			float b = 2.0f * dot(tgtVel, tgtRelPos);
+			float c = tgtRelPos.squaredLength;
+			float determinant = b * b - 4f * a * c;
+
+			if (determinant > 0.0f)
+			{ //determinant > 0; two intercept paths (most common)
+				float t1 = (-b + sqrt(determinant))/(2f*a);
+				float t2 = (-b - sqrt(determinant))/(2f*a);
+				if (t1 > 0f)
+				{
+					if (t2 > 0f)
+						return min(t1, t2); //both are positive
+					else
+						return t1; //only t1 is positive
+				}
+				else
+					return max(t2, 0f); //don't shoot back in time
+			}
+			else if (determinant < 0f) //determinant < 0; no intercept path
+				return 0f;
+			else //determinant = 0; one intercept path, pretty much never happens
+				return max(-b/(2f*a), 0f); //don't shoot back in time
+		}
+
 		/// Tries to find shooting solution that achieves minimal distance between
 		/// target and torpedo. Torpedo speed is assumed to be fixed beforehand.
 		void iterativeShootingRoutine(vec2d tgtPos, vec2d tgtVel,
@@ -1326,16 +1364,19 @@ final class AICaptain
 				return minDist;
 			}
 
-			vec2d tgtVec = tgtPos - torpStartPos;
-			vec2d leftHandVec = rotateVector(tgtVec, PI_2);
+			vec2d tgtRelPos = tgtPos - torpStartPos;
+			vec2d leftHandVec = rotateVector(tgtRelPos, PI_2);
 			float angleSign = sgn(dot(leftHandVec, tgtVel));
 			if (angleSign == 0.0f)
 				angleSign = 1.0f;
-			initialCourseEst = courseAngle(tgtVec);
+			// estimate intercept point
+			float secsToNaiveIntercept = interceptTime(torpSpd, tgtRelPos, tgtVel);
+			vec2d naiveIntercept = tgtPos + secsToNaiveIntercept * tgtVel;
+			initialCourseEst = courseAngle(naiveIntercept - torpStartPos);
 			// trace("initialCourseEst: ", initialCourseEst);
 			float bestDistance;
 			float betterCourse = binarySearch(&distanceSeeker, bestDistance,
-				initialCourseEst, angleSign * dgr2rad(20), iterCount);
+				initialCourseEst, angleSign * dgr2rad(15), iterCount);
 			course = betterCourse;
 			minFoundDist = bestDistance;
 			// trace(m_crew.submarine, " iterativeShootingRoutine course:", rad2dgr(course),
@@ -1421,7 +1462,10 @@ final class AICaptain
 				courses[] = [bumpedNoLeadCourse, course];
 				sort(courses[]);
 				// trace("cources: ", courses);
-				courseParam.course = uniform(courses[0], courses[1]);
+				if (courses[1] > courses[0])
+					courseParam.course = uniform(courses[0], courses[1]);
+				else
+					courseParam.course = courses[0];
 			}
 
 			WeaponParamValue activationRangeParam = WeaponParamValue(

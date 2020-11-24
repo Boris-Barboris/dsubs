@@ -56,7 +56,6 @@ unittest
 
 */
 
-/*
 
 unittest
 {
@@ -92,5 +91,3 @@ unittest
 	Globals.simulators.start();
 	Globals.simulators.join();
 }
-
-*/

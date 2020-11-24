@@ -184,8 +184,8 @@ final class SimulatorScheduler
 				trace("Evicting ", simToRun.id, " finished simulator from scheduler");
 				synchronized(m_cond.mutex)
 					m_simulators.removeKey(simToRun);
-				// recreate main arena or any other persistent sim
-				if (simToRun.runWithoutPlayers)
+				// recreate main_arena
+				if (simToRun.id == "main_arena")
 				{
 					auto spawner = Globals.scenarioDb.getPersistentById(simToRun.id);
 					spawner.recreateSimulator();

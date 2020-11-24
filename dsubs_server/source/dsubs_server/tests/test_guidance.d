@@ -416,7 +416,7 @@ unittest
 	assert(s.dead);
 }
 
-*/
+
 
 unittest
 {
@@ -478,7 +478,7 @@ unittest
 }
 
 
-/*
+
 
 unittest
 {
