@@ -779,7 +779,10 @@ final class PlayerCollection
 				synchronized(p)
 				{
 					if (p.connection is null && p.submarine is null)
+					{
+						trace("evicting ", uname, " Player from PlayerCollection");
 						m_players.remove(uname);
+					}
 				}
 			}
 		}
