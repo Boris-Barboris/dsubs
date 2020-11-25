@@ -447,6 +447,7 @@ Good luck!`;
 	{
 		Player[] triggeredPlayers;
 		long unixTime = longUnixTime();
+		size_t combatBoutCount = m_easyBots.length + m_mediumBots.length;
 		foreach (playerRcPair; m_playerReloadCircles.byKeyValue)
 		{
 			Player p = playerRcPair.key;
@@ -454,7 +455,7 @@ Good luck!`;
 			Submarine s = p.submarine;
 			if (RELOAD_CIRCLE_RADIUS >= (s.transform.wposition - rc.center).length)
 			{
-				reloadSubmarine(p, s);
+				reloadSubmarine(p, s, combatBoutCount == 0);
 				triggeredPlayers ~= p;
 			}
 		}
@@ -479,7 +480,7 @@ Good luck!`;
 		}
 	}
 
-	private void reloadSubmarine(Player p, Submarine s)
+	private void reloadSubmarine(Player p, Submarine s, bool noBots)
 	{
 		PlayerConnection pcon = p.connection;
 		foreach (AmmoRoom room; s.ammoRoomRange)
@@ -487,6 +488,8 @@ Good luck!`;
 			int maxWeaponsToLoad =
 				room.prototype.roomType == TubeType.standard ?
 				TORPS_TO_RELOAD : DECOYS_TO_RELOAD;
+			if (noBots)
+				maxWeaponsToLoad = int.max;
 			int weaponsToLoad = min(maxWeaponsToLoad, room.capacity - room.weaponCount);
 			if (weaponsToLoad > 0)
 			{
