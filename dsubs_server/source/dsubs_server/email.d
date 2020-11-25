@@ -7,7 +7,7 @@ import std.parallelism: task;
 import dsubs_server.common;
 
 
-void sendMail(lazy string subject, lazy string bodyContent)
+void sendMail(string subject, string bodyContent)
 {
 	string emailDest = environment.get("EMAIL_DEST");
 	if (emailDest)
