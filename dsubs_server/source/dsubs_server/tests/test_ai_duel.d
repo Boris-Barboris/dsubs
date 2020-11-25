@@ -56,7 +56,6 @@ unittest
 
 */
 
-
 unittest
 {
 	info("ai_medium_duel_test");
@@ -66,7 +65,7 @@ unittest
 				WeaponCount("Decoy(passive)", 10)])],
 			[TubeSpawnState(2, "Decoy(active)"), TubeSpawnState(3, "Decoy(passive)")]);
 	SpawnReq req2 = SpawnReq("Lima", "Five-blade Lima screw",
-			[AmmoRoomFullState(0, [WeaponCount("Minoga", 10)]),
+			[AmmoRoomFullState(0, [WeaponCount("Electra", 10)]),
 			AmmoRoomFullState(1, [WeaponCount("Decoy(active)", 10),
 				WeaponCount("Decoy(passive)", 10)])],
 			[TubeSpawnState(2, "Decoy(active)"), TubeSpawnState(3, "Decoy(passive)")]);
@@ -91,3 +90,4 @@ unittest
 	Globals.simulators.start();
 	Globals.simulators.join();
 }
+

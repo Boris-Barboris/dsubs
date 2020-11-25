@@ -25,7 +25,7 @@ final class TorpedoTutorial: SinglePlayerScenario
 		constants.fullDescription =
 `Submarines are armed with self-propelled torpedoes of verious range, speed and intelligence. This tutorial teaches the basics of torpedo reloading, aiming and firing.`;
 		constants.allowedEntities = EntityDbShort(
-			["Lima"], ["Five-blade Lima screw"], ["Minoga"]);
+			["Lima"], ["Five-blade Lima screw"], ["Electra"]);
 		return constants;
 	}
 
@@ -67,8 +67,8 @@ final class TorpedoTutorial: SinglePlayerScenario
 `In the bottom left corner of tactical screen you can see 4 tube
 control panels. On Lima-class submarine tubes 1, 2 are dedicated
 to bow torpedo tubes and 3, 4 to decoy tubes. Start loading torpedo
-tubes with 'Minoga' torpedo by clicking on the 'empty' button and
-selecting 'Minoga'. Loading will take around 1 minute. In the
+tubes with 'Electra' torpedo by clicking on the 'empty' button and
+selecting 'Electra'. Loading will take around 1 minute. In the
 meantime, you should detect and perform TMA on the test target.
 Recollect the lessons of previous 'Active sonar, TMA' tutorial.
 

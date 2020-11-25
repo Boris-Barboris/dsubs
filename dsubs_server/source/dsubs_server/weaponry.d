@@ -83,6 +83,16 @@ final class AmmoRoom
 		return m_proto;
 	}
 
+	string getRandomWeapon() const
+	{
+		if (weaponCount == 0)
+			return null;
+		auto kvpairs = m_storedWeapons.byKeyValue.array;
+		size_t randomIdx = dsubs_sound.common.uniform!("[)", size_t, size_t)(
+			0, kvpairs.length);
+		return kvpairs[randomIdx].key;
+	}
+
 	int getWeaponCount(string weaponName)
 	{
 		int* res = weaponName in m_storedWeapons;

@@ -395,6 +395,113 @@ Search patterns: straight, snake, spiral.
 		tf.prepareDynamicsAndParams();
 		m_weapons[tf.name] = tf;
 
+
+		// Electra torp
+		pf = new PropulsorFactory();
+		pf.name = "Electra screw";
+		pf.bladeCount = 4;
+		pf.posThrustK = RolledF(10.0f, 0.02f);
+		pf.rotAcceleration = 0.5f;
+		pf.negThrustK = RolledF(0.0f, 0.0f);
+		pf.mass = 0.0f;
+		pf.shaftRotFreq = 18.9f;
+		pf.soundPrototype = PropellerSoundPrototype(
+			null,	// only cavitation
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/electra_cav.png", 1.0f, 88, 133),
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.25f),
+				Harmonic(4.0f, 0.75f)],
+				0.5, 0.7, -0.4),
+			0.24f, dgr2rad(30), 3.5f, 0.03f, 0.7f
+		);
+
+		tf = new TorpedoFactory(pf);
+		tf.name = "Electra";
+		tf.playable = true;
+		tf.description = `"Electra" medium torpedo.
+Passive sensor is only effective against cavitating targets.
+
+Sensors: active sonar or passive hydrophone.
+Effective speed range (active): 19-25 m/s.
+Effective speed range (passive): 19-25 m/s.
+Max range (25m/s): 6900m.
+Max range (19m/s): 10100m.
+Search patterns: snake, spiral.
+`;
+		tf.turningRadius = 90.0f;
+		tf.marchSpeedRange = MinMax(19, 25);
+		tf.activeSpeedRange = MinMax(19, 25);
+		tf.activationRange = MinMax(200, 10_100);
+		tf.sensorModes = cast(WeaponSensorMode) (
+			WeaponSensorMode.active | WeaponSensorMode.passive);
+		tf.searchPatterns = WeaponParamDescSearchPatterns(
+			cast(WeaponSearchPattern)(
+				WeaponSearchPattern.snake |
+				WeaponSearchPattern.spiral),
+			350.0f, 150.0f, 200.0f);
+		tf.propMount.mountCenter = vec2d(0, -2.50);
+		tf.sensorsMount.mountCenter = vec2d(0, 2.45);
+		// active sonar
+		tf.asprot = new ActiveSonarPrototype();
+		tf.asprot.pingParams = PingParameters(
+			[Chirp(3900, 3900, 0.1f)], 3, 3900, "octaveHp3500");
+		tf.asprot.maxPeakIlevel = tf.asprot.minPeakIlevel = 193.0f;
+		tf.asprot.omniBeamCount = 60;
+		tf.asprot.waterReflectivity = -100.0f;
+		tf.asprot.reflRangeNoise = 100 / 1e4;
+		tf.asprot.directivity = 18.0f;
+		tf.asprot.perlinCellSize = [23, 11];
+		tf.asprot.flowNoiseGain = -19.0f;
+		tf.asprot.baseNoise = 1.9f;
+		tf.asprot.pingDirPower = 2.4f;
+		tf.asprot.dissMod = 1.4f;
+		tf.asprot.span = 110.0f;
+		tf.asprot.radialRes = 20;
+		tf.asprot.maxSec = 2;
+		tf.asprot.zeroLevel = flowNoise(3900, mps2kts(18)) +
+			tf.asprot.flowNoiseGain - 10.0f;
+		tf.asprot.endScale = 1.0f /
+			(flowNoise(3900, mps2kts(28)) - flowNoise(3900, mps2kts(18)) + 20.0f);
+		tf.detonationSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/explosion1_8192.wav"),
+			40.0f, 143.0f, 2e-3f);
+		// passive sonar
+		tf.hprot = new HydrophonePrototype([0.0f], 250, 3000, dgr2rad(110),
+				30, 6 / 90.0f, 2.9f);
+		tf.hydrophoneNoiseMargin = ushort.max / 9;
+		tf.hprot.imageBlackLevel = 45.0f;
+		tf.hprot.imageWhiteLevel = 77.0f;
+		tf.hprot.omniNoiseMult = 0.0025f;
+		tf.hprot.localNoiseRangeCutoff = 100.0f;
+		tf.hprot.flowNoiseMult = 2e-8f;
+		tf.defaultSensorMode = WeaponSensorMode.active;
+		tf.fuelEffExponent = 3.25f;
+		tf.sonarNoiseMargin = 20;
+		tf.snakeArm = 260.0f;
+		tf.snakeArmInitial = -30.0f;
+		tf.snakeAngle = dgr2rad(60.0f);
+		tf.spiralStartTarget = 1.0f;
+		tf.spiralTargetRedPerRange = 0.08f;
+		tf.fullThrottleSpd = 25.0f;
+		tf.tgtMaxRangeOnMaxSpd = 6900.0f;
+		tf.rigidBody.mass = RolledF(1.46f, 2e-3);
+		tf.rigidBody.Cd0 = RolledF(0.2f, 1e-3f);
+		tf.rigidBody.Cda = 1.5f;
+		tf.rigidBody.Cr0 = RolledF(0.01f, 0);
+		tf.rigidBody.Cr1 = RolledF(0, 0);
+		tf.rigidBody.Cm = RolledF(0.003f, 0);
+		tf.steering.equilDrift = dgr2rad(10);
+		tf.steering.rudderKp = 10.0f;
+		tf.steering.rudderKd = -30.0f;
+		tf.steering.rudderPosChangeSpeed = 2.0f;
+		// vec2f dims = getHullDims(tf.tmpl.hullModel);
+		tf.rigidBody.hullLength = 5.0f;
+		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.0f), [-18.0f, -15.0f, -13.0f]);
+		tf.prepareDynamicsAndParams();
+		m_weapons[tf.name] = tf;
+
+
 		// Active decoy
 
 		ActiveDecoyFactory adf = new ActiveDecoyFactory();
@@ -642,7 +749,7 @@ Active sonars:
 
 		roomProtos = roomProtos.dup;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 14,
-			TubeType.standard, ["Minoga": true]);
+			TubeType.standard, ["Electra": true]);
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 24,
 			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		bowProtoTemplate = TubePrototype(TubeTemplate(0,
@@ -871,7 +978,7 @@ Active sonars:
 		Submarine2DModel model2d = loadSubModel("kilo.obj", objModel);
 		roomProtos = roomProtos.dup;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 16,
-			TubeType.standard, ["Minoga": true]);
+			TubeType.standard, ["Electra": true]);
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 22,
 			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		bowProtoTemplate = TubePrototype(TubeTemplate(0,
@@ -1022,7 +1129,7 @@ Active sonars:
 		model2d = loadSubModel("november.obj", objModel);
 		roomProtos = roomProtos.dup;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 22,
-			TubeType.standard, ["Minoga": true]);
+			TubeType.standard, ["Electra": true]);
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 32,
 			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		bowProtoTemplate = TubePrototype(TubeTemplate(0,

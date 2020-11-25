@@ -418,7 +418,8 @@ struct ActiveSonarPrototype
 	float pingDirPower = 2.0f;
 	/// base uniform picture noise
 	dB baseNoise = 2.0f;
-	/// antennae directivity gain, used in isotopic sea noise calculation
+	/// antennae directivity gain, used in isotopic sea noise calculation.
+	/// More is better.
 	dB directivity = 20.0f;
 	/// water mass reflectivity
 	dB waterReflectivity = -100.0f;

@@ -161,6 +161,74 @@ unittest
 	assert(s.dead);
 }
 
+*/
+
+/*
+
+unittest
+{
+	auto sim = Globals.buildForTests();
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Electra");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 400.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeSpeed;
+	pv.speed = 25.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.snake;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.register(sim);
+	int imageCounter;
+	cleanFolderForSonarImages("guidance", "electra_snake");
+	t.guidance.onSonarImageReady += (img, w, h) {
+		writeTestImage("guidance", "electra_snake", "electra", img, w, h, imageCounter);
+		imageCounter++;
+	};
+
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	s.transform.position = vec2d(-2200, 3000);
+	s.transform.rotation = -dgr2rad(90);
+	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * 5.0f;
+	s.targetCourse = s.transform.rotation;
+	s.targetThrottle = 1.0f;
+	s.register(sim);
+	File* storkFile = writeRbodyCsvHeader("guidance", "electra_snake", "stork");
+	sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+
+	File* electraFile = writeRbodyCsvHeader("guidance", "electra_snake", "electra");
+	sim.onSimulationPassStart += captureVesselRbCsv(electraFile, t);
+	sim.worldTimeLimit = 300 * cast(ulong)1e6;
+
+	double minDist = double.max;
+	sim.onSimulationPassStart += (sim, now) {
+		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
+	};
+
+	scope(exit) Globals.resetForTests();
+	Globals.simulators.start();
+	Globals.simulators.join();
+
+	trace("electra was ", minDist, " meters away from stork in electra_snake test");
+	assert(s.dead);
+}
+
+*/
+
+/*
+
 unittest
 {
 	Globals.buildForTests();
@@ -577,6 +645,77 @@ unittest
 		(imageData.length / imageRowCounter).to!int, imageRowCounter, 0, "_hphone");
 	trace("minoga was ", minDist,
 		" meters away from stork in minoga_snake_passive test");
+	assert(s.dead);
+}
+
+*/
+
+/*
+
+
+unittest
+{
+	auto sim = Globals.buildForTests();
+	const TorpedoFactory tf = cast(TorpedoFactory) Globals.entityDb.getWeaponFactory("Electra");
+	WeaponParamValue[] pvs;
+	WeaponParamValue pv;
+
+	pv.type = WeaponParamType.marchCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeCourse;
+	pv.course = dgr2rad(0.0);
+	pvs ~= pv;
+	pv.type = WeaponParamType.activationRange;
+	pv.range = 400.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.activeSpeed;
+	pv.speed = 25.0f;
+	pvs ~= pv;
+	pv.type = WeaponParamType.searchPattern;
+	pv.searchPattern = WeaponSearchPattern.snake;
+	pvs ~= pv;
+	pv.type = WeaponParamType.sensorMode;
+	pv.sensorMode = WeaponSensorMode.passive;
+	pvs ~= pv;
+
+	Torpedo t = tf.build(null, pvs);
+	t.register(sim);
+	int imageRowCounter;
+	ubyte[] imageData;
+	t.guidance.onHydrophoneSliceReady += (const(ushort)[] bbData) {
+		imageData ~= bbData.map!(
+			s => (cast(float)s / ushort.max * ubyte.max).to!ubyte).array;
+		imageRowCounter++;
+	};
+
+	SpawnReq req = SpawnReq("Stork", "Seven-blade screw");
+	Submarine s = Globals.entityDb.buildSubFromLoadout(req, null);
+	s.transform.position = vec2d(-2200, 3000);
+	s.transform.rotation = -dgr2rad(90);
+	s.rigidBody.kinet.vel = courseVector(s.transform.rotation) * 5.0f;
+	s.targetCourse = s.transform.rotation;
+	s.targetThrottle = 1.0f;
+	s.register(sim);
+	File* storkFile = writeRbodyCsvHeader("guidance", "electra_passive", "stork");
+	sim.onSimulationPassStart += captureVesselRbCsv(storkFile, s);
+
+	File* electraFile = writeRbodyCsvHeader("guidance", "electra_passive", "electra");
+	sim.onSimulationPassStart += captureVesselRbCsv(electraFile, t);
+	sim.worldTimeLimit = 300 * cast(ulong)1e6;
+
+	double minDist = double.max;
+	sim.onSimulationPassStart += (sim, now) {
+		minDist = min(minDist, (t.transform.wposition - s.transform.wposition).length);
+	};
+
+	scope(exit) Globals.resetForTests();
+	Globals.simulators.start();
+	Globals.simulators.join();
+
+	writeTestImage("guidance", "electra_passive", "electra", imageData,
+		(imageData.length / imageRowCounter).to!int, imageRowCounter, 0, "_hphone");
+	trace("electra was ", minDist, " meters away from stork in electra_passive test");
 	assert(s.dead);
 }
 

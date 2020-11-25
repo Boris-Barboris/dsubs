@@ -41,19 +41,26 @@ SpawnReq randomCombatSub()
 						[TubeSpawnState(2, "Decoy(active)"),
 						TubeSpawnState(3, "Decoy(passive)")]),
 			SpawnReq("Lima", "Five-blade Lima screw",
-						[AmmoRoomFullState(0, [WeaponCount("Minoga", 14)]),
+						[AmmoRoomFullState(0, [WeaponCount("Electra", 14)]),
 						AmmoRoomFullState(1, [
 							WeaponCount("Decoy(active)", 11),
 							WeaponCount("Decoy(passive)", 11)])],
 						[TubeSpawnState(2, "Decoy(active)"),
 						TubeSpawnState(3, "Decoy(passive)")]),
 			SpawnReq("November", "Five-blade November screw",
-						[AmmoRoomFullState(0, [WeaponCount("Minoga", 22)]),
+						[AmmoRoomFullState(0, [WeaponCount("Electra", 22)]),
 						AmmoRoomFullState(1, [
 							WeaponCount("Decoy(active)", 15),
 							WeaponCount("Decoy(passive)", 15)])],
 						[TubeSpawnState(3, "Decoy(active)"),
-						TubeSpawnState(4, "Decoy(passive)")])
+						TubeSpawnState(4, "Decoy(passive)")]),
+			SpawnReq("Kilo", "Five-blade Kilo screw",
+						[AmmoRoomFullState(0, [WeaponCount("Electra", 14)]),
+						AmmoRoomFullState(1, [
+							WeaponCount("Decoy(active)", 10),
+							WeaponCount("Decoy(passive)", 10)])],
+						[TubeSpawnState(2, "Decoy(active)"),
+						TubeSpawnState(3, "Decoy(passive)")])
 		];
 	}
 	return variations[uniform(0, variations.length)];
@@ -610,7 +617,7 @@ Good luck!`;
 		{
 			// say, how many players are online
 			int playerCount = simulator.vessels.alivePlayerSubmarines.walkLength.to!int;
-			briefing.message ~= " Total players on arena: " ~ (playerCount - 1).to!string;
+			briefing.message ~= " Total players on arena: " ~ playerCount.to!string;
 		}
 		// circle for reloading area
 		ensureReloadCircleForPlayer(player);

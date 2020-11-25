@@ -1014,6 +1014,14 @@ final class TorpedoFactory: WeaponFactory
 			": ", activeSpeedRange.max * (fuel.mean / pow(1.0f, fuelEffExponent)));
 	}
 
+	float maxRangeAtSpeed(float speed)
+	{
+		float throttle = throttleForSpeed(
+			rigidBody.Cd0.mean, rigidBody.Cd1.mean, 1, propFactory.posThrustK.mean,
+			speed);
+		return activeSpeedRange.min * (fuel.mean / pow(throttle, fuelEffExponent));
+	}
+
 	private void bootstrap(Torpedo res) const
 	{
 		super.bootstrap(res);

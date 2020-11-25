@@ -887,11 +887,10 @@ final class AICaptain
 
 		override @property bool shouldBeRunning()
 		{
-			// FIXME
-			bool haveMinogaInRacks = m_crew.submarine.ammoRoomRange.any!(ar =>
-				ar.getWeaponCount("Minoga") > 0);
+			// first rack is weaponry by convention
+			bool haveTorpsInFirstRack = m_crew.submarine.getAmmoRoom(0).weaponCount > 0;
 			auto tubes = m_crew.submarine.tubeRange;
-			return haveMinogaInRacks && tubes.any!(t =>
+			return haveTorpsInFirstRack && tubes.any!(t =>
 				t.state == TubeState.dry &&
 				t.type == TubeType.standard &&
 				t.loadedWeapon == null);
@@ -906,7 +905,9 @@ final class AICaptain
 					tube.loadedWeapon == null)
 				{
 					trace("AI captain requesting tube load for tube ", tube.id);
-					TubeOperationResult res = tube.processLoadRequest("Minoga");
+					string torpName = m_crew.submarine.getAmmoRoom(0).getRandomWeapon();
+					TubeOperationResult res = tube.processLoadRequest(torpName);
+					break;
 				}
 			}
 			return ExecutionResult.success;
@@ -1413,6 +1414,7 @@ final class AICaptain
 			searchParam.searchPattern = pattern;
 
 			WeaponFactory factory = Globals.entityDb.getWeaponFactory(weapon);
+			TorpedoFactory tf = cast(TorpedoFactory) factory;
 
 			// choose active speed
 			WeaponParamValue marchSpeed = WeaponParamValue(WeaponParamType.marchSpeed);
@@ -1427,13 +1429,17 @@ final class AICaptain
 					activeSpeed.speed, factory.activeSpeedRange.max - 2.0f);
 			}
 
+			float maxTravelDist = factory.activationRange.max;
+			if (tf)
+				maxTravelDist = tf.maxRangeAtSpeed(marchSpeed.speed);
+
 			float noLeadCourse;
 			double course;
 			float runDist;
 			float minAchievedDist;
 			// trace("before iterativeShootingRoutine: ", tgtPos, " ", tgtVel);
 			iterativeShootingRoutine(tgtPos, tgtVel, tube.transform.wposition,
-				marchSpeed.speed, factory.activationRange.max, noLeadCourse, course,
+				marchSpeed.speed, maxTravelDist, noLeadCourse, course,
 				runDist, minAchievedDist, 15);
 
 			if (minAchievedDist > 500.0)
@@ -1508,7 +1514,6 @@ final class AICaptain
 		protected override WeaponParamValue[] getFiringParameters(
 			vec2d tgtPos, vec2d tgtVel, Tube tube, string weapon)
 		{
-			assert(weapon == "Minoga");
 			vec2d posDiff = tgtPos - tube.transform.wposition;
 			// first we check that the torp is not running away from us
 			if (dot(posDiff, tgtVel) >= 0.0)

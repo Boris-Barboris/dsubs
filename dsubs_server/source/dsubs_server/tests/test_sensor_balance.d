@@ -144,11 +144,13 @@ unittest
 	WeaponFactory wf = Globals.entityDb.getWeaponFactory("Minoga");
 	Torpedo w = cast(Torpedo) wf.build(null, null);
 	writePropellerNoiseVsSpeedCsv(w, "torpedoes", 250, GLOBAL_SRATE / 2);
+	wf = Globals.entityDb.getWeaponFactory("Electra");
+	w = cast(Torpedo) wf.build(null, null);
+	writePropellerNoiseVsSpeedCsv(w, "torpedoes", 250, GLOBAL_SRATE / 2);
 	wf = Globals.entityDb.getWeaponFactory("Decoy(passive)");
 	StaticDecoy d = cast(StaticDecoy) wf.build(null, null);
 	writePropellerNoiseVsSpeedCsv(d, "torpedoes", 250, GLOBAL_SRATE / 2);
 }
-
 
 
 
