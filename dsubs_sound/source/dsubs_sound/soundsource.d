@@ -113,12 +113,14 @@ final class PropellerSound: SoundSource
 		super(t);
 		m_baseBBSpectrum = p.baseBBSpectrum;
 		m_baseCavSpectrum = p.baseCavSpectrum;
-		//m_am = templ.am;
-		synchronized(q)
+		if (p.tmParams)
 		{
-			m_tm = TrochoidModulator(q, p.tmParams);
+			synchronized(q)
+			{
+				m_tm = new TrochoidModulator(q, p.tmParams);
+			}
+			m_tm.randomizePhase();
 		}
-		m_tm.randomizePhase();
 		m_bladeRadius = p.bladeRadius;
 		m_bladeAoA = p.bladeAoA;
 		m_critNormalVel = p.critNormalVel;
@@ -135,8 +137,7 @@ final class PropellerSound: SoundSource
 		// criticalNormalVel + 1m/s
 		const ISpectrum* m_baseCavSpectrum;
 
-		// AmplitudeModulatorParams m_am;
-		TrochoidModulator m_tm;
+		TrochoidModulator* m_tm;
 		float m_bladeRadius;
 		float m_bladeAoA;
 		float m_shaftFreqStart, m_shaftFreqEnd;
@@ -179,8 +180,11 @@ final class PropellerSound: SoundSource
 		m_shaftFreqEnd = endShaftFreq;
 		m_normalVelEnd = caclNormalVel(endShaftFreq, waterSpeedEnd,
 			m_bladeRadius, m_bladeAoA);
-		m_tm.updateFundFreq(m_shaftFreqStart, m_shaftFreqEnd);
-		m_tm.updateStartPhase(dt);
+		if (m_tm)
+		{
+			m_tm.updateFundFreq(m_shaftFreqStart, m_shaftFreqEnd);
+			m_tm.updateStartPhase(dt);
+		}
 		m_transform.ensureNotDirty();
 	}
 
@@ -230,7 +234,8 @@ final class PropellerSound: SoundSource
 	{
 		assert(kavg > 0.0f);
 		modulateIInterp(q, tds, kstart / kavg, kend / kavg);
-		m_tm.modulate(q, tds);
+		if (m_tm)
+			m_tm.modulate(q, tds);
 	}
 
 	static float estCavitationShaftFreq(

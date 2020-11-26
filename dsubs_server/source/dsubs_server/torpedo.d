@@ -248,7 +248,8 @@ final class Torpedo: Weapon
 }
 
 
-/// Torpedo guidance, detonation and fuel controller
+/// Torpedo guidance, detonation and fuel controller. Is too bloated and
+/// should be split, but who cares.
 final class TorpedoGuidance: IGuidance
 {
 	private
@@ -256,6 +257,8 @@ final class TorpedoGuidance: IGuidance
 		Torpedo m_torpedo;
 		WeaponSensorMode m_sensorMode;
 		WeaponSearchPattern m_searchPattern;
+		const(ReflectorPrototype)* m_activeReflectorProto;
+		Reflector m_activeReflector;
 		float m_marchCourse;
 		float m_activeCourse;
 		float m_marchSpeed;
@@ -305,7 +308,11 @@ final class TorpedoGuidance: IGuidance
 		m_pingTdsOffset = uniform(0, GLOBAL_SRATE - 1);
 	}
 
-	void shutdown() {}
+	void shutdown()
+	{
+		if (m_activeReflector)
+			m_torpedo.simulator.acous.unregisterReflector(m_activeReflector);
+	}
 
 	/// verify some variables that could have been missed for some reason
 	void setUnassignedParams()
@@ -326,6 +333,11 @@ final class TorpedoGuidance: IGuidance
 		if (m_fuelLeft < 0.0f)
 		{
 			m_torpedo.kill("fuel exhausted", null);
+			if (m_activeReflector)
+			{
+				m_torpedo.simulator.acous.unregisterReflector(m_activeReflector);
+				m_activeReflector = null;
+			}
 			return;
 		}
 		// activation logic
@@ -336,11 +348,19 @@ final class TorpedoGuidance: IGuidance
 		{
 			m_activated = true;
 			m_snakeArmBeforeTurn += m_snakeArm;
+			if (m_activeReflectorProto)
+			{
+				// add new torpedo's reflector
+				m_activeReflector = new Reflector(m_torpedo.transform,
+					*m_activeReflectorProto);
+				m_torpedo.simulator.acous.registerReflector(m_activeReflector);
+			}
 		}
 		// assign course and throttle based on activation state
 		if (m_activated)
 		{
 			// first we check if we should detonate.
+			if (m_distanceTraveled > 300.0f)	// self-explosion protection
 			{
 				RigidBody[] inSearchRadius = m_torpedo.simulator.phys.
 					findRigidBodiesInCirlce(
@@ -388,6 +408,7 @@ final class TorpedoGuidance: IGuidance
 			else
 			{
 				// homing mode
+				assert(m_sensorMode != WeaponSensorMode.dumb);
 				m_torpedo.rudder.directMode = false;
 				m_torpedo.targetThrottle = m_activeThrottle;
 				if (!isNaN(m_curTargetAngVel))
@@ -542,6 +563,9 @@ final class TorpedoGuidance: IGuidance
 	{
 		switch (m_sensorMode)
 		{
+			case WeaponSensorMode.dumb:
+				return;
+
 			case WeaponSensorMode.active:
 			{
 				ActiveSonar sonar = m_torpedo.m_sonar;
@@ -866,7 +890,7 @@ abstract class WeaponFactory: VesselFactory
 			m_availableParams |= WeaponParamType.marchCourse;
 		if (activeCourseConfigurable)
 			m_availableParams |= WeaponParamType.activeCourse;
-		if (marchSpeedRange.max > marchSpeedRange.min)
+		//if (marchSpeedRange.max > marchSpeedRange.min)
 		{
 			m_availableParams |= WeaponParamType.marchSpeed;
 			WeaponParamDesc pd;
@@ -874,7 +898,7 @@ abstract class WeaponFactory: VesselFactory
 			pd.speedRange = marchSpeedRange;
 			m_paramDescs ~= pd;
 		}
-		if (activeSpeedRange.max > activeSpeedRange.min)
+		//if (activeSpeedRange.max > activeSpeedRange.min)
 		{
 			m_availableParams |= WeaponParamType.activeSpeed;
 			WeaponParamDesc pd;
@@ -882,7 +906,7 @@ abstract class WeaponFactory: VesselFactory
 			pd.speedRange = activeSpeedRange;
 			m_paramDescs ~= pd;
 		}
-		if (activationRange.max > activationRange.min)
+		//if (activationRange.max > activationRange.min)
 		{
 			m_availableParams |= WeaponParamType.activationRange;
 			WeaponParamDesc pd;
@@ -965,6 +989,7 @@ final class TorpedoFactory: WeaponFactory
 	HydrophonePrototype* hprot;
 	ActiveSonarPrototype* asprot;
 	MountPoint sensorsMount;
+	ReflectorPrototype* activeReflectorProto;
 	// snake
 	float snakeArm = 300.0f;
 	float snakeArmInitial;
@@ -979,6 +1004,9 @@ final class TorpedoFactory: WeaponFactory
 	// detection margins
 	int sonarNoiseMargin = 15;
 	int hydrophoneNoiseMargin = ushort.max / 12;
+	// detonator
+	float detonationMassK = 4.5f;
+	float blastRadius = 70.0f;
 
 	this(PropulsorFactory pf)
 	{
@@ -998,9 +1026,12 @@ final class TorpedoFactory: WeaponFactory
 		// tune drag to match expected performace
 		rigidBody.Cd1.mean =
 			(propFactory.posThrustK.mean - rigidBody.Cd0.mean * fullThrottleSpd) / pow(fullThrottleSpd, 2);
+		assert(rigidBody.Cd1.mean >= 0, "negative Cd1");
 		rigidBody.Cd1.stddev = rigidBody.Cd1.mean * balancingStddev;
 		// tune Cl to match turning radius
-		rigidBody.Cl.mean = calcClForTurningRadius(steering.equilDrift, turningRadius, rigidBody.mass.mean);
+		rigidBody.Cl.mean = calcClForTurningRadius(
+			steering.equilDrift, turningRadius, rigidBody.mass.mean);
+		assert(rigidBody.Cl.mean >= 0, "negative Cl");
 		rigidBody.Cl.stddev = rigidBody.Cl.mean * balancingStddev;
 		// tune fuel to match expected range
 		fuel.mean = tgtMaxRangeOnMaxSpd / fullThrottleSpd;
@@ -1008,8 +1039,8 @@ final class TorpedoFactory: WeaponFactory
 		float minThrottle = throttleForSpeed(
 			rigidBody.Cd0.mean, rigidBody.Cd1.mean, 1, propFactory.posThrustK.mean,
 			marchSpeedRange.min);
-		trace("Max range of ", propFactory.name, " on min speed ", activeSpeedRange.min,
-			": ", activeSpeedRange.min * (fuel.mean / pow(minThrottle, fuelEffExponent)));
+		trace("Max range of ", propFactory.name, " on min speed ", marchSpeedRange.min,
+			": ", marchSpeedRange.min * (fuel.mean / pow(minThrottle, fuelEffExponent)));
 		trace("Max range of ", propFactory.name, " on max speed ", activeSpeedRange.max,
 			": ", activeSpeedRange.max * (fuel.mean / pow(1.0f, fuelEffExponent)));
 	}
@@ -1028,6 +1059,10 @@ final class TorpedoFactory: WeaponFactory
 		assert(res.rigidBody.mass > 0.0f);
 		res.propulsors[0].transform.position = propMount.mountCenter.tod;
 		res.propulsors[0].transform.rotation = propMount.rotation;
+		if (activeReflectorProto)
+			res.guidance.m_activeReflectorProto = activeReflectorProto;
+		res.guidance.m_detonationMassK = detonationMassK;
+		res.guidance.m_blastRadius = blastRadius;
 		res.guidance.m_fuelLeft = fuel;
 		res.guidance.m_fuelEffExponent = fuelEffExponent;
 		res.guidance.m_snakeArm = snakeArm;
@@ -1111,7 +1146,7 @@ final class TorpedoFactory: WeaponFactory
 					break;
 				case WeaponParamType.sensorMode:
 					enforce(sensorModes & param.sensorMode, "invalid sensor mode");
-					enforce(popcnt(param.sensorMode) == 1, "must choose one");
+					enforce(popcnt(param.sensorMode) <= 1, "must choose at most one");
 					enforce(param.sensorMode != WeaponSensorMode.activePassive,
 						"alternating mode not implemented");
 					g.m_sensorMode = param.sensorMode;

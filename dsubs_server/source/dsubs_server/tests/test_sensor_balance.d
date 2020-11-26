@@ -67,7 +67,7 @@ void writePropellerNoiseVsSpeedCsv(Torpedo v, string testName, int minFreq, int 
 	// min speed should be taken from min march speed in guidance parameters
 	const WeaponFactory wf = Globals.entityDb.getWeaponFactory(v.prototypeName);
 	float minSpeed = wf.marchSpeedRange.min;
-	float maxSpeed = wf.marchSpeedRange.max;
+	float maxSpeed = wf.activeSpeedRange.max;
 	float dspeed = (maxSpeed - minSpeed) / (numSpeedPoints - 1);
 	if (dspeed == 0.0f)
 		numSpeedPoints = 1;
@@ -135,6 +135,7 @@ unittest
 	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);
 }
 
+*/
 
 unittest
 {
@@ -147,12 +148,15 @@ unittest
 	wf = Globals.entityDb.getWeaponFactory("Electra");
 	w = cast(Torpedo) wf.build(null, null);
 	writePropellerNoiseVsSpeedCsv(w, "torpedoes", 250, GLOBAL_SRATE / 2);
+	wf = Globals.entityDb.getWeaponFactory("Tornado");
+	w = cast(Torpedo) wf.build(null, null);
+	writePropellerNoiseVsSpeedCsv(w, "torpedoes", 250, GLOBAL_SRATE / 2);
 	wf = Globals.entityDb.getWeaponFactory("Decoy(passive)");
 	StaticDecoy d = cast(StaticDecoy) wf.build(null, null);
 	writePropellerNoiseVsSpeedCsv(d, "torpedoes", 250, GLOBAL_SRATE / 2);
 }
 
-
+/*
 
 unittest
 {

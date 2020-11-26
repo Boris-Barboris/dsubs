@@ -502,6 +502,78 @@ Search patterns: snake, spiral.
 		m_weapons[tf.name] = tf;
 
 
+		// Tornado supercavitating torp
+		pf = new PropulsorFactory();
+		pf.name = "Tornado nozzle";
+		pf.bladeCount = 0;
+		pf.posThrustK = RolledF(200.0f, 0.1f);
+		pf.rotAcceleration = 0.5f;
+		pf.negThrustK = RolledF(0.0f, 0.0f);
+		pf.mass = 0.0f;
+		pf.shaftRotFreq = 15.0f;
+		pf.soundPrototype = PropellerSoundPrototype(
+			loadSpectrumFromImageAndWarp(Globals.sctx.queue(0),
+				"../dsubs_sound/tornado.png", 1.0f, 69, 127),
+			null,	// no cavitation spectrum
+			cast(immutable) new TrochoidModulatorParams([
+				Harmonic(1.0f, 0.1f),
+				Harmonic(2.13f, 0.16f),
+				Harmonic(3.91f, 0.21f)],
+				0.55, 0.85, -0.5),
+			0.35f, dgr2rad(30), 3.5f, 0.03f, 0.7f
+		);
+
+		tf = new TorpedoFactory(pf);
+		tf.name = "Tornado";
+		tf.playable = true;
+		tf.description = `"Tornado" supercavitating torpedo.
+Has no sensors and relies solely on magnetic fuse and
+large explosive charge. Effective blast radius is only about 100m.
+
+
+Sensors: none.
+Active speed: 90 m/s.
+Inactive speed: 30 m/s.
+Max range: 2700m.
+`;
+		tf.turningRadius = 110.0f;
+		tf.marchSpeedRange = MinMax(30, 30);
+		tf.activeSpeedRange = MinMax(90, 90);
+		tf.activationRange = MinMax(200, 300);
+		tf.sensorModes = WeaponSensorMode.dumb;
+		tf.searchPatterns = WeaponParamDescSearchPatterns(
+			WeaponSearchPattern.straight,
+			350.0f, 150.0f, 200.0f);	// irrelevant
+		tf.propMount.mountCenter = vec2d(0, -2.50);
+		tf.detonationSoundProto = PrerecordedSoundPrototype(
+			Globals.sctx.getWavFile("../dsubs_sound/explosion1_8192.wav"),
+			40.0f, 143.0f, 2e-3f);
+		// passive sonar
+		tf.defaultSensorMode = WeaponSensorMode.dumb;
+		tf.detonationMassK = 7.3f;
+		tf.blastRadius = 110.0f;
+		tf.fuelEffExponent = 2.0f;
+		tf.fullThrottleSpd = 90.0f;
+		tf.tgtMaxRangeOnMaxSpd = 2700.0f;
+		tf.rigidBody.mass = RolledF(1.48f, 2e-3);
+		tf.rigidBody.Cd0 = RolledF(0.25f, 1e-3f);
+		tf.rigidBody.Cda = 1.5f;
+		tf.rigidBody.Cr0 = RolledF(0.01f, 0);
+		tf.rigidBody.Cr1 = RolledF(0, 0);
+		tf.rigidBody.Cm = RolledF(0.003f, 0);
+		tf.steering.equilDrift = dgr2rad(14);
+		tf.steering.rudderKp = 10.0f;
+		tf.steering.rudderKd = -30.0f;
+		tf.steering.rudderPosChangeSpeed = 2.0f;
+		// vec2f dims = getHullDims(tf.tmpl.hullModel);
+		tf.rigidBody.hullLength = 5.0f;
+		tf.reflprot = ReflectorPrototype(vec2f(0.6f, 5.0f), [-10.0f, -10.0f, -8.0f]);
+		tf.activeReflectorProto =
+			new ReflectorPrototype(vec2f(4.5f, 20.0f), [-3.0f, -3.0f, -3.0f]);
+		tf.prepareDynamicsAndParams();
+		m_weapons[tf.name] = tf;
+
+
 		// Active decoy
 
 		ActiveDecoyFactory adf = new ActiveDecoyFactory();
@@ -749,7 +821,7 @@ Active sonars:
 
 		roomProtos = roomProtos.dup;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 14,
-			TubeType.standard, ["Electra": true]);
+			TubeType.standard, ["Electra": true, "Tornado": true]);
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 24,
 			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		bowProtoTemplate = TubePrototype(TubeTemplate(0,
@@ -1129,7 +1201,7 @@ Active sonars:
 		model2d = loadSubModel("november.obj", objModel);
 		roomProtos = roomProtos.dup;
 		roomProtos[0] = AmmoRoomPrototype(0, "bow rack", 22,
-			TubeType.standard, ["Electra": true]);
+			TubeType.standard, ["Electra": true, "Tornado": true]);
 		roomProtos[1] = AmmoRoomPrototype(1, "decoy rack", 32,
 			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		bowProtoTemplate = TubePrototype(TubeTemplate(0,

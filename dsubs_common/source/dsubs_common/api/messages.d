@@ -26,7 +26,7 @@ struct ServerStatusRes
 	/// Total number of authorized players currently online.
 	int playersOnline;
 	/// Client and server values must match exactly.
-	int apiVersion = 16;
+	int apiVersion = 17;
 }
 
 /** This message requests authorization from the server.

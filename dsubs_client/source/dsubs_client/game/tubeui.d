@@ -54,6 +54,9 @@ final class TubeUI
 		Label m_currentStateLabel;
 		Button m_weaponButton;
 		Label m_tubeNameLabel;
+
+		// weapon type that is consistent with aim controls and trails
+		string m_aimingSectionWeapon;
 	}
 
 	@property Div mainDiv() { return m_mainDiv; }
@@ -125,33 +128,44 @@ final class TubeUI
 		updateLaunchButton();
 	}
 
+	private void dropTraceAndHandle()
+	{
+		if (m_overlayTrace)
+		{
+			Game.simState.tacticalOverlay.remove(m_overlayTrace);
+			m_overlayTrace = null;
+		}
+		if (m_overlayHandle)
+		{
+			Game.simState.tacticalOverlay.remove(m_overlayHandle);
+			m_overlayHandle = null;
+		}
+	}
+
+	private void recreateAim()
+	{
+		m_aimingSectionWeapon = m_tube.loadedWeapon;
+		buildAimDiv();
+		m_mainDiv.setChild(m_aimDiv, 0);
+		// build trace overlay
+		m_overlayTrace = new WeaponProjectionTrace(
+			Game.simState.tacticalOverlay, m_tube);
+		m_overlayHandle = new WeaponAimHandle(
+			Game.simState.tacticalOverlay, m_tube, this);
+	}
+
 	private void onAimButtonClick()
 	{
 		if (!m_aiming && m_tube.loadedWeapon)
 		{
 			m_aimButton.content = "Stop aiming";
-			buildAimDiv();
-			m_mainDiv.setChild(m_aimDiv, 0);
-			// build trace overlay
-			m_overlayTrace = new WeaponProjectionTrace(
-				Game.simState.tacticalOverlay, m_tube);
-			m_overlayHandle = new WeaponAimHandle(
-				Game.simState.tacticalOverlay, m_tube, this);
+			recreateAim();
 		}
 		else
 		{
 			m_aimButton.content = "Aim";
 			m_mainDiv.setChild(m_aimFiller, 0);
-			if (m_overlayTrace)
-			{
-				Game.simState.tacticalOverlay.remove(m_overlayTrace);
-				m_overlayTrace = null;
-			}
-			if (m_overlayHandle)
-			{
-				Game.simState.tacticalOverlay.remove(m_overlayHandle);
-				m_overlayHandle = null;
-			}
+			dropTraceAndHandle();
 		}
 		m_aiming = !m_aiming;
 	}
@@ -457,6 +471,13 @@ final class TubeUI
 		{
 			if (m_aimButton)
 				m_aimButton.pressable = true;
+			if (m_aiming && m_aimingSectionWeapon != m_tube.loadedWeapon)
+			{
+				// weapon was changed without toggling aim button, we need
+				// to recreate aim section
+				dropTraceAndHandle();
+				recreateAim();
+			}
 		}
 	}
 

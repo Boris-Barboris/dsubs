@@ -110,12 +110,13 @@ enum WeaponParamType: ushort
 	activeCourse = 1 << 6	/// main search direction after activation
 }
 
-/// Available weapon sensor modes. Bit flags.
+/// Available weapon sensor modes. Bit mask.
 enum WeaponSensorMode: ubyte
 {
 	active = 1,
 	passive = 2,
-	activePassive = 4		/// alternating active/passive search
+	activePassive = 4,		/// alternating active/passive search
+	dumb = 8
 }
 
 /// Generic clamped float
