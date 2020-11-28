@@ -1,7 +1,8 @@
 module dsubs_client.game.tubeui;
 
-import std.algorithm: map, canFind;
+import std.algorithm: map, canFind, filter;
 import std.algorithm.comparison: min, max;
+import std.array: array;
 import std.format;
 
 import core.time: MonoTime;
@@ -185,7 +186,8 @@ final class TubeUI
 		m_courseTextField.content = marchCourseContent;
 		string activationRangeContent = format("%.0f",
 			m_tube.weaponParams[WeaponParamType.activationRange].range);
-		m_activationRangeField.content = activationRangeContent;
+		if (m_activationRangeField)
+			m_activationRangeField.content = activationRangeContent;
 	}
 
 	private void buildAimDiv()
@@ -217,171 +219,208 @@ final class TubeUI
 			}
 		};
 
-		Label activationRangeLabel = builder(new Label()).content("RTE(m) ").
-			fontSize(FONT).fixedSize(vec2i(45, 1)).build;
-		m_activationRangeField = builder(new TextField()).
-			symbolFilter(&numericSymbFilter).fontSize(FONT).build;
-		m_activationRangeField.onKeyReleased += (k) {
-			try
-			{
-				float rawTgt = m_activationRangeField.content[0..$-1].to!float;
-				if (!isNaN(rawTgt))
-				{
-					float clampedTgt = max(m_tube.activationRangeLimits.min, rawTgt);
-					clampedTgt = min(m_tube.activationRangeLimits.max, clampedTgt);
-					m_tube.activationRange = clampedTgt;
-					if (rawTgt < clampedTgt && rawTgt >= 0.0f)
-						m_activationRangeField.content = format("%.0f", rawTgt);
-					else
-						m_activationRangeField.content = format("%.0f", clampedTgt);
-				}
-			}
-			catch (Exception e) {}
-		};
-		m_activationRangeField.onKbFocusLoss += ()
+		Label activationRangeLabel;
+		if (m_tube.activationRangeLimits.min < m_tube.activationRangeLimits.max)
 		{
-			m_activationRangeField.content = format("%.0f",
-				m_tube.weaponParams[WeaponParamType.activationRange].range);
-		};
+			activationRangeLabel = builder(new Label()).content("RTE(m) ").
+				fontSize(FONT).fixedSize(vec2i(45, 1)).build;
+			m_activationRangeField = builder(new TextField()).
+				symbolFilter(&numericSymbFilter).fontSize(FONT).build;
+			m_activationRangeField.onKeyReleased += (k) {
+				try
+				{
+					float rawTgt = m_activationRangeField.content[0..$-1].to!float;
+					if (!isNaN(rawTgt))
+					{
+						float clampedTgt = max(m_tube.activationRangeLimits.min, rawTgt);
+						clampedTgt = min(m_tube.activationRangeLimits.max, clampedTgt);
+						m_tube.activationRange = clampedTgt;
+						if (rawTgt < clampedTgt && rawTgt >= 0.0f)
+							m_activationRangeField.content = format("%.0f", rawTgt);
+						else
+							m_activationRangeField.content = format("%.0f", clampedTgt);
+					}
+				}
+				catch (Exception e) {}
+			};
+			m_activationRangeField.onKbFocusLoss += ()
+			{
+				m_activationRangeField.content = format("%.0f",
+					m_tube.weaponParams[WeaponParamType.activationRange].range);
+			};
+		}
+		else
+			m_activationRangeField = null;
 
-		Label marchSpeedLabel = builder(new Label()).content("RTE spd ").
-			fontSize(FONT).fixedSize(vec2i(50, 1)).build;
-		string marchSpeedContent = format("%.1f",
-			m_tube.weaponParams[WeaponParamType.marchSpeed].speed);
-		TextField marchSpeedField = builder(new TextField()).
-			symbolFilter(&numericSymbFilter).content(marchSpeedContent).
-			fontSize(FONT).build;
-		marchSpeedField.onKeyReleased += (k) {
-			try
-			{
-				float rawTgt = marchSpeedField.content[0..$-1].to!float;
-				if (!isNaN(rawTgt))
-				{
-					float clampedTgt = max(m_tube.marchSpeedLimits.min, rawTgt);
-					clampedTgt = min(m_tube.marchSpeedLimits.max, clampedTgt);
-					m_tube.marchSpeed = clampedTgt;
-					if (rawTgt < clampedTgt && rawTgt >= 0.0f)
-						marchSpeedField.content = format("%.1f", rawTgt);
-					else
-						marchSpeedField.content = format("%.1f", clampedTgt);
-				}
-			}
-			catch (Exception e) {}
-		};
-		marchSpeedField.onKbFocusLoss += ()
+		Label marchSpeedLabel;
+		TextField marchSpeedField;
+		if (m_tube.marchSpeedLimits.min < m_tube.marchSpeedLimits.max)
 		{
-			marchSpeedField.content = format("%.1f",
+			marchSpeedLabel = builder(new Label()).content("RTE spd ").
+				fontSize(FONT).fixedSize(vec2i(50, 1)).build;
+			string marchSpeedContent = format("%.1f",
 				m_tube.weaponParams[WeaponParamType.marchSpeed].speed);
-		};
-
-		Label activeSpeedLabel = builder(new Label()).content("ACT spd ").
-			fontSize(FONT).fixedSize(vec2i(50, 1)).build;
-		string activeSpeedContent = format("%.1f",
-			m_tube.weaponParams[WeaponParamType.activeSpeed].speed);
-		TextField activeSpeedField = builder(new TextField()).
-			symbolFilter(&numericSymbFilter).content(activeSpeedContent).
-			fontSize(FONT).build;
-		activeSpeedField.onKeyReleased += (k) {
-			try
-			{
-				float rawTgt = activeSpeedField.content[0..$-1].to!float;
-				if (!isNaN(rawTgt))
+			marchSpeedField = builder(new TextField()).
+				symbolFilter(&numericSymbFilter).content(marchSpeedContent).
+				fontSize(FONT).build;
+			marchSpeedField.onKeyReleased += (k) {
+				try
 				{
-					float clampedTgt = max(m_tube.activeSpeedLimits.min, rawTgt);
-					clampedTgt = min(m_tube.activeSpeedLimits.max, clampedTgt);
-					m_tube.activeSpeed = clampedTgt;
-					if (rawTgt < clampedTgt && rawTgt >= 0.0f)
-						activeSpeedField.content = format("%.1f", rawTgt);
-					else
-						activeSpeedField.content = format("%.1f", clampedTgt);
+					float rawTgt = marchSpeedField.content[0..$-1].to!float;
+					if (!isNaN(rawTgt))
+					{
+						float clampedTgt = max(m_tube.marchSpeedLimits.min, rawTgt);
+						clampedTgt = min(m_tube.marchSpeedLimits.max, clampedTgt);
+						m_tube.marchSpeed = clampedTgt;
+						if (rawTgt < clampedTgt && rawTgt >= 0.0f)
+							marchSpeedField.content = format("%.1f", rawTgt);
+						else
+							marchSpeedField.content = format("%.1f", clampedTgt);
+					}
 				}
-			}
-			catch (Exception e) {}
-		};
-		activeSpeedField.onKbFocusLoss += ()
+				catch (Exception e) {}
+			};
+			marchSpeedField.onKbFocusLoss += ()
+			{
+				marchSpeedField.content = format("%.1f",
+					m_tube.weaponParams[WeaponParamType.marchSpeed].speed);
+			};
+		}
+
+		Label activeSpeedLabel;
+		TextField activeSpeedField;
+		if (m_tube.activeSpeedLimits.min < m_tube.activeSpeedLimits.max)
 		{
-			activeSpeedField.content = format("%.1f",
+			activeSpeedLabel = builder(new Label()).content("ACT spd ").
+				fontSize(FONT).fixedSize(vec2i(50, 1)).build;
+			string activeSpeedContent = format("%.1f",
 				m_tube.weaponParams[WeaponParamType.activeSpeed].speed);
-		};
-
-		Label patternLabel = builder(new Label()).content("ptrn ").
-			fontSize(FONT).fixedSize(vec2i(30, 1)).build;
-		Button patternButton = builder(new Button()).content(
-			m_tube.weaponParams[WeaponParamType.searchPattern].searchPattern.to!string).
-			fontSize(FONT).backgroundColor(COLORS.simButtonBgnd).build;
-		patternButton.onClick += () {
-			Button[] spButtons;
-			foreach (WeaponSearchPattern pattern; m_tube.availableSearchPatterns)
+			activeSpeedField = builder(new TextField()).
+				symbolFilter(&numericSymbFilter).content(activeSpeedContent).
+				fontSize(FONT).build;
+			activeSpeedField.onKeyReleased += (k) {
+				try
+				{
+					float rawTgt = activeSpeedField.content[0..$-1].to!float;
+					if (!isNaN(rawTgt))
+					{
+						float clampedTgt = max(m_tube.activeSpeedLimits.min, rawTgt);
+						clampedTgt = min(m_tube.activeSpeedLimits.max, clampedTgt);
+						m_tube.activeSpeed = clampedTgt;
+						if (rawTgt < clampedTgt && rawTgt >= 0.0f)
+							activeSpeedField.content = format("%.1f", rawTgt);
+						else
+							activeSpeedField.content = format("%.1f", clampedTgt);
+					}
+				}
+				catch (Exception e) {}
+			};
+			activeSpeedField.onKbFocusLoss += ()
 			{
-				Button btn = builder(new Button()).content(pattern.to!string).
-					fontSize(FONT).build;
-				btn.onClick += (WeaponSearchPattern p) {
-					return {
-						// we may be way too late and the weapon was changed, so we check
-						if (m_tube.availableSearchPatterns.canFind(p))
-						{
-							m_tube.searchPattern = p;
-							patternButton.content = p.to!string;
-						}
-					};
-				} (pattern);
-				spButtons ~= btn;
-			}
-			contextMenu(Game.guiManager, spButtons, Game.window.size,
-				Game.window.mousePos, FONT + 4);
-		};
+				activeSpeedField.content = format("%.1f",
+					m_tube.weaponParams[WeaponParamType.activeSpeed].speed);
+			};
+		}
 
-		Label sensorLabel = builder(new Label()).content("sens ").
-			fontSize(FONT).fixedSize(vec2i(30, 1)).build;
-		Button sensorButton = builder(new Button()).content(
-			m_tube.sensorMode.to!string).
-			fontSize(FONT).backgroundColor(COLORS.simButtonBgnd).build;
-		sensorButton.onClick += () {
-			Button[] smButtons;
-			foreach (WeaponSensorMode sensMode; m_tube.availableSensorModes)
-			{
-				Button btn = builder(new Button()).content(sensMode.to!string).
-					fontSize(FONT).build;
-				btn.onClick += (WeaponSensorMode sm) {
-					return {
-						// we may be way too late and the weapon was changed, so we check
-						if (m_tube.availableSensorModes.canFind(sm))
-						{
-							m_tube.sensorMode = sm;
-							sensorButton.content = sm.to!string;
-						}
-					};
-				} (sensMode);
-				smButtons ~= btn;
-			}
-			contextMenu(Game.guiManager, smButtons, Game.window.size,
-				Game.window.mousePos, FONT + 4);
-		};
+		Label patternLabel;
+		Button patternButton;
+		if (m_tube.availableSearchPatterns.length > 1)
+		{
+			patternLabel = builder(new Label()).content("ptrn ").
+				fontSize(FONT).fixedSize(vec2i(30, 1)).build;
+			patternButton = builder(new Button()).content(
+				m_tube.weaponParams[WeaponParamType.searchPattern].searchPattern.to!string).
+				fontSize(FONT).backgroundColor(COLORS.simButtonBgnd).build;
+			patternButton.onClick += () {
+				Button[] spButtons;
+				foreach (WeaponSearchPattern pattern; m_tube.availableSearchPatterns)
+				{
+					Button btn = builder(new Button()).content(pattern.to!string).
+						fontSize(FONT).build;
+					btn.onClick += (WeaponSearchPattern p) {
+						return {
+							// we may be way too late and the weapon was changed, so we check
+							if (m_tube.availableSearchPatterns.canFind(p))
+							{
+								m_tube.searchPattern = p;
+								patternButton.content = p.to!string;
+							}
+						};
+					} (pattern);
+					spButtons ~= btn;
+				}
+				contextMenu(Game.guiManager, spButtons, Game.window.size,
+					Game.window.mousePos, FONT + 4);
+			};
+		}
+
+		Label sensorLabel;
+		Button sensorButton;
+		if (m_tube.availableSensorModes.length > 1)
+		{
+			sensorLabel = builder(new Label()).content("sens ").
+				fontSize(FONT).fixedSize(vec2i(30, 1)).build;
+			sensorButton = builder(new Button()).content(
+				m_tube.sensorMode.to!string).
+				fontSize(FONT).backgroundColor(COLORS.simButtonBgnd).build;
+			sensorButton.onClick += () {
+				Button[] smButtons;
+				foreach (WeaponSensorMode sensMode; m_tube.availableSensorModes)
+				{
+					Button btn = builder(new Button()).content(sensMode.to!string).
+						fontSize(FONT).build;
+					btn.onClick += (WeaponSensorMode sm) {
+						return {
+							// we may be way too late and the weapon was changed, so we check
+							if (m_tube.availableSensorModes.canFind(sm))
+							{
+								m_tube.sensorMode = sm;
+								sensorButton.content = sm.to!string;
+							}
+						};
+					} (sensMode);
+					smButtons ~= btn;
+				}
+				contextMenu(Game.guiManager, smButtons, Game.window.size,
+					Game.window.mousePos, FONT + 4);
+			};
+		}
 
 		m_aimDiv = builder(vDiv([
+				filler(),
 				builder(hDiv([courseLabel, m_courseTextField])).
 					fixedSize(vec2i(1, FONT + 4)).build,
-				builder(hDiv([activationRangeLabel, m_activationRangeField])).
-					fixedSize(vec2i(1, FONT + 4)).build,
-				builder(hDiv([marchSpeedLabel, marchSpeedField])).
-					fixedSize(vec2i(1, FONT + 4)).build,
-				builder(hDiv([activeSpeedLabel, activeSpeedField])).
-					fixedSize(vec2i(1, FONT + 4)).build,
-				builder(hDiv([patternLabel, patternButton])).
-					fixedSize(vec2i(1, FONT + 4)).build,
-				builder(hDiv([sensorLabel, sensorButton])).
-					fixedSize(vec2i(1, FONT + 4)).build,
-				filler()
-			])).borderWidth(4).fixedSize(vec2i(80, AIM_BLOCK_HEIGHT)).build;
+				m_activationRangeField ?
+					builder(hDiv([activationRangeLabel, m_activationRangeField])).
+						fixedSize(vec2i(1, FONT + 4)).build : null,
+				marchSpeedLabel ?
+					builder(hDiv([marchSpeedLabel, marchSpeedField])).
+						fixedSize(vec2i(1, FONT + 4)).build : null,
+				activeSpeedLabel ?
+					builder(hDiv([activeSpeedLabel, activeSpeedField])).
+						fixedSize(vec2i(1, FONT + 4)).build : null,
+				patternLabel ?
+					builder(hDiv([patternLabel, patternButton])).
+						fixedSize(vec2i(1, FONT + 4)).build : null,
+				sensorLabel ?
+					builder(hDiv([sensorLabel, sensorButton])).
+						fixedSize(vec2i(1, FONT + 4)).build : null
+			].filter!(e => e !is null).array)).borderWidth(4).
+				fixedSize(vec2i(80, AIM_BLOCK_HEIGHT)).build;
 
 		// bind up and down keys in cycle
-		for (size_t i = 0; i < m_aimDiv.children.length - 3; i++)
+		TextField[] allTextFields;
+		for (size_t i = 1; i < m_aimDiv.children.length; i++)
 		{
-			TextField curField = cast(TextField)((cast(Div) m_aimDiv.children[i]).children[1]);
-			assert(curField);
-			TextField nextField = cast(TextField)(
-				(cast(Div) m_aimDiv.children[(i + 1) % ($ - 3)]).children[1]);
-			assert(nextField);
+			TextField curField = cast(TextField)(
+				(cast(Div) m_aimDiv.children[i]).children[1]);
+			if (curField !is null)
+				allTextFields ~= curField;
+		}
+		for (size_t i = 0; i < allTextFields.length; i++)
+		{
+			TextField curField = allTextFields[i];
+			TextField nextField = allTextFields[(i + 1) % $];
 			curField.onKeyPressed += (nf) {
 				return (const sfKeyEvent* evt) {
 					if (evt.code == sfKeyDown)
