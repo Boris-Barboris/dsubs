@@ -199,9 +199,9 @@ final class SimulatorScheduler
 				{
 					Duration expectedInterval = msecs(
 						(1000 / simToRun.timeAcceleration).to!uint);
-					if (late > msecs(20))
+					if (late > msecs(50))
 					{
-						warning("Simulator loop stalling");
+						warning("Simulator loop stalling for ", late);
 						// schedule skew
 						newNextStart = now + expectedInterval;
 					}
