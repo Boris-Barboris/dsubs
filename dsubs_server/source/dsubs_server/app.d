@@ -2,6 +2,7 @@ module dsubs_server.app;
 
 import core.stdc.stdlib;
 import core.thread;
+import core.memory: GC;
 import core.time: seconds, msecs;
 
 import std.process: environment;
@@ -52,6 +53,7 @@ void main(string[] argv)
 		Globals.cons.startListeners();
 		auto livenessThread = new Thread(&livenessWatchdog).start();
 		auto playerPurgerThread = new Thread(&playerPeriodicPurger).start();
+		auto gcThread = new Thread(&forcedGcThread).start();
 		Globals.simulators.join();		// blocks forever
 	}
 	catch (Throwable e)
@@ -72,12 +74,25 @@ void livenessWatchdog()
 	string lastUniqId = mainArenaSim.uniqId;
 	while (true)
 	{
-		Thread.sleep(seconds(10));
+		Thread.sleep(seconds(14));
 		mainArenaSim = Globals.scenarioDb.getPersistentById("main_arena").simulator;
 		if (mainArenaSim.worldTime == lastWorldTime && lastUniqId == mainArenaSim.uniqId)
+		{
+			error("ABORTING process, liveness failure of main arena");
 			abort();
+		}
 		lastWorldTime = mainArenaSim.worldTime;
 		lastUniqId = mainArenaSim.uniqId;
+	}
+}
+
+void forcedGcThread()
+{
+	while (true)
+	{
+		Thread.sleep(minutes(31));
+		GC.collect();
+		GC.minimize();
 	}
 }
 
