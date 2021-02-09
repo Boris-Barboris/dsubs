@@ -59,11 +59,11 @@ final class SideOfConflict
 	}
 }
 
-
 class Captain
 {
 	protected
 	{
+		// captain has at most one submarine
 		Submarine m_submarine;
 	}
 
@@ -73,31 +73,32 @@ class Captain
 	@property void side(SideOfConflict rhs) { m_side = rhs; }
 
 	abstract @property string name() const;
-	final @property Submarine submarine() { return m_submarine; }
+	final @property Submarine submarine()
+	{
+		return atomicLoad(m_submarine);
+	}
 	@property void submarine(Submarine rhs)
 	{
-		if (m_submarine !is rhs)
-			unsetSubmarine(m_submarine);
-		m_submarine = rhs;
+		atomicStore(m_submarine, rhs);
 	}
 
 	/// Set submarine to null. simMut.writer must be held.
 	bool unsetSubmarine(Submarine assumedOldSub)
 	{
-		if (m_submarine is assumedOldSub)
-		{
-			m_submarine = null;
-			return true;
-		}
-		return false;
+		return cas(&m_submarine, assumedOldSub, null);
 	}
 }
 
-
+/*
+In-memory representation of a human player captain, that can be authorized.
+Acts as a bridge between connection and player's submarine, translates and
+issues messages and updates, implements reference frame translation.
+*/
 final class Player: Captain
 {
 	private
 	{
+		// cleartext
 		const string m_username;
 		const string m_password;
 
@@ -184,7 +185,7 @@ final class Player: Captain
 				// onConnectionClose may be called very late, way after
 				// m_submarine is changed. We need to lock on current simulator to
 				// change m_connection, not on the sim of oldCon.simFlowSub.
-				Submarine currentSub = m_submarine;
+				Submarine currentSub = submarine;
 				if (currentSub)
 				{
 					synchronized(currentSub.simulator.simMut.reader)
@@ -236,7 +237,7 @@ final class Player: Captain
 			closeConnection();
 			atomicOp!"+="(s_playerCount, 1);
 			con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
-			Submarine sub = m_submarine;
+			Submarine sub = submarine;
 			if (sub)
 			{
 				synchronized(sub.simulator.simMut.reader)
@@ -244,7 +245,7 @@ final class Player: Captain
 					if (sub.dead || sub.simulator.finished)
 					{
 						trace("Emplacing connection while the sub/sim is dead");
-						m_submarine = null;
+						unsetSubmarine(sub);
 					}
 					m_connection = con;		// important, check spin model.
 				}
@@ -263,7 +264,7 @@ final class Player: Captain
 	// sim's lock must be held.
 	immutable(ReconnectStateRes) getReconnectState()
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		enforce(s, "user has no submarine, unable to generate ReconnectStateRes");
 		enforce(!s.dead, "user has a submarine, but it is dead");
 		ReconnectStateRes recState = ReconnectStateRes(
@@ -297,7 +298,7 @@ final class Player: Captain
 	{
 		synchronized(this)
 		{
-			Submarine s = m_submarine;
+			Submarine s = submarine;
 			enforce(s is null, "Already spawned");
 			Scenario scen = Globals.scenarioDb.generateScenarioForSpawnReq(this, req);
 			if (scen.randomizeReferenceFrame)
@@ -335,12 +336,12 @@ final class Player: Captain
 
 	void handleThrottleRequest(const ThrottleReq req)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		if (s is null)
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead || s !is m_submarine)
+			if (s !is submarine)
 				return;
 			s.targetThrottle = req.target;
 		}
@@ -348,12 +349,12 @@ final class Player: Captain
 
 	void handleCourseRequest(const CourseReq req)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		if (s is null)
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead || s !is m_submarine)
+			if (s !is submarine)
 				return;
 			s.targetCourse = req.target - coordRot;
 		}
@@ -361,12 +362,12 @@ final class Player: Captain
 
 	void handleListenDirRequest(const ListenDirReq req)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		if (s is null)
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead || s !is m_submarine)
+			if (s !is submarine)
 				return;
 			int hcount = s.hydrophones.length.to!int;
 			enforce(req.hydrophoneIdx >= 0 && req.hydrophoneIdx < hcount, "no such hydrophone");
@@ -376,12 +377,12 @@ final class Player: Captain
 
 	void handleEmitPingRequest(const EmitPingReq req)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		if (s is null)
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead || s !is m_submarine)
+			if (s !is submarine)
 				return;
 			enforce(req.sonarIdx == 0, "no such sonar");
 			usecs_t worldTime = s.simulator.worldTime;
@@ -399,12 +400,12 @@ final class Player: Captain
 
 	void handleLoadTubeReq(const LoadTubeReq req)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		if (s is null)
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead || s !is m_submarine)
+			if (s !is submarine)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			TubeOperationResult topRes = tube.processLoadRequest(req.weaponName);
@@ -418,12 +419,12 @@ final class Player: Captain
 
 	void handleSetTubeStateReq(const SetTubeStateReq req)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		if (s is null)
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead || s !is m_submarine)
+			if (s !is submarine)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			TubeOperationResult topRes = tube.processStateRequest(req.desiredState);
@@ -436,12 +437,12 @@ final class Player: Captain
 
 	void handleWireDesiredLengthReq(WireDesiredLengthReq req)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		if (s is null)
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead || s !is m_submarine)
+			if (s !is submarine)
 				return;
 			enforce(req.wireIdx >= 0 && req.wireIdx < s.rigidBody.wires.length,
 				"invalid wire index");
@@ -451,12 +452,12 @@ final class Player: Captain
 
 	void handlePauseSimulatorReq(PauseSimulatorReq req)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		if (s is null)
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead || s !is m_submarine)
+			if (s !is submarine)
 				return;
 			s.simulator.paused = req.shouldBePaused;
 		}
@@ -464,12 +465,12 @@ final class Player: Captain
 
 	void handleLaunchTubeReq(LaunchTubeReq req)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 		if (s is null)
 			return;
 		synchronized(s.simulator.simMut.reader)
 		{
-			if (s.dead || s !is m_submarine)
+			if (s !is submarine)
 				return;
 			Tube tube = s.getTube(req.tubeId);
 			// reference frame translation for courses
@@ -552,19 +553,21 @@ final class Player: Captain
 	void handleSimTerminating(Submarine terminatedSub)
 	{
 		PlayerConnection con = m_connection;
-		bool didUnset = unsetSubmarine(terminatedSub);
-		if (con && didUnset)
+		bool shouldUnsetSub = terminatedSub is submarine;
+		if (con && shouldUnsetSub)
 		{
 			con.simulatorFlow = false;
 			if (con.isOpen)
 				con.sendMessage(immutable SimulatorTerminatingRes());
 		}
+		if (shouldUnsetSub)
+			unsetSubmarine(terminatedSub);
 	}
 
 	// simMut.writer is held by the simulator
 	void sendPauseStateUpdate(Submarine subToUpdate, bool isSimPaused)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 
 		// Dangling submarine reference protection
 		// TODO: verify the need in this check.
@@ -580,7 +583,7 @@ final class Player: Captain
 
 	static string generateKillRecordReport(Submarine sub)
 	{
-		string res = "Kills: \n\n";
+		string res = "Your kills: \n\n";
 		foreach (const KillRecord record; sub.kills)
 		{
 			string recStr = record.relation.to!string ~ " " ~
@@ -595,7 +598,7 @@ final class Player: Captain
 	// simMut.writer is held by the simulator
 	void sendUpdate(Submarine subToUpdate)
 	{
-		Submarine s = m_submarine;
+		Submarine s = submarine;
 
 		// Dangling submarine reference protection
 		if (subToUpdate !is s)
@@ -603,12 +606,7 @@ final class Player: Captain
 
 		PlayerConnection con = m_connection;
 
-		// handle death
 		assert(s !is null);
-		if (s.dead)
-		{
-			m_submarine = null;
-		}
 
 		if (con && con.isOpen && con.simulatorFlow && (con.simFlowSub is s))
 		{
@@ -684,10 +682,15 @@ final class Player: Captain
 				con.sendMessage(cast(immutable) AmmoRoomStateUpdateRes(
 					s.getAmmoRoom(roomId).fullState));
 		}
+		// handle death. m_submarine is nulled as late as possible (dictated by spin model)
+		if (s.dead)
+			unsetSubmarine(s);
 	}
 }
 
 
+/// Set of indexed (by username) Player objects, handles concurrent
+/// authorization and object eviction.
 final class PlayerCollection
 {
 	private

@@ -43,10 +43,9 @@ final class Submarine: Vessel
 	{
 		synchronized(this)
 		{
-			if (m_conRefCount == 0)
+			if (m_conRefCount == 0 && simulator)
 			{
-				if (simulator)
-					simulator.incConnectedPlayers();
+				simulator.incConnectedPlayers();
 			}
 			m_conRefCount++;
 		}
@@ -56,10 +55,9 @@ final class Submarine: Vessel
 	{
 		synchronized(this)
 		{
-			if (m_conRefCount == 1 && !dead)
+			if (m_conRefCount == 1 && !dead && simulator)
 			{
-				if (simulator)
-					simulator.decConnectedPlayers();
+				simulator.decConnectedPlayers();
 			}
 			m_conRefCount--;
 			assert(m_conRefCount >= 0);

@@ -51,10 +51,11 @@ struct CircQueue(T, bool canOverwrite = false)
 		return arr[backIdx];
 	}
 
-	/// Get idx'th element (starting from zero), counting from the back of the queue
+	/// Get reference to idx'th element, counting from the back of the queue
 	@property ref T fromBack(size_t idx)
 	{
 		assert(idx < len);
+		assert(ifront + len >= idx + 1);
 		idx = (ifront + len - idx - 1) % capacity;
 		return arr[idx];
 	}

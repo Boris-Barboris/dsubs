@@ -94,7 +94,7 @@ final class AICrew: AICrewTemp
 
 	override void afterSimulation()
 	{
-		if (m_submarine is null || m_submarine.dead)
+		if (submarine is null || submarine.dead)
 			return;
 		if (m_captain)
 			m_captain.execute();
