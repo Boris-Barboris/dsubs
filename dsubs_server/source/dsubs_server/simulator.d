@@ -35,25 +35,27 @@ import dsubs_server.weaponry;
 
 
 /// Collection of simulators that can be ran in time-sharing manner in one
-/// dsubs_server process.
+/// dsubs_server process. Only one simulator runs at any point in time.
 final class SimulatorScheduler
 {
 	private
 	{
-		/// main simulation thread. Simulators fork-n-join inside a lot, so there is
-		/// little incentive to run a thread per simulator. One main thread is enough.
+		/// Main simulation thread. Simulators fork-n-join inside their component systems
+		/// a lot, so there is little incentive to run a thread per simulator.
+		/// One main thread is enough. In fact, it's easier with one main thread.
 		Thread m_thread;
-		/// Condition to block on when there is no simulator to run.
+		/// Condition variable to block on when there is no simulator to run.
+		/// It's mutex guards m_simulators tree from concurrent access.
 		Condition m_cond;
 		bool m_stopFlag;
 		bool m_joined;
 		bool m_started;
 
-		alias SimulatorDeadlineTree = RedBlackTree!(Simulator,
+		alias SimulatorScheduleTree = RedBlackTree!(Simulator,
 			(a, b) => (a.nextStart < b.nextStart) || (a.nextStart == b.nextStart && a.id < b.id), false);
 		// warning: rbtree assumes that the key is immutable. When we change nextStart
 		// we must remove the sim from the tree, update the key and re-insert it back.
-		SimulatorDeadlineTree m_simulators;
+		SimulatorScheduleTree m_simulators;
 	}
 
 	/// Thread-safe addition of a simulator instance to scheduling queue.
@@ -85,7 +87,7 @@ final class SimulatorScheduler
 	this(bool exitOnEmpty = false)
 	{
 		m_exitOnEmpty = exitOnEmpty;
-		m_simulators = new SimulatorDeadlineTree();
+		m_simulators = new SimulatorScheduleTree();
 		m_cond = new Condition(new Mutex());
 		m_thread = new Thread(&schedulingLoop);
 	}
@@ -108,12 +110,12 @@ final class SimulatorScheduler
 	}
 
 	/// Set to true if the sim thread should exit when there is
-	/// no simulator to run.
+	/// no simulator to run. Useful for tests.
 	private bool m_exitOnEmpty;
 
 	@property bool joined() const { return m_joined; }
 
-	/// request to stop the simulation loop.
+	/// Request to stop the simulation loop.
 	void stop()
 	{
 		m_stopFlag = true;
@@ -132,6 +134,7 @@ final class SimulatorScheduler
 		}
 	}
 
+	// main function that runs simulators in a loop
 	private void schedulingLoop()
 	{
 		scope(success) info("simulator thread exiting");
@@ -175,16 +178,15 @@ final class SimulatorScheduler
 				error("Simulator ", simToRun.id, " crashed: ", e.toString());
 				sendMail("dsubs_server simulator crash", e.msg);
 				simToRun.terminateAsync();
-				// immediate attempt to evict players
+				// eager attempt to evict players
 				simToRun.runOnce();
 			}
-			// now we calculate the next wakeup or remove the sim from tree
 			if (simToRun.finished)
 			{
 				trace("Evicting ", simToRun.id, " finished simulator from scheduler");
 				synchronized(m_cond.mutex)
 					m_simulators.removeKey(simToRun);
-				// recreate main_arena
+				// recreate main_arena (special case)
 				if (simToRun.id == "main_arena")
 				{
 					auto spawner = Globals.scenarioDb.getPersistentById(simToRun.id);
@@ -212,7 +214,7 @@ final class SimulatorScheduler
 					newNextStart = MonoTime.currTime;
 				synchronized(m_cond.mutex)
 				{
-					// reinsert the sim
+					// reinsert the sim to the tree
 					m_simulators.removeKey(simToRun);
 					simToRun.nextStart = newNextStart;
 					m_simulators.stableInsert(simToRun);
@@ -223,21 +225,26 @@ final class SimulatorScheduler
 }
 
 
-/// Simulator instance, that constitutes one particular game world.
+/// Simulator instance, one game world.
 final class Simulator
 {
 	private string m_id, m_uniqId;
-	/// non-unique
+	/// non-historically unique, used for per-process uniqueness.
 	@property string id() const { return m_id; }
-	/// unique
+	/// historically-unique (across all ever existing simulators), random UUID.
 	@property string uniqId() const { return m_uniqId; }
 
 	public
 	{
 		/// Main simulation RW-mutex that guards game state. Write-lock is taken
-		/// by the server when the world needs to freeze.
+		/// by the server when the world needs is updated. Reader lock is taken by
+		/// external threads, for example player connections, when the world is
+		/// frozen and can be updated.
 		ReadWriteMutex simMut;
-		/// Physics system with rigid modies
+
+		// Entity systems:
+
+		/// Physics system, rigid bodies etc.
 		PhysicalEnv phys;
 		/// Acoustics entity collection
 		AcousticEnv acous;
@@ -247,13 +254,16 @@ final class Simulator
 		AnimalCollection animals;
 		/// Active weapons
 		WeaponCollection weapons;
-		/// All active bots
+		/// Active bots
 		BotCollection bots;
 
-		/// Scenario object, should be constructed by the external code.
+		/// Scenario object, should be constructed/assigned by the external code.
 		Scenario scenario;
+	}
 
-		/// Reference counter, number of connected players that have a
+	private
+	{
+		/// Reference counter, number of connected players that have non-dead
 		/// m_submarine in this simulator.
 		shared int m_connectedPlayers;
 	}
@@ -268,7 +278,7 @@ final class Simulator
 		assert(result >= 0);
 	}
 
-	/// id will be a random UUID string if not specified.
+	/// id will be a random UUID string if left as null.
 	this(string id = null)
 	{
 		m_uniqId = randomUUID().toString();
@@ -284,25 +294,12 @@ final class Simulator
 		bots = new BotCollection();
 	}
 
-	// calculate the number of players that are connected to the submarines in
-	// this simulator.
-	// int getConnectedPlayers() const
-	// {
-	// 	int res = 0;
-	// 	foreach (const Submarine sub; vessels.submarines)
-	// 	{
-	// 		if (sub && sub.player && sub.player.connection &&
-	// 			sub.player.connection.isOpen)
-	// 			res++;
-	// 	}
-	// 	return res;
-	// }
-
 	private usecs_t m_worldTime = 0;
 
 	@property usecs_t worldTime() const { return m_worldTime; }
 
-	// Must be called while holding simMut.
+	/// Request termination. It's scheduler's job to evict it.
+	/// If called not by the scheduler, sim's reader lock must be held.
 	void terminateAsync()
 	{
 		m_terminating = true;
@@ -311,7 +308,7 @@ final class Simulator
 	private bool m_terminating;
 
 	/// simulator will report as finished when it's wordTime exceeds worldTimeLimit, or
-	/// when it's asked to terminate by scenario.
+	/// when it's asked to terminate (by scenario, for example).
 	usecs_t worldTimeLimit = usecs_t.max;
 
 	@property bool finished() const
@@ -319,7 +316,7 @@ final class Simulator
 		return m_terminating || m_worldTime > worldTimeLimit;
 	}
 
-	/// print stage timings to log
+	/// print stage timings to server log
 	bool printTimings = false;
 
 	/// Simulator wants to be scheduled at this time or slightly after it.
@@ -339,6 +336,7 @@ final class Simulator
 	bool canBePaused = true;
 
 	private bool m_paused;
+	// edge flag to trigger the send of messages
 	private bool m_pausedChanged;
 
 	@property bool paused() const { return m_paused; }
@@ -351,6 +349,8 @@ final class Simulator
 		m_paused = rhs;
 	}
 
+	// events, called synchronously from scheduler's thread, with sim's
+	// writer lock being held.
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassStart;
 	Event!(void delegate(Simulator sim, usecs_t now)) onSimulationPassEnd;
 
@@ -369,6 +369,7 @@ final class Simulator
 			if (sub && sub.player)
 				playersToUpdate ~= SubPlayerPair(sub.player, sub);
 		}
+		// parallelize, some functions in sendUpdate are blocking/heavy.
 		foreach (SubPlayerPair pair; Globals.taskPool.parallel(playersToUpdate, 1))
 		{
 			pair.player.sendUpdate(pair.sub);
@@ -396,7 +397,7 @@ final class Simulator
 		}
 	}
 
-	/// All players that own alive vessels in this sim receive message.
+	/// All players that own non-dead vessels in this sim receive message.
 	private void sendTerminatingToPlayers()
 	{
 		foreach (Submarine sub; vessels.submarines)
@@ -408,8 +409,9 @@ final class Simulator
 
 	private
 	{
+		// number of runs with no connected players
 		long m_abandonedCounter;
-		// 21 days
+		// 21 days in there is no time acceleration
 		enum long ABANDON_COUNT_LIMIT = 60 * 60 * 24 * 21;
 	}
 
@@ -437,8 +439,7 @@ final class Simulator
 			// pause handling
 			if (m_pausedChanged)
 			{
-				// edge-triggered update to players,
-				// we guarantee response.
+				// edge-triggered update to players
 				m_pausedChanged = false;
 				sendPauseUpdateToPlayers();
 			}
@@ -456,6 +457,7 @@ final class Simulator
 			if (scenario)
 			{
 				profiler.start("scenario.onBeforeSimulation");
+				// scenario might want to initialize the world before anything moves
 				scenario.onBeforeSimulation();
 				profiler.stopLast();
 			}
@@ -463,14 +465,16 @@ final class Simulator
 			vessels.preKinematics();
 			profiler.stopLast();
 			profiler.start("acous.preKinematics");
+			// sound stuff needs starting positions and velocities
 			acous.preKinematics();
 			profiler.stopLast();
-			// physics integration. All rigid bodies are moved.
 			profiler.start("phys.integratePBodies");
+			// physics integration. All rigid bodies are moved.
 			phys.integratePBodies(1.0f, 0.25f);
 			profiler.stopLast();
 			m_worldTime += 1000_000;
 			profiler.start("acous.postKinematics");
+			// sound stuff needs final positions and velocities
 			acous.postKinematics(1.0f);
 			profiler.stopLast();
 			profiler.start("acous.processActiveSonars");
@@ -504,14 +508,15 @@ final class Simulator
 				profiler.stopLast();
 				if (sst == ShouldSimTerminate.yes)
 				{
-					info("Terminating simulator ", id);
+					info("Terminating simulator by scenario sst: ", id);
 					m_terminating = true;
 				}
 			}
 			// send updates to players
 			profiler.start("sendUpdateToPlayers");
 			// scenario is responsible for sending termination messages based on
-			// the reason of sim shutdown
+			// the reason of sim shutdown. Simulator should not know about victory/loss.
+			// Look at scenario.sendChangesOrFinish.
 			sendUpdateToPlayers();
 			profiler.stopLast();
 			// additional logic for time-based termination
@@ -529,9 +534,10 @@ final class Simulator
 		{
 			if (m_id == "main_arena")
 			{
+				// influxdb metrics
 				Globals.auxTaskPool.put(
 					task(&Globals.metrics.writePlayerStats, Player.getPlayersOnline()));
-				// do not send data to influx when no-one is here
+				// do not write replay to influx when there are no non-dead player subs
 				if (vessels.alivePlayerSubmarines.walkLength)
 				{
 					Globals.auxTaskPool.put(

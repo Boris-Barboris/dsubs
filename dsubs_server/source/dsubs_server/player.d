@@ -73,8 +73,12 @@ class Captain
 	@property void side(SideOfConflict rhs) { m_side = rhs; }
 
 	abstract @property string name() const;
+
 	final @property Submarine submarine()
 	{
+		// atomics because simulator-player-playerconnection concurrency
+		// relies on atomic m_submarine pointer update. See player_threads.pml
+		// model for the high-level algorithm abstraction.
 		return atomicLoad(m_submarine);
 	}
 	@property void submarine(Submarine rhs)
@@ -82,7 +86,7 @@ class Captain
 		atomicStore(m_submarine, rhs);
 	}
 
-	/// Set submarine to null. simMut.writer must be held.
+	/// Set submarine to null, if it's currently equal to assumedOldSub.
 	bool unsetSubmarine(Submarine assumedOldSub)
 	{
 		return cas(&m_submarine, assumedOldSub, null);
@@ -105,13 +109,18 @@ final class Player: Captain
 		vec2d coordShift;
 		double coordRot;
 		usecs_t timeShift;
+
+		// used to rate-limit ping requests
 		usecs_t m_lastPingEmit = -6_000_000L;
 
+		// There is at most one "active" connection that
+		// receives updates from the server.
 		PlayerConnection m_connection;
 
 		enum double MAX_COORD_SHIFT = 100_000.0;
 		enum long MAX_TIME_SHIFT = 200_000_000L;
 
+		/// number of players with active connections
 		static shared int s_playerCount = 0;
 	}
 
@@ -137,9 +146,9 @@ final class Player: Captain
 	@property string username() const { return m_username; }
 	@property inout(PlayerConnection) connection() inout { return m_connection; }
 
+	/// generate random reference frame shift
 	private void generateShift()
 	{
-		// generate random reference frame shift
 		coordShift = vec2d(
 			uniform(-MAX_COORD_SHIFT, MAX_COORD_SHIFT),
 			uniform(-MAX_COORD_SHIFT, MAX_COORD_SHIFT));
@@ -154,7 +163,7 @@ final class Player: Captain
 		timeShift = 0;
 	}
 
-	/// handle connection being closed.
+	/// Called from connection's reader thread when connection is closed.
 	private void onConnectionClose(PlayerConnection oldCon)
 	{
 		assert(oldCon && !oldCon.isOpen);
@@ -173,17 +182,17 @@ final class Player: Captain
 					sub.decSubConRefCounter();
 					oldCon.simFlowSub = null;
 					oldCon.simulatorFlow = false;
-					// but only if there is no newer connection we update
-					// the sub
+					// if there is no new connection that replaced the old one...
 					if (m_connection is oldCon)
 					{
+						// disable sensors to optimize simulator
 						foreach (h; sub.hydrophones)
 							h.shouldBeActive = false;
 						sub.sonar.active = false;
 					}
 				}
 				// onConnectionClose may be called very late, way after
-				// m_submarine is changed. We need to lock on current simulator to
+				// m_submarine has changed. We need to lock on current simulator to
 				// change m_connection, not on the sim of oldCon.simFlowSub.
 				Submarine currentSub = submarine;
 				if (currentSub)
@@ -549,7 +558,7 @@ final class Player: Captain
 		return (sub && !sub.dead);
 	}
 
-	// called while holding simulator's write lock
+	// called from simulator thread while holding simulator's write lock
 	void handleSimTerminating(Submarine terminatedSub)
 	{
 		PlayerConnection con = m_connection;

@@ -4,10 +4,6 @@ import std.algorithm;
 import std.array;
 import std.range: retro, enumerate;
 
-// "lflags": ["/home/boris/src/dsubs/dsubs_server/libopenblas"],
-// import mir.ndslice: magic, repeat, as, slice;
-// import lubeck: mtimes;
-
 import dsubs_common.containers.array;
 import dsubs_common.math;
 import dsubs_common.containers.quadtree;
@@ -97,7 +93,7 @@ struct Kinematics
 		return this.opBinary!op(rhs);
 	}
 
-	// cache for popular stuff
+	// cache for popular dynamics stuff
 	double AoA;		/// drift angle
 	double velLength;
 	double velSquaredLength;
@@ -144,13 +140,14 @@ struct Kinematics
 
 
 /// Point on the wire that has mass. Drag force is applied to it.
-/// Wire is always bound to some fixed point by it's end.
+/// Wire is always bound to some fixed point by one of it's ends.
 struct WirePoint
 {
 	/// velocity in global reference frame.
-	vec2d vel = vec2f(0.0f, 0.0f);
+	vec2d vel = vec2d(0.0f, 0.0f);
 	/// position in global reference frame.
-	vec2d pos = vec2f(0.0f, 0.0f);
+	vec2d pos = vec2d(0.0f, 0.0f);
+	// flag to track wire segment extension state.
 	private bool onMaxLength;
 }
 
@@ -161,6 +158,8 @@ private enum float WINCH_EXTEND_SPD_FACTOR = 0.9f;
 struct AttachedWirePrototype
 {
 	float maxLength = 0.0f;
+	// index of the wire point that will hold the transform
+	// of the bound sensor.
 	int sensorTransformPoint = 1;
 	float winchSpeed = 5.0f;
 	float pointCD0 = 2e-2f;
@@ -173,11 +172,12 @@ final class AttachedWire: IForce
 {
 	private
 	{
-		/// Head of the array is the tail of the wire. Tail is the first point after the attachment.
+		/// Head of the array is the tail of the wire.
+		/// Tail is the first point after the attachment (to the submarine).
 		WirePoint[] m_points;
 		/// Attachment point on the rigid body.
 		Transform2D m_attachTransform;
-		/// Transform, created for the sensor.
+		/// Transform, created for the sensor. Moves with m_sensorPointIdx wire point.
 		Transform2D m_sensorTransform;
 		/// index of the point that is bound to m_sensorTransform.
 		size_t m_sensorPointIdx;
@@ -192,17 +192,18 @@ final class AttachedWire: IForce
 		/// the attachment point. m_maxSegmentCount * m_segmentLength is effectively
 		/// the maximum extension length of the wire.
 		int m_maxSegmentCount;
-		/// The length of first segment. All other segments are fully extended to their 'm_segmentLength'.
+		/// The length of first segment. All other segments are always fully extended
+		/// to their 'm_segmentLength'.
 		float m_firstSegmentLength = 0.0f;
 		float m_currentTotalLength = 0.0f;
 		/// Captains declare the desired total length of the wire and the winch obeys.
 		float m_desiredLength = 0.0f;
 		float m_winchSpeed;
 
-		// point hydrodynamics drag gains.
+		// point's hydrodynamic drag gains.
 		float m_pointCD0;
 		float m_pointCD1;
-		// point mass
+		// one point's mass
 		float m_pointMass;
 
 		/// force that the wire is applying to attachment point.
@@ -463,19 +464,6 @@ final class AttachedWire: IForce
 
 	/// if there is some timing logic inside IForce, move forward in time.
 	void propagateInTime(float dt) {}
-
-	ForceSnapshot save() { return ForceSnapshot(0.0); }
-
-	void rollback(ForceSnapshot snap) {}
-}
-
-
-/// RK-like methods require to evaluate forces on different times between
-/// integration snaps. ForceSnapshot allows integrator to reset the internal state of
-/// the force to the point of 0.0 time.
-struct ForceSnapshot
-{
-	float state;
 }
 
 
@@ -493,10 +481,6 @@ interface IForce
 
 	/// if there is some timing logic inside IForce, move forward in time.
 	void propagateInTime(float dt);
-
-	ForceSnapshot save();
-
-	void rollback(ForceSnapshot snap);
 }
 
 
@@ -599,6 +583,7 @@ final class RigidBody: PhysicalEntity
 		transform.position = kinet.pos;
 		transform.rotation = kinet.rotation;
 
+		// wires update with their parent body
 		foreach (AttachedWire wire; wires)
 		{
 			wire.simulate(dt);
@@ -660,6 +645,7 @@ final class PhysicalEnv
 	private
 	{
 		PhysicalEntity[] m_entities;
+		/// spacial index tree for area lookups of rigid bodies
 		QuadTree!RigidBody m_spacialTree;
 	}
 
@@ -703,7 +689,7 @@ final class PhysicalEnv
 		m_spacialTree.clear();
 	}
 
-	/// perform physics update for all entities
+	/// perform physics update for all entities.
 	void integratePBodies(float fwd = 1.0f, float maxDt = 0.25f)
 	{
 		long stepCount = lrint(fwd / maxDt);

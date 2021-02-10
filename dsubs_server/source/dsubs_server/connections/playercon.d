@@ -20,6 +20,9 @@ import dsubs_server.simulator: Simulator;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.scenario;
 
+
+// TODO: take from environment variables maybe?
+// secret
 private immutable string backendPrivKey = `AAAAQIhNNOl1mtHa10rEmT2cNlHRPpPnRZjbcKDVkxQ632xXvalu5FR+TBVntVprWNSWdU8+8eU9NEZTQM2J2+XCzwGFDL8MsqmcEiIcX75poV2js3UKvpoV7l8aQ/i7mWSg+Z0nLrhqJOk9Jc4gU7gUmUOkF5lECIoUC8QUm496M5Xz`;
 
 
@@ -34,8 +37,11 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 		/// Requested to be set to true by the client when either spawning or
 		/// reconnecting.
 		bool m_simulatorFlow;
-		/// Reverse-reference for refcounting
+		// Reverse-reference for refcounting and binding of simflow to
+		// a particular simulator. Used to prevent race conditions in
+		// Player.onConnectionClose.
 		Submarine m_simFlowSub;
+		// constructed per-connection because of bugs.
 		RSAKeyInfo m_backendPrivKeyInfo;
 	}
 
@@ -98,9 +104,9 @@ private:
 		catch (AuthException aex)
 		{
 			Thread.sleep(dur!"seconds"(loginFailureSleep));
-			// simple backoff
-			if (loginFailureSleep < 60 * 30)
-				loginFailureSleep *= 2;
+			// simple 2-3-4-...-8 increase
+			if (loginFailureSleep < 8)
+				loginFailureSleep += 1;
 			sendMessage(immutable LoginFailureRes(aex.msg));
 		}
 	}
@@ -116,7 +122,7 @@ private:
 		enforceAuth(p);
 		immutable AvailableScenariosRes resMsg =
 			Globals.scenarioDb.getScenarioResForPlayer(p);
-		sendMessage(cast(immutable) resMsg);
+		sendMessage(resMsg);
 	}
 
 	void h_spawnReq(SpawnReq req)
@@ -153,8 +159,8 @@ private:
 		{
 			sim.terminateAsync();
 		}
-		// simulator will asynchronously self-destruct and notify the connection
-		// with SimulatorTerminatingRes.
+		// simulator will asynchronously self-destruct and notify the client
+		// by putting SimulatorTerminatingRes into the connection.
 	}
 
 	void h_reconnectReq(ReconnectReq req)
@@ -186,6 +192,8 @@ private:
 		enforce!AuthException(p, "unauthorized");
 	}
 
+	// Returns player instance or null if not in simFlow. Throws
+	// if unauthirozed.
 	private Player simFlowValidation()
 	{
 		Player p = m_player;
@@ -270,6 +278,7 @@ private:
 
 	void h_replayGetDataReq(ReplayGetDataReq req)
 	{
+		// does not require authorization
 		if (Globals.metrics)
 		{
 			// process request

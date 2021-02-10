@@ -53,16 +53,6 @@ abstract class Propulsor: IForce
 
 	/// call to unregister from component managers and dispose of resources
 	void shutdown();
-
-	ForceSnapshot save()
-	{
-		return ForceSnapshot(m_throttle);
-	}
-
-	void rollback(ForceSnapshot snap)
-	{
-		m_throttle = snap.state;
-	}
 }
 
 /// simple propulsor with linear thrust law

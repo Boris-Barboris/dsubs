@@ -265,6 +265,7 @@ final class VesselCollection
 			vessel.onPostKinematics(dt);
 	}
 
+	/// Shutdown dead vessels that have reapTime in the past
 	void collectDeadVessels(usecs_t currentWorldTime)
 	{
 		Vessel[] deadVessels;
