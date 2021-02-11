@@ -440,6 +440,8 @@ final class TorpedoGuidance: IGuidance
 		SonarPing m_currentPing;
 		ubyte[] m_sonarImage;
 		size_t m_sliceByteSize;
+		// when true, torp will definetly detonate, but will
+		// wait until the closes approach, tracked by m_closestDetonatorDist
 		bool m_detonatorFired;
 		double m_closestDetonatorDist = double.max;
 	}
@@ -475,7 +477,7 @@ final class TorpedoGuidance: IGuidance
 		// we're tracking detonator now
 		if (m_detonatorFired)
 		{
-			if (!inDetonationRange || currentClosestDetonatorDist > m_closestDetonatorDist)
+			if (!inDetonationRange || currentClosestDetonatorDist > m_closestDetonatorDist || m_fuelLeft < 1.5f)
 			{
 				// we're losing magnetic contact
 				chooseKilledAndDetonate();
