@@ -288,6 +288,8 @@ final class TorpedoGuidance: IGuidance
 		float m_trackAngVelAccumul = 0.0f;
 
 		// detonator parameters
+		// 150 meters should be enough to tackle 1-second main integration
+		// step crudeness.
 		float m_detonationSearchRadius = 150.0f;
 		float m_detonationMassK = 4.5f;
 		float m_blastRadius = 70.0f;
@@ -440,56 +442,95 @@ final class TorpedoGuidance: IGuidance
 		SonarPing m_currentPing;
 		ubyte[] m_sonarImage;
 		size_t m_sliceByteSize;
-		// when true, torp will definetly detonate, but will
-		// wait until the closes approach, tracked by m_closestDetonatorDist
-		bool m_detonatorFired;
-		double m_closestDetonatorDist = double.max;
+	}
+
+	private struct Approach
+	{
+		double closestApproachDistance = double.max;
+		double closestApproachTime = 0.0;	// [0; 1]
+		bool runningAway;	// if theoretical closest approach t is in (-inf; 1]
+	}
+
+	private static Approach getClosestApproach(vec2d guidancePos, vec2d guidanceVel,
+		RigidBody targetBody)
+	{
+		// go 1 second in the past (assume straight movement)
+		vec2d guiPos0 = guidancePos - guidanceVel;
+		vec2d tgtPos0 = targetBody.kinet.pos - targetBody.kinet.vel;
+		// relative velocity of target as if guidance was stationary
+		vec2d tgtRelVel = targetBody.kinet.vel - guidanceVel;
+		// https://stackoverflow.com/a/1501725
+		double l2 = tgtRelVel.squaredLength;
+		if (fabs(l2) < 1e-6)
+		{
+			Approach res;
+			res.closestApproachDistance = (guiPos0 - tgtPos0).length;
+			res.closestApproachTime = 0;
+			res.runningAway = true;
+			return res;
+		}
+		Approach res;
+		double t = dot(guiPos0 - tgtPos0, tgtRelVel) / l2;
+		if (t <= 1.0)
+			res.runningAway = true;
+		res.closestApproachTime = fmax(0.0, fmin(1.0, t));
+		vec2d projection = tgtPos0 + res.closestApproachTime * tgtRelVel;
+		res.closestApproachDistance = (projection - guiPos0).length;
+		return res;
 	}
 
 	// detonation logic tries to detonate as late as possible
 	private bool detonateIfNeeded(RigidBody[] closeBodies)
 	{
-		bool inDetonationRange;
-		double currentClosestDetonatorDist = double.max;
+		bool shouldDetonate;
+		// [0; 1]. 1 is now, 0 is 1 second ago
+		double detonationTime = double.max;
+
+		// first pass decides whether we should detonate, and if we do,
+		// when and where. Earliest detonation wins.
 		foreach (RigidBody rb; closeBodies)
 		{
+			// Since we are running guidance at 1Hz rate, fast torpedoes may
+			// miss small or fast-moving targets. We need to get the closest approach
+			// distance between two trajectory sections instead of simple distance
+			// between the 2 rigid bodies in order to decide wether we detonate or not.
+
 			double triggerDist = pow(rb.mass, 1.0f / 3) * m_detonationMassK;
-			double dist = (m_torpedo.transform.wposition - rb.transform.wposition).length;
+			Approach approach = getClosestApproach(m_torpedo.transform.wposition,
+				m_torpedo.rigidBody.kinet.vel, rb);
+			double dist = approach.closestApproachDistance;
 			if (triggerDist >= dist)
 			{
-				inDetonationRange = true;
-				currentClosestDetonatorDist = min(currentClosestDetonatorDist, dist);
+				// detonator is armed
+				if (approach.runningAway || m_fuelLeft < 1.5f)
+				{
+					// we must explode
+					shouldDetonate = true;
+					// update detonation time
+					if (approach.closestApproachTime < detonationTime)
+						detonationTime = approach.closestApproachTime;
+				}
 			}
 		}
 
-		void chooseKilledAndDetonate()
-		{
-			Killable[] inKillRadius;
-			foreach (RigidBody rb; closeBodies)
-			{
-				double dist = (m_torpedo.transform.wposition - rb.transform.wposition).length;
-				if (rb.owner && dist <= m_blastRadius)
-					inKillRadius ~= rb.owner;
-			}
-			detonate(inKillRadius);
-		}
+		if (!shouldDetonate)
+			return false;
 
-		// we're tracking detonator now
-		if (m_detonatorFired)
+		vec2d explosionCenter = m_torpedo.transform.wposition -
+			(1.0 - detonationTime) * m_torpedo.rigidBody.kinet.vel;
+
+		// second pass we choose who to kill
+		Killable[] inKillRadius;
+		foreach (RigidBody rb; closeBodies)
 		{
-			if (!inDetonationRange || currentClosestDetonatorDist > m_closestDetonatorDist || m_fuelLeft < 1.5f)
-			{
-				// we're losing magnetic contact
-				chooseKilledAndDetonate();
-				return true;
-			}
+			vec2d rbPosAtExplosionTime = rb.transform.wposition -
+				(1.0 - detonationTime) * rb.kinet.vel;
+			double dist = (explosionCenter - rbPosAtExplosionTime).length;
+			if (rb.owner && dist <= m_blastRadius)
+				inKillRadius ~= rb.owner;
 		}
-		if (inDetonationRange)
-		{
-			m_detonatorFired = true;
-			m_closestDetonatorDist = min(m_closestDetonatorDist, currentClosestDetonatorDist);
-		}
-		return false;
+		detonate(inKillRadius, explosionCenter);
+		return true;
 	}
 
 	bool getKillRecordForKillable(Killable k, out KillRecord res)
@@ -508,7 +549,7 @@ final class TorpedoGuidance: IGuidance
 		return true;
 	}
 
-	private void detonate(Killable[] inKillRadius)
+	private void detonate(Killable[] inKillRadius, vec2d explosionCenter)
 	{
 		trace("Torpedo detonated!!!");
 		m_torpedo.m_detonated = true;
@@ -552,7 +593,7 @@ final class TorpedoGuidance: IGuidance
 		}
 		m_torpedo.kill("detonation", null);
 		SoundSource detonationSoundSource = new PrerecordedSoundSource(
-			new Transform2D(m_torpedo.transform.wposition),
+			new Transform2D(explosionCenter),
 			m_detonationSoundProto, null);
 		m_torpedo.simulator.acous.registerSource(detonationSoundSource);
 	}
