@@ -167,8 +167,8 @@ final class AcousticEnv
 
 	void applySourcesOnHydrophones()
 	{
-		// Transform objects are lazily-rebuild and in order to be race-free
-		// we need to rebuild them eagerly.
+		// Transform objects are lazily-rebuilt and in order to be race-free
+		// we need to rebuild them eagerly before we fork to the taskpool.
 		foreach (source; m_sources)
 			source.transform.rebuild();
 
@@ -183,19 +183,26 @@ final class AcousticEnv
 			}
 		}
 
+		// all possible pairs of (hydrophone, soundSource) where
+		// hydrophone is interested in the source (can be uninterested when AI applies
+		// a filter (major optimization)).
 		auto hydrophoneSourceRange = cartesianProduct(
 			m_hydrophones.filter!(h => h.active),
 			m_sources
 		).filter!(tuple => filterByHydrophoneFilter(tuple));
 
-		// sources can be dispatched to one hydrophone in parallel
 		foreach (hpSourceTuple; Globals.taskPool.parallel(hydrophoneSourceRange, 1))
 		{
 			size_t workerIdx = Globals.taskPool.workerIndex;
 			auto q = Globals.sctx.queue(workerIdx);
+			// applySoundSource can use any command queue, not bound
+			// to a hydrophone in any way.
 			hpSourceTuple[0].applySoundSource(q, hpSourceTuple[1]);
 		}
 
+		// at this point all source rendering commands are dispatched and it's
+		// time to compose the final images on hydrophones. These functions require
+		// that the composition is performed by 1 command queue per-hydrophone.
 		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
 		{
 			if (hydrophone.active)
@@ -206,10 +213,7 @@ final class AcousticEnv
 				hydrophone.flushSourceQueue(q);
 				hydrophone.adjustImprintsToOmni();
 				if (hydrophone.listenDirValid)
-				{
 					hydrophone.startFinalizePcbData(q);
-					hydrophone.endFinalizePcbData();
-				}
 			}
 		}
 		/// wait for completion of all OpenCL operations

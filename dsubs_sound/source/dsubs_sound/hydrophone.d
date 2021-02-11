@@ -5,6 +5,7 @@ import std.algorithm.iteration: sum;
 import std.algorithm: canFind, map;
 import std.array: array;
 import std.range;
+import std.typecons: Nullable;
 import std.mathspecial;
 
 import imageformats;
@@ -177,7 +178,7 @@ final class Hydrophone
 		Intensity m_totalOmni;
 		Buffer m_baseFlowNoiseStartBuf;
 		Buffer m_baseFlowNoiseEndBuf;
-		AsyncEvent m_isotropicReadyEvt;
+		Nullable!AsyncEvent m_isotropicReadyEvt;
 
 		// when false, no calculations should be performed
 		bool m_shouldBeActive = true;
@@ -200,9 +201,10 @@ final class Hydrophone
 		Tds m_prevTds;
 		Tds m_curTds;
 
-		// we will copy resulting tds asynchronously from OpenCL devices
+		// we will copy resulting tds asynchronously from OpenCL devices into
+		// this array. At the time of player update, this is what is streamed
+		// as time-domain noise signal for beam.
 		short[GLOBAL_SRATE] m_pcb;
-		AsyncEvent m_pcbEvt;
 	}
 
 	/// release underlying opencl buffers
@@ -290,19 +292,14 @@ final class Hydrophone
 	void startFinalizePcbData(CommandQueue q)
 	{
 		finalizeListenTds(q);
-		// this kernel swallows NaNs in tds: returns pcbMaxPressure array.
+		// this kernel clamps by m_pcbMaxPressure, swallows NaNs and
+		// converts floats to shorts
 		Kernel k = q.mk_toShortPcb;
 		k.setArg(0, q.s_tds.mem);
 		k.setArg(1, q.s_pcbBuf.mem);
 		k.setArg(2, m_pcbMaxPressure);
 		k.enqueue(q, 1, null, [GLOBAL_SRATE], null, null);
-		m_pcbEvt = q.s_pcbBuf.enqueueFullRead(q, m_pcb.ptr, null);
-	}
-
-	/// Wait for opencl to copy converted m_curTds into ram
-	void endFinalizePcbData()
-	{
-		waitFor(m_pcbEvt);
+		q.s_pcbBuf.enqueueFullRead(q, m_pcb.ptr, null).release();
 	}
 
 	@property immutable(short)[] pcb() { return cast(immutable) m_pcb[]; }
@@ -447,11 +444,10 @@ final class Hydrophone
 
 	private void awaitIsotropicBuffers()
 	{
-		// if needed
-		if (m_isotropicReadyEvt !is AsyncEvent.init)
+		if (!m_isotropicReadyEvt.isNull)
 		{
-			m_isotropicReadyEvt.waitFor();
-			m_isotropicReadyEvt = AsyncEvent.init;
+			m_isotropicReadyEvt.get.waitFor();
+			m_isotropicReadyEvt.nullify();
 		}
 	}
 
@@ -494,7 +490,7 @@ final class Hydrophone
 		enum int MAX_COMPONENTS = 2;
 		Intensity[MAX_COMPONENTS] bandSum;	/// OpenCL writes here the sum of band intensities
 		Tds*[MAX_COMPONENTS] tds;			/// persistent prepared tds buffers
-		AsyncEvent evt;						/// marker that finishes when bandSum and tds
+		Nullable!AsyncEvent evt;			/// marker that finishes when bandSum and tds
 			/// are ready.
 		int components = 0;
 	}
@@ -538,7 +534,8 @@ final class Hydrophone
 		return pow(linGain, 2);
 	}
 
-	// thread-safe enqueuing of source calculation
+	// thread-safe. If the source is visible, enqueues the
+	// calculation.
 	void applySoundSource(CommandQueue q, SoundSource s)
 	{
 		SourcePrecalc* prec = new SourcePrecalc();
@@ -572,13 +569,17 @@ final class Hydrophone
 		int compCount = prec.components;
 		if (compCount > 0)
 		{
-			if (prec.evt !is AsyncEvent.init)
-				prec.evt.waitFor();
+			// we must wait because tdcs and bandsum buffers are
+			// prepared by other queues (not q)
+			if (!prec.evt.isNull)
+				prec.evt.get.waitFor();
 			for (int i = 0; i < compCount; i++)
 			{
 				// if there is a tds buffer, we need to add it to m_curTds
 				if (prec.tds[i] !is null)
 				{
+					// reduce sum of all tdses to m_curTds. This reduce
+					// forces queue per hydrophone serialization.
 					prec.tds[i].addTo(q, m_curTds);
 					// explicit destroy of buffer, can be made immediately after enqueue
 					// https://github.com/KhronosGroup/OpenCL-Docs/issues/45
@@ -827,7 +828,7 @@ final class Hydrophone
 				c = Intensity(0.0f);
 		}
 
-		/// apply backround sea noise and flow noises
+		/// Add backround sea noise and flow noises to antennae beams array
 		void applyIsotropic()
 		{
 			float isoIntens = getIsotropicIntens();

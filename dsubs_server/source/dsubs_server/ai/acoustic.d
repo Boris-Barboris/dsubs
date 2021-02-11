@@ -47,6 +47,7 @@ final class AIAcoustic
 		m_btRoot.execute(ticks);
 	}
 
+	// this will filter out allied submarines and non-vessels (animals...)
 	private bool isInterestingSignalOwner(Object owner)
 	{
 		Submarine s = cast(Submarine) owner;

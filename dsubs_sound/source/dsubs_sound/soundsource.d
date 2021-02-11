@@ -326,6 +326,16 @@ final class PropellerSound: SoundSource
 			}
 			if (needTds)
 			{
+				// allocated and not shared between queues because
+				// it cannot be reduced by hydrophone immediately in
+				// onTdsReady: there are multiple threads
+				// calling buildSignals for the same hydrophone using multiple command
+				// queues. Yes, this means that for each hydrophone-source pair
+				// every second there are 2 Tds-es allocated.
+				// 5 hydros * 30 sources * 8192 * 4 * 2 == 10MiB.
+				// Otherwise load is not distributed fairly between the queues
+				// and hydrophones that have a lot of sources will make the
+				// pipeline underutulized.
 				Tds* tds = new Tds(q.ctx);
 				q.s_ispec.toTimeDomain(q, *tds);
 				doModulate(q, *tds, kavgScaled, freqCubeStart / pow(prevRange, 2),
