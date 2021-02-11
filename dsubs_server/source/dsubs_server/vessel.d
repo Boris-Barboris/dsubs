@@ -253,6 +253,15 @@ final class VesselCollection
 		}
 	}
 
+	void shutdownAll()
+	{
+		Vessel[] vessels = m_entities.dup;
+		foreach (v; vessels)
+			v.shutdown();
+		assert(m_entities.length == 0, "vessel leak");
+		assert(m_submarines.length == 0, "submarine leak");
+	}
+
 	void preKinematics()
 	{
 		foreach (vessel; Globals.taskPool.parallel(m_entities, 8))
@@ -278,14 +287,11 @@ final class VesselCollection
 			v.shutdown();
 	}
 
-	/// shutdown all elements of the collection and clear the container
+	/// clear the container
 	void clean()
 	{
-		Vessel[] entities = m_entities;
-		foreach(e; entities)
-			e.shutdown();
-		assert(m_entities.length == 0, "vessel leak");
-		assert(m_submarines.length == 0, "submarine leak");
+		m_submarines.length = 0;
+		m_entities.length = 0;
 	}
 }
 

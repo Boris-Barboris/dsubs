@@ -71,7 +71,8 @@ final class SimulatorScheduler
 		trace("added ", s.id, " simulator to scheduler");
 	}
 
-	/// Thread-safe removal of the simulator.
+	/// Thread-safe removal of the simulator. Generally, it's better
+	/// to let scheduler himself remove finished sims from the tree.
 	void remove(Simulator s)
 	{
 		synchronized(m_cond.mutex)
@@ -186,6 +187,7 @@ final class SimulatorScheduler
 				trace("Evicting ", simToRun.id, " finished simulator from scheduler");
 				synchronized(m_cond.mutex)
 					m_simulators.removeKey(simToRun);
+				simToRun.releaseResources();
 				// recreate main_arena (special case)
 				if (simToRun.id == "main_arena")
 				{
@@ -407,17 +409,32 @@ final class Simulator
 		}
 	}
 
+	/// Ask most subsystems to shutdown everything and release resources
+	private void releaseResources()
+	{
+		synchronized (simMut.reader)
+		{
+			weapons.shutdownAll();
+			vessels.shutdownAll();
+			animals.shutdownAll();
+			acous.clean();
+		}
+	}
+
 	private
 	{
 		// number of runs with no connected players
 		long m_abandonedCounter;
-		// 21 days in there is no time acceleration
+		// 21 days in there is no time acceleration.
+		// TODO: limit total number of simulators. Simulator eviction.
 		enum long ABANDON_COUNT_LIMIT = 60 * 60 * 24 * 21;
 	}
 
 	/// run one iteration of simulation
 	private void runOnce()
 	{
+		// this block handles simulator stuttering when there is noone connected
+		// to it and terminating when a lot of time has passed.
 		if (!runWithoutPlayers && getConnectedPlayers() == 0 && !m_terminating)
 		{
 			m_abandonedCounter++;

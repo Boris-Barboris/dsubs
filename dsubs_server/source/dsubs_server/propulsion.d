@@ -176,16 +176,6 @@ abstract class Rudder: IForce
 
 	/// target course, world-space
 	float targetCourse = 0.0f;
-
-	ForceSnapshot save()
-	{
-		return ForceSnapshot(m_rudderPos);
-	}
-
-	void rollback(ForceSnapshot snap)
-	{
-		m_rudderPos = snap.state;
-	}
 }
 
 /// PD-controlled rudder with direct mode

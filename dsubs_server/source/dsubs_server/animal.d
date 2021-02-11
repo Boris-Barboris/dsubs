@@ -148,12 +148,17 @@ final class AnimalCollection
 			animal.onPostKinematics(dt);
 	}
 
+	void shutdownAll()
+	{
+		Animal[] animalsToRemove = m_entities.dup;
+		foreach (a; animalsToRemove)
+			a.shutdown();
+		assert(m_entities.length == 0, "animal leak");
+	}
+
 	void clean()
 	{
-		Animal[] entities = m_entities;
-		foreach(e; entities)
-			e.shutdown();
-		assert(m_entities.length == 0, "animal leak");
+		m_entities.length = 0;
 	}
 
 	void collectDeadAnimals()

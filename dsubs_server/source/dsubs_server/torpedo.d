@@ -822,6 +822,14 @@ final class WeaponCollection
 		}
 	}
 
+	void shutdownAll()
+	{
+		Weapon[] weaponsToRemove = m_entities.dup;
+		foreach (w; weaponsToRemove)
+			w.shutdown();
+		assert(m_entities.length == 0, "weapons leak");
+	}
+
 	void clean()
 	{
 		m_entities.length = 0;
