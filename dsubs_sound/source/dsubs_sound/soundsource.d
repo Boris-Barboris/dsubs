@@ -333,9 +333,9 @@ final class PropellerSound: SoundSource
 				// queues. Yes, this means that for each hydrophone-source pair
 				// every second there are 2 Tds-es allocated.
 				// 5 hydros * 30 sources * 8192 * 4 * 2 == 10MiB.
-				// Otherwise load is not distributed fairly between the queues
+				// Otherwise load would not distributed fairly between the queues
 				// and hydrophones that have a lot of sources will make the
-				// pipeline underutulized.
+				// pipeline underutilized.
 				Tds* tds = new Tds(q.ctx);
 				q.s_ispec.toTimeDomain(q, *tds);
 				doModulate(q, *tds, kavgScaled, freqCubeStart / pow(prevRange, 2),
