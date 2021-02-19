@@ -447,7 +447,7 @@ final class TorpedoGuidance: IGuidance
 	private struct Approach
 	{
 		double closestApproachDistance = double.max;
-		double closestApproachTime = 0.0;	// [0; 1]
+		double closestApproachTime = 0.0;	// clamped to [0; 1]
 		bool runningAway;	// if theoretical closest approach t is in (-inf; 1]
 	}
 
