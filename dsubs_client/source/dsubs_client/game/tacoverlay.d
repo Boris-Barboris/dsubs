@@ -1745,7 +1745,8 @@ final class TacticalContactElement: OverlayElementWithHover
 	{
 		Contact contactBody = contact.m_ctc;
 		Game.ciccon.sendMessage(
-			immutable CICContactUpdateSolutionReq(contactBody.id, m_solution));
+			immutable CICContactUpdateSolutionReq(
+				contactBody.id, m_solution, Game.simState.lastServerTime));
 	}
 
 	override void drop()
@@ -2464,7 +2465,7 @@ final class HoveredContactDescription
 
 	this()
 	{
-		m_labels = new Label[8];
+		m_labels = new Label[9];
 		for (int i = 0; i < m_labels.length; i++)
 		{
 			Label lbl = new Label();
@@ -2493,34 +2494,37 @@ final class HoveredContactDescription
 		m_labels[3].format!"age: %ss"(
 			(Game.simState.lastServerTime - m_followedContact.contact.createdAt).
 			dur!"usecs".total!"seconds");
+		m_labels[4].format!"updated: %ss"(
+			(Game.simState.lastServerTime - m_followedContact.contact.solutionUpdatedAt).
+			dur!"usecs".total!"seconds");
 		if (m_followedContact.m_solution.posAvailable)
 		{
 			vec2d dirVec = m_followedContact.m_solution.pos -
 					Game.simState.playerSub.transform.wposition;
-			m_labels[4].format!"bearing: %.1f"(
+			m_labels[5].format!"bearing: %.1f"(
 				-courseAngle(dirVec).compassAngle.rad2dgr);
-			m_labels[5].format!"range: %dm"(dirVec.length.to!int);
+			m_labels[6].format!"range: %dm"(dirVec.length.to!int);
 		}
 		else
 		{
 			if (m_followedContact.rayTrackingMode)
-				m_labels[4].format!"bearing: %.1f"(
+				m_labels[5].format!"bearing: %.1f"(
 					-compassAngle(m_followedContact.rayTrackerBearing).rad2dgr);
 			else
-				m_labels[4].format!"bearing: ?"();
-			m_labels[5].format!"range: ?"();
+				m_labels[5].format!"bearing: ?"();
+			m_labels[6].format!"range: ?"();
 		}
 		if (m_followedContact.m_solution.velAvailable)
 		{
 			vec2d velVec = m_followedContact.m_solution.vel;
-			m_labels[6].format!"course: %.1f"(
+			m_labels[7].format!"course: %.1f"(
 				-courseAngle(velVec).compassAngle.rad2dgr);
-			m_labels[7].format!"speed: %.2fm/s"(velVec.length);
+			m_labels[8].format!"speed: %.2fm/s"(velVec.length);
 		}
 		else
 		{
-			m_labels[6].format!"course: ?"();
-			m_labels[7].format!"speed: ?"();
+			m_labels[7].format!"course: ?"();
+			m_labels[8].format!"speed: ?"();
 		}
 	}
 }

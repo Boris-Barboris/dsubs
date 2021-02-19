@@ -118,11 +118,13 @@ struct Contact
 	ContactType type;
 	usecs_t createdAt;
 	ContactSolution solution;
+	usecs_t solutionUpdatedAt;
 }
 
-/// Contact kinematics
+/// Assumed contact kinematics
 struct ContactSolution
 {
+	/// Time pivot. Position is assumed to be specified at this time.
 	usecs_t time;
 	/// Solution may lie on the last known ray (ray tracking mode), or have a designated
 	/// position (absolute position mode). The last mode is indicated by posAvailable = true.

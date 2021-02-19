@@ -226,13 +226,17 @@ final class ClientContact
 		static if (is(MsgT == CICContactUpdateTypeReq))
 			m_ctc.type = msg.type;
 		else static if (is(MsgT == CICContactUpdateSolutionReq))
+		{
 			m_ctc.solution = msg.solution;
+			m_ctc.solutionUpdatedAt = msg.solutionUpdatedAt;
+		}
 		else static if (is(MsgT == CICContactUpdateDescriptionReq))
 			m_ctc.description = msg.description;
 		else static if (is(MsgT == CICContactUpdateReq))
 		{
 			m_ctc.type = msg.type;
 			m_ctc.solution = msg.solution;
+			m_ctc.solutionUpdatedAt = msg.solutionUpdatedAt;
 			m_ctc.description = msg.description;
 		}
 		m_tactDispEl.updateFromContact();

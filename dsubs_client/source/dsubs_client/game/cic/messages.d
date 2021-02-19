@@ -13,7 +13,7 @@ public import dsubs_client.game.cic.entities;
 struct CICLoginReq
 {
 	__gshared const int g_marshIdx;
-	@MaxLenAttr(256) string password;
+	@MaxLenAttr(256) string password;	// not implemented atm
 }
 
 /// CIC server hello response that states the version
@@ -21,7 +21,7 @@ struct CICLoginRes
 {
 	__gshared const int g_marshIdx;
 	@MaxLenAttr(32) immutable(ubyte)[] dbHash;	/// entity database hash (SHA256)
-	int apiVersion = 9;
+	int apiVersion = 10;
 }
 
 /// CIC client sends this to receive entity DB
@@ -219,6 +219,7 @@ struct CICContactUpdateSolutionReq
 	__gshared const int g_marshIdx;
 	ContactId id;
 	ContactSolution solution;
+	usecs_t solutionUpdatedAt;
 }
 
 /// Request/broadcast to update contact description.
@@ -237,11 +238,13 @@ struct CICContactUpdateReq
 	ContactType type;
 	ContactSolution solution;
 	@MaxLenAttr(128) string description;
+	usecs_t solutionUpdatedAt;
 }
 
 template isContactUpdateMsg(MsgT)
 {
-	enum bool isContactUpdateMsg = is(MsgT == CICContactUpdateTypeReq) ||
+	enum bool isContactUpdateMsg =
+		is(MsgT == CICContactUpdateTypeReq) ||
 		is(MsgT == CICContactUpdateSolutionReq) ||
 		is(MsgT == CICContactUpdateDescriptionReq) ||
 		is(MsgT == CICContactUpdateReq);

@@ -368,7 +368,8 @@ final class CICServer
 			if (updatedContact)
 			{
 				m_listener.broadcast(immutable CICContactUpdateSolutionReq(
-					updatedContact.id, updatedContact.solution));
+					updatedContact.id, updatedContact.solution,
+					updatedContact.solutionUpdatedAt));
 				m_state.saveToDiskIfPossible();
 			}
 		}

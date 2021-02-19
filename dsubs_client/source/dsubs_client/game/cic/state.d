@@ -221,7 +221,7 @@ final class CICState: Persistable
 		}
 	}
 
-	/// Main contact menagement system mutex, provides contac state serialization.
+	/// Main contact management mutex, provides contact state serialization.
 	/// Must be taken before rsMut to prevent deadlocks.
 	@property Mutex ctcMut() { return m_ctcMut; }
 
@@ -244,6 +244,7 @@ final class CICState: Persistable
 			resctc.createdAt = lastSimTime;
 		}
 		resctc.solution.time = resctc.createdAt;
+		resctc.solutionUpdatedAt = resctc.createdAt;
 		ContactContext* resCtx = new ContactContext(resctc, new ContactDataTree());
 		m_ctcCtxHash[resctc.id] = resCtx;
 		trace("Created contact ", resctc.id);
@@ -317,6 +318,10 @@ final class CICState: Persistable
 			return null;
 		ctcCtx.ctc.solution.pos = newData.data.position.contactPos;
 		ctcCtx.ctc.solution.posAvailable = true;
+		synchronized (m_rsMut)
+		{
+			ctcCtx.ctc.solutionUpdatedAt = lastSimTime;
+		}
 		return &ctcCtx.ctc;
 	}
 
@@ -345,7 +350,10 @@ final class CICState: Persistable
 		static if (is(MsgT == CICContactUpdateTypeReq))
 			ctcCtx.ctc.type = msg.type;
 		else static if (is(MsgT == CICContactUpdateSolutionReq))
+		{
 			ctcCtx.ctc.solution = msg.solution;
+			ctcCtx.ctc.solutionUpdatedAt = msg.solutionUpdatedAt;
+		}
 		else static if (is(MsgT == CICContactUpdateDescriptionReq))
 			ctcCtx.ctc.description = msg.description;
 		return true;
