@@ -25,21 +25,21 @@ import dsubs_sound.modulation;
 
 struct HydrophonePrototype
 {
-	/// antennae rotations, relative to hydrophone transform
+	/// antennae rotations, relative to hydrophone transform. Radians.
 	float[] antennaeRots;
 	/// frequency passband
 	int minFreq, maxFreq;
-	/// each antennae spans the sector of this size
+	/// each antennae spans the sector of this size. Radians.
 	float antennaeSpan;
 	/// number of beams, formed by each antennae
 	int beamCount;
 	/// lower is better
 	float directivity;
 	dB baseNoise = 3.0f;
-	float bearingErrNoise = 4e-3f;
+	float bearingErrNoise = 3.5e-3f;
 	float flowNoiseMult = 1e-5f;
 	float omniNoiseMult = 0.025f;
-	/// client listens to beam of this size
+	/// client listens to 'beam' of this size. Radians.
 	float listenSpan = dgr2rad(3);
 	/// water dissipation modifier
 	float dissMod = 4.0f;
@@ -145,6 +145,7 @@ final class Hydrophone
 		float m_span;
 		float m_beamAngle;
 		float m_listenSpan;
+		/// m_listenSpan / m_beamAngle
 		float m_listenToCellR;
 		float m_directivity;
 		float m_bearingErrNoise;
@@ -163,8 +164,11 @@ final class Hydrophone
 		float m_ktsEnd = 0.0f;
 
 		enum float MAX_HALO = dgr2rad(20);
-		enum float HALO_GAIN = 1.75f;
-		enum float SOUND_HALO_GAIN = 1.5f;
+		/// applied to return value of pointHaloAngle.
+		// TODO: maybe move to hydrophone property.
+		enum float HALO_GAIN = 2.0f;
+		enum float LISTEN_HALO_GAIN = 1.4f;
+		/// bell curve X gain, when it's bigger, edges of signal sector are darker
 		enum float ERF_HALO_GAIN = 2.0f;
 		enum float ISOTROPIC_VAR = 2.0;
 		enum float LOCAL_NOISE_RANGE_FULL = 10.0f;
@@ -344,7 +348,8 @@ final class Hydrophone
 		k.setArg(2, ISOTROPIC_VAR);
 		k.setArg(3, uintSeed());
 		k.enqueue(q, 1, [m_minFreq - 1], [m_maxFreq - m_minFreq + 1], null, null);
-		// s_ispec now contains sea noise spectrum, let's sum it
+		// s_ispec will contains sea noise spectrum, let's sum it into the
+		// m_baseSeaNoiseBuf
 		q.s_ispec.reduceSum(q, m_baseSeaNoiseBuf, m_minFreq, m_maxFreq);
 		// m_baseSeaNoiseBuf must contain sum of intensity bins
 		// !!don't forget to scale it's value by m_listenToCellR!!
@@ -451,7 +456,7 @@ final class Hydrophone
 		}
 	}
 
-	/// Call after resetAndStartIsotropic
+	/// Call after resetAndStartIsotropic and all applySoundSource-es
 	void endIsotropic()
 	{
 		awaitIsotropicBuffers();
@@ -519,9 +524,10 @@ final class Hydrophone
 		// FIXME: we always assume the shortest rotation to maintain angle continuity.
 		res.worldBearingEnd = res.worldBearingStart + angleDist(
 			courseAngle(res.dirEnd), res.worldBearingStart);
-		res.haloBaseRadius = (atan(s.radius / res.range) + pointHaloAngle(res.range)) *
+		res.haloBaseRadius = (atan(s.radius / res.range) +
+			HALO_GAIN * pointHaloAngle(res.range)) *
 			(1 + uniform(-0.06f, 0.06f));
-		res.haloBound = fmin(HALO_GAIN * res.haloBaseRadius, MAX_HALO);
+		res.haloBound = fmin(res.haloBaseRadius, MAX_HALO);
 		return res;
 	}
 
@@ -651,14 +657,14 @@ final class Hydrophone
 			double left = m_listenDir + m_listenSpan / 2;
 			double right = m_listenDir - m_listenSpan / 2;
 			integr = integrateBetweenBeams(left, right,
-				p.worldBearingStart, p.worldBearingEnd, p.haloBound * SOUND_HALO_GAIN);
+				p.worldBearingStart, p.worldBearingEnd, p.haloBound * LISTEN_HALO_GAIN);
 			if (m_mirrored)
 			{
 				double leftMirrored = right + 2.0 * (m_prevRot - right);
 				double rightMirrored = left + 2.0 * (m_prevRot - left);
 				PowerIntegr integrMirror = integrateBetweenBeams(
 					leftMirrored, rightMirrored,
-					p.worldBearingStart, p.worldBearingEnd, p.haloBound * SOUND_HALO_GAIN);
+					p.worldBearingStart, p.worldBearingEnd, p.haloBound * LISTEN_HALO_GAIN);
 				if (integrMirror.totalPart > integr.totalPart)
 					integr = integrMirror;
 			}
@@ -793,8 +799,10 @@ final class Hydrophone
 			0.5f * (m_baseFlowNoiseStart + m_baseFlowNoiseEnd);
 		// we actually draw average bin intensity.
 		// m_listenToCellR scale is done here because we multiply by
-		// in on GPU in order to get Tds signal of desired
-		// magnitude for listen beam, which is of width different from cell.
+		// it on GPU in order to get Tds signal of desired
+		// magnitude for listen beam, and listen beam is of different
+		// width in comparison to single antennae beam. Width ratio is
+		// m_listenToCellR.
 		isoIntens /= m_listenToCellR * GLOBAL_SRATE / 2;
 		return Intensity(isoIntens);
 	}
@@ -828,7 +836,7 @@ final class Hydrophone
 				c = Intensity(0.0f);
 		}
 
-		/// Add backround sea noise and flow noises to antennae beams array
+		/// Apply backround sea noise and flow noises to antennae beams array
 		void applyIsotropic()
 		{
 			float isoIntens = getIsotropicIntens();

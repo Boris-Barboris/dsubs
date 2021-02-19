@@ -38,7 +38,7 @@ void release(AsyncEvent evt)
 	clReleaseEvent(evt.cl);
 }
 
-/// wait for and release event
+/// wait for event and release it
 void waitFor(AsyncEvent evt)
 {
 	clWaitForEvents(1, &evt.cl).clError();
