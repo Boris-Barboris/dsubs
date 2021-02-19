@@ -1247,6 +1247,8 @@ final class TacticalContactElement: OverlayElementWithHover
 		bool m_drawRayTracker;
 		bool m_rayIntersections = true;
 		bool m_drawExtrapolatedPhantom;
+		// used in tail dragging
+		bool m_draggingWithShift;
 		float m_lastRayTrackerBearing;
 		vec2d m_lastRayTrackerOrigin;
 
@@ -1625,6 +1627,7 @@ final class TacticalContactElement: OverlayElementWithHover
 			if (m_dragging)
 			{
 				m_dragging = false;
+				m_draggingWithShift = false;
 				m_dragMode = DragMode.main;
 				if (!m_panning)
 					returnMouseFocus();
@@ -1701,12 +1704,36 @@ final class TacticalContactElement: OverlayElementWithHover
 				}
 				case (DragMode.trail):
 				{
-					vec2i newPos = vec2i(x, y);
-					vec2d newDelta = m_lastScreenPos - newPos;
-					vec2d newVel = newDelta * g_trailDragVelPerPixel /
-						tacowner.m_camCtrl.camera.zoom;
-					newVel.y = - newVel.y;
-					m_solution.vel = newVel;
+					// if shift is pressed, we translate instead of velocity
+					// modification
+					Modifier kbModifiers = HotkeyManager.getCurMod();
+					if (kbModifiers & Modifier.SHIFT)
+					{
+						if (!m_draggingWithShift)
+						{
+							m_draggingWithShift = true;
+							g_dragOffset = vec2i(x, y) - position;
+						}
+						else
+						{
+							// repeat DragMode.main logic
+							vec2i newPos = vec2i(x, y) - g_dragOffset;
+							vec2d newCenter = owner.clampInsideRect(lu2center(newPos));
+							vec2d newWorldCoord = owner.screen2worldPos(newCenter);
+							m_solution.posAvailable = true;
+							m_solution.pos = newWorldCoord;
+						}
+					}
+					else
+					{
+						m_draggingWithShift = false;
+						vec2i newPos = vec2i(x, y);
+						vec2d newDelta = m_lastScreenPos - newPos;
+						vec2d newVel = newDelta * g_trailDragVelPerPixel /
+							tacowner.m_camCtrl.camera.zoom;
+						newVel.y = - newVel.y;
+						m_solution.vel = newVel;
+					}
 					break;
 				}
 			}
@@ -1753,7 +1780,8 @@ final class TacticalContactElement: OverlayElementWithHover
 				double speed = m_solution.vel.length;
 				double vecScreenLen = (m_lastScreenPos - vec2f(x, y)).length;
 				assert(vecScreenLen > 1e-20);
-				g_trailDragVelPerPixel = speed / vecScreenLen * tacowner.m_camCtrl.camera.zoom;
+				g_trailDragVelPerPixel = speed / vecScreenLen *
+					tacowner.m_camCtrl.camera.zoom;
 			}
 			else
 			{
