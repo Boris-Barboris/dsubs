@@ -900,6 +900,8 @@ final class SonarPing: FixedLengthSoundSource
 		PreparedPingTds* m_prepTds;
 	}
 
+	@property dB peakIntensityLevel() const { return m_kernParams.peakIlevel; }
+
 	override float minOmniFactor(float range) const { return 1e-3f; }
 
 	override @property float radius() const { return 20.0f; }

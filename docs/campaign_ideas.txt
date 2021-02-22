@@ -50,6 +50,7 @@ cool things:
 * dangerous area that must be left periodacally
 * swift currents.
 * leviathan
+* hunger clock/time limit
 
 
 https://en.wikipedia.org/wiki/Five_paragraph_order

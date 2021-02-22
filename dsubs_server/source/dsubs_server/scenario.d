@@ -823,6 +823,63 @@ final class SubPingsCondition: IScenarioCondition
 	}
 }
 
+/// Not only a ping, but a target object and range check
+final class SubPingsDistanceCondition: IScenarioCondition
+{
+	private
+	{
+		SubmarineGetter m_sub;
+		Simulator m_sim;
+		TransformGetter m_tgt;
+		Comparator m_comparator;
+		double m_distance;
+	}
+
+	/// Set inverse to true to get an 'AliveCondition'.
+	this(SubmarineGetter sub, Simulator sim,
+		TransformGetter targetObj, Comparator comparator, double distance)
+	{
+		m_sub = sub;
+		m_sim = sim;
+		m_tgt = targetObj;
+		m_comparator = comparator;
+		m_distance = distance;
+	}
+
+	// linear search, unfortunately
+	override bool satisfied()
+	{
+		Submarine s = m_sub();
+		if (s is null)
+			return false;
+		foreach (source; m_sim.acous.sources)
+		{
+			SonarPing ping = cast(SonarPing) source;
+			if (ping is null)
+				continue;
+			if (ping.owner is s)
+			{
+				// found the ping, now check the distance to target
+				Transform2D tgtTransform = m_tgt();
+				if (tgtTransform)
+				{
+					double dist = (tgtTransform.wposition -
+						ping.transform.wposition).length;
+					final switch (m_comparator)
+					{
+						case (Comparator.less):
+							return dist < m_distance;
+						case (Comparator.greaterOrEqual):
+							return dist >= m_distance;
+					}
+				}
+				return false;
+			}
+		}
+		return false;
+	}
+}
+
 
 /// Thing that computes the condition and runs the delegate once/repeatedly.
 final class ScenarioTrigger
@@ -1109,3 +1166,15 @@ abstract class SinglePlayerScenario: Scenario
 
 immutable RgbaColor COLOR_WAYPOINT = RgbaColor(212, 201, 0, 150);
 immutable RgbaColor COLOR_HINT = RgbaColor(200, 200, 200, 150);
+
+
+//
+// utility functions
+//
+
+vec2d randomPointInCircle(vec2d center, double radius)
+{
+	double randomAngle = uniform(0.0, 2 * M_PI);
+	double randomLength = uniform(0.0, radius);
+	return center + rotateVector(vec2d(randomLength, 0), randomAngle);
+}
