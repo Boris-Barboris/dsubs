@@ -80,6 +80,7 @@ IntensityLevel flowNoise(int freq, float kts)
 	return IntensityLevel(res);
 }
 
+/// halo half-angle of point sound source at specified range.
 float pointHaloAngle(float range)
 {
 	return dgr2rad(0.5f);

@@ -36,7 +36,7 @@ struct HydrophonePrototype
 	/// lower is better
 	float directivity;
 	dB baseNoise = 3.0f;
-	float bearingErrNoise = 3.5e-3f;
+	float bearingErrNoise = 3.7e-3f;
 	float flowNoiseMult = 1e-5f;
 	float omniNoiseMult = 0.025f;
 	/// client listens to 'beam' of this size. Radians.
@@ -166,10 +166,10 @@ final class Hydrophone
 		enum float MAX_HALO = dgr2rad(20);
 		/// applied to return value of pointHaloAngle.
 		// TODO: maybe move to hydrophone property.
-		enum float HALO_GAIN = 2.0f;
+		enum float HALO_GAIN = 2.4f;
 		enum float LISTEN_HALO_GAIN = 1.4f;
 		/// bell curve X gain, when it's bigger, edges of signal sector are darker
-		enum float ERF_HALO_GAIN = 2.0f;
+		enum float ERF_HALO_GAIN = 3.0f;
 		enum float ISOTROPIC_VAR = 2.0;
 		enum float LOCAL_NOISE_RANGE_FULL = 10.0f;
 
@@ -758,15 +758,27 @@ final class Hydrophone
 			float part = 0.0f;
 			if (sp.count == 1)
 			{
+				// relBearing + haloRadius (left border of the bloom shape)
+				// is scaled to be at X = ERF_HALO_GAIN.
+				// relBearing - haloRadius corresponds to -ERF_HALO_GAIN.
 				double normLeft = (sp.proj[0].left - 0.5f) * 2 * ERF_HALO_GAIN;
 				double normRight = (sp.proj[0].right - 0.5f) * 2 * ERF_HALO_GAIN;
 				assert(normRight >= normLeft, normLeft.to!string ~ " " ~
 					normRight.to!string ~ " " ~ sp.proj[0].to!string ~ " beamSector: " ~
 					beamSector.to!string ~ ", relBearing: " ~ relBearing.to!string ~
 					", haloRadius: " ~ haloRadius.to!string);
-				part = 0.5 * (erf(normRight) - erf(normLeft));
+				// we assume that the bell curve of signal bloom distribution
+				// has zero intensity on X = ERF_HALO_GAIN. It means that we
+				// operate not on Intens = Gauss(X) but on Intens = Gauss(X) + C
+				// curve (C < 0), and erf is no longer a proper integral. We need
+				// to account for that by scaling the erf so that on
+				// ERF_HALO_GAIN it has the value of 1.0
+				enum double constIntegrTerm = 1.0 / erf(ERF_HALO_GAIN);
+				// 0.5 because we need [-ERF_HALO_GAIN; ERF_HALO_GAIN] interval
+				// integrate to 1.0, and not 2.0
+				part = constIntegrTerm * 0.5 * (erf(normRight) - erf(normLeft));
 				assert(part >= 0.0f);
-				assert(part <= 1.0f);
+				assert(part <= 1.0f + 1e-3f);
 				float totalPartPart = part;
 				if (i == 0 || i == integrPoints - 1)
 					totalPartPart *= 0.5f;
