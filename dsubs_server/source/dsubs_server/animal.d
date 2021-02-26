@@ -16,7 +16,7 @@ import dsubs_server.acoustics;
 import dsubs_server.vessel;
 
 
-final class Animal: Killable, IHasTransform, IHasRidigBody
+final class Animal: Killable, IHasTransform, IHasRigidBody
 {
 	private
 	{
@@ -28,6 +28,8 @@ final class Animal: Killable, IHasTransform, IHasRidigBody
 		usecs_t m_nextSoundStart;
 		Reflector m_reflector;
 		vec2d m_velocity = vec2d(0, 0);
+		PrerecordedSoundPrototype[] m_randomSounds;
+		AnimalSoundTimings m_soundTimings;
 		PrerecordedSoundSource m_currentSoundSource;
 		int songCounter;
 		int currentSongLength;
@@ -49,6 +51,21 @@ final class Animal: Killable, IHasTransform, IHasRidigBody
 		m_rigidBody.kinet.vel = m_velocity;
 	}
 
+	@property bool arrivedAtDestination()
+	{
+		return (transform.wposition - m_destination).length < 30.0f;
+	}
+
+	@property ref PrerecordedSoundPrototype[] randomSounds()
+	{
+		return m_randomSounds;
+	}
+
+	@property ref AnimalSoundTimings soundTimings()
+	{
+		return m_soundTimings;
+	}
+
 	this(AnimalFactory f)
 	{
 		m_transform = new Transform2D();
@@ -63,14 +80,16 @@ final class Animal: Killable, IHasTransform, IHasRidigBody
 		if (songCounter == 0)
 		{
 			currentSongLength = uniform!"[]"(
-				m_factory.songMinLength, m_factory.songMaxLength);
-			lowBound = m_factory.meanSongPause - m_factory.songPauseVariance;
-			highBound = m_factory.meanSongPause + m_factory.songPauseVariance;
+				m_soundTimings.songMinLength, m_soundTimings.songMaxLength);
+			lowBound = m_soundTimings.meanSongPause -
+				m_soundTimings.songPauseVariance;
+			highBound = m_soundTimings.meanSongPause +
+				m_soundTimings.songPauseVariance;
 		}
 		else
 		{
-			lowBound = m_factory.intrasongPause;
-			highBound = m_factory.intrasongPause;
+			lowBound = m_soundTimings.intrasongPause;
+			highBound = m_soundTimings.intrasongPause;
 		}
 		songCounter++;
 		if (songCounter >= currentSongLength)
@@ -83,10 +102,10 @@ final class Animal: Killable, IHasTransform, IHasRidigBody
 		if (simulator.worldTime >= m_nextSoundStart)
 		{
 			// spawn new sound source
-			size_t sourceIdx = uniform!"[)"(0, m_factory.randomSounds.length);
+			size_t sourceIdx = uniform!"[)"(0, m_randomSounds.length);
 			// info("starting whale song");
 			m_currentSoundSource = new PrerecordedSoundSource(m_transform,
-				m_factory.randomSounds[sourceIdx]);
+				m_randomSounds[sourceIdx]);
 			m_currentSoundSource.owner = this;
 			simulator.acous.registerSource(m_currentSoundSource);
 			m_nextSoundStart =
@@ -175,16 +194,11 @@ final class AnimalCollection
 }
 
 
-final class AnimalFactory
+struct AnimalSoundTimings
 {
-	PrerecordedSoundPrototype[] randomSounds;
 	/// average pause between songs
 	usecs_t meanSongPause;
 	usecs_t songPauseVariance;
-	float maxSpeed = 0.0;
-	ReflectorPrototype reflprot;
-	float mass;
-	string species;
 	// if randomSounds are short and you want to compose
 	// a song from repeating the sounds, this is how many times
 	// the animal should repeat it.
@@ -192,10 +206,23 @@ final class AnimalFactory
 	int songMaxLength = 1;
 	// pause between sounds inside one song.
 	usecs_t intrasongPause;
+}
 
-	final Animal build(string name) const
+final class AnimalFactory
+{
+	/// Copied into the animal, so they can be modified on per-animal basis
+	PrerecordedSoundPrototype[] randomSounds;
+	AnimalSoundTimings soundTimings;
+	float maxSpeed = 0.0;
+	ReflectorPrototype reflprot;
+	float mass;
+	string species;
+
+	final Animal build(string name)
 	{
 		Animal res = new Animal(cast() this);
+		res.m_randomSounds = randomSounds.dup;
+		res.m_soundTimings = soundTimings;
 		res.m_name = name;
 		res.m_rigidBody.mass = mass;
 		res.m_rigidBody.moi = 1.0f;

@@ -45,6 +45,7 @@ You pass the test when you can shadow the target by only using your hydrophones.
 		SimpleGoal noPingGoal =
 			new SimpleGoal("Do not use active sonar",
 				"Active sonar is forbidden.", "Active sonar is forbidden.");
+		noPingGoal.requiredForVictory = false;
 		addVisibleGoal(noPingGoal);
 
 		AICrew crew = new AICrew(BOT_DIFFICULTY.medium);
@@ -61,7 +62,7 @@ You pass the test when you can shadow the target by only using your hydrophones.
 				{ return m_playerSub.transform; },
 				{ return botSub.transform; },
 				Comparator.less, 100.0),
-			{ shadowGoal.markSuccess(); noPingGoal.markSuccess(); },
+			{ shadowGoal.markSuccess(); },
 			true, 60_000_000L);
 		addTrigger(shadowTrigger);
 

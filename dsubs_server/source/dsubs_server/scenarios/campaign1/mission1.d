@@ -1,6 +1,7 @@
 module dsubs_server.scenarios.campaign1.mission1;
 
 import std.algorithm;
+import std.random: randomShuffle;
 
 import dsubs_common.api.messages;
 import dsubs_common.api.entities;
@@ -9,6 +10,7 @@ import dsubs_common.math.angles;
 import dsubs_server.common;
 import dsubs_server.bots;
 import dsubs_server.ai.captain;
+import dsubs_server.animal;
 import dsubs_server.vessel;
 import dsubs_server.submarine;
 import dsubs_server.scenario;
@@ -22,7 +24,7 @@ final class Cmp1Mission1: SinglePlayerScenario
 	{
 		AvailableScenarioConstants constants;
 		constants.name = "Whale's Health";
-		constants.shortDescription = "Coast Guard duties and marine mammal health";
+		constants.shortDescription = "Coast Guard duties and mammal woes";
 		constants.fullDescription =
 `
 FSC-94/O-65        SUBMARINE SQUADRON TWO
@@ -74,6 +76,7 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 
 	Animal[] whales;
 	enum double WHALE_SPAWN_RADIUS = 400.0;
+	enum int SICK_WHALE_COUNT = 2;
 	vec2d[] whaleSpawnPoints = [
 		vec2d(1500, 2000),
 		vec2d(-2500, 1000),
@@ -85,9 +88,78 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 		"Samuel"
 	];
 
+	enum double THEATER_RADIUS = 10000.0;
+
+	private vec2d getRandomPosInTheatre() const
+	{
+		return randomPointInCircle(vec2d(0.0, 0.0), THEATER_RADIUS);
+	}
+
+	private Animal spawnWhale(string name, vec2d center, bool sick)
+	{
+		Animal animal = Globals.entityDb.getAnimalFactory("humpback whale").
+			build((sick ? "sick ": "") ~ name);
+		vec2d randomPos = randomPointInCircle(center, WHALE_SPAWN_RADIUS);
+		animal.transform.position = randomPos;
+		animal.transform.rotation = uniform(0, 2 * PI);
+		animal.destination = getRandomPosInTheatre();
+		// TODO: add sick screams
+		animal.register(m_simulator);
+		return animal;
+	}
+
 	private void initializeWhales()
 	{
+		randomShuffle(whaleNames);
+		randomShuffle(whaleSpawnPoints);
+		for (size_t i = 0; i < whaleNames.length; i++)
+		{
+			bool sick = i < SICK_WHALE_COUNT;
+			Animal whale = spawnWhale(whaleNames[i], whaleSpawnPoints[i], sick);
+			whales ~= whale;
+			if (sick)
+			{
+				// kill goal
+				SimpleGoal killWhaleGoal = new SimpleGoal(
+					"Kill sick " ~ whaleNames[i],
+					"Put the screaming mammal out of it's misery.");
+				addVisibleGoal(killWhaleGoal);
+				ScenarioTrigger killTrigger = new ScenarioTrigger(
+					new DeadCondition(((w) => { return w; })(whale)),
+					((g) => { g.markSuccess(); })(killWhaleGoal) );
+				addTrigger(killTrigger);
+			}
+			m_syncState.mapElements.addElement("whale" ~ i.to!string,
+				MapElement.circle(
+					MapCircle(
+						whaleSpawnPoints[i], WHALE_SPAWN_RADIUS, 3),
+					COLOR_WAYPOINT));
+			m_syncState.mapElements.addElement("whaleLbl" ~ i.to!string,
+				MapElement.text(
+					MapText(
+						whaleSpawnPoints[i], 12),
+					COLOR_WAYPOINT,
+					"Whale " ~ (i + 1).to!string));
+		}
 
+		SimpleGoal doNotPingWhalesGoal = new SimpleGoal(
+			"Sonar discipline",
+			"Do not emit active pings at range less than 500m from " ~
+			"any whale",
+			"The pain you've caused to whale ears is immeasurable and " ~
+			"his day is ruined.");
+		doNotPingWhalesGoal.requiredForVictory = false;
+		addVisibleGoal(doNotPingWhalesGoal);
+		foreach (Animal whale; whales)
+		{
+			ScenarioTrigger pingTooCLoseTrigger = new ScenarioTrigger(
+				new SubPingsDistanceCondition(
+					{ return m_playerSub; }, simulator,
+					((w) => { return w.transform; })(whale),
+					Comparator.less, 500.0),
+				{ doNotPingWhalesGoal.markFailed(); });
+			addTrigger(pingTooCLoseTrigger);
+		}
 	}
 }
 

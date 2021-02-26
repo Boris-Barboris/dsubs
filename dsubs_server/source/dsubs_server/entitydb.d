@@ -1407,8 +1407,10 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale5_8192.wav"),
 				9.0f, 95.0f)
 		];
-		af.meanSongPause = cast(usecs_t) 7 * 60 * 1000_000;
-		af.songPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
+		af.soundTimings = AnimalSoundTimings(
+			cast(usecs_t) 7 * 60 * 1000_000,
+			cast(usecs_t) 2 * 60 * 1000_000
+		);
 		af.mass = 30.0f;
 		af.maxSpeed = 7.0f;
 		af.reflprot = ReflectorPrototype(vec2f(4.0f, 15.0f), [-20.0f, -20.0f, -20.0f]);
@@ -1421,8 +1423,10 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/big_iron_8192.wav"),
 				9.0f, 88.0f)
 		];
-		af.meanSongPause = cast(usecs_t) 30 * 60 * 1000_000;
-		af.songPauseVariance = cast(usecs_t) 3 * 60 * 1000_000;
+		af.soundTimings = AnimalSoundTimings(
+			cast(usecs_t) 30 * 60 * 1000_000,
+			cast(usecs_t) 3 * 60 * 1000_000
+		);
 		af.mass = 30.0f;
 		af.maxSpeed = 6.0f;
 		af.reflprot = ReflectorPrototype(vec2f(4.5f, 15.0f), [-18.0f, -18.0f, -18.0f]);
@@ -1441,8 +1445,10 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/orca3_8192.wav"),
 				9.0f, 100.0f)
 		];
-		af.meanSongPause = cast(usecs_t) 6 * 60 * 1000_000;
-		af.songPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
+		af.soundTimings = AnimalSoundTimings(
+			cast(usecs_t) 6 * 60 * 1000_000,
+			cast(usecs_t) 2 * 60 * 1000_000
+		);
 		af.mass = 4.0f;
 		af.maxSpeed = 13.0f;
 		af.reflprot = ReflectorPrototype(vec2f(1.0f, 7.0f), [-20.0f, -20.0f, -20.0f]);
@@ -1455,10 +1461,11 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/mulloway1_8192.wav"),
 				5.0f, 92.0f)
 		];
-		af.songMinLength = 7;
-		af.songMaxLength = 24;
-		af.meanSongPause = cast(usecs_t) 6 * 60 * 1000_000;
-		af.songPauseVariance = cast(usecs_t) 2 * 60 * 1000_000;
+		af.soundTimings = AnimalSoundTimings(
+			cast(usecs_t) 6 * 60 * 1000_000,
+			cast(usecs_t) 2 * 60 * 1000_000,
+			7, 24
+		);
 		af.mass = 0.04f;
 		af.maxSpeed = 6.0f;
 		af.reflprot = ReflectorPrototype(vec2f(0.5f, 0.5f), [-20.0f, -20.0f, -20.0f]);
@@ -1477,11 +1484,11 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/minke_whale_boing2_8192.wav"),
 				9.0f, 95.0f)
 		];
-		af.songMinLength = 2;
-		af.songMaxLength = 10;
-		af.intrasongPause = 6_000_000L;
-		af.meanSongPause = cast(usecs_t) 7 * 60 * 1000_000;
-		af.songPauseVariance = cast(usecs_t) 3 * 60 * 1000_000;
+		af.soundTimings = AnimalSoundTimings(
+			cast(usecs_t) 7 * 60 * 1000_000,
+			cast(usecs_t) 3 * 60 * 1000_000,
+			2, 10, 6_000_000L
+		);
 		af.mass = 5.6f;
 		af.maxSpeed = 8.0f;
 		af.reflprot = ReflectorPrototype(vec2f(1.2f, 6.5f), [-20.0f, -20.0f, -20.0f]);

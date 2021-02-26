@@ -449,6 +449,8 @@ abstract class FixedLengthSoundSource: FiniteSoundSource
 		size_t m_destOffset;
 	}
 
+	final @property bool atFirstSecond() const { return m_sourceOffset <= GLOBAL_SRATE; }
+
 	final @property size_t totalSamples() const { return m_totalSamples; }
 
 	/// when zero, recording is over and should be disposed of.

@@ -889,14 +889,14 @@ final class SonarPing: FixedLengthSoundSource
 	{
 		super(new Transform2D(position, wrot), refTds.tds.length, destOffset);
 		m_freq = freq;
-		m_kernParam = kernParam;
+		m_kernParams = kernParam;
 		m_prepTds = refTds;
 	}
 
 	private
 	{
 		int m_freq;		/// effective frequency
-		PingKernelParams m_kernParam;
+		PingKernelParams m_kernParams;
 		PreparedPingTds* m_prepTds;
 	}
 
@@ -920,7 +920,7 @@ final class SonarPing: FixedLengthSoundSource
 		float avgRange = 0.5f * (range + prevRange);
 		float relBearing = courseAngle(listenerPos - position) - transform.wrotation;
 		// if we were in the ping's active emission phase...
-		IntensityLevel ilevel = pingAtRelBearing(m_kernParam, relBearing);
+		IntensityLevel ilevel = pingAtRelBearing(m_kernParams, relBearing);
 		ilevel = getILatRange(m_freq, ilevel, avgRange, dissMod);
 		// If this was the first second of the ping, this is what the instantaneous
 		// intensity of active phase should have been:

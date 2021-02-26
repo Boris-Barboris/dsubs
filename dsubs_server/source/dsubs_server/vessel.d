@@ -97,14 +97,14 @@ interface IHasTransform
 }
 
 
-interface IHasRidigBody
+interface IHasRigidBody
 {
 	@property RigidBody rigidBody();
 }
 
 
 /// Physically-simulated vessel with propulsor, rudder and reflector components
-class Vessel: Killable, IHasTransform, IHasRidigBody
+class Vessel: Killable, IHasTransform, IHasRigidBody
 {
 	protected
 	{

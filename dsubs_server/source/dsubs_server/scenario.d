@@ -446,17 +446,22 @@ class GoalList: VersionedObject
 		GoalVersionPair[] m_goals;
 	}
 
+	/// true when all 'requiredForVictory' goals have succeeded
 	final @property bool allGoalsSuccessfull() const
 	{
-		return m_goals.all!(a => a.goal.status == ScenarioGoalStatus.success)();
+		return m_goals.all!(a => !a.goal.requiredForVictory ||
+			a.goal.status == ScenarioGoalStatus.success)();
 	}
 
-	/// Return first failed goal or null if no such goals found.
-	final @property const(Goal) findFailedGoal() const
+	/// Return first failed goal that leads to defeat or null if no such goals found.
+	final @property const(Goal) findGoalOfDefeat() const
 	{
 		foreach (gvp; m_goals)
-			if (gvp.goal.status == ScenarioGoalStatus.failed)
+			if (gvp.goal.defeatOnFailure &&
+				gvp.goal.status == ScenarioGoalStatus.failed)
+			{
 				return gvp.goal;
+			}
 		return null;
 	}
 
@@ -504,6 +509,11 @@ abstract class Goal: VersionedObject
 		ScenarioGoalStatus m_status;
 		string m_id;
 	}
+
+	/// If true, only when this goal succeeds the victory is achieved
+	bool requiredForVictory = true;
+	/// If true, failure leads to defeat
+	bool defeatOnFailure = true;
 
 	this()
 	{
@@ -680,7 +690,7 @@ enum Comparator: ubyte
 
 
 alias TransformGetter = Transform2D delegate();
-alias RigidBodyGetter = IHasRidigBody delegate();
+alias RigidBodyGetter = IHasRigidBody delegate();
 alias SubmarineGetter = Submarine delegate();
 alias KillableGetter = Killable delegate();
 
@@ -798,7 +808,6 @@ final class SubPingsCondition: IScenarioCondition
 		Simulator m_sim;
 	}
 
-	/// Set inverse to true to get an 'AliveCondition'.
 	this(SubmarineGetter sub, Simulator sim)
 	{
 		m_sub = sub;
@@ -835,7 +844,6 @@ final class SubPingsDistanceCondition: IScenarioCondition
 		double m_distance;
 	}
 
-	/// Set inverse to true to get an 'AliveCondition'.
 	this(SubmarineGetter sub, Simulator sim,
 		TransformGetter targetObj, Comparator comparator, double distance)
 	{
@@ -857,7 +865,7 @@ final class SubPingsDistanceCondition: IScenarioCondition
 			SonarPing ping = cast(SonarPing) source;
 			if (ping is null)
 				continue;
-			if (ping.owner is s)
+			if (ping.owner is s && ping.atFirstSecond)
 			{
 				// found the ping, now check the distance to target
 				Transform2D tgtTransform = m_tgt();
@@ -1123,7 +1131,7 @@ abstract class SinglePlayerScenario: Scenario
 			trigger.process(simTimePassed);
 		removeFinishedTriggers();
 		// walk over player goals and find if we have succeeded or failed
-		const Goal failedGoal = m_syncState.goals.findFailedGoal;
+		const Goal failedGoal = m_syncState.goals.findGoalOfDefeat;
 		if (failedGoal)
 		{
 			trace("Shutting down scenario because of failed goal");
@@ -1174,7 +1182,7 @@ immutable RgbaColor COLOR_HINT = RgbaColor(200, 200, 200, 150);
 
 vec2d randomPointInCircle(vec2d center, double radius)
 {
-	double randomAngle = uniform(0.0, 2 * M_PI);
+	double randomAngle = uniform(0.0, 2 * PI);
 	double randomLength = uniform(0.0, radius);
 	return center + rotateVector(vec2d(randomLength, 0), randomAngle);
 }
