@@ -57,7 +57,7 @@ from the HIPPO and ping at max power. They are not the only jokers.
 
     Operations mode:  You are to conduct your patrol duty according to peace time
 regulations. You are NOT TO USE your main active sonar at ranges less than
-500m from a whale (even sick one), as dictated by Marine Life Preservation Act.
+500m from a whale (even a sick one), as dictated by Marine Life Preservation Act.
 
     Good luck, Commander!
 `;
@@ -70,7 +70,7 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 	this(Simulator sim)
 	{
 		super(sim, ChatMessage(longUnixTime(), ChatMessageType.scenarioNotice,
-			"End their suffering for good"));
+			"Welcome to the campaign, captain"));
 		initializeWhales();
 	}
 

@@ -30,6 +30,7 @@ import dsubs_server.scenarios.tutorials.sonartutorial;
 import dsubs_server.scenarios.tutorials.navigationtutorial;
 import dsubs_server.scenarios.tutorials.torpedotutorial;
 import dsubs_server.scenarios.tutorials.hydrophonetutorial;
+import dsubs_server.scenarios.campaign1.mission1;
 
 
 /// Action to run after specified clock time.
@@ -349,11 +350,10 @@ final class ScenarioDatabase
 		addTutorial!HydrophoneTmaTutorial();
 
 		AvailableCampaign campaign1 = AvailableCampaign(
-			"Unwanted peace",
-"Rapid chain of events takes you from the peaceful maritime patrol duty straight to the
-maelstrom of war between two superpowers.",
+			"Perilous Fluids",
+```Take command of a Commonwealth Submarine Rustbucket (Stork class) through
+chain of swift naval skirmishes with a neighbour's navy.```,
 			false);
-
 	}
 
 	PersistentScenarioSpawner getPersistentById(string simId)
@@ -910,11 +910,10 @@ final class ScenarioTrigger
 		IScenarioCondition m_condition;
 	}
 
-	// oneShot and isShot means that trigger can be discarded
+	// (oneShot && isShot) means that trigger can be discarded
 	@property bool oneShot() const { return m_oneShot; }
 	@property bool isShot() const { return m_isShot; }
 
-	/// Action must be thread-safe as scenario processes triggers in parallel.
 	this(IScenarioCondition condition, void delegate() action,
 		bool oneShot = true, usecs_t activationTime = 0,
 		usecs_t cooldown = 0)
@@ -1127,6 +1126,8 @@ abstract class SinglePlayerScenario: Scenario
 		if (m_playerSub.dead)
 			return ShouldSimTerminate.yes;
 		m_delayer.triggerAlarms(m_simulator.worldTime);
+		// in many years may warrant parallelization, maybe thread-safe property
+		// of a trigger.
 		foreach (trigger; m_triggers)
 			trigger.process(simTimePassed);
 		removeFinishedTriggers();
