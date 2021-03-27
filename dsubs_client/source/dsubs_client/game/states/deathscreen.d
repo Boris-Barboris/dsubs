@@ -82,8 +82,8 @@ final class DeathScreenState: GameState
 			shortReport = "Simulator was terminated/abandoned";
 		else
 			shortReport = m_deathRes.shortReport;
-		Label causeLabel = builder(new Label()).content(shortReport).
-			htextAlign(HTextAlign.CENTER).fontSize(CAUSE_FONTSIZE).build();
+		TextBox causeLabel = builder(new TextBox()).content(shortReport).
+			fontSize(CAUSE_FONTSIZE).build();
 		TextBox longReportLabel = builder(new TextBox()).content(m_deathRes.longReport)
 			.fontSize(LONG_REPORT_FONTSIZE).build();
 		ScrollBar longReportScroll = builder(new ScrollBar(longReportLabel)).

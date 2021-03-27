@@ -453,18 +453,62 @@ final class LoadoutState: GameState
 		return loadoutDiv;
 	}
 
+	private Button buildScenarioSelectionBtn(AvailableScenario scen)
+	{
+		string campaignTab = "";
+		if (scen.type == ScenarioType.campaignMission)
+			campaignTab = "  ";
+		// generate scenario selection buttons
+		Button btn = builder(new Button()).content(campaignTab ~ scen.name).
+			fontSize(MISSION_FONT).fixedSize(vec2i(1, MISSION_FONT + 6)).
+			build();
+		btn.onClick += {
+			// on click we generate scenario description text box.
+			string descContent = scen.name ~ "\n\n" ~ scen.shortDescription ~
+				"\n\n" ~ scen.fullDescription;
+			TextBox descBox = builder(new TextBox()).fontSize(DESCRIPTION_FONT).
+				content(descContent).build();
+			m_scenDesc = builder(new ScrollBar(descBox)).
+				fraction(0.36f).build();
+			m_selectedScenario = scen;
+			(cast(Div) m_topLevelDiv.children[1]).setChild(m_scenDesc, 1);
+			// activate 'to loadout' button in the footer
+			m_footerDiv.setChild(m_toLoadoutBtn, 2);
+		};
+		return btn;
+	}
+
+	private Label buildCampaignNameLabel(AvailableCampaign campaign)
+	{
+		// generate scenario selection buttons
+		Label lbl = builder(new Label()).content(campaign.name).
+			fontSize(MISSION_FONT).fixedSize(vec2i(1, MISSION_FONT + 6)).
+			build();
+		lbl.onMouseEnter += (oldReciever) {
+			// on click we generate scenario description text box.
+			string descContent = campaign.name ~ "\n\n" ~ campaign.description;
+			TextBox descBox = builder(new TextBox()).fontSize(DESCRIPTION_FONT).
+				content(descContent).build();
+			m_scenDesc = builder(new ScrollBar(descBox)).
+				fraction(0.36f).build();
+			(cast(Div) m_topLevelDiv.children[1]).setChild(m_scenDesc, 1);
+			// deactivate 'to loadout' button in the footer
+			m_footerDiv.setChild(filler(), 2);
+		};
+		return lbl;
+	}
+
 	private void buildScenarioSelectionUi()
 	{
 		AvailableScenario[][ScenarioType] scenarioGroups;
 		scenarioGroups[ScenarioType.standalone] = [];
 		scenarioGroups[ScenarioType.tutorial] = [];
 		scenarioGroups[ScenarioType.persistentSimulator] = [];
-		AvailableCampaign[string] campaigns;
+		AvailableCampaign[] campaigns;
 
 		foreach (AvailableScenario scen; availableScenarios.scenarios)
 			scenarioGroups[scen.type] ~= scen;
-		foreach (AvailableCampaign camp; availableScenarios.campaigns)
-			campaigns[camp.name] = camp;
+		campaigns = availableScenarios.campaigns;
 
 		Label[] missionTypeLabels;
 		Div[] missionTypeColumns;
@@ -497,25 +541,16 @@ final class LoadoutState: GameState
 				// lexicographic sort
 				// sort!((a, b) => a.name < b.name)(scens);
 				foreach (AvailableScenario scen; scens)
+					missionButtons ~= buildScenarioSelectionBtn(scen);
+			}
+			else
+			{
+				// handle campaigns with nested scenarios
+				foreach (AvailableCampaign camp; campaigns)
 				{
-					// generate scenario selection buttons
-					Button btn = builder(new Button()).content(scen.name).
-						fontSize(MISSION_FONT).fixedSize(vec2i(1, MISSION_FONT + 6)).
-						build();
-					btn.onClick += (s) { return {
-						// on click we generate scenario description text box.
-						string descContent = s.name ~ "\n\n" ~ s.shortDescription ~
-							"\n\n" ~ s.fullDescription;
-						TextBox descBox = builder(new TextBox()).fontSize(DESCRIPTION_FONT).
-							content(descContent).build();
-						m_scenDesc = builder(new ScrollBar(descBox)).
-							fraction(0.36f).build();
-						m_selectedScenario = s;
-						(cast(Div) m_topLevelDiv.children[1]).setChild(m_scenDesc, 1);
-						// activate 'to loadout' button in the footer
-						m_footerDiv.setChild(m_toLoadoutBtn, 2);
-					}; } (scen);
-					missionButtons ~= btn;
+					missionButtons ~= buildCampaignNameLabel(camp);
+					foreach (AvailableScenario scen; camp.scenarios)
+						missionButtons ~= buildScenarioSelectionBtn(scen);
 				}
 			}
 			if (missionButtons.length == 0)

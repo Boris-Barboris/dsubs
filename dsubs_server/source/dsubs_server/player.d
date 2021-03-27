@@ -495,7 +495,11 @@ final class Player: Captain
 				req.weaponName, req.weaponParams);
 			PlayerConnection con = m_connection;
 			if (con && topRes.tubeChanged)
-				con.sendMessage(immutable TubeStateUpdateRes(tube.fullState));
+			{
+				assert(topRes.launchOccurred);
+				con.sendMessage(immutable TubeStateUpdateRes(
+					tube.fullState, true, topRes.launchedWeaponName));
+			}
 			assert(!topRes.roomChanged);
 		}
 	}

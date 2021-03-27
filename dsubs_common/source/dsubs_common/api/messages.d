@@ -26,7 +26,7 @@ struct ServerStatusRes
 	/// Total number of authorized players currently online.
 	int playersOnline;
 	/// Client and server values must match exactly.
-	int apiVersion = 17;
+	int apiVersion = 18;
 }
 
 /** This message requests authorization from the server.
@@ -295,6 +295,9 @@ struct TubeStateUpdateRes
 {
 	__gshared const int g_marshIdx;
 	TubeFullState tube;
+	bool launchOccured;
+	/// null when launchOccured is false
+	string launchedWeaponName;
 }
 
 /// Server reports ammo room state change.

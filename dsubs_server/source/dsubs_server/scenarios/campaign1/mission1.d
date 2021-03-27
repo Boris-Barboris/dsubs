@@ -7,6 +7,8 @@ import dsubs_common.api.messages;
 import dsubs_common.api.entities;
 import dsubs_common.math.angles;
 
+import dsubs_sound.soundsource;
+
 import dsubs_server.common;
 import dsubs_server.bots;
 import dsubs_server.ai.captain;
@@ -48,6 +50,8 @@ First Fleet staff was eager to put the poor souls out of their misery, while
 simultaniously testing the newest Minoga-class torpedo.
 	Commander, you are only to kill the wailing whales. Animals that are
 not screaming are to be considered healthy and not be touched.
+	Keep in mind that a whal is a low-profile small target that requires
+extra accuracy and reduced torpedo speed to hit.
 
     Objective 2:  Crew of the civilian tanker HIPPO is reported to be banging
 'LIQUID DRUM AND BASS' at whopping 140 dB. While the acoustic surveillance
@@ -79,8 +83,8 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 	enum int SICK_WHALE_COUNT = 2;
 	vec2d[] whaleSpawnPoints = [
 		vec2d(1500, 2000),
-		vec2d(-2500, 1000),
-		vec2d(-500, 5000)
+		vec2d(-4500, 1000),
+		vec2d(-500, 8000)
 	];
 	string[] whaleNames = [
 		"Liam",
@@ -88,7 +92,7 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 		"Samuel"
 	];
 
-	enum double THEATER_RADIUS = 10000.0;
+	enum double THEATER_RADIUS = 12000.0;
 
 	private vec2d getRandomPosInTheatre() const
 	{
@@ -103,6 +107,26 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 		animal.transform.position = randomPos;
 		animal.transform.rotation = uniform(0, 2 * PI);
 		animal.destination = getRandomPosInTheatre();
+		// increase singing frequency, because whales in arenas sing rarely
+		animal.soundTimings.meanSongPause = cast(usecs_t) 1 * 60 * 1000_000;
+		animal.soundTimings.songPauseVariance = cast(usecs_t) 30 * 1000_000;
+		// sick whale has different sounds
+		if (sick)
+		{
+			animal.soundTimings.meanSongPause /= 2;
+			animal.soundTimings.songPauseVariance /= 2;
+			animal.randomSounds = [
+				PrerecordedSoundPrototype(
+					Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming1.wav"),
+					9.0f, 95.0f),
+				PrerecordedSoundPrototype(
+					Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming2.wav"),
+					9.0f, 95.0f),
+				PrerecordedSoundPrototype(
+					Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming3.wav"),
+					9.0f, 95.0f),
+			];
+		}
 		// TODO: add sick screams
 		animal.register(m_simulator);
 		return animal;

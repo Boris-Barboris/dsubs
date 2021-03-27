@@ -149,6 +149,8 @@ struct TubeOperationResult
 {
 	bool tubeChanged;
 	bool roomChanged;
+	bool launchOccurred;
+	string launchedWeaponName;
 }
 
 
@@ -189,6 +191,7 @@ final class Tube: IFlowNoiseMultiplier
 
 		TubeState m_state = TubeState.dry;
 		TubeState m_desiredState = TubeState.dry;
+		// used to send updates when background tube loading completes
 		TubeOperationResult m_lastSimUpdateResults;
 	}
 
@@ -327,7 +330,7 @@ final class Tube: IFlowNoiseMultiplier
 		size_t soundOffset = dsubs_sound.common.uniform!("[]", size_t, size_t)(
 			0, GLOBAL_SRATE / 8);
 		startPlayingSound(&m_proto.firingSoundProto, &soundOffset);
-		return TubeOperationResult(true, false);
+		return TubeOperationResult(true, false, true, wf.name);
 	}
 
 	/// Creates sounds on the start of state transitions

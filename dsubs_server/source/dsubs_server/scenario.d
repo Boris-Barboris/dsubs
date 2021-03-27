@@ -131,6 +131,7 @@ abstract class Scenario
 }
 
 
+/// Server-side campaign template
 struct Campaign
 {
 	string name;
@@ -237,13 +238,13 @@ private final class TutorialScenarioSpawner: ScenarioSpawner
 
 private final class CampaignScenarioSpawner: ScenarioSpawner
 {
-	const Campaign* campaign;
+	const string campaignName;
 
 	this(AvailableScenarioConstants constants,
-		Scenario delegate(Simulator sim) factory, const Campaign* camp)
+		Scenario delegate(Simulator sim) factory, string campaignName)
 	{
 		super(constants, factory);
-		campaign = camp;
+		this.campaignName = campaignName;
 	}
 
 	override @property ScenarioType scenarioType() const
@@ -315,10 +316,10 @@ final class ScenarioDatabase
 {
 	/// All non-perisstent scenarions, indexed by their name.
 	private ScenarioSpawner[string] m_spawnableScenarios;
-	// same shit but in array
+	// same set of swapners but in array
 	private ScenarioSpawner[] m_spawnableScenariosOrdered;
 	/// list of campaigns
-	private AvailableCampaign[] m_availableCampaigns;
+	private Campaign[] m_campaigns;
 
 	/// Persistent scenarios, indexed by simulatorId.
 	private PersistentScenarioSpawner[string] m_persistentSims;
@@ -329,6 +330,17 @@ final class ScenarioDatabase
 		m_spawnableScenarios[scenConstants.name] =
 			new TutorialScenarioSpawner(scenConstants, sim => new T(sim));
 		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
+	}
+
+	CampaignScenarioSpawner addCampaignMission(MissClass)(string campaignName)
+	{
+		AvailableScenarioConstants scenConstants = MissClass.getConstants();
+		auto res = new CampaignScenarioSpawner(scenConstants, sim => new MissClass(sim),
+			campaignName);
+		// campaign missions need to go to m_spawnableScenarios as well.
+		m_spawnableScenarios[scenConstants.name] = res;
+		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
+		return res;
 	}
 
 	/// Build scenario database. Globals.entityDb must be built at this point.
@@ -349,11 +361,14 @@ final class ScenarioDatabase
 		addTutorial!TorpedoTutorial();
 		addTutorial!HydrophoneTmaTutorial();
 
-		AvailableCampaign campaign1 = AvailableCampaign(
+		Campaign perilousFluids = Campaign(
 			"Perilous Fluids",
-```Take command of a Commonwealth Submarine Rustbucket (Stork class) through
-chain of swift naval skirmishes with a neighbour's navy.```,
-			false);
+`Take command of a Commonwealth Submarine Rustbucket (Stork class) through
+chain of swift naval skirmishes with a neighbour's navy.`);
+		perilousFluids.scenarios = [
+			addCampaignMission!Cmp1Mission1(perilousFluids.name),
+		];
+		m_campaigns ~= perilousFluids;
 	}
 
 	PersistentScenarioSpawner getPersistentById(string simId)
@@ -378,7 +393,26 @@ chain of swift naval skirmishes with a neighbour's navy.```,
 	{
 		AvailableScenariosRes res;
 		// all campaigns
-		res.campaigns = m_availableCampaigns;
+		res.campaigns = m_campaigns.map!((Campaign campaign) {
+			AvailableCampaign availCamp;
+			availCamp.name = campaign.name;
+			availCamp.description = campaign.description;
+			// transform campaign scenario spawners to array of AvailableScenario-s
+			availCamp.scenarios = campaign.scenarios.map!(
+				(CampaignScenarioSpawner spawner) {
+					AvailableScenario preparedScen;
+					preparedScen.constants = cast() spawner.constants;
+					preparedScen.type = spawner.scenarioType;
+					// TODO: set completion flag from db
+					preparedScen.completed = false;
+					return preparedScen;
+				}).array;
+			// TODO: in prod version filter out unavailable scenarios. Campaign scenario
+			// is available if the scenario before it is completed or it is completed.
+			availCamp.completed = false; // FIXME. Campaign is completed when every
+			// scenario is completed
+			return availCamp;
+		}).array;
 
 		// all non-campaign missions
 		res.scenarios ~= m_spawnableScenariosOrdered.filter!(
@@ -396,9 +430,9 @@ chain of swift naval skirmishes with a neighbour's navy.```,
 			AvailableScenario preparedScen;
 			preparedScen.constants = cast() spawner.constants;
 			preparedScen.type = ScenarioType.persistentSimulator;
-			preparedScen.simulatorId = (cast(PersistentScenarioSpawner) spawner).simulator.id;
-			// TODO: player count
-			preparedScen.playerCount = 0;
+			PersistentScenarioSpawner persistSpawner = cast(PersistentScenarioSpawner) spawner;
+			preparedScen.simulatorId = persistSpawner.simulator.id;
+			preparedScen.playerCount = persistSpawner.simulator.getConnectedPlayers();
 			return preparedScen;
 		}).array;
 		return cast(immutable) res;

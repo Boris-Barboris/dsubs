@@ -95,6 +95,7 @@ final class EntityDb
 		buildSubmarineTemplates();
 		buildTorpedoTemplates();
 		buildAnimalTemplates();
+		preloadScenarioSounds();
 		immutable EntityDbStruct enititydb = immutable EntityDbStruct(
 			m_propulsors.values.filter!(a => a.playable).map!(
 				a => cast(immutable) a.tmpl).array,
@@ -1494,6 +1495,13 @@ Active sonars:
 		af.reflprot = ReflectorPrototype(vec2f(1.2f, 6.5f), [-20.0f, -20.0f, -20.0f]);
 		af.species = "minke whale";
 		m_animals[af.species] = af;
+	}
+
+	void preloadScenarioSounds()
+	{
+		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming1.wav");
+		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming2.wav");
+		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming3.wav");
 	}
 
 }
