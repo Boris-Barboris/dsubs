@@ -4,3 +4,6 @@
 [submodule "dlang-requests"]
 	path = dlang-requests
 	url = git@github.com:Boris-Barboris/dlang-requests.git
+[submodule "dsubs_common"]
+	path = dsubs_common
+	url = git@github.com:Boris-Barboris/dsubs_common.git
