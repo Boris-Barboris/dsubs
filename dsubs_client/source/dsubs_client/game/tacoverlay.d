@@ -2405,6 +2405,7 @@ final class WeaponAimHandle: OverlayElementWithHover
 		if (btn == sfMouseLeft)
 		{
 			m_dragging = true;
+			g_dragOffset = vec2i(x, y) - position;
 			requestMouseFocus();
 		}
 	}

@@ -39,6 +39,7 @@ private
 	enum int MISSION_FONT = 18;
 	enum int DESCRIPTION_FONT = 16;
 	enum int TUBE_CONTENT_FONT = 14;
+	enum float DESCRIPTION_VERT_FRACTION = 0.5f;
 }
 
 
@@ -455,11 +456,8 @@ final class LoadoutState: GameState
 
 	private Button buildScenarioSelectionBtn(AvailableScenario scen)
 	{
-		string campaignTab = "";
-		if (scen.type == ScenarioType.campaignMission)
-			campaignTab = "  ";
 		// generate scenario selection buttons
-		Button btn = builder(new Button()).content(campaignTab ~ scen.name).
+		Button btn = builder(new Button()).content(scen.name).
 			fontSize(MISSION_FONT).fixedSize(vec2i(1, MISSION_FONT + 6)).
 			build();
 		btn.onClick += {
@@ -469,7 +467,7 @@ final class LoadoutState: GameState
 			TextBox descBox = builder(new TextBox()).fontSize(DESCRIPTION_FONT).
 				content(descContent).build();
 			m_scenDesc = builder(new ScrollBar(descBox)).
-				fraction(0.36f).build();
+				fraction(DESCRIPTION_VERT_FRACTION).build();
 			m_selectedScenario = scen;
 			(cast(Div) m_topLevelDiv.children[1]).setChild(m_scenDesc, 1);
 			// activate 'to loadout' button in the footer
@@ -490,7 +488,7 @@ final class LoadoutState: GameState
 			TextBox descBox = builder(new TextBox()).fontSize(DESCRIPTION_FONT).
 				content(descContent).build();
 			m_scenDesc = builder(new ScrollBar(descBox)).
-				fraction(0.36f).build();
+				fraction(DESCRIPTION_VERT_FRACTION).build();
 			(cast(Div) m_topLevelDiv.children[1]).setChild(m_scenDesc, 1);
 			// deactivate 'to loadout' button in the footer
 			m_footerDiv.setChild(filler(), 2);
@@ -581,7 +579,7 @@ final class LoadoutState: GameState
 			builder(hDiv([filler(20)] ~ cast(GuiElement[]) missionTypeColumns ~
 				 [filler(20)])).build(),
 			// here should lie a mission description
-			filler(0.36f)
+			filler(DESCRIPTION_VERT_FRACTION)
 		]);
 	}
 

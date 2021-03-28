@@ -515,6 +515,9 @@ final class Simulator
 			profiler.start("vessels.collectDeadVessels");
 			vessels.collectDeadVessels(worldTime);
 			profiler.stopLast();
+			profiler.start("animals.collectDeadAnimals");
+			animals.collectDeadAnimals();
+			profiler.stopLast();
 			profiler.start("bots.onAfterSimulation");
 			bots.onAfterSimulation();
 			profiler.stopLast();

@@ -50,8 +50,8 @@ First Fleet staff was eager to put the poor souls out of their misery, while
 simultaniously testing the newest Minoga-class torpedo.
 	Commander, you are only to kill the wailing whales. Animals that are
 not screaming are to be considered healthy and not be touched.
-	Keep in mind that a whal is a low-profile small target that requires
-extra accuracy and reduced torpedo speed to hit.
+	Keep in mind that a whale is a small target that requires
+extra accuracy and minimal torpedo speed (21) to hit. Use active sonar guidance mode.
 
     Objective 2:  Crew of the civilian tanker HIPPO is reported to be banging
 'LIQUID DRUM AND BASS' at whopping 140 dB. While the acoustic surveillance

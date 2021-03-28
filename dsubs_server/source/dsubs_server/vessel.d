@@ -60,6 +60,7 @@ abstract class Killable
 	/// Ensure that the vessel is dead. Returns true if it was killed first time.
 	bool kill(string cause, Captain killer)
 	{
+		// can be called from different worker threads
 		synchronized(this)
 		{
 			if (!m_dead)

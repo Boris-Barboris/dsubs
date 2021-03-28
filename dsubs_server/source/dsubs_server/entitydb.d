@@ -1412,7 +1412,7 @@ Active sonars:
 			cast(usecs_t) 7 * 60 * 1000_000,
 			cast(usecs_t) 2 * 60 * 1000_000
 		);
-		af.mass = 30.0f;
+		af.mass = 100.0f;	// ridiculous mass to improve detonation probability
 		af.maxSpeed = 7.0f;
 		af.reflprot = ReflectorPrototype(vec2f(4.0f, 15.0f), [-20.0f, -20.0f, -20.0f]);
 		af.species = "humpback whale";
@@ -1428,7 +1428,7 @@ Active sonars:
 			cast(usecs_t) 30 * 60 * 1000_000,
 			cast(usecs_t) 3 * 60 * 1000_000
 		);
-		af.mass = 30.0f;
+		af.mass = 100.0f;
 		af.maxSpeed = 6.0f;
 		af.reflprot = ReflectorPrototype(vec2f(4.5f, 15.0f), [-18.0f, -18.0f, -18.0f]);
 		af.species = "jukebox whale";
@@ -1450,7 +1450,7 @@ Active sonars:
 			cast(usecs_t) 6 * 60 * 1000_000,
 			cast(usecs_t) 2 * 60 * 1000_000
 		);
-		af.mass = 4.0f;
+		af.mass = 40.0f;
 		af.maxSpeed = 13.0f;
 		af.reflprot = ReflectorPrototype(vec2f(1.0f, 7.0f), [-20.0f, -20.0f, -20.0f]);
 		af.species = "orca";
@@ -1467,7 +1467,7 @@ Active sonars:
 			cast(usecs_t) 2 * 60 * 1000_000,
 			7, 24
 		);
-		af.mass = 0.04f;
+		af.mass = 0.4f;
 		af.maxSpeed = 6.0f;
 		af.reflprot = ReflectorPrototype(vec2f(0.5f, 0.5f), [-20.0f, -20.0f, -20.0f]);
 		af.species = "mulloway";
@@ -1490,7 +1490,7 @@ Active sonars:
 			cast(usecs_t) 3 * 60 * 1000_000,
 			2, 10, 6_000_000L
 		);
-		af.mass = 5.6f;
+		af.mass = 56f;
 		af.maxSpeed = 8.0f;
 		af.reflprot = ReflectorPrototype(vec2f(1.2f, 6.5f), [-20.0f, -20.0f, -20.0f]);
 		af.species = "minke whale";

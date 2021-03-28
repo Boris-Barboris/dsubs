@@ -349,7 +349,7 @@ final class Tube: IFlowNoiseMultiplier
 
 	private void updateTransientState()
 	{
-		switch (m_state)
+		final switch (m_state)
 		{
 			case TubeState.unloading:
 			{
@@ -444,8 +444,11 @@ final class Tube: IFlowNoiseMultiplier
 				}
 				break;
 			}
-			default:
-				assert(0, "unhandled state");
+			case TubeState.dry:
+			case TubeState.flooded:
+			case TubeState.open:
+				// these are stable states, we are nut supposed to be here
+				assert(0, "Unexpected stable state");
 		}
 	}
 
