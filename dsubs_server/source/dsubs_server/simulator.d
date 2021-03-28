@@ -333,7 +333,7 @@ final class Simulator
 	/// player observers.
 	bool runWithoutPlayers = false;
 
-	float timeAcceleration = 5.0f;
+	float timeAcceleration = 1.0f;
 
 	bool canBePaused = true;
 

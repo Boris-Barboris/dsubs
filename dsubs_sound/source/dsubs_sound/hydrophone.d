@@ -166,7 +166,7 @@ final class Hydrophone
 		enum float MAX_HALO = dgr2rad(20);
 		/// applied to return value of pointHaloAngle.
 		// TODO: maybe move to hydrophone property.
-		enum float HALO_GAIN = 2.4f;
+		enum float HALO_GAIN = 2.25f;
 		enum float LISTEN_HALO_GAIN = 1.4f;
 		/// bell curve X gain, when it's bigger, edges of signal sector are darker
 		enum float ERF_HALO_GAIN = 3.0f;

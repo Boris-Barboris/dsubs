@@ -20,6 +20,7 @@ import dsubs_sound.image;
 import dsubs_sound.common: GLOBAL_SRATE;
 
 import dsubs_server.common;
+import dsubs_server.acoustics: JukeboxSoundTimings;
 import dsubs_server.objfile;
 import dsubs_server.propulsion;
 import dsubs_server.sensors;
@@ -1408,7 +1409,7 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/whale5_8192.wav"),
 				9.0f, 95.0f)
 		];
-		af.soundTimings = AnimalSoundTimings(
+		af.soundTimings = JukeboxSoundTimings(
 			cast(usecs_t) 7 * 60 * 1000_000,
 			cast(usecs_t) 2 * 60 * 1000_000
 		);
@@ -1424,7 +1425,7 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/big_iron_8192.wav"),
 				9.0f, 88.0f)
 		];
-		af.soundTimings = AnimalSoundTimings(
+		af.soundTimings = JukeboxSoundTimings(
 			cast(usecs_t) 30 * 60 * 1000_000,
 			cast(usecs_t) 3 * 60 * 1000_000
 		);
@@ -1446,7 +1447,7 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/orca3_8192.wav"),
 				9.0f, 100.0f)
 		];
-		af.soundTimings = AnimalSoundTimings(
+		af.soundTimings = JukeboxSoundTimings(
 			cast(usecs_t) 6 * 60 * 1000_000,
 			cast(usecs_t) 2 * 60 * 1000_000
 		);
@@ -1462,7 +1463,7 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/mulloway1_8192.wav"),
 				5.0f, 92.0f)
 		];
-		af.soundTimings = AnimalSoundTimings(
+		af.soundTimings = JukeboxSoundTimings(
 			cast(usecs_t) 6 * 60 * 1000_000,
 			cast(usecs_t) 2 * 60 * 1000_000,
 			7, 24
@@ -1485,7 +1486,7 @@ Active sonars:
 				Globals.sctx.getWavFile("../dsubs_sound/bio_sounds/minke_whale_boing2_8192.wav"),
 				9.0f, 95.0f)
 		];
-		af.soundTimings = AnimalSoundTimings(
+		af.soundTimings = JukeboxSoundTimings(
 			cast(usecs_t) 7 * 60 * 1000_000,
 			cast(usecs_t) 3 * 60 * 1000_000,
 			2, 10, 6_000_000L
@@ -1502,6 +1503,10 @@ Active sonars:
 		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming1.wav");
 		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming2.wav");
 		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming3.wav");
+		Globals.sctx.getWavFile(
+			"../dsubs_sound/scenario_sounds/Monrroe - Out of Time (feat. Zara Kershaw).wav");
+		Globals.sctx.getWavFile(
+			"../dsubs_sound/scenario_sounds/Epiphany-TwoThirds.wav");
 	}
 
 }

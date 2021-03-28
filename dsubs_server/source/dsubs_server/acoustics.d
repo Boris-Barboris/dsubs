@@ -5,11 +5,13 @@ import std.algorithm.setops: cartesianProduct;
 import dsubs_common.containers.array;
 
 import dsubs_sound.activesonar;
+import dsubs_sound.common: GLOBAL_SRATE;
 import dsubs_sound.hydrophone;
 import dsubs_sound.soundsource;
 import dsubs_sound.spectrum;
 
 import dsubs_server.common;
+import dsubs_server.simulator;
 
 
 final class AcousticEnv
@@ -241,5 +243,105 @@ final class AcousticEnv
 				m_sources.length--;
 			}
 		}
+	}
+}
+
+
+struct JukeboxSoundTimings
+{
+	/// average pause between songs
+	usecs_t meanSongPause;
+	usecs_t songPauseVariance;
+	// if randomSounds are short and you want to compose
+	// a song from repeating the sounds, this is how many times
+	// the animal should repeat it.
+	int songMinLength = 1;
+	int songMaxLength = 1;
+	// pause between sounds inside one song.
+	usecs_t intrasongPause;
+}
+
+
+/// Set of prerecorded sounds that plays itself with specified periodicity
+class Jukebox
+{
+	PrerecordedSoundPrototype[] randomSounds;
+	JukeboxSoundTimings soundTimings;
+
+	private
+	{
+		Simulator m_simulator;
+		Object m_owner;
+		Transform2D m_transform;
+	}
+
+	protected
+	{
+		PrerecordedSoundSource m_currentSoundSource;
+		int m_songCounter;
+		int m_currentSongLength;
+		usecs_t m_nextSoundStart;
+	}
+
+	this(Object owner, Transform2D transform)
+	{
+		m_owner = owner;
+		m_transform = transform;
+	}
+
+	protected usecs_t generateNextSoundStart()
+	{
+		usecs_t lowBound, highBound;
+		if (m_songCounter == 0)
+		{
+			m_currentSongLength = uniform!"[]"(
+				soundTimings.songMinLength, soundTimings.songMaxLength);
+			lowBound = soundTimings.meanSongPause -
+				soundTimings.songPauseVariance;
+			highBound = soundTimings.meanSongPause +
+				soundTimings.songPauseVariance;
+		}
+		else
+		{
+			lowBound = soundTimings.intrasongPause;
+			highBound = soundTimings.intrasongPause;
+		}
+		m_songCounter++;
+		if (m_songCounter >= m_currentSongLength)
+			m_songCounter = 0;
+		return m_simulator.worldTime + max(0, uniform!"[]"(lowBound, highBound));
+	}
+
+	void setSimulator(Simulator sim)
+	{
+		m_simulator = sim;
+	}
+
+	void initNextSoundStart()
+	{
+		m_nextSoundStart = generateNextSoundStart();
+	}
+
+	void onSimUpdate()
+	{
+		if (m_simulator.worldTime >= m_nextSoundStart)
+		{
+			// spawn new sound source
+			size_t sourceIdx = uniform!"[)"(0, randomSounds.length);
+			// info("starting song");
+			m_currentSoundSource = new PrerecordedSoundSource(m_transform,
+				randomSounds[sourceIdx]);
+			m_currentSoundSource.owner = m_owner;
+			m_simulator.acous.registerSource(m_currentSoundSource);
+			m_nextSoundStart =
+				(1e6 * m_currentSoundSource.totalSamples / GLOBAL_SRATE).to!usecs_t +
+				generateNextSoundStart();
+		}
+	}
+
+	void shutdown()
+	{
+		if (m_currentSoundSource && !m_currentSoundSource.finished)
+			m_simulator.acous.unregisterSource(m_currentSoundSource);
 	}
 }

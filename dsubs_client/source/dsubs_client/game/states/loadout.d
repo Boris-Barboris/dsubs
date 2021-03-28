@@ -40,6 +40,7 @@ private
 	enum int DESCRIPTION_FONT = 16;
 	enum int TUBE_CONTENT_FONT = 14;
 	enum float DESCRIPTION_VERT_FRACTION = 0.5f;
+	enum sfColor INCOMPLETE_COLOR = sfColor(200, 200, 200, 255);
 }
 
 
@@ -460,6 +461,8 @@ final class LoadoutState: GameState
 		Button btn = builder(new Button()).content(scen.name).
 			fontSize(MISSION_FONT).fixedSize(vec2i(1, MISSION_FONT + 6)).
 			build();
+		if (!scen.completed)
+			btn.fontColor = INCOMPLETE_COLOR;
 		btn.onClick += {
 			// on click we generate scenario description text box.
 			string descContent = scen.name ~ "\n\n" ~ scen.shortDescription ~
@@ -482,6 +485,8 @@ final class LoadoutState: GameState
 		Label lbl = builder(new Label()).content(campaign.name).
 			fontSize(MISSION_FONT).fixedSize(vec2i(1, MISSION_FONT + 6)).
 			build();
+		if (!campaign.completed)
+			lbl.fontColor = INCOMPLETE_COLOR;
 		lbl.onMouseEnter += (oldReciever) {
 			// on click we generate scenario description text box.
 			string descContent = campaign.name ~ "\n\n" ~ campaign.description;

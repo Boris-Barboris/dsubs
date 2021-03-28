@@ -37,10 +37,13 @@ final class AICrew: AICrewTemp
 {
 	override @property string name() const { return m_name; }
 
-	this(BOT_DIFFICULTY difficulty)
+	this(BOT_DIFFICULTY difficulty, string name = null)
 	{
 		m_difficulty = difficulty;
-		m_name = "BOT crew (" ~ difficulty.to!string ~ ")";
+		if (name)
+			m_name = name;
+		else
+			m_name = "BOT crew (" ~ difficulty.to!string ~ ")";
 		m_state = new CrewState();
 	}
 

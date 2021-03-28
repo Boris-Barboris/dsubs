@@ -12,10 +12,12 @@ import dsubs_sound.soundsource;
 import dsubs_server.common;
 import dsubs_server.bots;
 import dsubs_server.ai.captain;
+import dsubs_server.acoustics;
 import dsubs_server.animal;
 import dsubs_server.vessel;
 import dsubs_server.submarine;
 import dsubs_server.scenario;
+import dsubs_server.player: SideOfConflict;
 import dsubs_server.simulator;
 
 
@@ -51,10 +53,11 @@ simultaniously testing the newest Minoga-class torpedo.
 	Commander, you are only to kill the wailing whales. Animals that are
 not screaming are to be considered healthy and not be touched.
 	Keep in mind that a whale is a small target that requires
-extra accuracy and minimal torpedo speed (21) to hit. Use active sonar guidance mode.
+extra accuracy (straight run pattern) and minimal torpedo speed (21) to hit.
+Use active sonar guidance mode.
 
     Objective 2:  Crew of the civilian tanker HIPPO is reported to be banging
-'LIQUID DRUM AND BASS' at whopping 140 dB. While the acoustic surveillance
+'LIQUID DRUM AND BASS' at whopping 100 dB. While the acoustic surveillance
 officers appreciate the joke, the crew needs to be reminded of the restrictions
 on noise pollution, imposed in our territorial waters. Get in range of 300m
 from the HIPPO and ping at max power. They are not the only jokers.
@@ -76,6 +79,7 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 		super(sim, ChatMessage(longUnixTime(), ChatMessageType.scenarioNotice,
 			"Welcome to the campaign, captain"));
 		initializeWhales();
+		initializeTraders();
 	}
 
 	Animal[] whales;
@@ -184,6 +188,111 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 				{ doNotPingWhalesGoal.markFailed(); });
 			addTrigger(pingTooCLoseTrigger);
 		}
+	}
+
+	SideOfConflict civilians;
+	Submarine[] traders;
+	Submarine musicTrader;
+	SimpleGoal forbidTraderKillGoal;
+	SimpleGoal pingCloseToMusicGoal;
+
+	private struct SpawnAndDest
+	{
+		vec2d spawn;
+		vec2d dest;
+	}
+
+	SpawnAndDest[] traderSpawnPoints = [
+		SpawnAndDest(vec2d(4500, -1000), vec2d(-30000, 60000)),
+		SpawnAndDest(vec2d(7500, -4000), vec2d(-20000, 80000)),
+		SpawnAndDest(vec2d(2500, 11000), vec2d(15000, -60000))
+	];
+	SpawnAndDest musicTraderSpawn = SpawnAndDest(vec2d(5500, -2000), vec2d(-15000, 100000));
+
+	private Submarine spawnTrader(SpawnAndDest spawn, bool musical)
+	{
+		string crewName = musical ? "Hippo crew" : null;
+		AICrew crew = new AICrew(BOT_DIFFICULTY.easy, crewName);
+		crew.side = civilians;
+		SpawnReq req = SpawnReq("Bot trader", "Civilian three-blade screw");
+		Submarine botSub = Globals.entityDb.buildSubFromLoadout(req, crew);
+		botSub.transform.position = spawn.spawn;
+		botSub.transform.rotation = courseAngle(spawn.dest - spawn.spawn);
+		crew.goal = new SwimToDestinationGoal(crew, spawn.dest);
+		m_simulator.bots.registerEntity(crew);
+		botSub.register(m_simulator);
+
+		if (musical)
+		{
+			// we add periodic music controller
+			Jukebox jukebox = new Jukebox(botSub, botSub.transform);
+			jukebox.soundTimings = JukeboxSoundTimings(
+				cast(usecs_t) 60 * 1000_000L,
+				cast(usecs_t) 20 * 1000_000L
+			);
+			jukebox.randomSounds = [
+				PrerecordedSoundPrototype(
+					Globals.sctx.getWavFile(
+						"../dsubs_sound/scenario_sounds/Monrroe - Out of Time (feat. Zara Kershaw).wav"),
+					10.0f, 105.0f),
+				PrerecordedSoundPrototype(
+					Globals.sctx.getWavFile(
+						"../dsubs_sound/scenario_sounds/Epiphany-TwoThirds.wav"),
+					10.0f, 105.0f),
+			];
+			jukebox.setSimulator(m_simulator);
+			m_simulator.onSimulationPassEnd += (sim, worldTime) {
+				if (!botSub.dead &&
+					pingCloseToMusicGoal.status == ScenarioGoalStatus.unreached)
+				{
+					jukebox.onSimUpdate();
+				}
+			};
+
+			// add trigger to stop music when we ping nearby
+			ScenarioTrigger pingCloseTrigger = new ScenarioTrigger(
+				new SubPingsDistanceCondition(
+					{ return m_playerSub; }, simulator,
+					{ return botSub.transform; },
+					Comparator.less, 300.0),
+				{
+					pingCloseToMusicGoal.markSuccess();
+					jukebox.shutdown();
+				}
+			);
+			addTrigger(pingCloseTrigger);
+		}
+
+		// kill forbid trigger
+		ScenarioTrigger dontKillTrigger = new ScenarioTrigger(
+			new DeadCondition({ return botSub; }),
+			{ forbidTraderKillGoal.markFailed(); });
+		addTrigger(dontKillTrigger);
+
+		return botSub;
+	}
+
+	private void initializeTraders()
+	{
+		civilians = new SideOfConflict("Civilians", true);
+
+		forbidTraderKillGoal = new SimpleGoal("Peace time",
+			"No civilian vessels must be damaged",
+			"Innocent lives were lost due to your sloppy aim");
+		forbidTraderKillGoal.requiredForVictory = false;
+		addVisibleGoal(forbidTraderKillGoal);
+
+		pingCloseToMusicGoal = new SimpleGoal("Frighten the Hippo",
+			"Ping while being closer than 300m from the civilian ship that " ~
+			"is banging loud music");
+		addVisibleGoal(pingCloseToMusicGoal);
+
+		foreach (SpawnAndDest snd; traderSpawnPoints)
+		{
+			Submarine trader = spawnTrader(snd, false);
+			traders ~= trader;
+		}
+		musicTrader = spawnTrader(musicTraderSpawn, true);
 	}
 }
 
