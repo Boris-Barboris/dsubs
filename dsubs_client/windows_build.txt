@@ -1,3 +1,0 @@
-C++ 2015 required:
-https://www.microsoft.com/en-US/download/details.aspx?id=48145
-vc_redist.x86.exe
