@@ -7,3 +7,6 @@
 [submodule "dsubs_common"]
 	path = dsubs_common
 	url = git@github.com:Boris-Barboris/dsubs_common.git
+[submodule "dsubs_client"]
+	path = dsubs_client
+	url = git@github.com:Boris-Barboris/dsubs_client.git
