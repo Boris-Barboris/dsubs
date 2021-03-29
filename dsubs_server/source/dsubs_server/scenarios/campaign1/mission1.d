@@ -157,6 +157,18 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 					((g) => { g.markSuccess(); })(killWhaleGoal) );
 				addTrigger(killTrigger);
 			}
+			else
+			{
+				SimpleGoal noHealthyKill = new SimpleGoal("Don't kill " ~ whaleNames[i],
+					"One of the whales is healthy, it must survive",
+					"You shouldn't have killed " ~ whaleNames[i] ~ " ((");
+				noHealthyKill.requiredForVictory = false;
+				addVisibleGoal(noHealthyKill);
+				ScenarioTrigger killTrigger = new ScenarioTrigger(
+					new DeadCondition(((w) => { return w; })(whale)),
+					((g) => { g.markFailed(); })(noHealthyKill) );
+				addTrigger(killTrigger);
+			}
 			m_syncState.mapElements.addElement("whale" ~ i.to!string,
 				MapElement.circle(
 					MapCircle(
