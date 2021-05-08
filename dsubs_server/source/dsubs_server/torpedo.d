@@ -567,7 +567,7 @@ final class TorpedoGuidance: IGuidance
 				KillRecord record;
 				if (getKillRecordForKillable(v, record))
 					m_torpedo.shooter.addKillRecord(record);
-				if (Globals.database && m_torpedo.simulator.id == "main_arena")
+				if (Globals.database)
 				{
 					void reportFunc(Killable killedVessel)
 					{

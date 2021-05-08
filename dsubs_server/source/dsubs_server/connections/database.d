@@ -171,7 +171,7 @@ final class DatabaseService
 			con.exec("INSERT INTO kill_records " ~
 				"(shooter_captain_name, shooter_captain_type, shooter_hull_name, " ~
 				"dead_captain_name, dead_captain_type, dead_hull_name, weapon_name, " ~
-				"weapon_travelled) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+				"weapon_travelled, simulator_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
 				shooter ? shooter.name: null,
 				captainType(shooter),
 				shooterSub ? shooterSub.prototypeName : null,
@@ -179,7 +179,8 @@ final class DatabaseService
 				deadCaptainType,
 				deadVesselPrototypeName,
 				weapon.prototypeName,
-				weapon.guidance.distanceTraveled
+				weapon.guidance.distanceTraveled,
+				weapon.simulator.id
 			);
 		}
 		wrapTsac(&func);

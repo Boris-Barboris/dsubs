@@ -17,6 +17,7 @@ import core.stdc.stdlib;
 
 import dsubs_common.proftimer;
 import dsubs_common.event;
+import dsubs_common.api.entities: ScenarioType;
 
 import dsubs_server.common;
 import dsubs_server.acoustics;
@@ -189,7 +190,8 @@ final class SimulatorScheduler
 					m_simulators.removeKey(simToRun);
 				simToRun.releaseResources();
 				// recreate main_arena (special case)
-				if (simToRun.id == "main_arena")
+				if (simToRun.scenario &&
+					simToRun.scenario.spawner.scenarioType == ScenarioType.persistentSimulator)
 				{
 					auto spawner = Globals.scenarioDb.getPersistentById(simToRun.id);
 					spawner.recreateSimulator();
@@ -231,9 +233,9 @@ final class SimulatorScheduler
 final class Simulator
 {
 	private string m_id, m_uniqId;
-	/// non-historically unique, used for per-process uniqueness.
+	/// non-historically unique, used for per-process uniqueness. Example: 'main_arena'.
 	@property string id() const { return m_id; }
-	/// historically-unique (across all ever existing simulators), random UUID.
+	/// historically-unique (across all simulators that ever existed), random UUID.
 	@property string uniqId() const { return m_uniqId; }
 
 	public
@@ -552,7 +554,7 @@ final class Simulator
 		if (!finished &&
 			Globals.metrics && (m_worldTime % 10_000_000 == 0))
 		{
-			if (m_id == "main_arena")
+			if (scenario && scenario.spawner.scenarioType == ScenarioType.persistentSimulator)
 			{
 				// influxdb metrics
 				Globals.auxTaskPool.put(

@@ -198,7 +198,6 @@ final class MetricsService
 	ReplaySlice[] queryReplaySlices(
 		string simulatorInstance, DateTime from, DateTime until)
 	{
-		enforce(simulatorInstance == "main_arena");
 		long fromUnix = SysTime(from, UTC()).toUnixTime!long;
 		long untilUnix = SysTime(until, UTC()).toUnixTime!long;
 		string queryVessels = "SELECT time, " ~

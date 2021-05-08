@@ -100,9 +100,10 @@ final class BattleRoyale: Scenario
 		enum int DECOYS_TO_RELOAD = 6;
 		enum usecs_t SPAWN_DELAY_BASE = cast(usecs_t) 1 * 60 * 1000_000;
 		enum usecs_t STABLE_TIME = cast(usecs_t) 60 * 60 * 1000_000;
-		enum int ACTIVE_CIVILIAN_BOTS = 3;
-		enum int MAX_ACTIVE_EASY_BOTS = 2;
-		enum int MAX_ACTIVE_MEDIUM_BOTS = 2;
+
+		int m_max_civilian_bots = 3;
+		int m_max_easy_bots = 2;
+		int m_max_medium_bots = 2;
 
 		/// we despawn combat bots after this time of zero active
 		/// players.
@@ -114,14 +115,22 @@ final class BattleRoyale: Scenario
 		bool[Submarine] m_mediumBots;
 	}
 
-	static AvailableScenarioConstants getConstants(bool singlePlayer)
+	static AvailableScenarioConstants getConstants(bool singlePlayer,
+		bool noBots)
 	{
 		AvailableScenarioConstants constants;
 		constants.name = "Circle arena";
 		if (singlePlayer)
 			constants.name ~= " (SP)";
-		constants.shortDescription = "Quick battle with infinite bots.";
-		constants.fullDescription =
+		if (noBots)
+			constants.name ~= " (No bots)";
+		if (!noBots)
+			constants.shortDescription = "Quick battle with infinite bots.";
+		else
+			constants.shortDescription = "Arena for PvP-only battles.";
+		if (!noBots)
+		{
+			constants.fullDescription =
 `Three civilian traders (propellers with 3 blades) are infinitely respawned for you to kill.
 Each trader killed triggers an easy combat bot spawn.
 Each easy combat bot killed spawns a medium combat bot.
@@ -130,6 +139,16 @@ You can rearm by swimming into the small yellow circle.
 
 Pace your kills according to the amount of chaos you desire.
 Good luck!`;
+		}
+		else
+		{
+			constants.fullDescription =
+`This is a no-bots, only environmentals variant of Circle arena.
+Player movement is restricted by big blue circle, that sometimes moves.
+You can rearm by swimming into the small yellow circle.
+
+Good luck!`;
+		}
 		if (!singlePlayer)
 		{
 			constants.fullDescription ~= "\n\n" ~
@@ -146,7 +165,7 @@ Good luck!`;
 		return (cast(Player) cpt) !is null;
 	}
 
-	this(Simulator sim, bool singlePlayer = false)
+	this(Simulator sim, bool singlePlayer, bool noBots)
 	{
 		super(sim);
 		m_singlePlayer = singlePlayer;
@@ -160,6 +179,12 @@ Good luck!`;
 		//m_nextTransitionTime = m_simulator.worldTime + 5_000_000;
 		m_nextTransitionTime = m_simulator.worldTime + STABLE_TIME;
 		m_botSide = new SideOfConflict("bots");
+		if (noBots)
+		{
+			m_max_civilian_bots = 0;
+			m_max_easy_bots = 0;
+			m_max_medium_bots = 0;
+		}
 	}
 
 	override void onBeforeSimulation()
@@ -188,7 +213,7 @@ Good luck!`;
 		// spawn bots if necessary
 		m_delayer.triggerAlarms(m_simulator.worldTime);
 		// trader bots
-		int botsToSpawn = ACTIVE_CIVILIAN_BOTS - m_civBotSpawnRequests -
+		int botsToSpawn = m_max_civilian_bots - m_civBotSpawnRequests -
 			m_simulator.bots.captains.filter!(b => b.submarine.prototypeName == "Bot trader").
 			count.to!int;
 
@@ -250,7 +275,7 @@ Good luck!`;
 		int deadBotTraders = m_civilianBots.byKey.filter!(s => s.dead &&
 			s.prototypeName == "Bot trader" && isHumanCaptain(s.killer)).count.to!int;
 		int aliveEasyBots = m_easyBots.byKey.filter!(s => !s.dead).count.to!int;
-		int easyBotsToSpawn = min(deadBotTraders, MAX_ACTIVE_EASY_BOTS - aliveEasyBots);
+		int easyBotsToSpawn = min(deadBotTraders, m_max_easy_bots - aliveEasyBots);
 		while (easyBotsToSpawn-- > 0)
 		{
 			info("Scheduling new easy combat bot spawn");
@@ -284,7 +309,7 @@ Good luck!`;
 		int deadEasyBots = m_easyBots.byKey.filter!(s => s.dead &&
 			isHumanCaptain(s.killer)).count.to!int;
 		int aliveMediumBots = m_mediumBots.byKey.filter!(s => !s.dead).count.to!int;
-		int mediumBotsToSpawn = min(deadEasyBots, MAX_ACTIVE_MEDIUM_BOTS - aliveMediumBots);
+		int mediumBotsToSpawn = min(deadEasyBots, m_max_medium_bots - aliveMediumBots);
 		while (mediumBotsToSpawn-- > 0)
 		{
 			info("Scheduling new medium combat bot spawn");

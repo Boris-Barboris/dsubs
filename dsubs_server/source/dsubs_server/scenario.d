@@ -347,12 +347,15 @@ final class ScenarioDatabase
 	this()
 	{
 		m_persistentSims["main_arena"] =
-			new PersistentScenarioSpawner(BattleRoyale.getConstants(false),
-				sim => new BattleRoyale(sim), "main_arena");
+			new PersistentScenarioSpawner(BattleRoyale.getConstants(false, false),
+				sim => new BattleRoyale(sim, false, false), "main_arena");
+		m_persistentSims["main_arena_nobots"] =
+			new PersistentScenarioSpawner(BattleRoyale.getConstants(false, true),
+				sim => new BattleRoyale(sim, false, true), "main_arena_nobots");
 
-		AvailableScenarioConstants scenConstants = BattleRoyale.getConstants(true);
+		AvailableScenarioConstants scenConstants = BattleRoyale.getConstants(true, false);
 		StandaloneScenarioSpawner spawner = new StandaloneScenarioSpawner(
-			scenConstants, sim => new BattleRoyale(sim, true));
+			scenConstants, sim => new BattleRoyale(sim, true, false));
 		m_spawnableScenarios[scenConstants.name] = spawner;
 		m_spawnableScenariosOrdered ~= spawner;
 
