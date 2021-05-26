@@ -195,7 +195,12 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 			ScenarioTrigger pingTooCLoseTrigger = new ScenarioTrigger(
 				new SubPingsDistanceCondition(
 					{ return m_playerSub; }, simulator,
-					((w) => { return w.transform; })(whale),
+					((w) => {
+						if (!w.dead)
+							return w.transform;
+						else
+							return null;
+					})(whale),
 					Comparator.less, 500.0),
 				{ doNotPingWhalesGoal.markFailed(); });
 			addTrigger(pingTooCLoseTrigger);

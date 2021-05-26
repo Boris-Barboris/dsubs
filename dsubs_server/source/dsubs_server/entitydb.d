@@ -1604,10 +1604,11 @@ float autoBorderWidth(vec2f dims)
 
 RgbaColor autoBorderColor(RgbaColor fillColor)
 {
-	ubyte[4] arrPtr = cast(ubyte[4]) fillColor;
-	foreach (ref ubyte col; arrPtr[0..3])
-		col = col / 2;
-	return cast(RgbaColor) arrPtr;
+	RgbaColor res = fillColor;
+	res.r /= 2;
+	res.g /= 2;
+	res.b /= 2;
+	return res;
 }
 
 
