@@ -67,6 +67,7 @@ final class AIHelmsman
 		WhereToSwim m_whereToSwim;
 		NavigationSpeed m_navigationSpeed;
 		float m_desiredThrottle = 0.0f;
+		bool m_idleThrottleTemp;
 	}
 
 	OrderQueue!WhereToSwim whereToSwimOrder;
@@ -145,6 +146,7 @@ final class AIHelmsman
 		override ExecutionResult execute(ref int ticks)
 		{
 			assert(ticks > 0);
+			m_idleThrottleTemp = false;
 			final switch (m_whereToSwim.type)
 			{
 				case WhereToSwimType.idle:
@@ -158,8 +160,7 @@ final class AIHelmsman
 					if (delta.length < 100.0)
 					{
 						trace("Helmsman decides that the destination was reached");
-						m_whereToSwim.type = WhereToSwimType.idle;
-						m_desiredThrottle = 0.0f;
+						m_idleThrottleTemp = true;
 					}
 					if (delta != vec2d(0, 0))
 						m_crew.submarine.targetCourse = courseAngle(delta);
@@ -179,7 +180,10 @@ final class AIHelmsman
 		override ExecutionResult execute(ref int ticks)
 		{
 			assert(ticks > 0);
-			m_crew.submarine.targetThrottle = m_desiredThrottle;
+			if (m_idleThrottleTemp)
+				m_crew.submarine.targetThrottle = 0.0f;
+			else
+				m_crew.submarine.targetThrottle = m_desiredThrottle;
 			return ExecutionResult.success;
 		}
 	}
