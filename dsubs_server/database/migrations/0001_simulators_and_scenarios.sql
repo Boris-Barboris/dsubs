@@ -66,7 +66,7 @@ CREATE INDEX player_scenario_completions_pididx ON
 
 CREATE TABLE player_campaign_progress (
     player_id BIGINT NOT NULL,
-    campaign_name TEXT NOT NULL,
+    campaign_name varchar(256) NOT NULL,
     completed_missions INT NOT NULL,
 
     PRIMARY KEY (player_id, campaign_name),
