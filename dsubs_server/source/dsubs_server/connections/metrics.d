@@ -131,7 +131,7 @@ final class MetricsService
 				// write animals
 				foreach (Animal a; sim.animals.entities)
 				{
-					strBuf ~= "replay_data_animals,simulator_instance=main_arena";
+					strBuf ~= "replay_data_animals,simulator_instance=" ~ sim.id;
 					strBuf ~= ",object_class_name=" ~ escape(typeid(a).name);
 					// prototype name
 					strBuf ~= ",species=" ~ escape(a.species);

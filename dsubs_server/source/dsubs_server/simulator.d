@@ -241,7 +241,7 @@ final class Simulator
 	public
 	{
 		/// Main simulation RW-mutex that guards game state. Write-lock is taken
-		/// by the server when the world needs is updated. Reader lock is taken by
+		/// by the server when the world is updated. Reader lock is taken by
 		/// external threads, for example player connections, when the world is
 		/// frozen and can be updated.
 		ReadWriteMutex simMut;
@@ -554,11 +554,16 @@ final class Simulator
 		if (!finished &&
 			Globals.metrics && (m_worldTime % 10_000_000 == 0))
 		{
-			if (scenario && scenario.spawner.scenarioType == ScenarioType.persistentSimulator)
+			if (scenario)
 			{
 				// influxdb metrics
-				Globals.auxTaskPool.put(
-					task(&Globals.metrics.writePlayerStats, Player.getPlayersOnline()));
+				if (this.id == "main_arena")
+				{
+					// player count should only be written once per 10 secs, hence the
+					// main_arena filter
+					Globals.auxTaskPool.put(
+						task(&Globals.metrics.writePlayerStats, Player.getPlayersOnline()));
+				}
 				// do not write replay to influx when there are no non-dead player subs
 				if (vessels.alivePlayerSubmarines.walkLength)
 				{

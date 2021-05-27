@@ -86,7 +86,21 @@ abstract class Scenario
 	protected ScenarioSpawner m_spawner;
 
 	final @property Simulator simulator() { return m_simulator; }
-	final @property ScenarioSpawner spawner() { return m_spawner; }
+	final @property inout(ScenarioSpawner) spawner() inout { return m_spawner; }
+
+	@property string name() const
+	{
+		if (m_spawner is null)
+			return null;
+		return spawner.constants.name;
+	}
+
+	@property ScenarioType scenarioType() const
+	{
+		if (m_spawner is null)
+			return ScenarioType.standalone;
+		return spawner.scenarioType;
+	}
 
 	/// Scenario can only be instantiated for a simulator. Binding is eager.
 	this(Simulator sim)
