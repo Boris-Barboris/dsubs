@@ -446,7 +446,7 @@ chain of swift naval skirmishes with a neighbour's navy.`);
 			if (Globals.database)
 			{
 				int completed = campaignName2Completed.get(campaign.name, 0);
-				if (completed == campaign.scenarios.length)
+				if (completed >= campaign.scenarios.length)
 					availCamp.completed = true;
 			}
 			return availCamp;
