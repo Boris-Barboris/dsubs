@@ -15,7 +15,7 @@ import dsubs_common.containers.array;
 import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.animal;
-import dsubs_server.connections.database: SideOutcome;
+import dsubs_server.connections.database: SideOutcome, PlayerCampaignProgressDb;
 import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.connections.playercon: PlayerConnection;
@@ -410,25 +410,45 @@ chain of swift naval skirmishes with a neighbour's navy.`);
 	immutable(AvailableScenariosRes) getScenarioResForPlayer(Player player)
 	{
 		AvailableScenariosRes res;
+
+		int[string] campaignName2Completed;
+		if (Globals.database)
+		{
+			PlayerCampaignProgressDb[] progress =
+				Globals.database.getPlayerCampaignStats(player.username);
+			foreach (p; progress)
+				campaignName2Completed[p.campaignName] = p.completedMissions;
+		}
+
 		// all campaigns
 		res.campaigns = m_campaigns.map!((Campaign campaign) {
 			AvailableCampaign availCamp;
 			availCamp.name = campaign.name;
 			availCamp.description = campaign.description;
 			// transform campaign scenario spawners to array of AvailableScenario-s
-			availCamp.scenarios = campaign.scenarios.map!(
-				(CampaignScenarioSpawner spawner) {
-					AvailableScenario preparedScen;
-					preparedScen.constants = cast() spawner.constants;
-					preparedScen.type = spawner.scenarioType;
-					// TODO: set completion flag from db
+			foreach (i, spawner; campaign.scenarios)
+			{
+				AvailableScenario preparedScen;
+				preparedScen.constants = cast() spawner.constants;
+				preparedScen.type = spawner.scenarioType;
+				if (Globals.database)
+				{
+					int completed = campaignName2Completed.get(campaign.name, 0);
+					if (i < completed)
+						preparedScen.completed = true;
+					if (i > completed)
+						break;
+				}
+				else
 					preparedScen.completed = false;
-					return preparedScen;
-				}).array;
-			// TODO: in prod version filter out unavailable scenarios. Campaign scenario
-			// is available if the scenario before it is completed or it is completed.
-			availCamp.completed = false; // FIXME. Campaign is completed when every
-			// scenario is completed
+				availCamp.scenarios ~= preparedScen;
+			}
+			if (Globals.database)
+			{
+				int completed = campaignName2Completed.get(campaign.name, 0);
+				if (completed == campaign.scenarios.length)
+					availCamp.completed = true;
+			}
 			return availCamp;
 		}).array;
 

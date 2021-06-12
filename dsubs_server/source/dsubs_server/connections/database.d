@@ -49,6 +49,13 @@ enum SideOutcome: ubyte
 }
 
 
+struct PlayerCampaignProgressDb
+{
+	string campaignName;
+	int completedMissions;
+}
+
+
 final class DatabaseService
 {
 	/**
@@ -257,5 +264,19 @@ final class DatabaseService
 				username, campaignName, completedMissionNumber, completedMissionNumber);
 		}
 		wrapTsac(&func);
+	}
+
+	PlayerCampaignProgressDb[] getPlayerCampaignStats(string username)
+	{
+		PlayerCampaignProgressDb[] func(Connection con)
+		{
+			Row[] rs = con.query("SELECT campaign_name, " ~
+				"completed_missions FROM player_campaign_progress WHERE " ~
+				"player_id = (SELECT id FROM players WHERE login_name = ?)",
+				username).array;
+			return rs.map!(r => PlayerCampaignProgressDb(
+				r[0].get!string, r[1].get!int)).array;
+		}
+		return wrapTsac(&func);
 	}
 }
