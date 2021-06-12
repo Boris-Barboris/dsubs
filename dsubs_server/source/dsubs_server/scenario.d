@@ -200,8 +200,6 @@ abstract class ScenarioSpawner
 
 	Scenario createSimulatorAndScenario(string simId = null)
 	{
-		if (simId == null)
-			simId = randomUUID().toString();
 		Simulator sim = new Simulator(simId);
 		Scenario res = m_factory(sim);
 		res.m_spawner = this;

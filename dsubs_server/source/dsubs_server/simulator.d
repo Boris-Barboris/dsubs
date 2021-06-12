@@ -64,6 +64,15 @@ final class SimulatorScheduler
 	void add(Simulator s)
 	{
 		s.nextStart = MonoTime.currTime();
+		try
+		{
+			if (Globals.database)
+				Globals.database.insertNewSimulatorInstance(s);
+		}
+		catch (Exception ex)
+		{
+			error("database error: ", ex.toString());
+		}
 		synchronized(m_cond.mutex)
 		{
 			m_simulators.stableInsert(s);
@@ -76,13 +85,25 @@ final class SimulatorScheduler
 	/// to let scheduler himself remove finished sims from the tree.
 	void remove(Simulator s)
 	{
+		bool removed;
 		synchronized(m_cond.mutex)
 		{
 			if (m_simulators.removeKey(s))
 			{
+				removed = true;
 				m_cond.notify();
 				trace("removed ", s.id, " simulator from scheduler");
 			}
+		}
+		try
+		{
+			if (removed && Globals.database)
+				Globals.database.markSimulatorDestroyed(
+					s.uniqId, "SimulatorScheduler.remove");
+		}
+		catch (Exception ex)
+		{
+			error("database error: ", ex.toString());
 		}
 	}
 
@@ -171,6 +192,7 @@ final class SimulatorScheduler
 			}
 			Duration late = now - simToRun.nextStart;
 			// the time has come
+			string evictReason;
 			try
 			{
 				simToRun.runOnce();
@@ -182,13 +204,26 @@ final class SimulatorScheduler
 				simToRun.terminateAsync();
 				// eager attempt to evict players
 				simToRun.runOnce();
+				evictReason = "crash";
 			}
 			if (simToRun.finished)
 			{
+				if (evictReason == null)
+					evictReason = "finished";
 				trace("Evicting ", simToRun.id, " finished simulator from scheduler");
 				synchronized(m_cond.mutex)
 					m_simulators.removeKey(simToRun);
 				simToRun.releaseResources();
+				try
+				{
+					if (Globals.database)
+						Globals.database.markSimulatorDestroyed(
+							simToRun.uniqId, evictReason);
+				}
+				catch (Exception ex)
+				{
+					error("database error: ", ex.toString());
+				}
 				// recreate main_arena (special case)
 				if (simToRun.scenario &&
 					simToRun.scenario.spawner.scenarioType == ScenarioType.persistentSimulator)

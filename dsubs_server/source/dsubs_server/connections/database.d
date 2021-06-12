@@ -21,6 +21,8 @@ import dsubs_server.bots: BotCaptain;
 import dsubs_server.vessel: Vessel, Killable;
 import dsubs_server.animal: Animal;
 import dsubs_server.submarine;
+import dsubs_server.simulator: Simulator;
+import dsubs_server.scenario: Scenario;
 import dsubs_server.torpedo;
 
 
@@ -186,6 +188,32 @@ final class DatabaseService
 				simulator.uniqId,
 				simulator.scenario ? simulator.scenario.name : null
 			);
+		}
+		wrapTsac(&func);
+	}
+
+	void insertNewSimulatorInstance(Simulator sim)
+	{
+		void func(Connection con)
+		{
+			con.exec(
+				"INSERT INTO simulator_instances " ~
+				"(uniqid, id, scenario_name, scenario_type) VALUES (?, ?, ?, ?)",
+				sim.uniqId, sim.id, sim.scenario ? sim.scenario.name : null,
+				sim.scenario ? sim.scenario.scenarioType.to!string : null);
+		}
+		wrapTsac(&func);
+	}
+
+	void markSimulatorDestroyed(string uniqId, string destroyReason)
+	{
+		void func(Connection con)
+		{
+			con.exec(
+				"UPDATE simulator_instances " ~
+				"SET destroyed_at = UTC_TIMESTAMP(), destroy_reason = ? " ~
+				"WHERE uniqid = ?",
+				destroyReason, uniqId);
 		}
 		wrapTsac(&func);
 	}

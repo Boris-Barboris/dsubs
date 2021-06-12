@@ -46,14 +46,7 @@ CREATE TABLE scenario_types (
 );
 
 INSERT INTO scenario_types VALUES ('standalone'), ('tutorial'),
-    ('capmaignMission'), ('persistentSimulator');
-
-CREATE TABLE simulator_destroy_reasons (
-    name varchar(64) PRIMARY KEY
-);
-
-INSERT INTO simulator_destroy_reasons VALUES
-    ('timeout'), ('scenario-initiated'), ('abandon');
+    ('campaignMission'), ('persistentSimulator');
 
 CREATE TABLE simulator_instances (
     uniqid varchar(64) PRIMARY KEY,
@@ -64,7 +57,6 @@ CREATE TABLE simulator_instances (
     scenario_name TEXT,
     scenario_type varchar(64),
 
-    FOREIGN KEY (destroy_reason) REFERENCES simulator_destroy_reasons(`name`),
     FOREIGN KEY (scenario_type) REFERENCES scenario_types(`name`)
 );
 
