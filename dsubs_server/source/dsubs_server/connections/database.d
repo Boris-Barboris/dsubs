@@ -41,6 +41,14 @@ struct PlayerDb
 }
 
 
+enum SideOutcome: ubyte
+{
+	defeat,
+	victory,
+	draw
+}
+
+
 final class DatabaseService
 {
 	/**
@@ -214,6 +222,39 @@ final class DatabaseService
 				"SET destroyed_at = UTC_TIMESTAMP(), destroy_reason = ? " ~
 				"WHERE uniqid = ?",
 				destroyReason, uniqId);
+		}
+		wrapTsac(&func);
+	}
+
+	void savePlayerScenarioCompletion(string username, Simulator sim,
+		SideOutcome sideOutcome)
+	{
+		assert(sim.scenario !is null);
+		void func(Connection con)
+		{
+			con.exec(
+				"INSERT INTO player_scenario_completions " ~
+				"(player_id, scenario_name, scenario_type, simulator_uniqid, " ~
+				"side_outcome) VALUES ((SELECT id FROM players WHERE login_name = ?), " ~
+				"?, ?, ?, ?)",
+				username, sim.scenario.name, sim.scenario.scenarioType.to!string,
+				sim.uniqId, sideOutcome.to!string);
+		}
+		wrapTsac(&func);
+	}
+
+	void savePlayerCampaignProgress(string username, string campaignName,
+		int completedMissionNumber)
+	{
+		void func(Connection con)
+		{
+			con.exec(
+				"INSERT INTO player_campaign_progress " ~
+				"(player_id, campaign_name, completed_missions) VALUES " ~
+				"((SELECT id FROM players WHERE login_name = ?), " ~
+				"?, ?) ON DUPLICATE KEY UPDATE " ~
+				"completed_missions = GREATEST(completed_missions, ?)",
+				username, campaignName, completedMissionNumber, completedMissionNumber);
 		}
 		wrapTsac(&func);
 	}

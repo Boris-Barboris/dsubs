@@ -15,6 +15,7 @@ import dsubs_common.containers.array;
 import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.animal;
+import dsubs_server.connections.database: SideOutcome;
 import dsubs_server.weaponry;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.connections.playercon: PlayerConnection;
@@ -251,12 +252,16 @@ private final class TutorialScenarioSpawner: ScenarioSpawner
 private final class CampaignScenarioSpawner: ScenarioSpawner
 {
 	const string campaignName;
+	// one-based index of the mission in the campaign
+	const int missionNumber;
 
 	this(AvailableScenarioConstants constants,
-		Scenario delegate(Simulator sim) factory, string campaignName)
+		Scenario delegate(Simulator sim) factory, string campaignName,
+		int missionNumber)
 	{
 		super(constants, factory);
 		this.campaignName = campaignName;
+		this.missionNumber = missionNumber;
 	}
 
 	override @property ScenarioType scenarioType() const
@@ -336,7 +341,7 @@ final class ScenarioDatabase
 	/// Persistent scenarios, indexed by simulatorId.
 	private PersistentScenarioSpawner[string] m_persistentSims;
 
-	void addTutorial(T)()
+	private void addTutorial(T)()
 	{
 		AvailableScenarioConstants scenConstants = T.getConstants();
 		m_spawnableScenarios[scenConstants.name] =
@@ -344,15 +349,15 @@ final class ScenarioDatabase
 		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
 	}
 
-	CampaignScenarioSpawner addCampaignMission(MissClass)(string campaignName)
+	private void addCampaignMission(MissClass)(ref Campaign campaign)
 	{
 		AvailableScenarioConstants scenConstants = MissClass.getConstants();
 		auto res = new CampaignScenarioSpawner(scenConstants, sim => new MissClass(sim),
-			campaignName);
+			campaign.name, campaign.scenarios.length.to!int + 1);
 		// campaign missions need to go to m_spawnableScenarios as well.
 		m_spawnableScenarios[scenConstants.name] = res;
 		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
-		return res;
+		campaign.scenarios ~= res;
 	}
 
 	/// Build scenario database. Globals.entityDb must be built at this point.
@@ -380,9 +385,7 @@ final class ScenarioDatabase
 			"Perilous Fluids",
 `Take command of a Commonwealth Submarine Rustbucket (Stork class) through
 chain of swift naval skirmishes with a neighbour's navy.`);
-		perilousFluids.scenarios = [
-			addCampaignMission!Cmp1Mission1(perilousFluids.name),
-		];
+		addCampaignMission!Cmp1Mission1(perilousFluids);
 		m_campaigns ~= perilousFluids;
 	}
 
@@ -1157,6 +1160,11 @@ abstract class SinglePlayerScenario: Scenario
 		m_endMsg.shortReport = shortReport;
 		m_endMsg.longReport = m_failureLongReport ~ "\n" ~
 			Player.generateKillRecordReport(m_playerSub);
+		if (Globals.database)
+		{
+			Globals.database.savePlayerScenarioCompletion(
+				m_player.username, m_simulator, SideOutcome.defeat);
+		}
 	}
 
 	void markVictory()
@@ -1166,6 +1174,21 @@ abstract class SinglePlayerScenario: Scenario
 		m_endMsg.shortReport = m_victoryShortReport;
 		m_endMsg.longReport = m_victoryLongReport ~ "\n" ~
 			Player.generateKillRecordReport(m_playerSub);
+		if (Globals.database)
+		{
+			Globals.database.savePlayerScenarioCompletion(
+				m_player.username, m_simulator, SideOutcome.victory);
+			if (scenarioType == ScenarioType.campaignMission)
+			{
+				// for campaign missions, we need to mark campaign progress
+				CampaignScenarioSpawner campaignSpawner =
+					cast(CampaignScenarioSpawner) spawner;
+				assert(campaignSpawner !is null);
+				Globals.database.savePlayerCampaignProgress(
+					m_player.username, campaignSpawner.campaignName,
+					campaignSpawner.missionNumber);
+			}
+		}
 	}
 
 	override void onBeforeSimulation() {}
@@ -1173,7 +1196,10 @@ abstract class SinglePlayerScenario: Scenario
 	override ShouldSimTerminate onAfterSimulation(usecs_t simTimePassed)
 	{
 		if (m_playerSub.dead)
+		{
+			markDefeat("Player was sunk");
 			return ShouldSimTerminate.yes;
+		}
 		m_delayer.triggerAlarms(m_simulator.worldTime);
 		// in many years may warrant parallelization, maybe thread-safe property
 		// of a trigger.
@@ -1194,7 +1220,7 @@ abstract class SinglePlayerScenario: Scenario
 			trace("Shutting down scenario because all goals succeeded");
 			markVictory();
 		}
-		if (m_playerSub.dead || m_finished)
+		if (m_finished)
 			return ShouldSimTerminate.yes;
 		return ShouldSimTerminate.no;
 	}

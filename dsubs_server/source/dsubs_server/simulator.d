@@ -441,7 +441,7 @@ final class Simulator
 	{
 		foreach (Submarine sub; vessels.submarines)
 		{
-			if (sub && sub.player && !sub.dead)
+			if (sub && sub.player)
 				sub.player.handleSimTerminating(sub);
 		}
 	}

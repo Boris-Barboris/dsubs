@@ -623,6 +623,15 @@ final class Player: Captain
 
 		if (con && con.isOpen && con.simulatorFlow && (con.simFlowSub is s))
 		{
+			// send death message. Death has priority over defeat message.
+			if (s.dead)
+			{
+				con.simulatorFlow = false;
+				con.sendMessage(immutable SimFlowEndRes(
+					SimFlowEndReason.death, s.causeOfDeath,
+					generateKillRecordReport(s)));
+				return;
+			}
 			// send scenario data: goals, map overlay or simFlowEndRes.
 			Scenario scenario = s.simulator.scenario;
 			if (scenario)
@@ -632,15 +641,6 @@ final class Player: Captain
 					con.simulatorFlow = false;
 					return;
 				}
-			}
-			// send death message
-			if (s.dead)
-			{
-				con.simulatorFlow = false;
-				con.sendMessage(immutable SimFlowEndRes(
-					SimFlowEndReason.death, s.causeOfDeath,
-					generateKillRecordReport(s)));
-				return;
 			}
 			// kinematic snapshot
 			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(s),
