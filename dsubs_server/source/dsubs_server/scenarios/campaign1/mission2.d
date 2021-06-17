@@ -1,4 +1,4 @@
-module dsubs_server.scenarios.campaign1.mission1;
+module dsubs_server.scenarios.campaign1.mission2;
 
 import std.algorithm;
 import std.random: randomShuffle;
@@ -22,51 +22,40 @@ import dsubs_server.simulator;
 
 
 
-final class Cmp1Mission1: SinglePlayerScenario
+final class Cmp1Mission2: SinglePlayerScenario
 {
 	static AvailableScenarioConstants getConstants()
 	{
 		AvailableScenarioConstants constants;
-		constants.name = "Whale's Health";
-		constants.shortDescription = "Coast Guard duties and mammal woes";
+		constants.name = "A Soul to Save";
+		constants.shortDescription = "Sprint ";
 		constants.fullDescription =
 `
-FSC-94/O-65        SUBMARINE SQUADRON TWO
+GNO-94/O-13        SUBMARINE SQUADRON TWO
 
-Patrol order to CWS RUSTBUCKET (SS13).
+SAR order to CWS RUSTBUCKET (SS13).
 
-From:       The Commander-in-Chief, Commonwealth Fleet.
+From:       The Commander Submarines, FIRST FLEET.
 To:         The Commander Submarine RUSTBUCKET.
-Via:        The Commander Submarines, FIRST FLEET.
+Via:        SIGPOPS Acoustic division, Chief of Staff.
 
-Subject:    CWS RUSTBUCKET (SS08) - Partrol order.
+Subject:    CWS RUSTBUCKET (SS08) - Search and Rescue.
 
-	Situation:  Moderate civilian vessel traffic. No military vessels
-in the area. Dispersed whales, vocalize lively.
+	Situation:  No civilian vessel traffic. No known military vessels
+in the area. Dispersed biologics.
 
-	Objective 1:  Marine Life Department has requested our assistance with mammal
-health problem. Three humpback whales, LIAM, GRACE and SAMUEL
-are suspected to be infected with rabies. The virus makes poor animals scream from
-agonizing pain, frightening the crew of nearby vessels and causing discontent.
-First Fleet staff was eager to put the poor souls out of their misery, while
-simultaniously testing the newest Minoga-class torpedo.
-	Commander, you are only to kill the wailing whales. Animals that are
-not screaming are to be considered healthy and not be touched.
-	Keep in mind that a whale is a small target that requires
-extra accuracy (straight run pattern) and minimal torpedo speed (21) to hit.
-Use active sonar guidance mode.
+	Objective:  Tanker "Freud" has missed it's mandatory acoustic transponder
+exchange 1 hour ago. 20 minutes ago standard emergency beacon SOS pattern was
+detected close to it's estimate position. SS13 is the closest military vessel,
+it is to rapidly approach the distressed tanker and conduct rescue operations.
 
-    Objective 2:  Crew of the civilian tanker HIPPO is reported to be banging
-'LIQUID DRUM AND BASS' at whopping 100 dB. While the acoustic surveillance
-officers appreciate the joke, the crew needs to be reminded of the restrictions
-on noise pollution, imposed in our territorial waters. Get in range of 300m
-from the HIPPO and ping at max power. They are not the only jokers.
-
-    Operations mode:  You are to conduct your patrol duty according to peace time
-regulations. You are NOT TO USE your main active sonar at ranges less than
-500m from a whale (even a sick one), as dictated by Marine Life Preservation Act.
+    Operations mode: due to collision incident and merchant traffic harassment
+by Bads Empire yesterday all Commonwealth crews are to conduct all operations
+alerted. At least one tube is to be constantly loaded. You are NOT authorized
+to fire in anger unless you are positive there is an enemy torpedo inbound.
 
     Good luck, Commander!
+	P.S. Thanks for your prevous efforts concerning the "music" problem.
 `;
 		constants.allowedEntities = EntityDbShort(
 			["Stork"], ["Seven-blade screw"],

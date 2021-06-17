@@ -32,6 +32,7 @@ import dsubs_server.scenarios.tutorials.navigationtutorial;
 import dsubs_server.scenarios.tutorials.torpedotutorial;
 import dsubs_server.scenarios.tutorials.hydrophonetutorial;
 import dsubs_server.scenarios.campaign1.mission1;
+import dsubs_server.scenarios.campaign1.mission2;
 
 
 /// Action to run after specified clock time.
@@ -388,6 +389,7 @@ final class ScenarioDatabase
 `Take command of a Commonwealth Submarine Rustbucket (Stork class) through
 chain of swift naval skirmishes with a neighbour's navy.`);
 		addCampaignMission!Cmp1Mission1(perilousFluids);
+		addCampaignMission!Cmp1Mission2(perilousFluids);
 		m_campaigns ~= perilousFluids;
 	}
 

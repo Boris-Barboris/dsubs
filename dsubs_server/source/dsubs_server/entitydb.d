@@ -1507,6 +1507,7 @@ Active sonars:
 			"../dsubs_sound/scenario_sounds/Monrroe - Out of Time (feat. Zara Kershaw).wav");
 		Globals.sctx.getWavFile(
 			"../dsubs_sound/scenario_sounds/Epiphany-TwoThirds.wav");
+		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/sos.wav");
 	}
 
 }
