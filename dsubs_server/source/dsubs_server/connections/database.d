@@ -279,4 +279,18 @@ final class DatabaseService
 		}
 		return wrapTsac(&func);
 	}
+
+	string[] getScenariosWonByPlayer(string username)
+	{
+		string[] func(Connection con)
+		{
+			Row[] rs = con.query("SELECT UNIQUE(scenario_name) " ~
+				"FROM player_scenario_completions WHERE " ~
+				"player_id = (SELECT id FROM players WHERE login_name = ?) AND " ~
+				"side_outcome = 'victory'",
+				username).array;
+			return rs.map!(r => r[0].get!string).array;
+		}
+		return wrapTsac(&func);
+	}
 }

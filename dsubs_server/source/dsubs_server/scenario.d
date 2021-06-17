@@ -274,8 +274,8 @@ private final class CampaignScenarioSpawner: ScenarioSpawner
 		enforce(req.type == SpawnRequestType.newSimulator);
 		assert(req.simulatorIdOrScenarioName == m_constants.name);
 		super.validateSpawnRequest(player, req);
-		// TODO: validate that the previous mission is completed, or this is the
-		// first campaign mission.
+		// TODO: maybe later do validation that the previous scenario
+		// was completed
 	}
 }
 
@@ -344,6 +344,7 @@ final class ScenarioDatabase
 	private void addTutorial(T)()
 	{
 		AvailableScenarioConstants scenConstants = T.getConstants();
+		assert(scenConstants.name !in m_spawnableScenarios, "duplicate scenario name");
 		m_spawnableScenarios[scenConstants.name] =
 			new TutorialScenarioSpawner(scenConstants, sim => new T(sim));
 		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
@@ -352,6 +353,7 @@ final class ScenarioDatabase
 	private void addCampaignMission(MissClass)(ref Campaign campaign)
 	{
 		AvailableScenarioConstants scenConstants = MissClass.getConstants();
+		assert(scenConstants.name !in m_spawnableScenarios, "duplicate scenario name");
 		auto res = new CampaignScenarioSpawner(scenConstants, sim => new MissClass(sim),
 			campaign.name, campaign.scenarios.length.to!int + 1);
 		// campaign missions need to go to m_spawnableScenarios as well.
@@ -411,13 +413,13 @@ chain of swift naval skirmishes with a neighbour's navy.`);
 	{
 		AvailableScenariosRes res;
 
-		int[string] campaignName2Completed;
+		bool[string] completedScenarios;
 		if (Globals.database)
 		{
-			PlayerCampaignProgressDb[] progress =
-				Globals.database.getPlayerCampaignStats(player.username);
-			foreach (p; progress)
-				campaignName2Completed[p.campaignName] = p.completedMissions;
+			string[] scenarioNames =
+				Globals.database.getScenariosWonByPlayer(player.username);
+			foreach (scenName; scenarioNames)
+				completedScenarios[scenName] = true;
 		}
 
 		// all campaigns
@@ -433,21 +435,19 @@ chain of swift naval skirmishes with a neighbour's navy.`);
 				preparedScen.type = spawner.scenarioType;
 				if (Globals.database)
 				{
-					int completed = campaignName2Completed.get(campaign.name, 0);
-					if (i < completed)
-						preparedScen.completed = true;
-					if (i > completed)
-						break;
+					preparedScen.completed =
+						cast(bool) (preparedScen.constants.name in completedScenarios);
 				}
-				else
-					preparedScen.completed = false;
 				availCamp.scenarios ~= preparedScen;
+				// TODO: uncomment
+				// if (Globals.database && !preparedScen.completed)
+				// 	break;
 			}
 			if (Globals.database)
 			{
-				int completed = campaignName2Completed.get(campaign.name, 0);
-				if (completed >= campaign.scenarios.length)
-					availCamp.completed = true;
+				availCamp.completed =
+					cast(bool) (
+						campaign.scenarios[$-1].constants.name in completedScenarios);
 			}
 			return availCamp;
 		}).array;
@@ -459,8 +459,8 @@ chain of swift naval skirmishes with a neighbour's navy.`);
 			AvailableScenario preparedScen;
 			preparedScen.constants = cast() spawner.constants;
 			preparedScen.type = spawner.scenarioType;
-			// TODO: set completion flag from db
-			preparedScen.completed = false;
+			preparedScen.completed =
+				cast(bool) (preparedScen.constants.name in completedScenarios);
 			return preparedScen;
 		}).array;
 		// append persistent simulator scenarios
