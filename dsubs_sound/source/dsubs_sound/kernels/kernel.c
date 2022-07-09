@@ -62,7 +62,7 @@ ulong xorshift64(ulong *state)
 float uniform01(uint *state)
 {
 	uint dice = xorshift32(state);
-	return (float) dice / UINT_MAX;
+	return dice / (float) UINT_MAX;
 }
 
 float uniform(uint *state, float lower, float upper)
