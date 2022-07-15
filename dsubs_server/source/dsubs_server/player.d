@@ -485,8 +485,7 @@ final class Player: Captain
 			// reference frame translation for courses
 			foreach (ref WeaponParamValue param; req.weaponParams)
 			{
-				if (param.type == WeaponParamType.marchCourse ||
-					param.type == WeaponParamType.activeCourse)
+				if (param.type == WeaponParamType.course)
 				{
 					param.course = param.course - coordRot;
 				}

@@ -1459,7 +1459,7 @@ final class AICaptain
 				searchParam.searchPattern = pattern;
 			}
 
-			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.marchCourse);
+			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.course);
 			courseParam.course = course;
 
 			// easy bot always shoots with perfect lead
@@ -1525,7 +1525,7 @@ final class AICaptain
 				return null;
 			}
 			WeaponFactory factory = Globals.entityDb.getWeaponFactory(weapon);
-			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.marchCourse);
+			WeaponParamValue courseParam = WeaponParamValue(WeaponParamType.course);
 			courseParam.course = courseAngle(posDiff);
 			WeaponParamValue activationRangeParam = WeaponParamValue(
 				WeaponParamType.activationRange);

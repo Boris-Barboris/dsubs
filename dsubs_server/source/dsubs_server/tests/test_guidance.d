@@ -27,11 +27,8 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(-90.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
-	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
 	pv.range = 400.0f;
@@ -57,7 +54,7 @@ unittest
 	WeaponParamValue pv;
 
 	// slow torp
-	pv.type = WeaponParamType.marchCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(-45.0f);
 	pvs ~= pv;
 	pv.type = WeaponParamType.marchSpeed;
@@ -76,7 +73,7 @@ unittest
 
 	// fast torp
 	pvs.length = 0;
-	pv.type = WeaponParamType.marchCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(-45.0f);
 	pvs ~= pv;
 	pv.type = WeaponParamType.marchSpeed;
@@ -107,10 +104,7 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
-	pv.course = dgr2rad(0.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
@@ -172,10 +166,7 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
-	pv.course = dgr2rad(0.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
@@ -236,10 +227,7 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
-	pv.course = dgr2rad(0.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
@@ -297,10 +285,7 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
-	pv.course = dgr2rad(0.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
@@ -362,10 +347,7 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
-	pv.course = dgr2rad(0.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
@@ -427,10 +409,7 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
-	pv.course = dgr2rad(0.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
@@ -555,10 +534,7 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
-	pv.course = dgr2rad(0.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
@@ -587,10 +563,7 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
-	pv.course = dgr2rad(0.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;
@@ -660,10 +633,7 @@ unittest
 	WeaponParamValue[] pvs;
 	WeaponParamValue pv;
 
-	pv.type = WeaponParamType.marchCourse;
-	pv.course = dgr2rad(0.0);
-	pvs ~= pv;
-	pv.type = WeaponParamType.activeCourse;
+	pv.type = WeaponParamType.course;
 	pv.course = dgr2rad(0.0);
 	pvs ~= pv;
 	pv.type = WeaponParamType.activationRange;

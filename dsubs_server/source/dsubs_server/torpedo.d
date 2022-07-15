@@ -260,7 +260,6 @@ final class TorpedoGuidance: IGuidance
 		const(ReflectorPrototype)* m_activeReflectorProto;
 		Reflector m_activeReflector;
 		float m_marchCourse;
-		float m_activeCourse;
 		float m_marchSpeed;
 		float m_activeSpeed;
 		float m_marchThrottle = 1.0f;
@@ -322,8 +321,6 @@ final class TorpedoGuidance: IGuidance
 		// dumbfire snapshot in straight direction
 		if (isNaN(m_marchCourse))
 			m_marchCourse = m_torpedo.transform.wrotation;
-		if (isNaN(m_activeCourse))
-			m_activeCourse = m_marchCourse;
 	}
 
 	void update(usecs_t dt)
@@ -385,7 +382,7 @@ final class TorpedoGuidance: IGuidance
 				{
 					case WeaponSearchPattern.straight:
 						m_torpedo.rudder.directMode = false;
-						m_torpedo.targetCourse = m_activeCourse;
+						m_torpedo.targetCourse = m_marchCourse;
 						break;
 					case WeaponSearchPattern.spiral:
 						m_spiralSinceStart += distanceAdded;
@@ -402,7 +399,7 @@ final class TorpedoGuidance: IGuidance
 							m_snakeSign = -m_snakeSign;
 						}
 						m_torpedo.rudder.directMode = false;
-						m_torpedo.targetCourse = m_activeCourse +
+						m_torpedo.targetCourse = m_marchCourse +
 							m_snakeSign * m_snakeAngle;
 						break;
 				}
@@ -897,7 +894,6 @@ abstract class WeaponFactory: VesselFactory
 	string name;
 	string description;
 	bool marchCourseConfigurable;
-	bool activeCourseConfigurable;
 	bool playable;
 
 	@property const(WeaponTemplate) tmpl() const
@@ -938,9 +934,7 @@ abstract class WeaponFactory: VesselFactory
 		m_availableParams = WeaponParamType.none;
 		m_paramDescs.length = 0;
 		if (marchCourseConfigurable)
-			m_availableParams |= WeaponParamType.marchCourse;
-		if (activeCourseConfigurable)
-			m_availableParams |= WeaponParamType.activeCourse;
+			m_availableParams |= WeaponParamType.course;
 		//if (marchSpeedRange.max > marchSpeedRange.min)
 		{
 			m_availableParams |= WeaponParamType.marchSpeed;
@@ -1063,7 +1057,6 @@ final class TorpedoFactory: WeaponFactory
 	{
 		propFactory = pf;
 		marchCourseConfigurable = true;
-		activeCourseConfigurable = true;
 	}
 
 	// balancing params
@@ -1189,11 +1182,8 @@ final class TorpedoFactory: WeaponFactory
 			enforce(param.type != WeaponParamType.none, "invalid parameter type");
 			switch (param.type)
 			{
-				case WeaponParamType.marchCourse:
+				case WeaponParamType.course:
 					g.m_marchCourse = param.course.validateFloat.clampAngle;
-					break;
-				case WeaponParamType.activeCourse:
-					g.m_activeCourse = param.course.validateFloat.clampAngle;
 					break;
 				case WeaponParamType.sensorMode:
 					enforce(sensorModes & param.sensorMode, "invalid sensor mode");
