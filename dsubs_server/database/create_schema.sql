@@ -6,7 +6,7 @@ CREATE TABLE db_revision (
     revision INT NOT NULL
 );
 
-INSERT INTO db_revision VALUES (1);
+INSERT INTO db_revision VALUES (2);
 
 CREATE TABLE players (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
