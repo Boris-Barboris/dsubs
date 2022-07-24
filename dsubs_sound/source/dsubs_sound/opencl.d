@@ -61,6 +61,7 @@ private struct Platform
 	cl_platform_id id;
 	string name;
 	string vers;
+	string profile;
 }
 
 private Platform getPlatformById(cl_platform_id id)
@@ -69,12 +70,16 @@ private Platform getPlatformById(cl_platform_id id)
 	char[] name = new char[64];
 	size_t actual_len;
 	clGetPlatformInfo(id, CL_PLATFORM_NAME, 64, name.ptr, &actual_len).clError;
-	name.length = actual_len;
+	name.length = actual_len - 1;
 	res.name = cast(string) name;
 	char[] vers = new char[256];
 	clGetPlatformInfo(id, CL_PLATFORM_VERSION, 256, vers.ptr, &actual_len).clError;
-	vers.length = actual_len;
+	vers.length = actual_len - 1;
 	res.vers = cast(string) vers;
+	char[] profile = new char[256];
+	clGetPlatformInfo(id, CL_PLATFORM_PROFILE, 256, profile.ptr, &actual_len).clError;
+	profile.length = actual_len - 1;
+	res.profile = cast(string) profile;
 	return res;
 }
 
