@@ -204,6 +204,16 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 		}
 		return res;
 	}
+
+	final @property KinematicSnapshot kinematicSnapshot()
+	{
+		return KinematicSnapshot(
+			simulator.worldTime,
+			m_transform.wposition,
+			m_rigidBody.kinet.vel,
+			m_transform.wrotation,
+			m_rigidBody.kinet.angVel);
+	}
 }
 
 

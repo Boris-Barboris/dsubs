@@ -38,6 +38,12 @@ interface IGuidance
 	void setUnassignedParams();
 
 	void shutdown();
+
+	void updateParamsByWire(WeaponParamValue[] params);
+
+	void activateByWire(bool shouldBeActive);
+
+	WireGuidanceFullState getFullState();
 }
 
 
@@ -46,11 +52,13 @@ abstract class Weapon: Vessel
 	protected
 	{
 		Submarine m_shooter;
+		Tube m_shooterTube;
 		Captain m_shooterCaptain;
 		IGuidance m_guidance;
 	}
 
 	final @property Submarine shooter() { return m_shooter; }
+	final @property Tube shooterTube() { return m_shooterTube; }
 	final @property Captain shooterCaptain() { return m_shooterCaptain; }
 	@property IGuidance guidance() { return m_guidance; }
 
@@ -58,12 +66,13 @@ abstract class Weapon: Vessel
 	// component during updateGuidances().
 	@property bool detonated() const;
 
-	this(Submarine shooter, string templateName)
+	this(Submarine shooter, string templateName, Tube tube)
 	{
 		super(templateName);
 		m_shooter = shooter;
 		if (m_shooter)
 			m_shooterCaptain = shooter.captain;
+		m_shooterTube = tube;
 	}
 
 	override void register(Simulator sim)
@@ -73,10 +82,18 @@ abstract class Weapon: Vessel
 		simulator.weapons.registerEntity(this);
 	}
 
+	override protected void onFirstKill()
+	{
+		// cut the wire
+		if (m_shooterTube)
+			m_shooterTube.handleWeaponShutdown(this);
+	}
+
 	override void shutdown()
 	{
 		super.shutdown();
 		m_guidance.shutdown();
+		onFirstKill();
 		simulator.weapons.unregisterEntity(this);
 	}
 }
@@ -84,9 +101,9 @@ abstract class Weapon: Vessel
 
 final class StaticDecoy: Weapon
 {
-	this(Submarine shooter, string templateName, IGuidance guidance)
+	this(Submarine shooter, string templateName, Tube tube, IGuidance guidance)
 	{
-		super(shooter, templateName);
+		super(shooter, templateName, tube);
 		m_guidance = guidance;
 	}
 
@@ -94,16 +111,14 @@ final class StaticDecoy: Weapon
 }
 
 
-final class ActiveDecoyGuidance: IGuidance
+class StaticDecoyGuidance: IGuidance
 {
-	private
+	protected
 	{
 		StaticDecoy m_decoy;
 		bool m_active;
 		usecs_t m_activateAfter;
 		float m_fuelLeft;
-		ReflectorPrototype m_activeReflectorProto;
-		Reflector m_activeReflector;
 	}
 
 	void update(usecs_t dt)
@@ -114,9 +129,7 @@ final class ActiveDecoyGuidance: IGuidance
 			if (m_activateAfter <= 0)
 			{
 				m_active = true;
-				m_activeReflector = new Reflector(m_decoy.transform,
-					m_activeReflectorProto);
-				m_decoy.simulator.acous.registerReflector(m_activeReflector);
+				onActivate();
 			}
 		}
 		else
@@ -125,59 +138,64 @@ final class ActiveDecoyGuidance: IGuidance
 			if (m_fuelLeft < 0.0f)
 			{
 				m_decoy.kill("fuel exhausted", null);
-				if (m_activeReflector)
-				{
-					m_decoy.simulator.acous.unregisterReflector(m_activeReflector);
-					m_activeReflector = null;
-				}
+				shutdown();
 			}
 		}
+	}
+
+	protected abstract void onActivate();
+
+	void setUnassignedParams() {}
+
+	void updateParamsByWire(WeaponParamValue[] params)
+	{
+		throw new Exception("Decoys cannot be wire-guided");
+	}
+
+	void activateByWire(bool shouldBeActive)
+	{
+		throw new Exception("Decoys cannot be wire-guided");
+	}
+
+	WireGuidanceFullState getFullState()
+	{
+		throw new Exception("Decoys cannot be wire-guided");
+	}
+}
+
+
+final class ActiveDecoyGuidance: StaticDecoyGuidance
+{
+	private
+	{
+		ReflectorPrototype m_activeReflectorProto;
+		Reflector m_activeReflector;
+	}
+
+	protected override void onActivate()
+	{
+		m_activeReflector = new Reflector(
+			m_decoy.transform, m_activeReflectorProto);
+		m_decoy.simulator.acous.registerReflector(m_activeReflector);
 	}
 
 	void shutdown()
 	{
 		if (m_activeReflector)
+		{
 			m_decoy.simulator.acous.unregisterReflector(m_activeReflector);
+			m_activeReflector = null;
+		}
 	}
-
-	void setUnassignedParams() {}
 }
 
 
-final class PassiveDecoyGuidance: IGuidance
+final class PassiveDecoyGuidance: StaticDecoyGuidance
 {
-	private
+	protected override void onActivate()
 	{
-		StaticDecoy m_decoy;
-		bool m_active;
-		usecs_t m_activateAfter;
-		float m_fuelLeft;
+		m_decoy.targetThrottle = uniform(0.8f, 1.0f);
 	}
-
-	void update(usecs_t dt)
-	{
-		if (!m_active)
-		{
-			m_activateAfter -= dt;
-			if (m_activateAfter <= 0)
-			{
-				m_active = true;
-				m_decoy.targetThrottle = uniform(0.8f, 1.0f);
-			}
-		}
-		else
-		{
-			m_fuelLeft -= dt / 1e6;
-			if (m_fuelLeft < 0.0f)
-			{
-				m_decoy.kill("fuel exhausted", null);
-			}
-		}
-	}
-
-	void shutdown() {}
-
-	void setUnassignedParams() {}
 }
 
 
@@ -199,9 +217,9 @@ final class Torpedo: Weapon
 	}
 	override @property bool detonated() const { return m_detonated; }
 
-	this(Submarine shooter, string templateName)
+	this(Submarine shooter, string templateName, Tube tube)
 	{
-		super(shooter, templateName);
+		super(shooter, templateName, tube);
 		m_guidance = new TorpedoGuidance(this);
 	}
 
@@ -267,9 +285,14 @@ final class TorpedoGuidance: IGuidance
 		float m_fuelLeft;
 		float m_fuelEffExponent = 2.0f;
 		float m_distanceTraveled = 0.0f;
-		float m_activeRange;
+		float m_activationRange;
 		vec2d m_lastPos;
 		bool m_activated;
+
+		// set to true when at least once activation
+		// command was issued by wire. Disables
+		// range-based activation
+		bool m_wireGuidedActivationControl;
 
 		// snake-related parameters
 		float m_snakeArm;
@@ -343,7 +366,7 @@ final class TorpedoGuidance: IGuidance
 		float distanceAdded = (m_lastPos - m_torpedo.transform.wposition).length;
 		m_distanceTraveled += distanceAdded;
 		m_lastPos = m_torpedo.transform.wposition;
-		if (!m_activated && m_distanceTraveled >= m_activeRange)
+		if (!m_activated && m_distanceTraveled >= m_activationRange)
 		{
 			m_activated = true;
 			m_snakeArmBeforeTurn += m_snakeArm;
@@ -429,6 +452,43 @@ final class TorpedoGuidance: IGuidance
 			m_torpedo.targetThrottle = m_marchThrottle;
 			m_torpedo.targetCourse = m_marchCourse;
 		}
+	}
+
+	void updateParamsByWire(WeaponParamValue[] params)
+	{
+		throw new Exception("Decoys cannot be wire-guided");
+	}
+
+	void activateByWire(bool shouldBeActive)
+	{
+		throw new Exception("Decoys cannot be wire-guided");
+	}
+
+	WireGuidanceFullState getFullState()
+	{
+		WireGuidanceFullState res;
+		res.tubeId = m_torpedo.tube.id;
+		res.fuelLeft = m_fuelLeft;
+		res.weaponSnap = m_torpedo.kinematicSnapshot;
+		res.active = m_activated;
+		res.tracking = m_activated ? m_targetTracked : false;
+		if (m_activated && m_targetTracked)
+			res.trackingDir = m_curTargetDir;
+		// dump weapon params
+		res.weaponParams.reserve(6);
+		res.weaponParams ~= WeaponParamValue(WeaponParamType.course);
+		res.weaponParams[$-1].course = m_marchCourse;
+		res.weaponParams ~= WeaponParamValue(WeaponParamType.activeSpeed);
+		res.weaponParams[$-1].speed = m_activeSpeed;
+		res.weaponParams ~= WeaponParamValue(WeaponParamType.marchSpeed);
+		res.weaponParams[$-1].speed = m_marchSpeed;
+		res.weaponParams ~= WeaponParamValue(WeaponParamType.activationRange);
+		res.weaponParams[$-1].range = m_activationRange;
+		res.weaponParams ~= WeaponParamValue(WeaponParamType.searchPattern);
+		res.weaponParams[$-1].searchPattern = m_searchPattern;
+		res.weaponParams ~= WeaponParamValue(WeaponParamType.sensorMode);
+		res.weaponParams[$-1].sensorMode = m_sensorMode;
+		return res;
 	}
 
 	private
@@ -895,13 +955,15 @@ abstract class WeaponFactory: VesselFactory
 	string description;
 	bool marchCourseConfigurable;
 	bool playable;
+	bool wireGuided;
 
 	@property const(WeaponTemplate) tmpl() const
 	{
 		assert(m_paramDescsGenerated);
 		return const WeaponTemplate(
 			name, description, turningRadius, m_availableParams, m_paramDescs,
-			fuel.mean, fullThrottleSpd, fuelEffExponent);
+			fuel.mean, fullThrottleSpd, fuelEffExponent, wireGuided,
+			m_wireControlledParams);
 	}
 
 	float turningRadius = 0.0f;
@@ -915,6 +977,7 @@ abstract class WeaponFactory: VesselFactory
 	{
 		bool m_paramDescsGenerated;
 		WeaponParamType m_availableParams;
+		WeaponParamType m_wireControlledParams;
 		WeaponParamDesc[] m_paramDescs;
 	}
 
@@ -975,10 +1038,17 @@ abstract class WeaponFactory: VesselFactory
 			pd.searchPatterns = searchPatterns;
 			m_paramDescs ~= pd;
 		}
+		if (wireGuided)
+		{
+			// activationRange makes no sense to be manipulated
+			m_wireControlledParams = m_availableParams &
+				~WeaponParamType.activationRange;
+		}
 		m_paramDescsGenerated = true;
 	}
 
-	Weapon build(Submarine shooter, const(WeaponParamValue)[] launchParams) const;
+	Weapon build(Submarine shooter, const(WeaponParamValue)[] launchParams,
+		Tube tube) const;
 }
 
 
@@ -990,11 +1060,11 @@ final class ActiveDecoyFactory: WeaponFactory
 
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
 	override StaticDecoy build(Submarine shooter,
-		const(WeaponParamValue)[] launchParams) const
+		const(WeaponParamValue)[] launchParams, Tube tube) const
 	{
 		enforce(launchParams.length == 0, "decoy is not configurable");
 		ActiveDecoyGuidance guidance = new ActiveDecoyGuidance();
-		StaticDecoy res = new StaticDecoy(shooter, name, guidance);
+		StaticDecoy res = new StaticDecoy(shooter, name, tube, guidance);
 		super.bootstrap(res);
 		guidance.m_decoy = res;
 		guidance.m_fuelLeft = fuel;
@@ -1012,11 +1082,11 @@ final class PassiveDecoyFactory: WeaponFactory
 
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
 	override StaticDecoy build(Submarine shooter,
-		const(WeaponParamValue)[] launchParams) const
+		const(WeaponParamValue)[] launchParams, Tube tube) const
 	{
 		enforce(launchParams.length == 0, "decoy is not configurable");
 		PassiveDecoyGuidance guidance = new PassiveDecoyGuidance();
-		StaticDecoy res = new StaticDecoy(shooter, name, guidance);
+		StaticDecoy res = new StaticDecoy(shooter, name, tube, guidance);
 		res.addPropulsor(propFactory.build());
 		super.bootstrap(res);
 		guidance.m_decoy = res;
@@ -1169,7 +1239,7 @@ final class TorpedoFactory: WeaponFactory
 		g.m_searchPattern = defaultSearchPattern;
 		g.m_marchSpeed = marchSpeedRange.max;
 		g.m_activeSpeed = activeSpeedRange.max;
-		g.m_activeRange = activationRange.min;
+		g.m_activationRange = activationRange.min;
 		// then we process client input
 		WeaponParamType assignedParams;
 		foreach (const WeaponParamValue param; params)
@@ -1207,8 +1277,8 @@ final class TorpedoFactory: WeaponFactory
 					g.m_activeSpeed = param.speed;
 					break;
 				case WeaponParamType.activationRange:
-					enforce(activationRange.contains(param.range), "invalid activeRange");
-					g.m_activeRange = param.range;
+					enforce(activationRange.contains(param.range), "invalid activationRange");
+					g.m_activationRange = param.range;
 					break;
 				default:
 					throw new Exception("unknown weapon parameter");
@@ -1218,9 +1288,10 @@ final class TorpedoFactory: WeaponFactory
 	}
 
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
-	override Torpedo build(Submarine shooter, const(WeaponParamValue)[] launchParams) const
+	override Torpedo build(Submarine shooter, const(WeaponParamValue)[] launchParams,
+		Tube tube) const
 	{
-		Torpedo res = new Torpedo(shooter, name);
+		Torpedo res = new Torpedo(shooter, name, tube);
 		res.addPropulsor(propFactory.build());
 		configureGuidance(res, launchParams);
 		bootstrap(res);

@@ -183,6 +183,7 @@ final class Tube: IFlowNoiseMultiplier
 		Transform2D m_transform;
 		Submarine m_sub;
 		AmmoRoom m_room;
+		Weapon m_wireGuidedWeapon;
 		const TubePrototype m_proto;
 		string m_loadedWeapon;
 		string m_desiredWeapon;
@@ -213,6 +214,8 @@ final class Tube: IFlowNoiseMultiplier
 	@property TubeState state() const { return m_state; }
 	@property TubeState desiredState() const { return m_desiredState; }
 	@property TubeType type() const { return m_proto.tmpl.type; }
+	@property bool wireGuided() const { return m_wireGuidedWeapon !is null; }
+	@property Weapon wireGuidedWeapon() { return m_wireGuidedWeapon; }
 	@property string loadedWeapon() const { return m_loadedWeapon; }
 	@property string desiredWeapon() const { return m_desiredWeapon; }
 	@property TubeOperationResult lastSimUpdateResult() const
@@ -222,8 +225,10 @@ final class Tube: IFlowNoiseMultiplier
 
 	@property TubeFullState fullState() const
 	{
+		string wireGuidedWeaponName = wireGuided ? m_wireGuidedWeapon.prototypeName : null;
 		return TubeFullState(
-			id, m_loadedWeapon, m_desiredWeapon, m_state, m_desiredState);
+			id, m_loadedWeapon, m_desiredWeapon, m_state, m_desiredState,
+			wireGuided, wireGuidedWeaponName);
 	}
 
 	TubeOperationResult processLoadRequest(string newWeaponName)
@@ -318,7 +323,7 @@ final class Tube: IFlowNoiseMultiplier
 			return TubeOperationResult(false, false);
 		enforce(m_loadedWeapon != null, "no weapon is loaded");
 		const WeaponFactory wf = Globals.entityDb.getWeaponFactory(m_loadedWeapon);
-		Weapon w = wf.build(m_sub, weaponParams);
+		Weapon w = wf.build(m_sub, weaponParams, this);
 		w.transform.position = m_transform.wposition;
 		w.transform.rotation = m_transform.wrotation;
 		w.rigidBody.kinet.vel = m_sub.rigidBody.fixedPointVelocity(m_transform.wposition) +
@@ -327,6 +332,8 @@ final class Tube: IFlowNoiseMultiplier
 		w.register(m_sub.simulator);
 		m_desiredWeapon = m_loadedWeapon = null;
 		m_state = TubeState.firing;
+		if (wf.wireGuided)
+			m_wireGuidedWeapon = w;
 		size_t soundOffset = dsubs_sound.common.uniform!("[]", size_t, size_t)(
 			0, GLOBAL_SRATE / 8);
 		startPlayingSound(&m_proto.firingSoundProto, &soundOffset);
@@ -344,6 +351,18 @@ final class Tube: IFlowNoiseMultiplier
 				m_lastSimUpdateResults.tubeChanged = true;
 				startTransitionToDesiredState();
 			}
+		}
+	}
+
+	/// Called when, for example, torpedo is detonated
+	/// or is out of fuel.
+	void handleWeaponShutdown(Weapon wpn)
+	{
+		if (m_wireGuidedWeapon is wpn)
+		{
+			if (m_state == TubeState.open)
+				m_desiredState = TubeState.dry;
+			m_wireGuidedWeapon = null;
 		}
 	}
 
@@ -428,6 +447,8 @@ final class Tube: IFlowNoiseMultiplier
 					// closing finished
 					m_transitionTimeCounter = 0;
 					m_lastSimUpdateResults.tubeChanged = true;
+					// cut the wire
+					m_wireGuidedWeapon = null;
 					m_state = TubeState.flooded;
 				}
 				break;
@@ -440,7 +461,8 @@ final class Tube: IFlowNoiseMultiplier
 					m_transitionTimeCounter = 0;
 					m_lastSimUpdateResults.tubeChanged = true;
 					m_state = TubeState.open;
-					m_desiredState = TubeState.dry;
+					if (!wireGuided)
+						m_desiredState = TubeState.dry;
 				}
 				break;
 			}
