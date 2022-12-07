@@ -151,6 +151,8 @@ struct TubeOperationResult
 	bool roomChanged;
 	bool launchOccurred;
 	string launchedWeaponName;
+	string wireGuidanceId;	/// set if wireWasCut as well
+	bool wireWasCut;
 }
 
 
@@ -192,7 +194,7 @@ final class Tube: IFlowNoiseMultiplier
 
 		TubeState m_state = TubeState.dry;
 		TubeState m_desiredState = TubeState.dry;
-		// used to send updates when background tube loading completes
+		// used to send updates after the simulation step is done
 		TubeOperationResult m_lastSimUpdateResults;
 	}
 
@@ -214,7 +216,20 @@ final class Tube: IFlowNoiseMultiplier
 	@property TubeState state() const { return m_state; }
 	@property TubeState desiredState() const { return m_desiredState; }
 	@property TubeType type() const { return m_proto.tmpl.type; }
-	@property bool wireGuided() const { return m_wireGuidedWeapon !is null; }
+	@property bool wireGuidanceActive() const { return m_wireGuidedWeapon !is null; }
+	@property bool wireGuidanceSupported() const { return m_proto.tmpl.wireGuidance; }
+	@property string wireGuidanceId() const
+	{
+		if (m_wireGuidedWeapon)
+			return m_wireGuidedWeapon.id.toString;
+		return null;
+	}
+	@property string wireGuidedWeaponName() const
+	{
+		if (m_wireGuidedWeapon)
+			return m_wireGuidedWeapon.prototypeName;
+		return null;
+	}
 	@property Weapon wireGuidedWeapon() { return m_wireGuidedWeapon; }
 	@property string loadedWeapon() const { return m_loadedWeapon; }
 	@property string desiredWeapon() const { return m_desiredWeapon; }
@@ -225,10 +240,9 @@ final class Tube: IFlowNoiseMultiplier
 
 	@property TubeFullState fullState() const
 	{
-		string wireGuidedWeaponName = wireGuided ? m_wireGuidedWeapon.prototypeName : null;
 		return TubeFullState(
 			id, m_loadedWeapon, m_desiredWeapon, m_state, m_desiredState,
-			wireGuided, wireGuidedWeaponName);
+			wireGuidanceActive, wireGuidedWeaponName, wireGuidanceId);
 	}
 
 	TubeOperationResult processLoadRequest(string newWeaponName)
@@ -305,6 +319,7 @@ final class Tube: IFlowNoiseMultiplier
 			case TubeState.drying:
 			case TubeState.opening:
 			case TubeState.closing:
+			case TubeState.firing:
 			{
 				m_desiredState = newDesiredState;
 				return TubeOperationResult(true, false);
@@ -332,18 +347,20 @@ final class Tube: IFlowNoiseMultiplier
 		w.register(m_sub.simulator);
 		m_desiredWeapon = m_loadedWeapon = null;
 		m_state = TubeState.firing;
-		if (wf.wireGuided)
+		if (wireGuidanceSupported && wf.wireGuided)
 			m_wireGuidedWeapon = w;
 		size_t soundOffset = dsubs_sound.common.uniform!("[]", size_t, size_t)(
 			0, GLOBAL_SRATE / 8);
 		startPlayingSound(&m_proto.firingSoundProto, &soundOffset);
-		return TubeOperationResult(true, false, true, wf.name);
+		TubeOperationResult res = TubeOperationResult(
+			true, false, true, wf.name, wireGuidanceId, false);
+		return res;
 	}
 
 	/// Creates sounds on the start of state transitions
 	void onPreKinematics()
 	{
-		m_lastSimUpdateResults = TubeOperationResult(false, false);
+		m_lastSimUpdateResults = TubeOperationResult();
 		if (m_desiredState != m_state && m_transitionTimeCounter == 0)
 		{
 			if (isStableState(m_state))
@@ -354,14 +371,16 @@ final class Tube: IFlowNoiseMultiplier
 		}
 	}
 
-	/// Called when, for example, torpedo is detonated
-	/// or is out of fuel.
-	void handleWeaponShutdown(Weapon wpn)
+	/// Called when torpedo is detonated or is out of fuel.
+	/// If wpn is null, cut any wire.
+	void handleWireCut(Weapon wpn)
 	{
-		if (m_wireGuidedWeapon is wpn)
+		if ((wpn is null && m_wireGuidedWeapon) || m_wireGuidedWeapon is wpn)
 		{
 			if (m_state == TubeState.open)
 				m_desiredState = TubeState.dry;
+			m_lastSimUpdateResults.wireWasCut = true;
+			m_lastSimUpdateResults.wireGuidanceId = wireGuidanceId;
 			m_wireGuidedWeapon = null;
 		}
 	}
@@ -378,7 +397,8 @@ final class Tube: IFlowNoiseMultiplier
 					m_transitionTimeCounter = 0;
 					assert(m_loadedWeapon);
 					m_room.putWeapon(m_loadedWeapon);
-					m_lastSimUpdateResults = TubeOperationResult(true, true);
+					m_lastSimUpdateResults.tubeChanged = true;
+					m_lastSimUpdateResults.roomChanged = true;
 					if (m_desiredWeapon && m_room.removeWeapon(m_desiredWeapon))
 					{
 						// desired weapon was atomically taken from the room,
@@ -447,8 +467,7 @@ final class Tube: IFlowNoiseMultiplier
 					// closing finished
 					m_transitionTimeCounter = 0;
 					m_lastSimUpdateResults.tubeChanged = true;
-					// cut the wire
-					m_wireGuidedWeapon = null;
+					handleWireCut(null);
 					m_state = TubeState.flooded;
 				}
 				break;
@@ -457,11 +476,11 @@ final class Tube: IFlowNoiseMultiplier
 			{
 				if (m_transitionTimeCounter >= m_proto.firingTime)
 				{
-					// firing finished, start automatic transition to dry
 					m_transitionTimeCounter = 0;
 					m_lastSimUpdateResults.tubeChanged = true;
 					m_state = TubeState.open;
-					if (!wireGuided)
+					// firing finished, start automatic transition to dry
+					if (!wireGuidanceActive && m_desiredState == TubeState.open)
 						m_desiredState = TubeState.dry;
 				}
 				break;

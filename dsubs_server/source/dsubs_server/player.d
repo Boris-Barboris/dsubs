@@ -237,8 +237,7 @@ final class Player: Captain
 		sub.sonar.active = true;
 	}
 
-	/// Set current m_connection to new value. Simulator's reader lock
-	/// must be held.
+	/// Set current m_connection to new value.
 	private void emplaceConnection(PlayerConnection con)
 	{
 		synchronized(this)
@@ -506,16 +505,7 @@ final class Player: Captain
 	private KinematicSnapshot genSubSnapshot(Submarine s)
 	{
 		assert(s);
-		vec2d shiftedPos = posToClientSpace(s.transform.wposition);
-		double shiftedRot = rotToClientSpace(s.transform.wrotation);
-		vec2d vel = dirToClientSpace(s.rigidBody.kinet.vel);
-		double angVel = s.rigidBody.kinet.angVel;
-		return KinematicSnapshot(
-				s.simulator.worldTime + timeShift,
-				vec2d(shiftedPos.x, shiftedPos.y),
-				vec2d(vel.x, vel.y),
-				shiftedRot,
-				angVel);
+		return snapToClientSpace(s.kinematicSnapshot);
 	}
 
 	private WireSnapshot[] genSubWireSnapshots(Submarine s)
@@ -537,6 +527,17 @@ final class Player: Captain
 			}
 			res ~= wireSnap;
 		}
+		return res;
+	}
+
+	KinematicSnapshot snapToClientSpace(KinematicSnapshot snap) const
+	{
+		KinematicSnapshot res = KinematicSnapshot(
+			snap.atTime + timeShift,
+			posToClientSpace(snap.position),
+			dirToClientSpace(snap.velocity),
+			rotToClientSpace(snap.rotation),
+			snap.angVel);
 		return res;
 	}
 
@@ -641,7 +642,7 @@ final class Player: Captain
 					return;
 				}
 			}
-			// kinematic snapshot
+			// sub's kinematic snapshot
 			con.sendMessage(cast(immutable) SubKinematicRes(genSubSnapshot(s),
 				genSubWireSnapshots(s)));
 			// send hydrophone audio
@@ -671,7 +672,7 @@ final class Player: Captain
 			usecs_t worldTime = s.simulator.worldTime;
 			con.sendMessage(immutable AcousticStreamRes(
 				worldTime + timeShift, hdata, haudio));
-			// now active sonar
+			// active sonar
 			if (s.sonar.active && s.sonar.hasSliceToSend)
 			{
 				immutable SonarSliceData sdata = immutable SonarSliceData(
@@ -681,7 +682,7 @@ final class Player: Captain
 					worldTime + timeShift, [sdata]));
 				s.sonar.markSliceSent();
 			}
-			// now send updates about tubes and rooms
+			// send updates about tubes and rooms
 			bool[int] updatedRooms;
 			foreach (const Tube tube; s.tubeRange)
 			{

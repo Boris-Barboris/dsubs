@@ -43,7 +43,7 @@ interface IGuidance
 
 	void activateByWire(bool shouldBeActive);
 
-	WireGuidanceFullState getFullState();
+	WireGuidanceFullState getFullState(bool includeWeaponParams);
 }
 
 
@@ -86,7 +86,7 @@ abstract class Weapon: Vessel
 	{
 		// cut the wire
 		if (m_shooterTube)
-			m_shooterTube.handleWeaponShutdown(this);
+			m_shooterTube.handleWireCut(this);
 	}
 
 	override void shutdown()
@@ -157,7 +157,7 @@ class StaticDecoyGuidance: IGuidance
 		throw new Exception("Decoys cannot be wire-guided");
 	}
 
-	WireGuidanceFullState getFullState()
+	WireGuidanceFullState getFullState(bool includeWeaponParams)
 	{
 		throw new Exception("Decoys cannot be wire-guided");
 	}
@@ -286,6 +286,7 @@ final class TorpedoGuidance: IGuidance
 		float m_fuelEffExponent = 2.0f;
 		float m_distanceTraveled = 0.0f;
 		float m_activationRange;
+		float m_minActivationRange;
 		vec2d m_lastPos;
 		bool m_activated;
 
@@ -346,6 +347,42 @@ final class TorpedoGuidance: IGuidance
 			m_marchCourse = m_torpedo.transform.wrotation;
 	}
 
+	/// Estimate of range left at current throttle
+	float rangeEstimate() const
+	{
+		float throttle = m_torpedo.propulsors[0].throttle.fabs;
+		float fuelConsumptionRate = pow(throttle, m_fuelEffExponent);
+		float timeLeft = m_fuelLeft / fuelConsumptionRate;
+		if (!isNormal(timeLeft))
+			return 0.0f;
+		return timeLeft * speedForThrottle(m_torpedo, throttle);
+	}
+
+	private void activate()
+	{
+		if (m_activated)
+			return;
+		m_activated = true;
+		if (m_activeReflectorProto && m_activeReflector is null)
+		{
+			// add new torpedo's reflector
+			m_activeReflector = new Reflector(m_torpedo.transform,
+				*m_activeReflectorProto);
+		}
+		if (m_activeReflector)
+			m_torpedo.simulator.acous.registerReflector(m_activeReflector);
+	}
+
+	private void deactivate()
+	{
+		if (!m_activated)
+			return;
+		m_activated = false;
+		m_targetTracked = false;
+		if (m_activeReflector)
+			m_torpedo.simulator.acous.unregisterReflector(m_activeReflector);
+	}
+
 	void update(usecs_t dt)
 	{
 		// perform fuel-related calculations
@@ -366,17 +403,11 @@ final class TorpedoGuidance: IGuidance
 		float distanceAdded = (m_lastPos - m_torpedo.transform.wposition).length;
 		m_distanceTraveled += distanceAdded;
 		m_lastPos = m_torpedo.transform.wposition;
-		if (!m_activated && m_distanceTraveled >= m_activationRange)
+		if (!m_activated && !m_wireGuidedActivationControl &&
+			m_distanceTraveled >= m_activationRange)
 		{
-			m_activated = true;
 			m_snakeArmBeforeTurn += m_snakeArm;
-			if (m_activeReflectorProto)
-			{
-				// add new torpedo's reflector
-				m_activeReflector = new Reflector(m_torpedo.transform,
-					*m_activeReflectorProto);
-				m_torpedo.simulator.acous.registerReflector(m_activeReflector);
-			}
+			activate();
 		}
 		// assign course and throttle based on activation state
 		if (m_activated)
@@ -461,19 +492,33 @@ final class TorpedoGuidance: IGuidance
 
 	void activateByWire(bool shouldBeActive)
 	{
-		throw new Exception("Decoys cannot be wire-guided");
+		if (!m_activated && shouldBeActive)
+		{
+			if (m_distanceTraveled < m_minActivationRange)
+				return;
+			m_wireGuidedActivationControl = true;
+			activate();
+		}
+		else if (m_activated && !shouldBeActive)
+		{
+			m_wireGuidedActivationControl = true;
+			deactivate();
+		}
 	}
 
-	WireGuidanceFullState getFullState()
+	WireGuidanceFullState getFullState(bool includeWeaponParams)
 	{
 		WireGuidanceFullState res;
+		res.wireGuidanceId = m_torpedo.id.toString;
 		res.tubeId = m_torpedo.tube.id;
-		res.fuelLeft = m_fuelLeft;
+		res.rangeLeft = rangeEstimate();
 		res.weaponSnap = m_torpedo.kinematicSnapshot;
 		res.active = m_activated;
 		res.tracking = m_activated ? m_targetTracked : false;
-		if (m_activated && m_targetTracked)
+		if (res.tracking)
 			res.trackingDir = m_curTargetDir;
+		if (!includeWeaponParams)
+			return res;
 		// dump weapon params
 		res.weaponParams.reserve(6);
 		res.weaponParams ~= WeaponParamValue(WeaponParamType.course);
@@ -1040,7 +1085,8 @@ abstract class WeaponFactory: VesselFactory
 		}
 		if (wireGuided)
 		{
-			// activationRange makes no sense to be manipulated
+			// for now, all parameters can be changed after launch,
+			// except activationRange.
 			m_wireControlledParams = m_availableParams &
 				~WeaponParamType.activationRange;
 		}
@@ -1159,11 +1205,13 @@ final class TorpedoFactory: WeaponFactory
 			": ", activeSpeedRange.max * (fuel.mean / pow(1.0f, fuelEffExponent)));
 	}
 
+	// used by AI
 	float maxRangeAtSpeed(float speed)
 	{
 		float throttle = throttleForSpeed(
 			rigidBody.Cd0.mean, rigidBody.Cd1.mean, 1, propFactory.posThrustK.mean,
 			speed);
+		// lowball estimate by using activeSpeedRange.min
 		return activeSpeedRange.min * (fuel.mean / pow(throttle, fuelEffExponent));
 	}
 
@@ -1240,6 +1288,7 @@ final class TorpedoFactory: WeaponFactory
 		g.m_marchSpeed = marchSpeedRange.max;
 		g.m_activeSpeed = activeSpeedRange.max;
 		g.m_activationRange = activationRange.min;
+		g.m_minActivationRange = activationRange.min;
 		// then we process client input
 		WeaponParamType assignedParams;
 		foreach (const WeaponParamValue param; params)

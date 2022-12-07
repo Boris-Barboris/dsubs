@@ -316,8 +316,8 @@ private:
 		tf = new TorpedoFactory(pf);
 		tf.name = "Minoga";
 		tf.playable = true;
-		tf.description = `"Minoga" heavy torpedo.
-Passive sensor is only effective against cavitating targets.
+		tf.description = `"Minoga" heavy wire-guided torpedo.
+Tip: passive sensor is only effective against loud targets.
 
 Sensors: active sonar or passive hydrophone.
 Effective speed range (active): 21-29 m/s.
@@ -327,6 +327,7 @@ Max range (21m/s): 11200m.
 Search patterns: straight, snake, spiral.
 `;
 		tf.turningRadius = 90.0f;
+		tf.wireGuided = true;
 		tf.marchSpeedRange = MinMax(21, 29);
 		tf.activeSpeedRange = MinMax(21, 29);
 		tf.activationRange = MinMax(200, 11_200);
@@ -421,7 +422,8 @@ Search patterns: straight, snake, spiral.
 		tf = new TorpedoFactory(pf);
 		tf.name = "Electra";
 		tf.playable = true;
-		tf.description = `"Electra" medium torpedo.
+		tf.wireGuided = true;
+		tf.description = `"Electra" medium wire-guided torpedo.
 Passive sensor is only effective against cavitating targets.
 
 Sensors: active sonar or passive hydrophone.

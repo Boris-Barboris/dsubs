@@ -121,7 +121,7 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 	final
 	{
 		@property Transform2D transform() { return m_transform; }
-		@property RigidBody rigidBody() { return m_rigidBody; }
+		@property inout(RigidBody) rigidBody() inout { return m_rigidBody; }
 		/// Propulsor is assigned before bootstrap, during spawn
 		void addPropulsor(Propulsor rhs)
 		{

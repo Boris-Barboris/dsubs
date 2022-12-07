@@ -1282,6 +1282,8 @@ final class AICaptain
 			TubeOperationResult res = chosenTube.processLaunchRequest(
 				chosenTube.loadedWeapon, wpValues);
 			assert(res.tubeChanged);
+			// AI cannot use wire guidance, manually set desired state to dry
+			chosenTube.processStateRequest(TubeState.dry);
 			m_lastFire = simulator.worldTime;
 			m_torpedoBudget -= 100.0f;
 			return ExecutionResult.success;

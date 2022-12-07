@@ -255,6 +255,19 @@ double speedForThrottle(float Cd0, float Cd1, size_t propCount, float posThrustK
 	return vmax;
 }
 
+double speedForThrottle(const Vessel v, float throttle = 1.0f)
+{
+	double thrust = 0.0;
+	foreach (prop; v.propulsors)
+		thrust += prop.posThrustK * throttle;
+	ref const HydroForceModel hfm = v.rigidBody.hydroModel;
+	double D = pow(hfm.Cd0, 2) + 4 * hfm.Cd1 * thrust;
+	double spd = (-hfm.Cd0 + sqrt(D)) / (2 * hfm.Cd1);
+	assert(!isNaN(spd));
+	return spd;
+}
+
+
 /// Given constructed vessel, return the throttle, required to hold specified
 /// speed.
 float throttleForSpeed(Vessel v, float speed)
