@@ -45,7 +45,6 @@ Thumbs.db
 *.lib
 
 # sounds
-*.wav
 *.mp3
 *.wmv
 *.zip
