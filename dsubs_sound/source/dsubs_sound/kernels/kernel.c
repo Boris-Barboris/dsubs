@@ -925,7 +925,7 @@ void __kernel firTds(
 {
 	const int destSize = get_global_size(0);
 	const int idx = get_global_id(0);
-	float outVal = 0.0;
+	float outVal = 0.0f;
 	int i = 0;
 
 	for (i = 0; i < tapCount; i++)
@@ -950,7 +950,7 @@ void __kernel firTds2(
 	__global float *dest)
 {
 	const int idx = get_global_id(0);
-	float outVal = 0.0;
+	float outVal = 0.0f;
 	int i = 0;
 
 	for (i = 0; i < tapCount; i++)
@@ -984,7 +984,7 @@ void __kernel firTdsTwoFilters(
 	const float tap1Weight = mix(
 		tap1WeightStart, tap1WeightEnd, (destOffset + idx) / (float)(destSize - 1));
 	const float tap2Weight = 1.0f - tap1Weight;
-	float outVal = 0.0;
+	float outVal = 0.0f;
 	int i = 0;
 
 	for (i = 0; i < tapCount; i++)
