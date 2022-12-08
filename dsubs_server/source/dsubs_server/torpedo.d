@@ -217,6 +217,12 @@ final class Torpedo: Weapon
 	}
 	override @property bool detonated() const { return m_detonated; }
 
+	@property inout(TorpedoFactory) factory() inout
+	{
+		return cast (inout(TorpedoFactory))
+			Globals.entityDb.getWeaponFactory(prototypeName);
+	}
+
 	this(Submarine shooter, string templateName, Tube tube)
 	{
 		super(shooter, templateName, tube);
@@ -487,7 +493,41 @@ final class TorpedoGuidance: IGuidance
 
 	void updateParamsByWire(WeaponParamValue[] params)
 	{
-		throw new Exception("Decoys cannot be wire-guided");
+		const TorpedoFactory factory = m_torpedo.factory;
+		foreach (const WeaponParamValue param; params)
+		{
+			enforce(popcnt(param.type) == 1, "must choose one parameter to set");
+			enforce(param.type & factory.m_wireControlledParams, "parameter " ~
+				param.type.to!string ~ " cannot be changed via wire");
+			switch (param.type)
+			{
+				case WeaponParamType.course:
+					m_marchCourse = param.course.validateFloat.clampAngle;
+					break;
+				case WeaponParamType.sensorMode:
+					enforce(factory.sensorModes & param.sensorMode,
+						"invalid sensor mode");
+					enforce(popcnt(param.sensorMode) <= 1, "must choose at most one");
+					m_sensorMode = param.sensorMode;
+					break;
+				case WeaponParamType.searchPattern:
+					enforce(factory.searchPatterns.availablePatterns & param.searchPattern,
+						"invalid search pattern");
+					enforce(popcnt(param.searchPattern) == 1, "must choose one");
+					m_searchPattern = param.searchPattern;
+					break;
+				case WeaponParamType.marchSpeed:
+					enforce(factory.marchSpeedRange.contains(param.speed), "invalid marchSpeed");
+					m_marchSpeed = param.speed;
+					break;
+				case WeaponParamType.activeSpeed:
+					enforce(factory.activeSpeedRange.contains(param.speed), "invalid activeSpeed");
+					m_activeSpeed = param.speed;
+					break;
+				default:
+					throw new Exception("unacceptable weapon parameter");
+			}
+		}
 	}
 
 	void activateByWire(bool shouldBeActive)
@@ -508,9 +548,10 @@ final class TorpedoGuidance: IGuidance
 
 	WireGuidanceFullState getFullState(bool includeWeaponParams)
 	{
+		assert(m_torpedo.shooterTube);
 		WireGuidanceFullState res;
 		res.wireGuidanceId = m_torpedo.id.toString;
-		res.tubeId = m_torpedo.tube.id;
+		res.tubeId = m_torpedo.shooterTube.id;
 		res.rangeLeft = rangeEstimate();
 		res.weaponSnap = m_torpedo.kinematicSnapshot;
 		res.active = m_activated;
@@ -1087,8 +1128,8 @@ abstract class WeaponFactory: VesselFactory
 		{
 			// for now, all parameters can be changed after launch,
 			// except activationRange.
-			m_wireControlledParams = m_availableParams &
-				~WeaponParamType.activationRange;
+			m_wireControlledParams = cast(WeaponParamType) (m_availableParams &
+				~cast(int)(WeaponParamType.activationRange));
 		}
 		m_paramDescsGenerated = true;
 	}
@@ -1298,7 +1339,6 @@ final class TorpedoFactory: WeaponFactory
 				param.type.to!string ~ " is unavailable");
 			enforce((param.type & assignedParams) == 0, "parameter " ~
 				param.type.to!string ~ " is already assigned");
-			enforce(param.type != WeaponParamType.none, "invalid parameter type");
 			switch (param.type)
 			{
 				case WeaponParamType.course:
@@ -1307,8 +1347,6 @@ final class TorpedoFactory: WeaponFactory
 				case WeaponParamType.sensorMode:
 					enforce(sensorModes & param.sensorMode, "invalid sensor mode");
 					enforce(popcnt(param.sensorMode) <= 1, "must choose at most one");
-					enforce(param.sensorMode != WeaponSensorMode.activePassive,
-						"alternating mode not implemented");
 					g.m_sensorMode = param.sensorMode;
 					break;
 				case WeaponParamType.searchPattern:

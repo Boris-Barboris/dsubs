@@ -259,8 +259,12 @@ double speedForThrottle(const Vessel v, float throttle = 1.0f)
 {
 	double thrust = 0.0;
 	foreach (prop; v.propulsors)
-		thrust += prop.posThrustK * throttle;
-	ref const HydroForceModel hfm = v.rigidBody.hydroModel;
+	{
+		const BasicPropulsor bprop = cast(const BasicPropulsor) prop;
+		assert(bprop);
+		thrust += bprop.posThrustK * throttle;
+	}
+	const HydroForceModel* hfm = &v.rigidBody.hydroModel;
 	double D = pow(hfm.Cd0, 2) + 4 * hfm.Cd1 * thrust;
 	double spd = (-hfm.Cd0 + sqrt(D)) / (2 * hfm.Cd1);
 	assert(!isNaN(spd));

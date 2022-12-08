@@ -135,6 +135,16 @@ final class Submarine: Vessel
 
 	size_t tubeCount() const { return m_tubes.length; }
 
+	Weapon getWireGuidedWeapon(string wireGuidanceId)
+	{
+		foreach (tube; tubeRange)
+		{
+			if (tube.wireGuidanceId == wireGuidanceId)
+				return tube.wireGuidedWeapon;
+		}
+		return null;
+	}
+
 	inout(AmmoRoom) getAmmoRoom(int id) inout
 	{
 		enforce(id in m_rooms);

@@ -377,8 +377,11 @@ final class Tube: IFlowNoiseMultiplier
 	{
 		if ((wpn is null && m_wireGuidedWeapon) || m_wireGuidedWeapon is wpn)
 		{
-			if (m_state == TubeState.open)
+			if (m_state == TubeState.open || m_state == TubeState.firing)
+			{
 				m_desiredState = TubeState.dry;
+				m_lastSimUpdateResults.tubeChanged = true;
+			}
 			m_lastSimUpdateResults.wireWasCut = true;
 			m_lastSimUpdateResults.wireGuidanceId = wireGuidanceId;
 			m_wireGuidedWeapon = null;
@@ -544,9 +547,11 @@ final class Tube: IFlowNoiseMultiplier
 	{
 		if (m_desiredState == m_state)
 			return;
-		m_transitionTimeCounter += dt;
 		// check if the transition has finished
 		if (isTransientState(m_state))
+		{
+			m_transitionTimeCounter += dt;
 			updateTransientState();
+		}
 	}
 }

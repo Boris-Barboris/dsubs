@@ -488,7 +488,7 @@ Search patterns: snake, spiral.
 		tf.spiralStartTarget = 1.0f;
 		tf.spiralTargetRedPerRange = 0.08f;
 		tf.fullThrottleSpd = 25.0f;
-		tf.tgtMaxRangeOnMaxSpd = 6900.0f;
+		tf.tgtMaxRangeOnMaxSpd = 6900.0f;	// 6900.0f
 		tf.rigidBody.mass = RolledF(1.46f, 2e-3);
 		tf.rigidBody.Cd0 = RolledF(0.2f, 1e-3f);
 		tf.rigidBody.Cda = 1.5f;
@@ -663,7 +663,7 @@ Max range: 2700m.
 			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		TubePrototype bowProtoTemplate = TubePrototype(TubeTemplate(0,
 			MountPoint(vec2f(-4.7, 25.0), dgr2rad(20)),
-			0, TubeType.standard, false),
+			0, TubeType.standard, false, true),
 			cast(usecs_t)STORK_RELOAD_SECS * 1000_000,
 			cast(usecs_t)STORK_FLOOD_SECS * 1000_000,
 			cast(usecs_t)STORK_OPEN_SECS * 1000_000,
@@ -830,7 +830,7 @@ Active sonars:
 			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		bowProtoTemplate = TubePrototype(TubeTemplate(0,
 			MountPoint(vec2f(-1.0, 25.1), 0.0),
-			0, TubeType.standard, false),
+			0, TubeType.standard, false, true),
 			cast(usecs_t)60 * 1000_000,
 			cast(usecs_t)STORK_FLOOD_SECS * 1000_000,
 			cast(usecs_t)STORK_OPEN_SECS * 1000_000,
@@ -1210,7 +1210,7 @@ Active sonars:
 			TubeType.decoy, ["Decoy(active)": true, "Decoy(passive)": true]);
 		bowProtoTemplate = TubePrototype(TubeTemplate(0,
 			MountPoint(objModel.allFaces["tube0"].center, 0.0),
-			0, TubeType.standard, false),
+			0, TubeType.standard, false, true),
 			cast(usecs_t)90 * 1000_000,
 			cast(usecs_t)9 * 1000_000,
 			cast(usecs_t)7 * 1000_000,

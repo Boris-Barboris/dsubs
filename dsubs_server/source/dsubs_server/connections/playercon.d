@@ -262,6 +262,20 @@ private:
 		}
 	}
 
+	void h_wireGuidanceUpdateParamsReq(WireGuidanceUpdateParamsReq req)
+	{
+		Player p = simFlowValidation();
+		if (p)
+			p.handleWireGuidanceUpdateParamsReq(req);
+	}
+
+	void h_wireGuidanceActivateReq(WireGuidanceActivateReq req)
+	{
+		Player p = simFlowValidation();
+		if (p)
+			p.handleWireGuidanceActivateReq(req);
+	}
+
 	void h_wireDesiredLengthReq(WireDesiredLengthReq req)
 	{
 		Player p = simFlowValidation();

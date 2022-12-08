@@ -19,6 +19,7 @@ import dsubs_server.email;
 import dsubs_server.dynamics: AttachedWire, RigidBody, WirePoint;
 import dsubs_server.vessel: KillRecord;
 import dsubs_server.weaponry;
+import dsubs_server.torpedo;
 import dsubs_server.scenario: Scenario;
 import dsubs_server.simulator: Simulator;
 import dsubs_server.ai.captain: ContactRelation;
@@ -283,6 +284,8 @@ final class Player: Captain
 				h => float(h.listenDir + coordRot)).array,
 			s.rigidBody.wires.map!(w => w.desiredLength).array,
 			s.tubeRange.map!(t => t.fullState).array,
+			s.tubeRange.filter!(t => t.wireGuidanceActive).map!(t =>
+				t.wireGuidedWeapon.guidance.getFullState(true)).array,
 			s.ammoRoomRange.map!(r => r.fullState).array
 			);
 		recState.isPaused = s.simulator.paused;
@@ -471,6 +474,46 @@ final class Player: Captain
 		}
 	}
 
+	void handleWireGuidanceUpdateParamsReq(WireGuidanceUpdateParamsReq req)
+	{
+		Submarine s = submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
+		{
+			if (s !is submarine)
+				return;
+			Weapon wpn = s.getWireGuidedWeapon(req.wireGuidanceId);
+			if (wpn)
+			{
+				// client to world rotation transform
+				foreach (ref WeaponParamValue param; req.weaponParams)
+				{
+					if (param.type == WeaponParamType.course)
+					{
+						param.course = param.course - coordRot;
+					}
+				}
+				wpn.guidance.updateParamsByWire(req.weaponParams);
+			}
+		}
+	}
+
+	void handleWireGuidanceActivateReq(WireGuidanceActivateReq req)
+	{
+		Submarine s = submarine;
+		if (s is null)
+			return;
+		synchronized(s.simulator.simMut.reader)
+		{
+			if (s !is submarine)
+				return;
+			Weapon wpn = s.getWireGuidedWeapon(req.wireGuidanceId);
+			if (wpn)
+				wpn.guidance.activateByWire(req.shouldBeActive);
+		}
+	}
+
 	void handleLaunchTubeReq(LaunchTubeReq req)
 	{
 		Submarine s = submarine;
@@ -497,6 +540,23 @@ final class Player: Captain
 				assert(topRes.launchOccurred);
 				con.sendMessage(immutable TubeStateUpdateRes(
 					tube.fullState, true, topRes.launchedWeaponName));
+				if (topRes.wireGuidanceId)
+				{
+					// send wire guidance full state
+					WireGuidanceFullState guidanceState =
+						tube.wireGuidedWeapon.guidance.getFullState(true);
+					// client space transformations
+					guidanceState.weaponSnap = snapToClientSpace(
+						guidanceState.weaponSnap);
+					foreach (ref WeaponParamValue param; guidanceState.weaponParams)
+					{
+						if (param.type == WeaponParamType.course)
+						{
+							param.course = param.course + coordRot;
+						}
+					}
+					con.sendMessage(cast(immutable) WireGuidanceStateRes(guidanceState));
+				}
 			}
 			assert(!topRes.roomChanged);
 		}
@@ -684,12 +744,26 @@ final class Player: Captain
 			}
 			// send updates about tubes and rooms
 			bool[int] updatedRooms;
-			foreach (const Tube tube; s.tubeRange)
+			foreach (Tube tube; s.tubeRange)
 			{
 				if (tube.lastSimUpdateResult.tubeChanged)
 					con.sendMessage(cast(immutable) TubeStateUpdateRes(tube.fullState));
 				if (tube.lastSimUpdateResult.roomChanged)
 					updatedRooms[tube.room.id] = true;
+				// wire-guidance handling
+				if (tube.lastSimUpdateResult.wireWasCut)
+				{
+					con.sendMessage(cast(immutable) WireGuidanceLostRes(
+						tube.id, tube.lastSimUpdateResult.wireGuidanceId));
+				}
+				else if (tube.wireGuidanceActive)
+				{
+					// periodic update of every wire-guided torp
+					WireGuidanceFullState fullState =
+						tube.wireGuidedWeapon.guidance.getFullState(false);
+					fullState.weaponSnap = snapToClientSpace(fullState.weaponSnap);
+					con.sendMessage(cast(immutable) WireGuidanceStateRes(fullState));
+				}
 			}
 			foreach (int roomId; updatedRooms.byKey)
 				con.sendMessage(cast(immutable) AmmoRoomStateUpdateRes(

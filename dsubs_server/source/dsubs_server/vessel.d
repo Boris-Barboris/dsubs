@@ -101,6 +101,7 @@ interface IHasTransform
 interface IHasRigidBody
 {
 	@property RigidBody rigidBody();
+	@property const(RigidBody) rigidBody() const;
 }
 
 
@@ -121,7 +122,8 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 	final
 	{
 		@property Transform2D transform() { return m_transform; }
-		@property inout(RigidBody) rigidBody() inout { return m_rigidBody; }
+		@property RigidBody rigidBody() { return m_rigidBody; }
+		@property const(RigidBody) rigidBody() const { return m_rigidBody; }
 		/// Propulsor is assigned before bootstrap, during spawn
 		void addPropulsor(Propulsor rhs)
 		{

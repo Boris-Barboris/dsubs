@@ -31,6 +31,7 @@ final class Animal: Killable, IHasTransform, IHasRigidBody
 	}
 
 	@property RigidBody rigidBody() { return m_rigidBody; }
+	@property const(RigidBody) rigidBody() const { return m_rigidBody; }
 
 	@property string name() const { return m_name; }
 
