@@ -161,6 +161,8 @@ class StaticDecoyGuidance: IGuidance
 	{
 		throw new Exception("Decoys cannot be wire-guided");
 	}
+
+	void shutdown() {}
 }
 
 
@@ -179,7 +181,7 @@ final class ActiveDecoyGuidance: StaticDecoyGuidance
 		m_decoy.simulator.acous.registerReflector(m_activeReflector);
 	}
 
-	void shutdown()
+	override void shutdown()
 	{
 		if (m_activeReflector)
 		{
