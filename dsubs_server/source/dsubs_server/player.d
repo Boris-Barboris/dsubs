@@ -548,6 +548,7 @@ final class Player: Captain
 					// client space transformations
 					guidanceState.weaponSnap = snapToClientSpace(
 						guidanceState.weaponSnap);
+					guidanceState.trackingDir = rotToClientSpace(guidanceState.trackingDir);
 					foreach (ref WeaponParamValue param; guidanceState.weaponParams)
 					{
 						if (param.type == WeaponParamType.course)
@@ -761,6 +762,7 @@ final class Player: Captain
 					// periodic update of every wire-guided torp
 					WireGuidanceFullState fullState =
 						tube.wireGuidedWeapon.guidance.getFullState(false);
+					fullState.trackingDir = rotToClientSpace(fullState.trackingDir);
 					fullState.weaponSnap = snapToClientSpace(fullState.weaponSnap);
 					con.sendMessage(cast(immutable) WireGuidanceStateRes(fullState));
 				}
