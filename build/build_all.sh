@@ -21,31 +21,31 @@ echo "Windows build OK"
 sudo virsh shutdown win7
 
 
-echo "building Trusty"
-echo "starting lxd"
-sudo systemctl start lxd
-sleep 10
-sudo lxc start dsubstrusty
-sleep 10
-ssh dsubstrusty "
-  set -e
-  . dlang/dmd-2.093.1/activate
-  cd dsubs
-  git fetch --force
-  git fetch --tags --force
-  git checkout ${COMMIT}
-  git submodule update --init
-  cd dsubs_client
-  dub upgrade
-  dub build -b debug -c prod
-  cd ~
-  bash bundle.sh
-  sync
-"
-rsync -v dsubstrusty:~/dsubs-linux-trusty-amd64.tar.gz ./dsubs-${COMMIT}-linux-trusty-amd64.tar.gz
-echo "Trusty build OK"
-sudo lxc stop dsubstrusty
-sudo systemctl stop lxd
+# echo "building Trusty"
+# echo "starting lxd"
+# sudo systemctl start lxd
+# sleep 10
+# sudo lxc start dsubstrusty
+# sleep 10
+# ssh dsubstrusty "
+#   set -e
+#   . dlang/dmd-2.093.1/activate
+#   cd dsubs
+#   git fetch --force
+#   git fetch --tags --force
+#   git checkout ${COMMIT}
+#   git submodule update --init
+#   cd dsubs_client
+#   dub upgrade
+#   dub build -b debug -c prod
+#   cd ~
+#   bash bundle.sh
+#   sync
+# "
+# rsync -v dsubstrusty:~/dsubs-linux-trusty-amd64.tar.gz ./dsubs-${COMMIT}-linux-trusty-amd64.tar.gz
+# echo "Trusty build OK"
+# sudo lxc stop dsubstrusty
+# sudo systemctl stop lxd
 
 
 echo "building Xenial"
