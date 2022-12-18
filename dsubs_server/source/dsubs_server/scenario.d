@@ -389,7 +389,7 @@ final class ScenarioDatabase
 `Take command of a Commonwealth Submarine Rustbucket (Stork class) through
 chain of swift naval skirmishes with a neighbour's navy.`);
 		addCampaignMission!Cmp1Mission1(perilousFluids);
-		addCampaignMission!Cmp1Mission2(perilousFluids);
+		// addCampaignMission!Cmp1Mission2(perilousFluids);
 		m_campaigns ~= perilousFluids;
 	}
 
