@@ -338,7 +338,7 @@ Search patterns: straight, snake, spiral.
 				WeaponSearchPattern.straight |
 				WeaponSearchPattern.snake |
 				WeaponSearchPattern.spiral),
-			400.0f, 150.0f, 200.0f);
+			400.0f, 150.0f, 200.0f, 60.0f);
 		tf.propMount.mountCenter = vec2d(0, -2.55);
 		tf.sensorsMount.mountCenter = vec2d(0, 2.5);
 		// minoga's active sonar
@@ -377,7 +377,7 @@ Search patterns: straight, snake, spiral.
 		tf.fuelEffExponent = 3.0f;
 		tf.snakeArm = 300.0f;
 		tf.snakeArmInitial = -40.0f;
-		tf.snakeAngle = dgr2rad(60.0f);
+		tf.snakeAngle = dgr2rad(tf.searchPatterns.snakeAngle);
 		tf.spiralStartTarget = 1.0f;
 		tf.spiralTargetRedPerRange = 0.08f;
 		tf.fullThrottleSpd = 29.0f;
@@ -443,7 +443,7 @@ Search patterns: snake, spiral.
 			cast(WeaponSearchPattern)(
 				WeaponSearchPattern.snake |
 				WeaponSearchPattern.spiral),
-			350.0f, 150.0f, 200.0f);
+			350.0f, 150.0f, 200.0f, 60.0f);
 		tf.propMount.mountCenter = vec2d(0, -2.50);
 		tf.sensorsMount.mountCenter = vec2d(0, 2.45);
 		// active sonar
@@ -484,7 +484,7 @@ Search patterns: snake, spiral.
 		tf.sonarNoiseMargin = 20;
 		tf.snakeArm = 260.0f;
 		tf.snakeArmInitial = -30.0f;
-		tf.snakeAngle = dgr2rad(60.0f);
+		tf.snakeAngle = dgr2rad(tf.searchPatterns.snakeAngle);
 		tf.spiralStartTarget = 1.0f;
 		tf.spiralTargetRedPerRange = 0.08f;
 		tf.fullThrottleSpd = 25.0f;

@@ -288,6 +288,17 @@ final class Player: Captain
 				t.wireGuidedWeapon.guidance.getFullState(true)).array,
 			s.ammoRoomRange.map!(r => r.fullState).array
 			);
+		// space transform
+		foreach (ref guidanceState; recState.wireGuidanceStates)
+		{
+			foreach (ref WeaponParamValue param; guidanceState.weaponParams)
+			{
+				if (param.type == WeaponParamType.course)
+				{
+					param.course = param.course + coordRot;
+				}
+			}
+		}
 		recState.isPaused = s.simulator.paused;
 		recState.canBePaused = s.simulator.canBePaused;
 		if (s.simulator.scenario)

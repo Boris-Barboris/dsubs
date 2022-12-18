@@ -370,6 +370,8 @@ final class TorpedoGuidance: IGuidance
 	{
 		if (m_activated)
 			return;
+		// wire re-activation should reset spiral size
+		m_spiralSinceStart = 0.0f;
 		m_activated = true;
 		if (m_activeReflectorProto && m_activeReflector is null)
 		{
@@ -521,10 +523,14 @@ final class TorpedoGuidance: IGuidance
 				case WeaponParamType.marchSpeed:
 					enforce(factory.marchSpeedRange.contains(param.speed), "invalid marchSpeed");
 					m_marchSpeed = param.speed;
+					m_marchThrottle = throttleForSpeed(m_torpedo, m_marchSpeed);
+					assert(isNormal(m_marchThrottle));
 					break;
 				case WeaponParamType.activeSpeed:
 					enforce(factory.activeSpeedRange.contains(param.speed), "invalid activeSpeed");
 					m_activeSpeed = param.speed;
+					m_activeThrottle = throttleForSpeed(m_torpedo, m_activeSpeed);
+					assert(isNormal(m_activeThrottle));
 					break;
 				default:
 					throw new Exception("unacceptable weapon parameter");
@@ -534,16 +540,15 @@ final class TorpedoGuidance: IGuidance
 
 	void activateByWire(bool shouldBeActive)
 	{
+		m_wireGuidedActivationControl = true;
 		if (!m_activated && shouldBeActive)
 		{
 			if (m_distanceTraveled < m_minActivationRange)
 				return;
-			m_wireGuidedActivationControl = true;
 			activate();
 		}
 		else if (m_activated && !shouldBeActive)
 		{
-			m_wireGuidedActivationControl = true;
 			deactivate();
 		}
 	}
