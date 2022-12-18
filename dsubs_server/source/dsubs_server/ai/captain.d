@@ -1002,6 +1002,41 @@ final class AICaptain
 		}
 	}
 
+	private final class EnsureWireGuidedTubesClosing: FixedCostActionNode
+	{
+		this(string file = __FILE__, size_t line = __LINE__)
+		{
+			super("AI needs to manually close tubes that have wire guidance, " ~
+				"that are open", 100, false, file, line);
+		}
+
+		override @property bool shouldBeRunning()
+		{
+			auto tubes = m_crew.submarine.tubeRange;
+			return tubes.any!(t =>
+				t.desiredState != TubeState.dry &&
+				t.state == TubeState.open &&
+				t.type == TubeType.standard &&
+				t.loadedWeapon == null);
+		}
+
+		override ExecutionResult onTicksConsumed()
+		{
+			foreach (Tube tube; m_crew.submarine.tubeRange)
+			{
+				if (tube.desiredState != TubeState.dry &&
+					tube.state == TubeState.open &&
+					tube.type == TubeType.standard &&
+					tube.loadedWeapon == null)
+				{
+					trace("AI captain requesting tube to dry: ", tube.id);
+					tube.processStateRequest(TubeState.dry);
+				}
+			}
+			return ExecutionResult.success;
+		}
+	}
+
 	/// Very stupid node that always turns towards the target and always swims
 	private final class SwimCloserToMainTarget: FixedCostActionNode
 	{
@@ -1589,6 +1624,7 @@ final class AICaptain
 					new DropStaleMainTarget(),
 					new ParallelNode("Parallel navigation and fire control", [
 						new SwimCloserToMainTarget(),
+						new EnsureWireGuidedTubesClosing(),
 						new SequenceNode("Shoot while in range", [
 							new EnsureTorpedoesLoading(true),
 							new ConditionNode("Close enough", () =>
@@ -1616,6 +1652,7 @@ final class AICaptain
 				new EnsureTorpedoesLoading(false),
 				new EnsureDecoysLoading(),
 				new EnsureDecoyTubesOpening(),
+				new EnsureWireGuidedTubesClosing(),
 				new FallbackNode("use or find main target", [
 					new ConditionNode("do we have main target?",
 						() => m_mainTarget !is null),
