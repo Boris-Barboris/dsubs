@@ -409,7 +409,11 @@ final class TorpedoGuidance: IGuidance
 			}
 			return;
 		}
-		// activation logic
+		// if wire was cut, disable wire-guided activation override
+		if (m_torpedo.shooterTube)
+			if (m_torpedo.shooterTube.wireGuidedWeapon !is m_torpedo)
+				m_wireGuidedActivationControl = false;
+		// activation by range logic
 		float distanceAdded = (m_lastPos - m_torpedo.transform.wposition).length;
 		m_distanceTraveled += distanceAdded;
 		m_lastPos = m_torpedo.transform.wposition;
