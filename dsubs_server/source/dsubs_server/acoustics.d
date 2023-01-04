@@ -9,6 +9,8 @@ import dsubs_sound.common: GLOBAL_SRATE;
 import dsubs_sound.hydrophone;
 import dsubs_sound.soundsource;
 import dsubs_sound.spectrum;
+import dsubs_sound.image: loadSpectrumFromImageAndWarp;
+import dsubs_sound.opencl: CommandQueue, DsubsSoundOpenclCtx;
 
 import dsubs_server.common;
 import dsubs_server.simulator;
@@ -243,6 +245,38 @@ final class AcousticEnv
 				m_sources.length--;
 			}
 		}
+	}
+}
+
+
+// Serializable
+struct PrerecordedSoundConfig
+{
+	string tdsFilename;
+	PrerecordedSoundPrototype proto;
+	alias proto this;
+
+	void buildPrototype(DsubsSoundOpenclCtx ctx)
+	{
+		if (proto.tds is null)
+			proto.tds = ctx.getWavFile(tdsFilename);
+	}
+}
+
+
+struct SpectrumImageConfig
+{
+	string spectrumFilename;
+	float noise = 0.0f;
+	float bottomLevel = 80.0f;
+	float topLevel = 160.0f;
+
+	ISpectrum* loadSpectrum(CommandQueue q)
+	{
+		trace("Loading spectrum image ", spectrumFilename);
+		return loadSpectrumFromImageAndWarp(
+			q, spectrumFilename, noise, bottomLevel, topLevel
+		);
 	}
 }
 

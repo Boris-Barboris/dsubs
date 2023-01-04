@@ -1,0 +1,204 @@
+{
+    "activationRange": {
+        "max": 11200,
+        "min": 200
+    },
+    "activeReflectorProto": null,
+    "activeSpeedRange": {
+        "max": 29,
+        "min": 21
+    },
+    "asprot": {
+        "antiPeakIlevelDiff": -30,
+        "baseNoise": 1.5,
+        "directivity": 20,
+        "dissMod": 1,
+        "endScale": 0.0170975141227245331,
+        "flowNoiseGain": -24,
+        "maxPeakIlevel": 197,
+        "maxSec": 2,
+        "minPeakIlevel": 197,
+        "omniBeamCount": 90,
+        "perlinCellSize": [
+            23,
+            11
+        ],
+        "perlinGain": [
+            7.90000009536743164,
+            4.30000019073486328
+        ],
+        "pingDirPower": 2.40000009536743164,
+        "pingParams": {
+            "chirps": [
+                {
+                    "duration": 0.100000001490116119,
+                    "endFreq": 3600,
+                    "startFreq": 3600
+                }
+            ],
+            "effectiveFreq": 3600,
+            "filterName": "octaveHp3500",
+            "tdsLength": 3
+        },
+        "radialRes": 20,
+        "reflBearingNoise": 0.0250000003725290298,
+        "reflRangeNoise": 0.00999999977648258209,
+        "reverbBinSizes": [
+            1,
+            0.60000002384185791,
+            0.25,
+            0.100000001490116119,
+            0.0399999991059303284,
+            0.00800000037997961044,
+            0.00200000009499490261,
+            0.000500000023748725653,
+            9.99999974737875164e-05,
+            3.00000010611256585e-06
+        ],
+        "reverbGainRangeK": 0.000125000005937181413,
+        "reverbZeroBin": 9.99999974737875164e-06,
+        "span": 120,
+        "waterReflectivity": -100,
+        "zeroLevel": 87.3462677001953125
+    },
+    "balancingStddev": 0.00999999977648258209,
+    "blastRadius": 70,
+    "defaultSearchPattern": "straight",
+    "defaultSensorMode": "active",
+    "description": "\"Minoga\" heavy wire-guided torpedo.\nTip: passive sensor is only effective against loud targets.\n\nSensors: active sonar or passive hydrophone.\nEffective speed range (active): 21-29 m\/s.\nEffective speed range (passive): 21-26 m\/s.\nMax range (29m\/s): 8000m.\nMax range (21m\/s): 11200m.\nSearch patterns: straight, snake, spiral.\n",
+    "detonationMassK": 4.5,
+    "detonationSoundProto": {
+        "proto": {
+            "addToIlevel": 145,
+            "minOmniFactor": 0.00200000009499490261,
+            "radius": 40
+        },
+        "tdsFilename": "..\/dsubs_sound\/explosion1_8192.wav"
+    },
+    "entityType": "Torpedo",
+    "fuelEffExponent": 3,
+    "fullThrottleSpd": 29,
+    "hprot": {
+        "antennaeRots": [
+            0
+        ],
+        "antennaeSpan": 2.09439516067504883,
+        "baseNoise": 3,
+        "beamCount": 30,
+        "bearingErrNoise": 0.00370000000111758709,
+        "directivity": 0.0444444455206394196,
+        "dissMod": 4,
+        "filterName": "",
+        "flowNoiseMult": 9.99999971718068537e-10,
+        "imageBlackLevel": 45,
+        "imageWhiteLevel": 80,
+        "listenSpan": 0.0523598790168762207,
+        "localNoiseRangeCutoff": 100,
+        "maxFreq": 3000,
+        "minFreq": 250,
+        "mirrored": false,
+        "omniNoiseMult": 0.00249999994412064552,
+        "pcbMaxPressure": 50
+    },
+    "hydrophoneNoiseMargin": 5461,
+    "marchCourseConfigurable": true,
+    "marchSpeedRange": {
+        "max": 29,
+        "min": 21
+    },
+    "name": "Minoga",
+    "pingIntervalSearch": 7,
+    "playable": true,
+    "propMount": {
+        "mountCenter": [
+            0,
+            -2.54999995231628418
+        ],
+        "rotation": 0,
+        "scale": 1
+    },
+    "propulsorName": "Minoga screw",
+    "reflector": {
+        "reflectivity": [
+            -20,
+            -20,
+            -15
+        ],
+        "size": [
+            0.60000002384185791,
+            5.19999980926513672
+        ]
+    },
+    "rigidBody": {
+        "Cd0": {
+            "mean": 0.200000002980232239,
+            "stddev": 0.00100000004749745131
+        },
+        "Cd1": {
+            "mean": 0.00499405432492494583,
+            "stddev": 4.99405432492494583e-05
+        },
+        "Cda": 1.5,
+        "Cl": {
+            "mean": 0.0487300753593444824,
+            "stddev": 0.000487300741951912642
+        },
+        "Cm": {
+            "mean": 0.00300000002607703209,
+            "stddev": 0
+        },
+        "Cr0": {
+            "mean": 0.00999999977648258209,
+            "stddev": 0
+        },
+        "Cr1": {
+            "mean": 0,
+            "stddev": 0
+        },
+        "hullLength": 5.19999980926513672,
+        "mass": {
+            "mean": 1.5,
+            "stddev": 0.00200000009499490261
+        },
+        "moiK": 1
+    },
+    "searchPatterns": {
+        "availablePatterns": [
+            "straight",
+            "snake",
+            "spiral"
+        ],
+        "snakeAngle": 60,
+        "snakeWidth": 400,
+        "spiralFirstRadius": 150,
+        "spiralStep": 200
+    },
+    "sensorModes": [
+        "active",
+        "passive"
+    ],
+    "sensorsMount": {
+        "mountCenter": [
+            0,
+            2.5
+        ],
+        "rotation": 0,
+        "scale": 1
+    },
+    "snakeAngle": 1.04719758033752441,
+    "snakeArm": 300,
+    "snakeArmInitial": -40,
+    "sonarNoiseMargin": 15,
+    "spiralStartTarget": 1,
+    "spiralTargetRedPerRange": 0.0799999982118606567,
+    "steering": {
+        "equilDrift": 0.174532920122146606,
+        "rudderKd": -30,
+        "rudderKp": 10,
+        "rudderPosChangeSpeed": 2
+    },
+    "tgtMaxRangeOnMaxSpd": 8000,
+    "trackAngVelKi": 1,
+    "turningRadius": 90,
+    "wireGuided": true
+}

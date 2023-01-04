@@ -1,0 +1,68 @@
+{
+    "entityType": "Propulsor",
+    "bladeCount": 7,
+    "description": "Seven-blade screw with no outstanding traits, but relatively good high-speed performance.\n\nMass: 50t",
+    "mass": 50,
+    "modelConfig": {
+        "objModelFilename": "entitydb/submarines/stork/stork.obj",
+        "screwFaceName": "_screw0",
+        "shaftPointName": "_propulsor0"
+    },
+    "name": "Seven-blade screw",
+    "negThrustK": {
+        "mean": 1000,
+        "stddev": 10
+    },
+    "playable": true,
+    "posThrustK": {
+        "mean": 2500,
+        "stddev": 20
+    },
+    "rotAcceleration": 0.200000002980232239,
+    "shaftRotFreq": 2.8900001049041748,
+    "soundPrototypeConfig": {
+        "baseBBSpectrumConfig": {
+            "bottomLevel": 55,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/std_propeller.png",
+            "topLevel": 125
+        },
+        "baseCavSpectrumConfig": {
+            "bottomLevel": 72,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/std_propeller_cav.png",
+            "topLevel": 152
+        },
+        "prototype": {
+            "aftIntensity": 0.400000005960464478,
+            "bladeAoA": 0.523598790168762207,
+            "bladeRadius": 4.19999980926513672,
+            "critNormalVel": 16.2999992370605469,
+            "rngSpan": 0.0299999993294477463
+        },
+        "tmConfig": {
+            "A": 0.5,
+            "B": 0.699999988079071045,
+            "C": -0.400000005960464478,
+            "harmonics": [
+                {
+                    "freqMult": 1,
+                    "magnitude": 0.25
+                },
+                {
+                    "freqMult": 2,
+                    "magnitude": 0.100000001490116119
+                },
+                {
+                    "freqMult": 3,
+                    "magnitude": 0.00999999977648258209
+                },
+                {
+                    "freqMult": 7,
+                    "magnitude": 0.800000011920928955
+                }
+            ]
+        }
+    },
+    "type": "screw"
+}

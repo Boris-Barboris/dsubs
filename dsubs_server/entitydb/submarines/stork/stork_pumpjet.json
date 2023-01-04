@@ -1,0 +1,68 @@
+{
+    "entityType": "Propulsor",
+    "bladeCount": 14,
+    "description": "Massive assembly of counter-rotating impellers, designed to raise cavitation speed at the cost of mass, top speed and lackluster reverse capability.\n\nMass: 250t",
+    "mass": 250,
+    "modelConfig": {
+        "objModelFilename": "entitydb/submarines/stork/stork.obj",
+        "screwFaceName": "_screw1",
+        "shaftPointName": "_propulsor0"
+    },
+    "name": "Stork pumpjet",
+    "negThrustK": {
+        "mean": 700,
+        "stddev": 5
+    },
+    "playable": true,
+    "posThrustK": {
+        "mean": 2300,
+        "stddev": 15
+    },
+    "rotAcceleration": 0.200000002980232239,
+    "shaftRotFreq": 4.5,
+    "soundPrototypeConfig": {
+        "baseBBSpectrumConfig": {
+            "bottomLevel": 52,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/std_pumpjet.png",
+            "topLevel": 122
+        },
+        "baseCavSpectrumConfig": {
+            "bottomLevel": 68,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/std_pumpjet_cav.png",
+            "topLevel": 148
+        },
+        "prototype": {
+            "aftIntensity": 0.360000014305114746,
+            "bladeAoA": 0.610865235328674316,
+            "bladeRadius": 3,
+            "critNormalVel": 27.1000003814697266,
+            "rngSpan": 0.0299999993294477463
+        },
+        "tmConfig": {
+            "A": 0.5,
+            "B": 0.699999988079071045,
+            "C": -0.400000005960464478,
+            "harmonics": [
+                {
+                    "freqMult": 1,
+                    "magnitude": 0.119999997317790985
+                },
+                {
+                    "freqMult": 2,
+                    "magnitude": 0.0500000007450580597
+                },
+                {
+                    "freqMult": 3,
+                    "magnitude": 0.00999999977648258209
+                },
+                {
+                    "freqMult": 14,
+                    "magnitude": 0.60000002384185791
+                }
+            ]
+        }
+    },
+    "type": "pump"
+}

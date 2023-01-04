@@ -1,0 +1,66 @@
+{
+    "entityType": "Animal",
+    "mass": 100,
+    "maxSpeed": 7,
+    "randomSoundConfigs": [
+        {
+            "proto": {
+                "addToIlevel": 95,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/whale1_8192.wav"
+        },
+        {
+            "proto": {
+                "addToIlevel": 95,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/whale2_8192.wav"
+        },
+        {
+            "proto": {
+                "addToIlevel": 95,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/whale3_8192.wav"
+        },
+        {
+            "proto": {
+                "addToIlevel": 95,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/whale4_8192.wav"
+        },
+        {
+            "proto": {
+                "addToIlevel": 95,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/whale5_8192.wav"
+        }
+    ],
+    "reflector": {
+        "reflectivity": [
+            -20,
+            -20,
+            -20
+        ],
+        "size": [
+            4,
+            15
+        ]
+    },
+    "soundTimings": {
+        "intrasongPause": 0,
+        "meanSongPause": 420000000,
+        "songMaxLength": 1,
+        "songMinLength": 1,
+        "songPauseVariance": 120000000
+    },
+    "species": "humpback whale"
+}

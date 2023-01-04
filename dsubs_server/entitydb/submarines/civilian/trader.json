@@ -1,0 +1,81 @@
+{
+    "entityType": "Submarine",
+    "activeSonars": [],
+    "allowedPropulsors": [
+        "Civilian three-blade screw"
+    ],
+    "ammoRooms": [],
+    "description": "",
+    "hydrophones": [],
+    "model": {
+        "modelFileName": ""
+    },
+    "name": "Bot trader",
+    "playable": false,
+    "propulsionMounts": [
+        {
+            "mountCenterPlane": "",
+            "mountPoint": {
+                "mountCenter": [
+                    0,
+                    -46
+                ],
+                "rotation": 0,
+                "scale": 1
+            }
+        }
+    ],
+    "tubes": [],
+    "vesselConfig": {
+        "reflector": {
+            "reflectivity": [
+                -8,
+                -4,
+                -5
+            ],
+            "size": [
+                15,
+                100
+            ]
+        },
+        "rigidBody": {
+            "Cd0": {
+                "mean": 90,
+                "stddev": 1
+            },
+            "Cd1": {
+                "mean": 20,
+                "stddev": 0.0419999994337558746
+            },
+            "Cda": 0.800000000000000044,
+            "Cl": {
+                "mean": 50,
+                "stddev": 0.400000005960464478
+            },
+            "Cm": {
+                "mean": 700,
+                "stddev": 6
+            },
+            "Cr0": {
+                "mean": 60000,
+                "stddev": 100
+            },
+            "Cr1": {
+                "mean": 600000,
+                "stddev": 100
+            },
+            "hullLength": 100,
+            "mass": {
+                "mean": 3000,
+                "stddev": 10
+            },
+            "moiK": 1
+        },
+        "steering": {
+            "equilDrift": 0.349065840244293213,
+            "rudderKd": -20,
+            "rudderKp": 10,
+            "rudderPosChangeSpeed": 1
+        }
+    }
+}

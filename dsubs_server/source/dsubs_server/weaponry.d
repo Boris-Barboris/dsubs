@@ -11,8 +11,11 @@ import dsubs_sound.common;
 import dsubs_sound.hydrophone: IFlowNoiseMultiplier;
 
 import dsubs_server.common;
+import dsubs_server.acoustics: PrerecordedSoundConfig;
 import dsubs_server.player;
 import dsubs_server.torpedo;
+import dsubs_server.vessel: MountPointConfig;
+import dsubs_server.objfile: ObjModel;
 import dsubs_server.submarine;
 
 
@@ -22,14 +25,12 @@ struct AmmoRoomPrototype
 	string name;
 	int capacity;
 	TubeType roomType;
-	bool[string] allowedWeaponSet;
+	string[] allowedWeaponSet;
 
 	@property const(AmmoRoomTemplate) tmpl() const
 	{
-		AmmoRoomTemplate res = AmmoRoomTemplate(id, name);
-		res.capacity = capacity;
-		res.allowedWeaponSet = WeaponSet(allowedWeaponSet.keys.array);
-		return res;
+		return const AmmoRoomTemplate(id, name,
+			const WeaponSet(allowedWeaponSet), capacity);
 	}
 }
 
@@ -48,7 +49,7 @@ final class AmmoRoom
 			throw new Exception("room capacity exceeded");
 		foreach (wc; loadout)
 		{
-			if (wc.weaponName !in proto.allowedWeaponSet)
+			if (!canFind(proto.allowedWeaponSet, wc.weaponName))
 				throw new Exception("weapon disallowed in this room");
 			if (wc.count < 0)
 				throw new Exception("negative weapon count");
@@ -131,18 +132,31 @@ final class AmmoRoom
 }
 
 
-/// Server side of the tube template
-struct TubePrototype
+struct TubeConfig
 {
 	TubeTemplate tmpl;
+	MountPointConfig mountPointConfig;
 	usecs_t loadTime;
 	usecs_t floodTime;
 	usecs_t openTime;
 	usecs_t firingTime;
-	PrerecordedSoundPrototype floodSoundProto;
-	PrerecordedSoundPrototype openSoundProto;
-	PrerecordedSoundPrototype firingSoundProto;
+	PrerecordedSoundConfig floodSoundConfig;
+	PrerecordedSoundConfig openSoundConfig;
+	PrerecordedSoundConfig firingSoundConfig;
 	float openFlowNoiseMult = 1.0f;
+
+	void setCenterFromModel(ref const ObjModel model)
+	{
+		mountPointConfig.setCenterFromModel(model);
+		tmpl.mount = mountPointConfig.mountPoint;
+	}
+
+	void buildSoundProtos(DsubsSoundOpenclCtx ctx)
+	{
+		floodSoundConfig.buildPrototype(ctx);
+		openSoundConfig.buildPrototype(ctx);
+		firingSoundConfig.buildPrototype(ctx);
+	}
 }
 
 struct TubeOperationResult
@@ -160,12 +174,13 @@ struct TubeOperationResult
 final class Tube: IFlowNoiseMultiplier
 {
 	// untrusted 'initialWeapon' input
-	this(Submarine owner, AmmoRoom room, const TubePrototype proto, string initialWeapon)
+	this(Submarine owner, AmmoRoom room, const TubeConfig config, string initialWeapon)
 	{
 		m_sub = owner;
-		m_proto = proto;
+		m_proto = config;
 		m_room = room;
-		enforce(initialWeapon == null || initialWeapon in room.m_proto.allowedWeaponSet,
+		enforce(initialWeapon == null ||
+			canFind(room.m_proto.allowedWeaponSet, initialWeapon),
 			"weapon cannot be stored in the room");
 		m_loadedWeapon = m_desiredWeapon = initialWeapon;
 		if (initialWeapon)
@@ -175,8 +190,8 @@ final class Tube: IFlowNoiseMultiplier
 			m_desiredState = m_state;
 		}
 		m_transform = new Transform2D();
-		m_transform.position = proto.tmpl.mount.mountCenter.to!vec2d;
-		m_transform.rotation = proto.tmpl.mount.rotation;
+		m_transform.position = m_proto.tmpl.mount.mountCenter.to!vec2d;
+		m_transform.rotation = m_proto.tmpl.mount.rotation;
 		m_sub.transform.addChild(m_transform);
 	}
 
@@ -186,7 +201,7 @@ final class Tube: IFlowNoiseMultiplier
 		Submarine m_sub;
 		AmmoRoom m_room;
 		Weapon m_wireGuidedWeapon;
-		const TubePrototype m_proto;
+		const TubeConfig m_proto;
 		string m_loadedWeapon;
 		string m_desiredWeapon;
 		float m_pushSpeed = 10.0f;
@@ -250,7 +265,8 @@ final class Tube: IFlowNoiseMultiplier
 		if (newWeaponName == m_desiredWeapon)
 			return TubeOperationResult(false, false);
 		enforce(newWeaponName == null ||
-			newWeaponName in m_room.m_proto.allowedWeaponSet, "invalid weapon");
+			canFind(m_room.m_proto.allowedWeaponSet, newWeaponName),
+			"invalid weapon");
 		// check if we need to start unloading
 		switch (m_state)
 		{
@@ -351,7 +367,7 @@ final class Tube: IFlowNoiseMultiplier
 			m_wireGuidedWeapon = w;
 		size_t soundOffset = dsubs_sound.common.uniform!("[]", size_t, size_t)(
 			0, GLOBAL_SRATE / 8);
-		startPlayingSound(&m_proto.firingSoundProto, &soundOffset);
+		startPlayingSound(&m_proto.firingSoundConfig.proto, &soundOffset);
 		TubeOperationResult res = TubeOperationResult(
 			true, false, true, wf.name, wireGuidanceId, false);
 		return res;
@@ -514,7 +530,7 @@ final class Tube: IFlowNoiseMultiplier
 			case TubeState.dry:
 			{
 				m_state = TubeState.flooding;
-				startPlayingSound(&m_proto.floodSoundProto);
+				startPlayingSound(&m_proto.floodSoundConfig.proto);
 				break;
 			}
 			case TubeState.flooded:
@@ -522,19 +538,19 @@ final class Tube: IFlowNoiseMultiplier
 				if (m_desiredState > TubeState.flooded)
 				{
 					m_state = TubeState.opening;
-					startPlayingSound(&m_proto.openSoundProto);
+					startPlayingSound(&m_proto.openSoundConfig.proto);
 				}
 				else
 				{
 					m_state = TubeState.drying;
-					startPlayingSound(&m_proto.floodSoundProto);
+					startPlayingSound(&m_proto.floodSoundConfig.proto);
 				}
 				break;
 			}
 			case TubeState.open:
 			{
 				m_state = TubeState.closing;
-				startPlayingSound(&m_proto.openSoundProto);
+				startPlayingSound(&m_proto.openSoundConfig.proto);
 				break;
 			}
 			default:

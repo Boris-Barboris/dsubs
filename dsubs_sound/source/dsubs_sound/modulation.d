@@ -39,11 +39,12 @@ struct TrochoidModulatorParams
 		float A = 0.0f;
 		float B = 0.0f;
 		float C = 0.0f;
-		immutable(Harmonic)[] harmonics;
+		Harmonic[] harmonics;
+		bool integralInitialized;
 		float energyIntegral = 1.0f;
 	}
 
-	this(immutable(Harmonic)[] harmonics,
+	this(Harmonic[] harmonics,
 		float A, float B, float C)
 	{
 		this.harmonics = harmonics;
@@ -58,9 +59,15 @@ struct TrochoidModulatorParams
 		return A * sin(x + PI_2 + B * sin(x) + C);
 	}
 
-	private void calculateIntegral(int resolution = 40)
+	float getEnergyIntegral() const
 	{
-		assert(resolution > 0);
+		enforce(integralInitialized, "uninitialized integral");
+		return energyIntegral;
+	}
+
+	void calculateIntegral(int resolution = 40)
+	{
+		enforce(resolution > 0);
 		energyIntegral = 0.0f;
 		float dt = PI * 2 / resolution;
 		for (int i = 0; i < resolution; i++)
@@ -71,11 +78,12 @@ struct TrochoidModulatorParams
 				float phase = dt * i * harmonics[j].freqMult;
 				val += harmonics[j].magnitude * get(phase);
 			}
-			assert(val >= 0.0f);
+			enforce(val >= 0.0f);
 			energyIntegral += pow(val, 2);
 		}
 		energyIntegral /= resolution;
-		assert(energyIntegral > 0.0f, "non-positive energy for modulator");
+		enforce(energyIntegral > 0.0f, "non-positive energy for modulator");
+		integralInitialized = true;
 	}
 }
 
@@ -87,11 +95,11 @@ struct TrochoidModulator
 		float startPhase = 0.0f;
 		float startFundFreq = 0.0f;
 		float endFundFreq = 0.0f;
-		immutable(TrochoidModulatorParams)* params;
+		const(TrochoidModulatorParams)* params;
 		Buffer harmonicsBuf;
 	}
 
-	this(CommandQueue q, immutable(TrochoidModulatorParams)* p, float startPhase = 0.0f)
+	this(CommandQueue q, const(TrochoidModulatorParams)* p, float startPhase = 0.0f)
 	{
 		this.params = p;
 		this.startPhase = startPhase;
@@ -103,7 +111,7 @@ struct TrochoidModulator
 		assert(!isNaN(startFundFreq));
 		assert(!isNaN(endFundFreq));
 		assert(!isNaN(startPhase));
-		assert(!isNaN(params.energyIntegral));
+		assert(!isNaN(params.getEnergyIntegral()));
 		Kernel k = q.mk_modulateTrochoid;
 		k.setArg(0, tds.mem);
 		k.setArg(1, harmonicsBuf.mem);
@@ -114,7 +122,7 @@ struct TrochoidModulator
 		k.setArg(6, startFundFreq);
 		k.setArg(7, endFundFreq);
 		k.setArg(8, startPhase);
-		k.setArg(9, params.energyIntegral);
+		k.setArg(9, params.getEnergyIntegral());
 		k.enqueue(q, 1, null, [tds.BUF_LEN], null, null);
 	}
 
@@ -151,9 +159,9 @@ struct TrochoidModulator
 version (unittest)
 {
 
-	immutable(TrochoidModulatorParams) stdTrochParams()
+	TrochoidModulatorParams stdTrochParams()
 	{
-		return cast(immutable) TrochoidModulatorParams([
+		return TrochoidModulatorParams([
 			Harmonic(1.0f, 0.35f),
 			Harmonic(2.0f, 0.1f),
 			Harmonic(3.0f, 0.01f),

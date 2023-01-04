@@ -135,7 +135,6 @@ unittest
 	writePropellerNoiseVsSpeedCsv(sub, "sub_propellers", 250, GLOBAL_SRATE / 2);
 }
 
-*/
 
 unittest
 {
@@ -156,7 +155,6 @@ unittest
 	writePropellerNoiseVsSpeedCsv(d, "torpedoes", 250, GLOBAL_SRATE / 2);
 }
 
-/*
 
 unittest
 {

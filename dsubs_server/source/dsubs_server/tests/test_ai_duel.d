@@ -56,6 +56,9 @@ unittest
 
 
 
+*/
+
+
 unittest
 {
 	info("ai_medium_duel_test");
@@ -90,5 +93,3 @@ unittest
 	Globals.simulators.start();
 	Globals.simulators.join();
 }
-
-*/

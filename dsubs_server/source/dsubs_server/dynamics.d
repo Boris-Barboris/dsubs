@@ -250,6 +250,7 @@ final class AttachedWire: IForce
 		if (pos == tangentPos)
 			return true;
 		// FIXME: we assume the closest turn
+		// We also set sensor with 0 antennae rotation as if it looks behind
 		rot = m_sensorTransform.rotation + angleDist(courseAngle(pos - tangentPos),
 			m_sensorTransform.rotation);
 		assert(!isNaN(rot));
@@ -270,6 +271,7 @@ final class AttachedWire: IForce
 		else
 		{
 			m_sensorTransform.position = m_attachTransform.wposition;
+			// we assume that sensor always looks back
 			m_sensorTransform.rotation = m_attachTransform.wrotation + PI;
 		}
 	}

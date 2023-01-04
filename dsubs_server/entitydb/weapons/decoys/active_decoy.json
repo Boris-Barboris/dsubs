@@ -1,0 +1,99 @@
+{
+    "activateAfter": 4000000,
+    "activationRange": {
+        "max": 0,
+        "min": 0
+    },
+    "activeReflectorProto": {
+        "reflectivity": [
+            -7,
+            -7,
+            -7
+        ],
+        "size": [
+            30,
+            30
+        ]
+    },
+    "activeSpeedRange": {
+        "max": 0,
+        "min": 0
+    },
+    "defaultSearchPattern": "straight",
+    "defaultSensorMode": "active",
+    "description": "Active sonar decoy. Lasts approximately 90 seconds.",
+    "entityType": "ActiveDecoy",
+    "fuel": {
+        "mean": 90,
+        "stddev": 5
+    },
+    "fuelEffExponent": 2,
+    "fullThrottleSpd": 0,
+    "marchCourseConfigurable": false,
+    "marchSpeedRange": {
+        "max": 0,
+        "min": 0
+    },
+    "name": "Decoy(active)",
+    "playable": true,
+    "reflector": {
+        "reflectivity": [
+            -22,
+            -22,
+            -22
+        ],
+        "size": [
+            0.60000002384185791,
+            4
+        ]
+    },
+    "rigidBody": {
+        "Cd0": {
+            "mean": 0.0500000007450580597,
+            "stddev": 9.99999974737875164e-06
+        },
+        "Cd1": {
+            "mean": 0.00999999977648258209,
+            "stddev": 9.99999974737875164e-06
+        },
+        "Cda": 0,
+        "Cl": {
+            "mean": 0.00999999977648258209,
+            "stddev": 0
+        },
+        "Cm": {
+            "mean": 0.00499999988824129105,
+            "stddev": 0
+        },
+        "Cr0": {
+            "mean": 0.0500000007450580597,
+            "stddev": 0
+        },
+        "Cr1": {
+            "mean": 0.25,
+            "stddev": 0
+        },
+        "hullLength": 4,
+        "mass": {
+            "mean": 1,
+            "stddev": 0.00100000004749745131
+        },
+        "moiK": 1
+    },
+    "searchPatterns": {
+        "availablePatterns": "straight",
+        "snakeAngle": 0,
+        "snakeWidth": 0,
+        "spiralFirstRadius": 0,
+        "spiralStep": 0
+    },
+    "sensorModes": "active",
+    "steering": {
+        "equilDrift": 0,
+        "rudderKd": 0,
+        "rudderKp": 0,
+        "rudderPosChangeSpeed": 1
+    },
+    "turningRadius": 0,
+    "wireGuided": false
+}

@@ -1,14 +1,19 @@
 module dsubs_server.propulsion;
 
+import std.typecons: Nullable;
+
 import dsubs_common.api.entities;
 import dsubs_common.math;
 
+import dsubs_sound.opencl: CommandQueue;
 import dsubs_sound.soundsource;
+import dsubs_sound.modulation: TrochoidModulatorParams, Harmonic;
 
+import dsubs_server.acoustics: SpectrumImageConfig;
 import dsubs_server.common;
 import dsubs_server.dynamics;
 import dsubs_server.simulator;
-import dsubs_server.vessel: Vessel, VesselRigidBodyTemplate;
+import dsubs_server.vessel: Vessel, VesselRigidBodyConfig;
 
 
 /// module that is responsible for forward\backwards thrust
@@ -131,7 +136,48 @@ final class BasicPropulsor: Propulsor
 }
 
 
-final class PropulsorFactory
+struct TrochoidModulatorConfig
+{
+	float A = 0.0f;
+	float B = 0.0f;
+	float C = 0.0f;
+	Harmonic[] harmonics;
+}
+
+struct PropellerSoundPrototypeConfig
+{
+	Nullable!SpectrumImageConfig baseBBSpectrumConfig;
+	Nullable!SpectrumImageConfig baseCavSpectrumConfig;
+	Nullable!TrochoidModulatorConfig tmConfig;
+
+	PropellerSoundPrototype prototype;
+	alias prototype this;
+
+	void loadPrototype(CommandQueue q)
+	{
+		if (!tmConfig.isNull)
+		{
+			TrochoidModulatorConfig tmc = tmConfig.get;
+			prototype.tmParams = cast(const) new TrochoidModulatorParams(
+				tmc.harmonics, tmc.A, tmc.B, tmc.C);
+		}
+		if (!baseBBSpectrumConfig.isNull)
+			prototype.baseBBSpectrum = cast(const) baseBBSpectrumConfig.get.loadSpectrum(q);
+		if (!baseCavSpectrumConfig.isNull)
+			prototype.baseCavSpectrum = cast(const) baseCavSpectrumConfig.get.loadSpectrum(q);
+	}
+}
+
+
+struct PropulsorModelConfig
+{
+	string objModelFilename;
+	string screwFaceName;
+	string shaftPointName;
+}
+
+
+struct PropulsorFactoryConfig
 {
 	string name;
 	string description;
@@ -143,7 +189,21 @@ final class PropulsorFactory
 	float mass;
 	float shaftRotFreq = 1.0f;
 	float rotAcceleration = 0.2f;
-	PropellerSoundPrototype soundPrototype;
+	PropellerSoundPrototypeConfig soundPrototypeConfig;
+	Nullable!PropulsorModelConfig modelConfig;
+}
+
+
+final class PropulsorFactory
+{
+	PropulsorFactoryConfig propulsorConfig;
+	alias propulsorConfig this;
+
+	ref auto soundPrototype() inout
+	{
+		return propulsorConfig.soundPrototypeConfig.prototype;
+	}
+
 	ConvexPolygon model;
 
 	@property const(PropulsorTemplate) tmpl() const
@@ -234,7 +294,7 @@ final class BasicRudder: Rudder
 /// Given a hydrodynamics force model and basic propulsor, calculate flank speed
 double speedForThrottle(T)(const T hfm, size_t propCount, const BasicPropulsor bp,
 		float throttle = 1.0f)
-	if (is(T == VesselRigidBodyTemplate) || is(T == HydroForceModel))
+	if (is(T == VesselRigidBodyConfig) || is(T == HydroForceModel))
 {
 	double maxT = bp.posThrustK * throttle * propCount;
 	// maxT = Cd0 * v + Cd1 * v * v

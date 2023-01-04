@@ -11,6 +11,7 @@ import std.random;
 public import dsubs_common.math;
 
 public import dsubs_sound.units;
+public import dsubs_sound.opencl: DsubsSoundOpenclCtx;
 
 
 pragma(inline)

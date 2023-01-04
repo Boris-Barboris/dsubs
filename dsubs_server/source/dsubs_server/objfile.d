@@ -1,15 +1,19 @@
 module dsubs_server.objfile;
 
-import std.algorithm: startsWith, splitter, sort;
+import std.algorithm: startsWith, splitter, sort, joiner;
 import std.ascii: isWhite;
+import std.array: Appender;
+import std.format: format;
 import std.path;
-import std.file: read;
+import std.file: read, write;
 import std.regex: regex, matchFirst;
+import std.range: iota, retro;
 import std.string: lineSplitter;
 
 import dsubs_common.api.entities;
 
 import dsubs_server.common;
+import dsubs_server.submarine: Submarine2DModel;
 
 
 
@@ -46,16 +50,35 @@ struct ObjMaterial
 }
 
 
+float blenderSrgb2Linear(float c)
+{
+	if (c < 0.04045f)
+		return (c < 0.0f) ? 0.0f : c * (1.0f / 12.92f);
+	return pow((c + 0.055f) * (1.0f / 1.055f), 2.4f);
+}
+
+float blenderLinear2Srgb(float c)
+{
+	if (c < 0.0031308f)
+		return (c < 0.0f) ? 0.0f : c * 12.92f;
+	return 1.055f * pow(c, 1.0f / 2.4f) - 0.055f;
+}
+
 ubyte floatToUbyteColor(float color)
 {
-	float blenderGamma = 1.0f / 2.2f;
-	return (pow(color, blenderGamma) * ubyte.max).to!ubyte;
+	return (blenderLinear2Srgb(color) * ubyte.max).to!ubyte;
+}
+
+float ubyteToFloatColor(ubyte color)
+{
+	return blenderSrgb2Linear(color / 255.0f);
 }
 
 
 ObjModel readModelFromObj(string filename, string directory = "models/")
 {
 	string filepath = buildPath(directory, filename);
+	trace("loading .obj file ", filepath);
 	string fileContents = cast(string) read(filepath);
 
 	ObjModel res;
@@ -105,15 +128,15 @@ ObjModel readModelFromObj(string filename, string directory = "models/")
 			// objects that start from underscore are not rendered
 			if (faceFilled.objectName[0] != '_')
 				res.faces ~= faceFilled;
-			// typical name
+			// Blender randomly names objects like techhole as techhole_Plane.012
+			string objName = faceFilled.objectName;
 			auto r = regex("(.+)_Plane.*");
-			auto m = matchFirst(faceFilled.objectName, r);
-			if (m.empty)
-				throw new Exception("object name " ~ faceFilled.objectName ~
-					" does not match *_Plane* pattern");
+			auto m = matchFirst(objName, r);
+			if (!m.empty)
+				objName = m[1];
 			// only first face of the object gets into allFaces dict
-			if ((m[1] in res.allFaces) is null)
-				res.allFaces[m[1]] = faceFilled;
+			if ((objName in res.allFaces) is null)
+				res.allFaces[objName] = faceFilled;
 			continue;
 		}
 	}
@@ -122,7 +145,9 @@ ObjModel readModelFromObj(string filename, string directory = "models/")
 	res.faces.sort!((a, b) => a.depth < b.depth);
 
 	// now we parse material file
-	string matfilepath = buildPath(directory, mtlibName);
+	enforce(mtlibName.length > 0, "Didn't find mtllib in .obj file");
+	// mtl lib must be in the same folder as .obj file
+	string matfilepath = buildPath(dirName(filepath), mtlibName);
 	fileContents = cast(string) read(matfilepath);
 
 	ObjMaterial materialFilled;
@@ -154,10 +179,128 @@ ObjModel readModelFromObj(string filename, string directory = "models/")
 	// validate material references
 	foreach (face; res.faces)
 	{
-		enforce(face.materialName in res.materials, "materials not consistent");
+		enforce(face.materialName in res.materials,
+			"material reference broken: " ~ face.materialName);
 	}
 
 	// trace("loaded model ", res);
 
 	return res;
+}
+
+
+// TODO: write an inverse function that dumps Submarine2DModel to obj and mat files
+
+private void dumpPolygonToPlane(
+	ref Appender!string planeBuf, ref Appender!string materialBuf, ref int faceCounter,
+	ConvexPolygon polygon, float zdepth, string planeName, string materialName)
+{
+	planeBuf.put("o ");
+	planeBuf.put(planeName);
+	planeBuf.put('\n');
+	foreach (point; polygon.points.retro)
+	{
+		string vertexString = format("v %f6 %f6 %f6\n", point.x, point.y, zdepth);
+		planeBuf.put(vertexString);
+	}
+	planeBuf.put("usemtl ");
+	planeBuf.put(materialName);
+	planeBuf.put('\n');
+	planeBuf.put("s off\n");
+	planeBuf.put("f ");
+	planeBuf.put(
+		iota(1, polygon.points.length + 1).map!(n => (n + faceCounter).to!string).
+		joiner(" "));
+	faceCounter += polygon.points.length;
+	planeBuf.put("\n\n");
+	materialBuf.put("newmtl ");
+	materialBuf.put(materialName);
+	materialBuf.put('\n');
+	materialBuf.put("Ns 323.999994
+Ka 1.000000 1.000000 1.000000\n");
+	string colorString =
+		format("Kd %f6 %f6 %f6\n",
+			ubyteToFloatColor(polygon.fillColor.r),
+			ubyteToFloatColor(polygon.fillColor.g),
+			ubyteToFloatColor(polygon.fillColor.b));
+	materialBuf.put(colorString);
+	materialBuf.put("Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2\n\n");
+}
+
+private void dumpSpecialMountPointToPlane(ref Appender!string planeBuf,
+	ref int faceCounter, vec2f point, float zdepth, string planeName)
+{
+	planeBuf.put("o ");
+	planeBuf.put(planeName);
+	planeBuf.put('\n');
+	// square with 1m edge
+	vec2f[] square = [
+		vec2f(point.x + 0.4f, point.y + 0.4f),
+		vec2f(point.x + 0.4f, point.y - 0.4f),
+		vec2f(point.x - 0.4f, point.y - 0.4f),
+		vec2f(point.x - 0.4f, point.y + 0.4f)
+	];
+	foreach (p; square)
+	{
+		string vertexString = format("v %f6 %f6 %f6\n", p.x, p.y, zdepth);
+		planeBuf.put(vertexString);
+	}
+	planeBuf.put("usemtl None\n");
+	planeBuf.put("s off\n");
+	planeBuf.put("f ");
+	planeBuf.put(
+		iota(1, 5).map!(n => (n + faceCounter).to!string).joiner(" "));
+	faceCounter += 4;
+	planeBuf.put('\n');
+}
+
+// filename without extention!
+void dumpSubmarine2DModel(string filename, Submarine2DModel subModel,
+	MountPoint[] propulsorMountPoints, ConvexPolygon[] propulsorModels,
+	MountPoint[] hydrophoneMounts, MountPoint[] activeSonarMounts,
+	MountPoint[] tubeMounts)
+{
+	Appender!string objBuf = Appender!string(null);
+	Appender!string materialBuf = Appender!string(null);
+	int faceCounter;
+	int firstPositiveZIdx = subModel.elevatedHullShapeIdx;
+	enforce(firstPositiveZIdx >= 0 && firstPositiveZIdx < subModel.hullModel.length);
+	for (int i = 0; i < subModel.hullModel.length; i++)
+	{
+		float zlevel = (i - firstPositiveZIdx + 1) * 0.1f;
+		string planeName = "plane" ~ i.to!string;
+		dumpPolygonToPlane(objBuf, materialBuf, faceCounter, subModel.hullModel[i],
+			zlevel, planeName ~ "_Plane", planeName ~ "_mat");
+	}
+	// propulsor models
+	foreach (i, propulsorModel; propulsorModels)
+	{
+		propulsorModel.points = propulsorModel.points.dup;
+		// offset by first propulsor mount point
+		foreach (ref point; propulsorModel.points)
+			point += propulsorMountPoints[0].mountCenter;
+		string screwName = "_screw" ~ i.to!string;
+		dumpPolygonToPlane(objBuf, materialBuf, faceCounter, propulsorModel, 0.0f,
+				screwName ~ "_Plane", screwName ~ "_mat");
+	}
+
+	void writeSpecialMountPoints(MountPoint[] mounts, string name)
+	{
+		foreach (i, mount; mounts)
+		{
+			dumpSpecialMountPointToPlane(objBuf, faceCounter, mount.mountCenter, 0.05f,
+				name ~ i.to!string ~ "_Plane");
+		}
+	}
+	writeSpecialMountPoints(propulsorMountPoints, "_propulsor");
+	writeSpecialMountPoints(hydrophoneMounts, "_hydrophone");
+	writeSpecialMountPoints(activeSonarMounts, "_activesonar");
+	writeSpecialMountPoints(tubeMounts, "_tube");
+
+	write(filename ~ ".obj", objBuf.data());
+	write(filename ~ ".mtl", materialBuf.data());
 }

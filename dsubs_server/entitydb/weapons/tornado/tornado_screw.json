@@ -1,0 +1,55 @@
+{
+    "entityType": "Propulsor",
+    "bladeCount": 0,
+    "description": "",
+    "mass": 0,
+    "modelConfig": null,
+    "name": "Tornado nozzle",
+    "negThrustK": {
+        "mean": 0,
+        "stddev": 0
+    },
+    "playable": false,
+    "posThrustK": {
+        "mean": 200,
+        "stddev": 0.100000001490116119
+    },
+    "rotAcceleration": 0.5,
+    "shaftRotFreq": 15,
+    "soundPrototypeConfig": {
+        "baseBBSpectrumConfig": {
+            "bottomLevel": 69,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/tornado.png",
+            "topLevel": 127
+        },
+        "baseCavSpectrumConfig": null,
+        "prototype": {
+            "aftIntensity": 0.699999988079071045,
+            "bladeAoA": 0.523598790168762207,
+            "bladeRadius": 0.349999994039535522,
+            "critNormalVel": 3.5,
+            "rngSpan": 0.0299999993294477463
+        },
+        "tmConfig": {
+            "A": 0.550000011920928955,
+            "B": 0.85000002384185791,
+            "C": -0.5,
+            "harmonics": [
+                {
+                    "freqMult": 1,
+                    "magnitude": 0.100000001490116119
+                },
+                {
+                    "freqMult": 2.13000011444091797,
+                    "magnitude": 0.159999996423721313
+                },
+                {
+                    "freqMult": 3.91000008583068848,
+                    "magnitude": 0.209999993443489075
+                }
+            ]
+        }
+    },
+    "type": "screw"
+}

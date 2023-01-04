@@ -5,6 +5,7 @@ import std.algorithm: map, max, min, remove, SwapStrategy, filter;
 import std.algorithm.searching: minElement;
 import std.algorithm.sorting: sort;
 import std.parallelism: task;
+import std.typecons: Nullable;
 
 import core.bitop: popcnt;
 
@@ -13,12 +14,14 @@ import dsubs_common.api.constants;
 import dsubs_common.api.entities;
 import dsubs_common.math;
 import dsubs_common.event;
+import dsubs_common.json;
 
 import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
 import dsubs_sound.soundsource;
 import dsubs_sound.common: uniform, GLOBAL_SRATE;
 
+import dsubs_server.acoustics: PrerecordedSoundConfig;
 import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.dynamics;
@@ -455,6 +458,7 @@ final class TorpedoGuidance: IGuidance
 							(1.0f + m_spiralTargetRedPerRange * sqrt(m_spiralSinceStart));
 						break;
 					case WeaponSearchPattern.snake:
+						assert(isNormal(m_snakeArmBeforeTurn));
 						m_snakeArmBeforeTurn -= distanceAdded;
 						if (m_snakeArmBeforeTurn < 0.0f)
 						{
@@ -742,10 +746,13 @@ final class TorpedoGuidance: IGuidance
 				trace(v, " is in explosion radius");
 		}
 		m_torpedo.kill("detonation", null);
-		SoundSource detonationSoundSource = new PrerecordedSoundSource(
-			new Transform2D(explosionCenter),
-			m_detonationSoundProto, null);
-		m_torpedo.simulator.acous.registerSource(detonationSoundSource);
+		if (m_detonationSoundProto.tds)
+		{
+			SoundSource detonationSoundSource = new PrerecordedSoundSource(
+				new Transform2D(explosionCenter),
+				m_detonationSoundProto, null);
+			m_torpedo.simulator.acous.registerSource(detonationSoundSource);
+		}
 	}
 
 	Event!(void delegate(ubyte[] image, int w, int h)) onSonarImageReady;
@@ -1041,14 +1048,45 @@ final class WeaponCollection
 }
 
 
-
-abstract class WeaponFactory: VesselFactory
+class WeaponFactoryConfig: VesselFactoryConfig
 {
 	string name;
 	string description;
 	bool marchCourseConfigurable;
 	bool playable;
 	bool wireGuided;
+	float turningRadius = 0.0f;
+	RolledF fuel;
+	/// balancing parameter. Enter real max speed. Drag Cd1 will be tuned with respect to propulsor
+	/// to match this value.
+	float fullThrottleSpd = 0.0f;
+	float fuelEffExponent = 2.0f;
+
+	// inlined weapon parameter descriptions.
+	MinMax marchSpeedRange;
+	MinMax activeSpeedRange;
+	MinMax activationRange;
+	WeaponSensorMode sensorModes;
+	WeaponParamDescSearchPatterns searchPatterns;
+	/// Sensor mode that is chosen if client does not explicitly set the mode.
+	WeaponSensorMode defaultSensorMode;
+	WeaponSearchPattern defaultSearchPattern = WeaponSearchPattern.straight;
+
+	// override JSONValue toJsonDynamic()
+	// {
+	// 	return this.toJson();
+	// }
+}
+
+
+abstract class WeaponFactory: VesselFactory
+{
+	@property inout(WeaponFactoryConfig) weaponConfig() inout
+	{
+		return cast(inout(WeaponFactoryConfig)) vesselConfig;
+	}
+
+	alias weaponConfig this;
 
 	@property const(WeaponTemplate) tmpl() const
 	{
@@ -1059,13 +1097,6 @@ abstract class WeaponFactory: VesselFactory
 			m_wireControlledParams);
 	}
 
-	float turningRadius = 0.0f;
-	RolledF fuel;
-	/// balancing parameter. Enter real max speed. Drag Cd1 will be tuned with respect to propulsor
-	/// to match this value.
-	float fullThrottleSpd = 0.0f;
-	float fuelEffExponent = 2.0f;
-
 	protected
 	{
 		bool m_paramDescsGenerated;
@@ -1073,16 +1104,6 @@ abstract class WeaponFactory: VesselFactory
 		WeaponParamType m_wireControlledParams;
 		WeaponParamDesc[] m_paramDescs;
 	}
-
-	// inlined weapon parameter descriptions. They should not be assigned directly, but
-	MinMax marchSpeedRange;
-	MinMax activeSpeedRange;
-	MinMax activationRange;
-	WeaponSensorMode sensorModes;
-	WeaponParamDescSearchPatterns searchPatterns;
-	/// Sensor mode that is chosen if client does not explicitly set the mode.
-	WeaponSensorMode defaultSensorMode;
-	WeaponSearchPattern defaultSearchPattern = WeaponSearchPattern.straight;
 
 	/// Process allparameters and generate m_availableParams and m_paramDescs.
 	void generateParamDescs()
@@ -1146,11 +1167,31 @@ abstract class WeaponFactory: VesselFactory
 }
 
 
-final class ActiveDecoyFactory: WeaponFactory
+class ActiveDecoyFactoryConfig: WeaponFactoryConfig
 {
 	ReflectorPrototype activeReflectorProto =
 		ReflectorPrototype(vec2f(30, 30), [-7.0f, -7.0f, -7.0f]);
 	usecs_t activateAfter = 4_000_000;
+
+	override JSONValue toJsonDynamic()
+	{
+		return this.toJson();
+	}
+}
+
+final class ActiveDecoyFactory: WeaponFactory
+{
+	@property inout(ActiveDecoyFactoryConfig) activeDecoyConfig() inout
+	{
+		return cast(inout(ActiveDecoyFactoryConfig)) vesselConfig;
+	}
+
+	alias activeDecoyConfig this;
+
+	this()
+	{
+		vesselConfig = new ActiveDecoyFactoryConfig();
+	}
 
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
 	override StaticDecoy build(Submarine shooter,
@@ -1169,15 +1210,59 @@ final class ActiveDecoyFactory: WeaponFactory
 }
 
 
-final class PassiveDecoyFactory: WeaponFactory
+class WeaponFactoryWithPropulsorConfig: WeaponFactoryConfig
 {
-	PropulsorFactory propFactory;	/// passive decoys have predefined propulsors
+	string propulsorName;
+}
+
+abstract class WeaponFactoryWithPropulsor: WeaponFactory
+{
+	PropulsorFactory propFactory;
+
+	@property inout(WeaponFactoryWithPropulsorConfig) weaponFactoryWithPropulsorConfig() inout
+	{
+		return cast(inout(WeaponFactoryWithPropulsorConfig)) vesselConfig;
+	}
+
+	alias weaponFactoryWithPropulsorConfig this;
+
+	void prepareDynamicsAndParams(PropulsorFactory pf)
+	{
+		propFactory = pf;
+		generateParamDescs();
+	}
+}
+
+
+class PassiveDecoyFactoryConfig: WeaponFactoryWithPropulsorConfig
+{
 	usecs_t activateAfter = 4_000_000;
+
+	override JSONValue toJsonDynamic()
+	{
+		return this.toJson();
+	}
+}
+
+final class PassiveDecoyFactory: WeaponFactoryWithPropulsor
+{
+	@property inout(PassiveDecoyFactoryConfig) passiveDecoyConfig() inout
+	{
+		return cast(inout(PassiveDecoyFactoryConfig)) vesselConfig;
+	}
+
+	alias passiveDecoyConfig this;
+
+	this()
+	{
+		vesselConfig = new PassiveDecoyFactoryConfig();
+	}
 
 	/// Verify launch params, build torpedo entity and assign launch params to guidance
 	override StaticDecoy build(Submarine shooter,
 		const(WeaponParamValue)[] launchParams, Tube tube) const
 	{
+		assert(propFactory);
 		enforce(launchParams.length == 0, "decoy is not configurable");
 		PassiveDecoyGuidance guidance = new PassiveDecoyGuidance();
 		StaticDecoy res = new StaticDecoy(shooter, name, tube, guidance);
@@ -1191,17 +1276,22 @@ final class PassiveDecoyFactory: WeaponFactory
 }
 
 
-final class TorpedoFactory: WeaponFactory
+class TorpedoFactoryConfig: WeaponFactoryWithPropulsorConfig
 {
-	PropulsorFactory propFactory;	/// torpedoes have predefined propulsors
 	MountPoint propMount;
-	HydrophonePrototype* hprot;
-	ActiveSonarPrototype* asprot;
+	Nullable!HydrophonePrototype hprot;
+	Nullable!ActiveSonarPrototype asprot;
+	Nullable!ReflectorPrototype activeReflectorProto;
 	MountPoint sensorsMount;
-	ReflectorPrototype* activeReflectorProto;
+
+	this()
+	{
+		marchCourseConfigurable = true;
+	}
+
 	// snake
 	float snakeArm = 300.0f;
-	float snakeArmInitial;
+	float snakeArmInitial = 0.0f;
 	float snakeAngle = dgr2rad(45.0f);
 	// spiral
 	float spiralStartTarget = 1.0f;
@@ -1209,7 +1299,7 @@ final class TorpedoFactory: WeaponFactory
 	// guidance
 	float trackAngVelKi = 1.0f;
 	int pingIntervalSearch = 7;
-	PrerecordedSoundPrototype detonationSoundProto;
+	PrerecordedSoundConfig detonationSoundProto;
 	// detection margins
 	int sonarNoiseMargin = 15;
 	int hydrophoneNoiseMargin = ushort.max / 12;
@@ -1217,20 +1307,34 @@ final class TorpedoFactory: WeaponFactory
 	float detonationMassK = 4.5f;
 	float blastRadius = 70.0f;
 
-	this(PropulsorFactory pf)
-	{
-		propFactory = pf;
-		marchCourseConfigurable = true;
-	}
-
 	// balancing params
 	float tgtMaxRangeOnMaxSpd;
 	float balancingStddev = 0.01f;
 
-	/// Prepare balance-costrained factory parameters and template param descriptions and values.
-	void prepareDynamicsAndParams()
+	override JSONValue toJsonDynamic()
 	{
-		generateParamDescs();
+		return this.toJson();
+	}
+}
+
+final class TorpedoFactory: WeaponFactoryWithPropulsor
+{
+	@property inout(TorpedoFactoryConfig) torpedoConfig() inout
+	{
+		return cast(inout(TorpedoFactoryConfig)) vesselConfig;
+	}
+
+	alias torpedoConfig this;
+
+	this()
+	{
+		vesselConfig = new TorpedoFactoryConfig();
+	}
+
+	/// Prepare balance-costrained factory parameters and template param descriptions and values.
+	override void prepareDynamicsAndParams(PropulsorFactory pf)
+	{
+		super.prepareDynamicsAndParams(pf);
 		// tune drag to match expected performace
 		rigidBody.Cd1.mean =
 			(propFactory.posThrustK.mean - rigidBody.Cd0.mean * fullThrottleSpd) / pow(fullThrottleSpd, 2);
@@ -1256,6 +1360,7 @@ final class TorpedoFactory: WeaponFactory
 	// used by AI
 	float maxRangeAtSpeed(float speed)
 	{
+		assert(propFactory);
 		float throttle = throttleForSpeed(
 			rigidBody.Cd0.mean, rigidBody.Cd1.mean, 1, propFactory.posThrustK.mean,
 			speed);
@@ -1269,8 +1374,8 @@ final class TorpedoFactory: WeaponFactory
 		assert(res.rigidBody.mass > 0.0f);
 		res.propulsors[0].transform.position = propMount.mountCenter.tod;
 		res.propulsors[0].transform.rotation = propMount.rotation;
-		if (activeReflectorProto)
-			res.guidance.m_activeReflectorProto = activeReflectorProto;
+		if (!activeReflectorProto.isNull)
+			res.guidance.m_activeReflectorProto = cast(const) &(activeReflectorProto.get());
 		res.guidance.m_detonationMassK = detonationMassK;
 		res.guidance.m_blastRadius = blastRadius;
 		res.guidance.m_fuelLeft = fuel;
@@ -1285,26 +1390,26 @@ final class TorpedoFactory: WeaponFactory
 		res.guidance.m_detonationSoundProto = cast() detonationSoundProto;
 		res.guidance.m_sonarNoiseMargin = sonarNoiseMargin;
 		res.guidance.m_hydrophoneNoiseMargin = hydrophoneNoiseMargin;
-		if (hprot)
+		if (!hprot.isNull)
 		{
 			Transform2D t = new Transform2D();
 			t.position = sensorsMount.mountCenter.tod;
 			t.rotation = sensorsMount.rotation;
 			res.transform.addChild(t);
-			Hydrophone h = new Hydrophone(Globals.sctx.queue(0), t, *hprot);
+			Hydrophone h = new Hydrophone(Globals.sctx.queue(0), t, hprot.get);
 			res.m_hydrophone = h;
 			h.onPreKinematics += { h.ktsStart = res.rigidBody.kinet.progradeSpeed.mps2kts; };
 			h.onPostKinematics += { h.ktsEnd = res.rigidBody.kinet.progradeSpeed.mps2kts; };
 			h.shouldBeActive = false;
 			h.muteTds = true;
 		}
-		if (asprot)
+		if (!asprot.isNull)
 		{
 			Transform2D t = new Transform2D();
 			t.position = sensorsMount.mountCenter.tod;
 			t.rotation = sensorsMount.rotation;
 			res.transform.addChild(t);
-			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, *asprot);
+			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, asprot.get);
 			res.m_sonar.owner = res;
 			res.m_sonar.onPreKinematics += ()
 			{
@@ -1385,6 +1490,7 @@ final class TorpedoFactory: WeaponFactory
 	override Torpedo build(Submarine shooter, const(WeaponParamValue)[] launchParams,
 		Tube tube) const
 	{
+		assert(propFactory);
 		Torpedo res = new Torpedo(shooter, name, tube);
 		res.addPropulsor(propFactory.build());
 		configureGuidance(res, launchParams);

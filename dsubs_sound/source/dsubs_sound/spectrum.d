@@ -427,7 +427,7 @@ unittest
 	trace("4096 spectrum mean square pressure: ", sound[].map!(s => s * s).sum / GLOBAL_SRATE);
 }
 
-*/
+
 
 unittest
 {
@@ -494,3 +494,5 @@ unittest
 			" on iter " ~ iter.to!string);
 	}
 }
+
+*/

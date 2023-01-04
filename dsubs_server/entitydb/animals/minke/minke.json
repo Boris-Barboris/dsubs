@@ -1,0 +1,50 @@
+{
+    "entityType": "Animal",
+    "mass": 56,
+    "maxSpeed": 8,
+    "randomSoundConfigs": [
+        {
+            "proto": {
+                "addToIlevel": 95,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/minke_whale1_8192.wav"
+        },
+        {
+            "proto": {
+                "addToIlevel": 95,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/minke_whale_boing1_8192.wav"
+        },
+        {
+            "proto": {
+                "addToIlevel": 95,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/minke_whale_boing2_8192.wav"
+        }
+    ],
+    "reflector": {
+        "reflectivity": [
+            -20,
+            -20,
+            -20
+        ],
+        "size": [
+            1.20000004768371582,
+            6.5
+        ]
+    },
+    "soundTimings": {
+        "intrasongPause": 6000000,
+        "meanSongPause": 420000000,
+        "songMaxLength": 10,
+        "songMinLength": 2,
+        "songPauseVariance": 180000000
+    },
+    "species": "minke whale"
+}

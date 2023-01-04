@@ -1,0 +1,134 @@
+{
+    "activationRange": {
+        "max": 300,
+        "min": 200
+    },
+    "activeReflectorProto": {
+        "reflectivity": [
+            -3,
+            -3,
+            -3
+        ],
+        "size": [
+            4.5,
+            20
+        ]
+    },
+    "activeSpeedRange": {
+        "max": 90,
+        "min": 90
+    },
+    "asprot": null,
+    "balancingStddev": 0.00999999977648258209,
+    "blastRadius": 110,
+    "defaultSearchPattern": "straight",
+    "defaultSensorMode": "dumb",
+    "description": "\"Tornado\" supercavitating torpedo.\nHas no sensors and relies solely on magnetic fuse and\nlarge explosive charge. Effective blast radius is only about 100m.\n\n\nSensors: none.\nActive speed: 90 m\/s.\nInactive speed: 30 m\/s.\nMax range: 2700m.\n",
+    "detonationMassK": 7.30000019073486328,
+    "detonationSoundProto": {
+        "proto": {
+            "addToIlevel": 143,
+            "minOmniFactor": 0.00200000009499490261,
+            "radius": 40
+        },
+        "tdsFilename": "..\/dsubs_sound\/explosion1_8192.wav"
+    },
+    "entityType": "Torpedo",
+    "fuelEffExponent": 2,
+    "fullThrottleSpd": 90,
+    "hprot": null,
+    "hydrophoneNoiseMargin": 5461,
+    "marchCourseConfigurable": true,
+    "marchSpeedRange": {
+        "max": 30,
+        "min": 30
+    },
+    "name": "Tornado",
+    "pingIntervalSearch": 7,
+    "playable": true,
+    "propMount": {
+        "mountCenter": [
+            0,
+            -2.5
+        ],
+        "rotation": 0,
+        "scale": 1
+    },
+    "propulsorName": "Tornado nozzle",
+    "reflector": {
+        "reflectivity": [
+            -10,
+            -10,
+            -8
+        ],
+        "size": [
+            0.60000002384185791,
+            5
+        ]
+    },
+    "rigidBody": {
+        "Cd0": {
+            "mean": 0.25,
+            "stddev": 0.00100000004749745131
+        },
+        "Cd1": {
+            "mean": 0.021913580596446991,
+            "stddev": 0.000219135807128623128
+        },
+        "Cda": 1.5,
+        "Cl": {
+            "mean": 0.0286589153110980988,
+            "stddev": 0.000286589143797755241
+        },
+        "Cm": {
+            "mean": 0.00300000002607703209,
+            "stddev": 0
+        },
+        "Cr0": {
+            "mean": 0.00999999977648258209,
+            "stddev": 0
+        },
+        "Cr1": {
+            "mean": 0,
+            "stddev": 0
+        },
+        "hullLength": 5,
+        "mass": {
+            "mean": 1.48000001907348633,
+            "stddev": 0.00200000009499490261
+        },
+        "moiK": 1
+    },
+    "searchPatterns": {
+        "availablePatterns": "straight",
+        "snakeAngle": 0,
+        "snakeWidth": 350,
+        "spiralFirstRadius": 150,
+        "spiralStep": 200
+    },
+    "sensorModes": "dumb",
+    "sensorsMount": {
+        "mountCenter": [
+            0,
+            0
+        ],
+        "rotation": 0,
+        "scale": 1
+    },
+    "snakeAngle": 0.785398185253143311,
+    "snakeArm": 300,
+    "snakeArmInitial": 0,
+    "sonarNoiseMargin": 15,
+    "spiralStartTarget": 1,
+    "spiralTargetRedPerRange": 0.00999999977648258209,
+    "steering": {
+        "equilDrift": 0.244346097111701965,
+        "rudderKd": -30,
+        "rudderKp": 10,
+        "rudderPosChangeSpeed": 2
+    },
+    "tgtMaxRangeOnMaxSpd": 2700,
+    "trackAngVelKi": 1,
+    "turningRadius": 110,
+    "wireGuided": false
+}

@@ -1,0 +1,68 @@
+{
+    "entityType": "Propulsor",
+    "bladeCount": 5,
+    "description": "High RPM and low cavitation speed, optimized for flank performance.\n\nMass: 30t",
+    "mass": 30,
+    "modelConfig": {
+        "objModelFilename": "entitydb/submarines/lima/lima.obj",
+        "screwFaceName": "_screw0",
+        "shaftPointName": "_propulsor0"
+    },
+    "name": "Five-blade Lima screw",
+    "negThrustK": {
+        "mean": 1100,
+        "stddev": 10
+    },
+    "playable": true,
+    "posThrustK": {
+        "mean": 2400,
+        "stddev": 20
+    },
+    "rotAcceleration": 0.25,
+    "shaftRotFreq": 4.80000019073486328,
+    "soundPrototypeConfig": {
+        "baseBBSpectrumConfig": {
+            "bottomLevel": 62,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/lima_propeller.png",
+            "topLevel": 122
+        },
+        "baseCavSpectrumConfig": {
+            "bottomLevel": 73,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/lima_propeller_cav.png",
+            "topLevel": 153
+        },
+        "prototype": {
+            "aftIntensity": 0.400000005960464478,
+            "bladeAoA": 0.663225114345550537,
+            "bladeRadius": 2.20000004768371582,
+            "critNormalVel": 12.1999998092651367,
+            "rngSpan": 0.0299999993294477463
+        },
+        "tmConfig": {
+            "A": 0.5,
+            "B": 0.699999988079071045,
+            "C": -0.400000005960464478,
+            "harmonics": [
+                {
+                    "freqMult": 1,
+                    "magnitude": 0.300000011920928955
+                },
+                {
+                    "freqMult": 2,
+                    "magnitude": 0.0500000007450580597
+                },
+                {
+                    "freqMult": 3,
+                    "magnitude": 0.00499999988824129105
+                },
+                {
+                    "freqMult": 5,
+                    "magnitude": 0.759999990463256836
+                }
+            ]
+        }
+    },
+    "type": "screw"
+}
