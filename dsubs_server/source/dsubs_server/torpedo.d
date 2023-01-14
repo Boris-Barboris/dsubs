@@ -516,7 +516,27 @@ final class TorpedoGuidance: IGuidance
 					enforce(factory.sensorModes & param.sensorMode,
 						"invalid sensor mode");
 					enforce(popcnt(param.sensorMode) <= 1, "must choose at most one");
-					m_sensorMode = param.sensorMode;
+					if (m_sensorMode != param.sensorMode)
+					{
+						// reset tracking
+						m_targetTracked = false;
+						// windup sonar ping slices
+						if (m_sensorMode == WeaponSensorMode.active)
+						{
+							ActiveSonar sonar = m_torpedo.m_sonar;
+							assert(sonar !is null);
+							while (sonar.canGenerateSlice)
+								sonar.skipSiceGeneration();
+						}
+						// deactivate hydrophone
+						if (m_sensorMode == WeaponSensorMode.passive)
+						{
+							Hydrophone h = m_torpedo.m_hydrophone;
+							assert(h !is null);
+							h.shouldBeActive = false;
+						}
+						m_sensorMode = param.sensorMode;
+					}
 					break;
 				case WeaponParamType.searchPattern:
 					enforce(factory.searchPatterns.availablePatterns & param.searchPattern,
