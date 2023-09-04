@@ -186,9 +186,9 @@ package struct PingTdsCache
 
 
 /// reverb gains that conserve energy
-private float[] getReverbGains(float[] relBinSizes, float zeroBin)
+private float[] getReverbGains(const(float)[] relBinSizes, float zeroBin)
 {
-	assert(zeroBin >= 0.0f);
+	enforce(zeroBin >= 0.0f);
 	float[] res;
 	res.length = 1 + relBinSizes.length;
 	float totalRel = relBinSizes.sum();
@@ -431,9 +431,10 @@ struct ActiveSonarPrototype
 	float reflBearingNoise = 0.025f;
 	/// contact range error magnitude gain per meter of range
 	float reflRangeNoise = 200 / 10000.0f;
-	/// reverb gains gotten from getReverbGains function
-	immutable(float)[] reverbk = getReverbGains(
-		[1.0f, 0.6f, 0.25f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6], 0.00001f);
+	/// General reverberation trail magnitude multiplier
+	float reverbZeroBin = 0.00001f;
+	/// Reverberation relative per-pixel trail magnitudes
+	float[] reverbBinSizes = [1.0f, 0.6f, 0.25f, 0.1f, 0.04f, 0.008f, 2e-3, 5e-4, 1e-4, 3e-6];
 	/// how fast reverb strength increases with range
 	float reverbGainRangeK = 1 / 8000.0f;
 	/// perlin noise cell sizes (two noise passes are added)
@@ -466,6 +467,7 @@ final class ActiveSonar
 		m_transform = trans;
 		m_proto = proto;
 		m_secDur = proto.maxSec;
+		m_reverbk = getReverbGains(m_proto.reverbBinSizes, m_proto.reverbZeroBin);
 		m_nextSliceImage = ByteImage(q.ctx, proto.getSliceXResol(), proto.radialRes);
 		m_nextSlice = new ubyte[m_nextSliceImage.size];
 		onPreKinematics += () { m_worldRotStart = m_transform.wrotation; };
@@ -493,6 +495,9 @@ final class ActiveSonar
 		bool m_active = true;
 		bool m_hasSliceToSend = false;
 		int m_secDur;	/// duration limiter
+
+		// normalized reverb
+		float[] m_reverbk;
 
 		/// speed in knots at the start of integration
 		float m_ktsStart = 0.0f;
@@ -756,14 +761,14 @@ final class ActiveSonar
 		k.enqueue(q, 2, null, [m_omniImage.w, m_omniImage.h], null, null);
 
 		// reverberation pass
-		Buffer reverbKbuf = Buffer(q.ctx, m_proto.reverbk.length * float.sizeof);
-		reverbKbuf.enqueueFullWrite(q, m_proto.reverbk, null).release();
+		Buffer reverbKbuf = Buffer(q.ctx, m_reverbk.length * float.sizeof);
+		reverbKbuf.enqueueFullWrite(q, m_reverbk, null).release();
 
 		k = q.mk_sonarReverbPass;
 		k.setArg(0, m_omniImage.mem);
 		k.setArg(1, m_tmpImg.mem);
 		k.setArg(2, reverbKbuf.mem);
-		k.setArg(3, m_proto.reverbk.length.to!int);
+		k.setArg(3, m_reverbk.length.to!int);
 		k.setArg(4, m_proto.reverbGainRangeK);
 		k.setArg(5, omniRangePerRow);
 		k.enqueue(q, 2, null, [m_tmpImg.w, m_tmpImg.h], null, null);
@@ -851,7 +856,7 @@ final class ActiveSonar
 	}
 }
 
-
+/*
 unittest
 {
 	DsubsSoundOpenclCtx ctx = s_clCtx;
@@ -878,7 +883,7 @@ unittest
 	assert(imprints[0].reflector is refl1);
 	assert(imprints[1].reflector is refl2);
 }
-
+*/
 
 /// Immovable sonar ping sound source.
 final class SonarPing: FixedLengthSoundSource

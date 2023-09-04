@@ -1,0 +1,51 @@
+{
+    "entityType": "Propulsor",
+    "bladeCount": 2,
+    "description": "",
+    "mass": 0,
+    "modelConfig": null,
+    "name": "Passive decoy sound source",
+    "negThrustK": {
+        "mean": 0,
+        "stddev": 0
+    },
+    "playable": false,
+    "posThrustK": {
+        "mean": 0,
+        "stddev": 0
+    },
+    "rotAcceleration": 0.300000011920928955,
+    "shaftRotFreq": 3.09999990463256836,
+    "soundPrototypeConfig": {
+        "baseBBSpectrumConfig": null,
+        "baseCavSpectrumConfig": {
+            "bottomLevel": 71,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/passive_decoy_cav.png",
+            "topLevel": 146
+        },
+        "prototype": {
+            "aftIntensity": 1,
+            "bladeAoA": 0.523598790168762207,
+            "bladeRadius": 1,
+            "critNormalVel": 2,
+            "rngSpan": 0.0299999993294477463
+        },
+        "tmConfig": {
+            "A": 0.5,
+            "B": 0.699999988079071045,
+            "C": -0.400000005960464478,
+            "harmonics": [
+                {
+                    "freqMult": 1,
+                    "magnitude": 0.25
+                },
+                {
+                    "freqMult": 2,
+                    "magnitude": 0.75
+                }
+            ]
+        }
+    },
+    "type": "screw"
+}

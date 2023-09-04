@@ -1,0 +1,68 @@
+{
+    "entityType": "Propulsor",
+    "bladeCount": 5,
+    "description": "Balanced screw, optimized for tactical performance.\n\nMass: 35t",
+    "mass": 35,
+    "modelConfig": {
+        "objModelFilename": "entitydb/submarines/november/november.obj",
+        "screwFaceName": "_screw1",
+        "shaftPointName": "_propulsor0"
+    },
+    "name": "Five-blade November screw",
+    "negThrustK": {
+        "mean": 1100,
+        "stddev": 9
+    },
+    "playable": true,
+    "posThrustK": {
+        "mean": 2150,
+        "stddev": 15
+    },
+    "rotAcceleration": 0.180000007152557373,
+    "shaftRotFreq": 3.54999995231628418,
+    "soundPrototypeConfig": {
+        "baseBBSpectrumConfig": {
+            "bottomLevel": 59,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/november_propeller.png",
+            "topLevel": 119
+        },
+        "baseCavSpectrumConfig": {
+            "bottomLevel": 61,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/november_propeller_cav.png",
+            "topLevel": 141
+        },
+        "prototype": {
+            "aftIntensity": 0.5,
+            "bladeAoA": 0.610865235328674316,
+            "bladeRadius": 2.59999990463256836,
+            "critNormalVel": 14,
+            "rngSpan": 0.0399999991059303284
+        },
+        "tmConfig": {
+            "A": 0.5,
+            "B": 0.699999988079071045,
+            "C": -0.400000005960464478,
+            "harmonics": [
+                {
+                    "freqMult": 1,
+                    "magnitude": 0.300000011920928955
+                },
+                {
+                    "freqMult": 2,
+                    "magnitude": 0.0500000007450580597
+                },
+                {
+                    "freqMult": 3,
+                    "magnitude": 0.00499999988824129105
+                },
+                {
+                    "freqMult": 5,
+                    "magnitude": 0.759999990463256836
+                }
+            ]
+        }
+    },
+    "type": "screw"
+}

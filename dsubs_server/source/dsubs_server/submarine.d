@@ -208,6 +208,28 @@ struct Submarine2DModel
 	int elevatedHullShapeIdx;
 }
 
+struct Submarine2DModelConfig
+{
+	// null if no model is used
+	string modelFileName;
+}
+
+// serializable submarine factory
+struct SubmarineFactoryConfig
+{
+	VesselFactoryConfig vesselConfig;
+	string name;
+	string description;
+	Submarine2DModelConfig model;
+	MountPointConfig[] propulsionMounts;
+	string[] allowedPropulsors;
+	bool playable = false;
+	SubHydrophonePrototype[] hydrophones;
+	SubSonarPrototype[] activeSonars;
+	AmmoRoomPrototype[] ammoRooms;
+	TubeConfig[] tubes;
+}
+
 
 final class SubmarineFactory: VesselFactory
 {
@@ -220,7 +242,7 @@ final class SubmarineFactory: VesselFactory
 	SubHydrophonePrototype[] hprots;
 	SubSonarPrototype* asprot;
 	AmmoRoomPrototype[int] roomProtos;
-	TubePrototype[int] tubeProtos;
+	TubeConfig[int] tubeProtos;
 
 	@property const(SubmarineTemplate) tmpl() const
 	{
@@ -260,10 +282,12 @@ final class SubmarineFactory: VesselFactory
 			else
 			{
 				assert(hp.type == HydrophoneType.towed);
-				AttachedWire wire = new AttachedWire(t, res.rigidBody, hp.wirePrototype);
+				AttachedWire wire = new AttachedWire(t, res.rigidBody,
+					hp.wirePrototype.get);
 				// wire.desiredLength = 500.0f;
 				res.rigidBody.wires ~= wire;
-				h = new Hydrophone(Globals.sctx.queue(0), wire.sensorTransform, hp.hydroProto);
+				h = new Hydrophone(Globals.sctx.queue(0), wire.sensorTransform,
+					hp.hydroProto);
 				h.onPreKinematics += ((h, wire) => {
 					h.canBeActive = wire.sensorTransformValid;
 					h.ktsStart = wire.sensorPointVel.length.mps2kts;
@@ -336,7 +360,7 @@ final class SubmarineFactory: VesselFactory
 		foreach (tubeProtoTuple; tubeProtos.byKeyValue)
 		{
 			int tubeId = tubeProtoTuple.key;
-			const TubePrototype tubeProto = tubeProtoTuple.value;
+			const TubeConfig tubeProto = tubeProtoTuple.value;
 			assert(tubeId == tubeProto.tmpl.id);
 			const(TubeSpawnState)* specifiedState = tubeId in specifiedTubeStates;
 			res.m_tubes[tubeId] = new Tube(res, res.m_rooms[tubeProto.tmpl.roomId],

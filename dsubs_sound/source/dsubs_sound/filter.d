@@ -21,7 +21,7 @@ import dsubs_sound.wav;
 /// OpenCL linear time-domain filter
 struct FIRFilter
 {
-	this(CommandQueue q, immutable(float)[] taps)
+	this(CommandQueue q, const(float)[] taps)
 	{
 		m_tapCount = taps.length.to!int;
 		m_taps = Buffer(q, taps, CL_MEM_READ_ONLY);

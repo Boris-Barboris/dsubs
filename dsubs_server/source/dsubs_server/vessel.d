@@ -6,6 +6,7 @@ import std.random: uniform;
 import dsubs_common.api.entities;
 import dsubs_common.event;
 import dsubs_common.math;
+import dsubs_common.json;
 import dsubs_common.containers.array: removeFirstUnstable;
 
 import dsubs_sound.activesonar: Reflector, ReflectorPrototype;
@@ -15,6 +16,7 @@ import dsubs_server.player: Captain;
 import dsubs_server.common;
 import dsubs_server.dynamics;
 import dsubs_server.propulsion;
+import dsubs_server.objfile: ObjModel;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.simulator;
 
@@ -309,7 +311,29 @@ final class VesselCollection
 }
 
 
-struct VesselRigidBodyTemplate
+/// MountPoint that gets it's center from .obj model
+struct MountPointConfig
+{
+	/// name of the plane in the model, which center will be used
+	/// as mount-center
+	string mountCenterPlane;
+	MountPoint mountPoint;
+
+	void setCenterFromModel(ref const ObjModel model)
+	{
+		if (mountCenterPlane)
+		{
+			enforce(mountCenterPlane in model.allFaces,
+				"plane " ~ mountCenterPlane ~ " not found in model");
+			mountPoint.mountCenter = model.allFaces[mountCenterPlane].center;
+		}
+	}
+
+	alias mountPoint this;
+}
+
+
+struct VesselRigidBodyConfig
 {
 	RolledF mass, Cd0, Cd1, Cr0, Cr1, Cl, Cm;
 	double Cda;
@@ -317,7 +341,7 @@ struct VesselRigidBodyTemplate
 	float hullLength;
 }
 
-struct VesselSteeringTemplate
+struct VesselSteeringConfig
 {
 	/// Equilibrium drift angle on maximum rudder deflection, radians
 	float equilDrift = 0.0f;
@@ -327,39 +351,51 @@ struct VesselSteeringTemplate
 }
 
 
+/// Serializable vessel config
+class VesselFactoryConfig
+{
+	VesselRigidBodyConfig rigidBody;
+	ReflectorPrototype reflector;
+	VesselSteeringConfig steering;
+
+	JSONValue toJsonDynamic()
+	{
+		throw new Exception("not implemented");
+	}
+}
+
+
 class VesselFactory
 {
-	VesselRigidBodyTemplate rigidBody;
-	ReflectorPrototype reflprot;
-	VesselSteeringTemplate steering;
+	VesselFactoryConfig vesselConfig;
 
 	double calcMoi(float totalMass) const
 	{
-		return rigidBody.moiK * totalMass * pow(rigidBody.hullLength, 2) / 12.0;
+		return vesselConfig.rigidBody.moiK * totalMass * pow(vesselConfig.rigidBody.hullLength, 2) / 12.0;
 	}
 
-	/// All internal binding and preparation of vessel components
+	/// internal binding and preparation of vessel components
 	protected final void bootstrap(Vessel res) const
 	{
-		res.m_rigidBody.mass = rigidBody.mass;
-		res.m_rigidBody.hydroModel.Cd0 = rigidBody.Cd0;
-		res.m_rigidBody.hydroModel.Cd1 = rigidBody.Cd1;
-		res.m_rigidBody.hydroModel.Cda = rigidBody.Cda;
-		res.m_rigidBody.hydroModel.Cr0 = rigidBody.Cr0;
-		res.m_rigidBody.hydroModel.Cr1 = rigidBody.Cr1;
-		res.m_rigidBody.hydroModel.Cl = rigidBody.Cl;
-		res.m_rigidBody.hydroModel.Cm = -rigidBody.Cm.roll();
+		res.m_rigidBody.mass = vesselConfig.rigidBody.mass;
+		res.m_rigidBody.hydroModel.Cd0 = vesselConfig.rigidBody.Cd0;
+		res.m_rigidBody.hydroModel.Cd1 = vesselConfig.rigidBody.Cd1;
+		res.m_rigidBody.hydroModel.Cda = vesselConfig.rigidBody.Cda;
+		res.m_rigidBody.hydroModel.Cr0 = vesselConfig.rigidBody.Cr0;
+		res.m_rigidBody.hydroModel.Cr1 = vesselConfig.rigidBody.Cr1;
+		res.m_rigidBody.hydroModel.Cl = vesselConfig.rigidBody.Cl;
+		res.m_rigidBody.hydroModel.Cm = -vesselConfig.rigidBody.Cm.roll();
 		// res.m_rigidBody.kinet.angVel = 1.0;
 		auto brudder = new BasicRudder();
 		brudder.transform = res.transform;
-		brudder.Kp = steering.rudderKp;
-		brudder.Kd = steering.rudderKd;
-		brudder.posChangeSpeed = steering.rudderPosChangeSpeed;
+		brudder.Kp = vesselConfig.steering.rudderKp;
+		brudder.Kd = vesselConfig.steering.rudderKd;
+		brudder.posChangeSpeed = vesselConfig.steering.rudderPosChangeSpeed;
 		// Cm * equilDrift = steeringK
-		brudder.steeringK = fabs(steering.equilDrift * res.m_rigidBody.hydroModel.Cm);
+		brudder.steeringK = fabs(vesselConfig.steering.equilDrift * res.m_rigidBody.hydroModel.Cm);
 		res.m_rudder = brudder;
 		// reflector
-		res.m_reflector = new Reflector(res.transform, reflprot);
+		res.m_reflector = new Reflector(res.transform, vesselConfig.reflector);
 		res.m_reflector.owner = res;
 		// rudder and propulsor
 		assert(res.m_rudder !is null);

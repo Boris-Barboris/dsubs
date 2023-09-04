@@ -158,26 +158,32 @@ final class AnimalCollection
 }
 
 
+struct AnimalFactoryConfig
+{
+	PrerecordedSoundConfig[] randomSoundConfigs;
+	JukeboxSoundTimings soundTimings;
+	float maxSpeed = 0.0;
+	ReflectorPrototype reflector;
+	float mass;
+	string species;
+}
+
 
 final class AnimalFactory
 {
-	/// Copied into the animal, so they can be modified on per-animal basis
-	PrerecordedSoundPrototype[] randomSounds;
-	JukeboxSoundTimings soundTimings;
-	float maxSpeed = 0.0;
-	ReflectorPrototype reflprot;
-	float mass;
-	string species;
+	AnimalFactoryConfig animalConfig;
+	alias animalConfig this;
 
 	final Animal build(string name)
 	{
 		Animal res = new Animal(cast() this);
-		res.m_jukebox.randomSounds = randomSounds.dup;
+		res.m_jukebox.randomSounds = animalConfig.randomSoundConfigs.map!(
+			rs => rs.proto).array;
 		res.m_jukebox.soundTimings = soundTimings;
 		res.m_name = name;
 		res.m_rigidBody.mass = mass;
 		res.m_rigidBody.moi = 1.0f;
-		res.m_reflector = new Reflector(res.m_transform, reflprot);
+		res.m_reflector = new Reflector(res.m_transform, reflector);
 		res.m_reflector.owner = res;
 		return res;
 	}

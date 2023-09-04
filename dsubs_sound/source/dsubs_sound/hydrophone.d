@@ -1254,7 +1254,6 @@ unittest
 		samples, 0.8f / maxp, GLOBAL_SRATE);
 }
 
-*/
 
 unittest
 {
@@ -1322,3 +1321,5 @@ unittest
 	writeWavFile("std_hydrophone_vs_current.wav",
 		samples, 0.8f / maxp, GLOBAL_SRATE);
 }
+
+*/

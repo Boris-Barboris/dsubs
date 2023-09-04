@@ -1,0 +1,50 @@
+{
+    "entityType": "Animal",
+    "mass": 40,
+    "maxSpeed": 13,
+    "randomSoundConfigs": [
+        {
+            "proto": {
+                "addToIlevel": 100,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/orca1_8192.wav"
+        },
+        {
+            "proto": {
+                "addToIlevel": 100,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/orca2_8192.wav"
+        },
+        {
+            "proto": {
+                "addToIlevel": 100,
+                "minOmniFactor": 0,
+                "radius": 9
+            },
+            "tdsFilename": "..\/dsubs_sound\/bio_sounds\/orca3_8192.wav"
+        }
+    ],
+    "reflector": {
+        "reflectivity": [
+            -20,
+            -20,
+            -20
+        ],
+        "size": [
+            1,
+            7
+        ]
+    },
+    "soundTimings": {
+        "intrasongPause": 0,
+        "meanSongPause": 360000000,
+        "songMaxLength": 1,
+        "songMinLength": 1,
+        "songPauseVariance": 120000000
+    },
+    "species": "orca"
+}

@@ -1,0 +1,60 @@
+{
+    "entityType": "Propulsor",
+    "bladeCount": 3,
+    "description": "",
+    "mass": 40,
+    "modelConfig": null,
+    "name": "Civilian three-blade screw",
+    "negThrustK": {
+        "mean": 900,
+        "stddev": 10
+    },
+    "playable": false,
+    "posThrustK": {
+        "mean": 2250,
+        "stddev": 20
+    },
+    "rotAcceleration": 0.200000002980232239,
+    "shaftRotFreq": 4.21000003814697266,
+    "soundPrototypeConfig": {
+        "baseBBSpectrumConfig": {
+            "bottomLevel": 80,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/civ_propeller.png",
+            "topLevel": 140
+        },
+        "baseCavSpectrumConfig": {
+            "bottomLevel": 75,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/civ_propeller_cav.png",
+            "topLevel": 155
+        },
+        "prototype": {
+            "aftIntensity": 0.400000005960464478,
+            "bladeAoA": 0.523598790168762207,
+            "bladeRadius": 3.40000009536743164,
+            "critNormalVel": 17,
+            "rngSpan": 0.0299999993294477463
+        },
+        "tmConfig": {
+            "A": 0.5,
+            "B": 0.699999988079071045,
+            "C": -0.400000005960464478,
+            "harmonics": [
+                {
+                    "freqMult": 1,
+                    "magnitude": 0.289999991655349731
+                },
+                {
+                    "freqMult": 2,
+                    "magnitude": 0.0399999991059303284
+                },
+                {
+                    "freqMult": 3,
+                    "magnitude": 0.800000011920928955
+                }
+            ]
+        }
+    },
+    "type": "screw"
+}

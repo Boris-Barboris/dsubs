@@ -525,7 +525,7 @@ Good luck!`;
 			int weaponsToLoad = min(maxWeaponsToLoad, room.capacity - room.weaponCount);
 			if (weaponsToLoad > 0)
 			{
-				string[] allowedWeapons = room.prototype.allowedWeaponSet.keys;
+				const string[] allowedWeapons = room.prototype.allowedWeaponSet;
 				while (weaponsToLoad-- > 0)
 				{
 					// select random allowed weapon to put in the room

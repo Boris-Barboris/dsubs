@@ -1,0 +1,418 @@
+{
+    "entityType": "Submarine",
+    "activeSonars": [
+        {
+            "mount": {
+                "mountCenterPlane": "_activesonar0",
+                "mountPoint": {
+                    "rotation": 0,
+                    "scale": 1
+                }
+            },
+            "sonarProto": {
+                "antiPeakIlevelDiff": -30,
+                "baseNoise": 2,
+                "directivity": 20,
+                "dissMod": 6,
+                "endScale": 0.00625000009313225746,
+                "flowNoiseGain": -4,
+                "maxPeakIlevel": 220,
+                "maxSec": 20,
+                "minPeakIlevel": 190,
+                "omniBeamCount": 320,
+                "perlinCellSize": [
+                    51,
+                    23
+                ],
+                "perlinGain": [
+                    7.90000009536743164,
+                    4.30000019073486328
+                ],
+                "pingDirPower": 2,
+                "pingParams": {
+                    "chirps": [
+                        {
+                            "duration": 0.300000011920928955,
+                            "endFreq": 2300,
+                            "startFreq": 2100
+                        }
+                    ],
+                    "effectiveFreq": 2200,
+                    "filterName": "octaveBp1900_2500",
+                    "tdsLength": 3
+                },
+                "radialRes": 20,
+                "reflBearingNoise": 0.0250000003725290298,
+                "reflRangeNoise": 0.0199999995529651642,
+                "reverbBinSizes": [
+                    1,
+                    0.60000002384185791,
+                    0.25,
+                    0.100000001490116119,
+                    0.0399999991059303284,
+                    0.00800000037997961044,
+                    0.00200000009499490261,
+                    0.000500000023748725653,
+                    9.99999974737875164e-05,
+                    3.00000010611256585e-06
+                ],
+                "reverbGainRangeK": 0.000125000005937181413,
+                "reverbZeroBin": 9.99999974737875164e-06,
+                "span": 210,
+                "waterReflectivity": -100,
+                "zeroLevel": 24.3118419647216797
+            }
+        }
+    ],
+    "allowedPropulsors": [
+        "Seven-blade screw",
+        "Stork pumpjet"
+    ],
+    "ammoRooms": [
+        {
+            "allowedWeaponSet": [
+                "Minoga"
+            ],
+            "capacity": 16,
+            "id": 0,
+            "name": "bow rack",
+            "roomType": "standard"
+        },
+        {
+            "allowedWeaponSet": [
+                "Decoy(active)",
+                "Decoy(passive)"
+            ],
+            "capacity": 30,
+            "id": 1,
+            "name": "decoy rack",
+            "roomType": "decoy"
+        }
+    ],
+    "description": "Light attack submarine \"Stork\" offers good balance of stealth,\noffensive capabilities and survivability.\n\nLength: 70m\nDisplacement: 1600t\nTop speed:\n\tSeven-blade screw: 16.8m\/s\n\tStork pumpjet: 15.9m\/s\nArmament:\n  2x bow torpedo tubes (90 sec reload).\n  2x broadside decoy launchers.\nHydrophones:\n  Bow: spherical array, 230 deg FoV\n  Stern: 600m LF towed array, 330 deg FoV\nActive sonars:\n  Bow: 2200Hz mid-freq pulse, 210 deg FoV",
+    "hydrophones": [
+        {
+            "hydroProto": {
+                "antennaeRots": [
+                    0
+                ],
+                "antennaeSpan": 4.01425743103027344,
+                "baseNoise": 3,
+                "beamCount": 230,
+                "bearingErrNoise": 0.00370000000111758709,
+                "directivity": 0.0222222227603197098,
+                "dissMod": 4,
+                "filterName": "",
+                "flowNoiseMult": 9.99999974737875164e-06,
+                "imageBlackLevel": 8,
+                "imageWhiteLevel": 90,
+                "listenSpan": 0.0523598790168762207,
+                "localNoiseRangeCutoff": 200,
+                "maxFreq": 4096,
+                "minFreq": 250,
+                "mirrored": false,
+                "omniNoiseMult": 0.0250000003725290298,
+                "pcbMaxPressure": 50
+            },
+            "mount": {
+                "mountCenterPlane": "_hydrophone0",
+                "mountPoint": {
+                    "rotation": 0,
+                    "scale": 1
+                }
+            },
+            "name": "bow",
+            "type": "fixed",
+            "wirePrototype": null
+        },
+        {
+            "hydroProto": {
+                "antennaeRots": [
+                    0
+                ],
+                "antennaeSpan": 5.75958633422851562,
+                "baseNoise": 2.79999995231628418,
+                "beamCount": 330,
+                "bearingErrNoise": 0.00370000000111758709,
+                "directivity": 0.0177777782082557678,
+                "dissMod": 4,
+                "filterName": "octaveBp50_2500",
+                "flowNoiseMult": 9.99999974737875164e-06,
+                "imageBlackLevel": 11,
+                "imageWhiteLevel": 90,
+                "listenSpan": 0.0523598790168762207,
+                "localNoiseRangeCutoff": 250,
+                "maxFreq": 2500,
+                "minFreq": 50,
+                "mirrored": true,
+                "omniNoiseMult": 0.0500000007450580597,
+                "pcbMaxPressure": 50
+            },
+            "mount": {
+                "mountCenterPlane": "_hydrophone1",
+                "mountPoint": {
+                    "rotation": 0,
+                    "scale": 1
+                }
+            },
+            "name": "towed",
+            "type": "towed",
+            "wirePrototype": {
+                "maxLength": 600,
+                "pointCD0": 0.0199999995529651642,
+                "pointCD1": 0.0199999995529651642,
+                "pointMass": 0.200000002980232239,
+                "sensorTransformPoint": 1,
+                "winchSpeed": 5
+            }
+        }
+    ],
+    "model": {
+        "modelFileName": "entitydb/submarines/stork/stork.obj"
+    },
+    "name": "Stork",
+    "playable": true,
+    "propulsionMounts": [
+        {
+            "mountCenterPlane": "_propulsor0",
+            "mountPoint": {
+                "rotation": 0,
+                "scale": 1
+            }
+        }
+    ],
+    "tubes": [
+        {
+            "firingSoundConfig": {
+                "proto": {
+                    "addToIlevel": 92,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/launch1_8192.wav"
+            },
+            "firingTime": 3000000,
+            "floodSoundConfig": {
+                "proto": {
+                    "addToIlevel": 82,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/hissing1_8192.wav"
+            },
+            "floodTime": 9000000,
+            "loadTime": 90000000,
+            "mountPointConfig": {
+                "mountCenterPlane": "_tube0",
+                "mountPoint": {
+                    "rotation": 0.349065840244293213,
+                    "scale": 1
+                }
+            },
+            "openFlowNoiseMult": 3,
+            "openSoundConfig": {
+                "proto": {
+                    "addToIlevel": 82,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/hatchopen1_8192.wav"
+            },
+            "openTime": 6000000,
+            "tmpl": {
+                "id": 0,
+                "loadedOnSpawn": false,
+                "roomId": 0,
+                "type": "standard",
+                "wireGuidance": true
+            }
+        },
+        {
+            "firingSoundConfig": {
+                "proto": {
+                    "addToIlevel": 90,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/launch1_8192.wav"
+            },
+            "firingTime": 3000000,
+            "floodSoundConfig": {
+                "proto": {
+                    "addToIlevel": 75,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/hissing2_5sec_8192.wav"
+            },
+            "floodTime": 5000000,
+            "loadTime": 60000000,
+            "mountPointConfig": {
+                "mountCenterPlane": "_tube3",
+                "mountPoint": {
+                    "rotation": -1.74532926082611084,
+                    "scale": 1
+                }
+            },
+            "openFlowNoiseMult": 1,
+            "openSoundConfig": {
+                "proto": {
+                    "addToIlevel": 75,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/hatchopen1_8192.wav"
+            },
+            "openTime": 6000000,
+            "tmpl": {
+                "id": 3,
+                "loadedOnSpawn": true,
+                "roomId": 1,
+                "type": "decoy",
+                "wireGuidance": false
+            }
+        },
+        {
+            "firingSoundConfig": {
+                "proto": {
+                    "addToIlevel": 90,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/launch1_8192.wav"
+            },
+            "firingTime": 3000000,
+            "floodSoundConfig": {
+                "proto": {
+                    "addToIlevel": 75,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/hissing2_5sec_8192.wav"
+            },
+            "floodTime": 5000000,
+            "loadTime": 60000000,
+            "mountPointConfig": {
+                "mountCenterPlane": "_tube2",
+                "mountPoint": {
+                    "rotation": 1.74532926082611084,
+                    "scale": 1
+                }
+            },
+            "openFlowNoiseMult": 1,
+            "openSoundConfig": {
+                "proto": {
+                    "addToIlevel": 75,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/hatchopen1_8192.wav"
+            },
+            "openTime": 6000000,
+            "tmpl": {
+                "id": 2,
+                "loadedOnSpawn": true,
+                "roomId": 1,
+                "type": "decoy",
+                "wireGuidance": false
+            }
+        },
+        {
+            "firingSoundConfig": {
+                "proto": {
+                    "addToIlevel": 92,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/launch1_8192.wav"
+            },
+            "firingTime": 3000000,
+            "floodSoundConfig": {
+                "proto": {
+                    "addToIlevel": 82,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/hissing1_8192.wav"
+            },
+            "floodTime": 9000000,
+            "loadTime": 90000000,
+            "mountPointConfig": {
+                "mountCenterPlane": "_tube1",
+                "mountPoint": {
+                    "rotation": -0.349065840244293213,
+                    "scale": 1
+                }
+            },
+            "openFlowNoiseMult": 3,
+            "openSoundConfig": {
+                "proto": {
+                    "addToIlevel": 82,
+                    "minOmniFactor": 0,
+                    "radius": 4
+                },
+                "tdsFilename": "..\/dsubs_sound\/hatchopen1_8192.wav"
+            },
+            "openTime": 6000000,
+            "tmpl": {
+                "id": 1,
+                "loadedOnSpawn": false,
+                "roomId": 0,
+                "type": "standard",
+                "wireGuidance": true
+            }
+        }
+    ],
+    "vesselConfig": {
+        "reflector": {
+            "reflectivity": [
+                -27,
+                -20,
+                -19
+            ],
+            "size": [
+                10,
+                70
+            ]
+        },
+        "rigidBody": {
+            "Cd0": {
+                "mean": 40,
+                "stddev": 1
+            },
+            "Cd1": {
+                "mean": 6.5,
+                "stddev": 0.0419999994337558746
+            },
+            "Cda": 0.800000000000000044,
+            "Cl": {
+                "mean": 35,
+                "stddev": 0.400000005960464478
+            },
+            "Cm": {
+                "mean": 500,
+                "stddev": 6
+            },
+            "Cr0": {
+                "mean": 50000,
+                "stddev": 100
+            },
+            "Cr1": {
+                "mean": 500000,
+                "stddev": 100
+            },
+            "hullLength": 70,
+            "mass": {
+                "mean": 1700,
+                "stddev": 10
+            },
+            "moiK": 1
+        },
+        "steering": {
+            "equilDrift": 0.349065840244293213,
+            "rudderKd": -20,
+            "rudderKp": 10,
+            "rudderPosChangeSpeed": 1
+        }
+    }
+}

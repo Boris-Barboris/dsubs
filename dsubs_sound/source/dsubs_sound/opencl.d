@@ -1,6 +1,7 @@
 module dsubs_sound.opencl;
 
 import core.stdc.stdio: printf;
+import core.sync.mutex: Mutex;
 
 import std.array: array;
 import std.algorithm: map;
@@ -11,6 +12,7 @@ import std.parallelism: totalCPUs;
 
 import derelict.opencl.cl;
 
+import dsubs_common.lockmap;
 import dsubs_common.utils;
 
 import dsubs_sound.common;
@@ -647,6 +649,8 @@ final class DsubsSoundOpenclCtx
 		bool m_released;
 		Program m_prog;
 		CommandQueue[] m_queues;
+		Mutex m_wavMut;
+		LockMap m_wavLock;
 
 		// global stuff
 		FIRFilter*[string] m_filters;
@@ -660,23 +664,48 @@ final class DsubsSoundOpenclCtx
 		return m_filters[name];
 	}
 
+	bool isFilterRegistered(string name) const
+	{
+		return (name in m_filters) !is null;
+	}
+
+	void registerFilter(string name, const float[] weights)
+	{
+		enforce(weights.length > 1, "filter length nonsensial");
+		m_filters[name] = new FIRFilter(queue(0), weights);
+		queue(0).finish();
+	}
+
 	VarTds* getWavFile(string filePath)
 	{
-		synchronized(this)
+		synchronized(m_wavMut)
 		{
 			VarTds** res = filePath in m_wavFiles;
 			if (res)
 				return *res;
+		}
+		synchronized(m_wavLock.get(filePath))
+		{
+			synchronized(m_wavMut)
+			{
+				VarTds** res = filePath in m_wavFiles;
+				if (res)
+					return *res;
+			}
 			short[] samples;
 			int byteCount;
 			int srate;
+			trace("loading wav ", filePath);
 			loadWavFile(filePath, samples, byteCount, srate);
 			enforce(srate == GLOBAL_SRATE,
 				"unsupported srate " ~ srate.to!string ~ " of file " ~ filePath);
 			float[] samplesFloat = samples.map!(s => s / float(short.max)).array;
 			VarTds* newTds = new VarTds(m_queues[0], samplesFloat);
-			m_wavFiles[filePath] = newTds;
-			return newTds;
+			synchronized(m_wavMut)
+			{
+				m_wavFiles[filePath] = newTds;
+				return newTds;
+			}
 		}
 	}
 
@@ -689,6 +718,8 @@ final class DsubsSoundOpenclCtx
 
 	this(int queueCount)
 	{
+		m_wavMut = new Mutex();
+		m_wavLock = new LockMap();
 		m_plat = loadOpenclLibrary();
 		cl_context_properties[] ctx_props;
 		ctx_props ~= cast(cl_context_properties) CL_CONTEXT_PLATFORM;

@@ -1,0 +1,68 @@
+{
+    "entityType": "Propulsor",
+    "bladeCount": 5,
+    "description": "High RPM and low cavitation speed, optimized for flank performance.\n\nMass: 25t",
+    "mass": 25,
+    "modelConfig": {
+        "objModelFilename": "entitydb/submarines/kilo/kilo.obj",
+        "screwFaceName": "_screw1",
+        "shaftPointName": "_propulsor"
+    },
+    "name": "Five-blade Kilo screw",
+    "negThrustK": {
+        "mean": 900,
+        "stddev": 9
+    },
+    "playable": true,
+    "posThrustK": {
+        "mean": 1600,
+        "stddev": 15
+    },
+    "rotAcceleration": 0.219999998807907104,
+    "shaftRotFreq": 5.09999990463256836,
+    "soundPrototypeConfig": {
+        "baseBBSpectrumConfig": {
+            "bottomLevel": 66,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/kilo_propeller.png",
+            "topLevel": 126
+        },
+        "baseCavSpectrumConfig": {
+            "bottomLevel": 75,
+            "noise": 1,
+            "spectrumFilename": "..\/dsubs_sound\/kilo_propeller_cav.png",
+            "topLevel": 158
+        },
+        "prototype": {
+            "aftIntensity": 0.5,
+            "bladeAoA": 0.593411922454833984,
+            "bladeRadius": 2,
+            "critNormalVel": 12.5,
+            "rngSpan": 0.0399999991059303284
+        },
+        "tmConfig": {
+            "A": 0.5,
+            "B": 0.699999988079071045,
+            "C": -0.400000005960464478,
+            "harmonics": [
+                {
+                    "freqMult": 1,
+                    "magnitude": 0.300000011920928955
+                },
+                {
+                    "freqMult": 2,
+                    "magnitude": 0.0500000007450580597
+                },
+                {
+                    "freqMult": 3,
+                    "magnitude": 0.00499999988824129105
+                },
+                {
+                    "freqMult": 5,
+                    "magnitude": 0.759999990463256836
+                }
+            ]
+        }
+    },
+    "type": "screw"
+}

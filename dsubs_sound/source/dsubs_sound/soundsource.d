@@ -97,7 +97,7 @@ struct PropellerSoundPrototype
 {
 	const(ISpectrum)* baseBBSpectrum;
 	const(ISpectrum)* baseCavSpectrum;
-	immutable(TrochoidModulatorParams)* tmParams;
+	const(TrochoidModulatorParams)* tmParams;
 	float bladeRadius;
 	float bladeAoA;
 	float critNormalVel;
@@ -481,6 +481,7 @@ final class PrerecordedSoundSource: FixedLengthSoundSource
 {
 	this(Transform2D t, PrerecordedSoundPrototype proto, size_t* sampleOffset = null)
 	{
+		assert(proto.tds);
 		super(t, proto.tds.length, sampleOffset);
 		m_proto = proto;
 	}
@@ -565,9 +566,7 @@ version (unittest)
 		loadSpectrumFromImage(q, *cavSpec, "std_propeller_cav.png", 70.0f, 150.0f);
 		cavSpec.addUniformNoise(q, 0.5f);
 		tmpl.baseCavSpectrum = cavSpec;
-		TrochoidModulatorParams* tmParams = new TrochoidModulatorParams();
-		*tmParams = stdTrochParams();
-		tmpl.tmParams = cast(immutable) tmParams;
+		tmpl.tmParams = stdTrochParams();
 		tmpl.bladeRadius = 4.2f;
 		tmpl.bladeAoA = dgr2rad(30.0);
 		tmpl.critNormalVel = 5.0f;
