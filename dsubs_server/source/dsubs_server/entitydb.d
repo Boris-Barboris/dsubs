@@ -3,7 +3,9 @@ module dsubs_server.entitydb;
 import core.sync.mutex: Mutex;
 
 import std.array: array;
-import std.algorithm: map, any, filter, endsWith;
+import std.algorithm: map, any, filter, endsWith, sort;
+import std.algorithm.comparison: cmp;
+alias scmp = std.algorithm.comparison.cmp;
 import std.digest.sha;
 import std.range: retro;
 import std.json;
@@ -173,11 +175,14 @@ final class EntityDb
 		sanityCheckDb();
 		immutable EntityDbStruct enititydb = immutable EntityDbStruct(
 			m_propulsors.values.filter!(a => a.playable).map!(
-				a => cast(immutable) a.tmpl).array,
+				a => a.name).array.sort!((a, b) => scmp(a, b) < 0).
+					map!(name => cast(immutable) m_propulsors[name].tmpl).array,
 			m_submarines.values.filter!(a => a.playable).map!(
-				a => cast(immutable) a.tmpl).array,
+				a => a.name).array.sort!((a, b) => scmp(a, b) < 0).
+					map!(name => cast(immutable) m_submarines[name].tmpl).array,
 			m_weapons.values.filter!(a => a.playable).map!(
-				a => cast(immutable) a.tmpl).array,
+				a => a.name).array.sort!((a, b) => scmp(a, b) < 0).
+					map!(name => cast(immutable) m_weapons[name].tmpl).array,
 		);
 		marshalledCommonEntityDb = BackendProtocol.marshal(immutable EntityDbRes(enititydb));
 		auto sha256 = new SHA256Digest();
