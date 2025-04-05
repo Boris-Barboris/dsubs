@@ -9,6 +9,7 @@ import dsubs_common.network.listener;
 
 import dsubs_server.common;
 import dsubs_server.connections.playercon;
+import dsubs_server.email;
 
 
 final class ConListener
@@ -47,15 +48,28 @@ final class ConListener
 
 	private void publicEndpoint()
 	{
-		serveTcp(publicSock, (Socket s)
+		scope(failure) error("publicEndpoint thread crashed!");
+		while (true)
 		{
-			PlayerConnection con = new PlayerConnection(s);
-			synchronized(this)
+			try
 			{
-				allCons[con] = con;
+				serveTcp(publicSock, (Socket s)
+				{
+					PlayerConnection con = new PlayerConnection(s);
+					synchronized(this)
+					{
+						allCons[con] = con;
+					}
+					con.onClose += cast(con.onClose.HandlerType) &removeCon;
+					con.start();
+				});
 			}
-			con.onClose += cast(con.onClose.HandlerType) &removeCon;
-			con.start();
-		});
+			catch (SocketAcceptException ex)
+			{
+				sendMail("dsubs_server serveTcp crash", ex.msg);
+				Thread.sleep(seconds(10));
+				bindSockets();
+			}
+		}
 	}
 }
