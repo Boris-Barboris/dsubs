@@ -116,6 +116,7 @@ final class Player: Captain
 
 		// There is at most one "active" connection that
 		// receives updates from the server.
+		// Always changed under "this" lock.
 		PlayerConnection m_connection;
 
 		enum double MAX_COORD_SHIFT = 100_000.0;
@@ -215,20 +216,26 @@ final class Player: Captain
 				if (m_connection is oldCon)
 					m_connection = null;
 			}
+			// locking can be lax with secondaryConnection
+			if (oldCon.secondaryConnection)
+				oldCon.secondaryConnection.close();
 		}
 	}
 
-	/// force close the connection
-	private bool closeConnection()
+	/// force close the connection. Returns old connection.
+	private PlayerConnection closeConnection()
 	{
 		PlayerConnection con = m_connection;
 		if (con)
 		{
 			info("Evicting previous connection of ", m_username);
 			con.close();
-			return true;
+			PlayerConnection secCon = con.secondaryConnection;
+			if (secCon)
+				secCon.close();
+			return con;
 		}
-		return false;
+		return null;
 	}
 
 	static void enableSubSensors(Submarine sub)
@@ -238,12 +245,12 @@ final class Player: Captain
 		sub.sonar.active = true;
 	}
 
-	/// Set current m_connection to new value.
-	private void emplaceConnection(PlayerConnection con)
+	/// Set current m_connection to new value. Returns old connection (if there was).
+	private PlayerConnection emplaceConnection(PlayerConnection con)
 	{
 		synchronized(this)
 		{
-			closeConnection();
+			PlayerConnection res = closeConnection();
 			atomicOp!"+="(s_playerCount, 1);
 			con.onClose += (cast(con.onClose.HandlerType) &onConnectionClose);
 			Submarine sub = submarine;
@@ -261,6 +268,37 @@ final class Player: Captain
 			}
 			else
 				m_connection = con;
+			return res;
+		}
+	}
+
+	/// Closes and returns the old secondary connection (if there was one).
+	private PlayerConnection emplaceSecondaryConnection(PlayerConnection con)
+	{
+		synchronized(this)
+		{
+			enforce(m_connection, "Player has no primary connection");
+			Submarine sub = submarine;
+			if (sub)
+			{
+				synchronized(sub.simulator.simMut.reader)
+				{
+					assert(m_connection);
+					PlayerConnection oldSecCon = m_connection.secondaryConnection;
+					m_connection.secondaryConnection = con;
+					if (oldSecCon)
+						oldSecCon.close();
+					return oldSecCon;
+				}
+			}
+			else
+			{
+				PlayerConnection oldSecCon = m_connection.secondaryConnection;
+				m_connection.secondaryConnection = con;
+				if (oldSecCon)
+					oldSecCon.close();
+				return oldSecCon;
+			}
 		}
 	}
 
@@ -742,8 +780,21 @@ final class Player: Captain
 				}
 			}
 			usecs_t worldTime = s.simulator.worldTime;
-			con.sendMessage(immutable AcousticStreamRes(
-				worldTime + timeShift, hdata, haudio));
+			con.sendMessage(immutable HydrophoneDataStreamRes(
+				worldTime + timeShift, hdata));
+			// audio is too large and goes through separate, "secondary" connection
+			PlayerConnection secondaryCon = con.secondaryConnection;
+			if (secondaryCon)
+			{
+				// simple over-buffering protection for slow connections
+				if (secondaryCon.writeQueueSize < 2)
+				{
+					secondaryCon.sendMessage(immutable HydrophoneAudioStreamRes(
+						worldTime + timeShift, haudio));
+				}
+				else
+					trace("Stalling secondary connection for player ", m_username);
+			}
 			// active sonar
 			if (s.sonar.active && s.sonar.hasSliceToSend)
 			{
@@ -796,12 +847,16 @@ final class PlayerCollection
 	private
 	{
 		Player[string] m_players;
+		// map, indexed by secondary connection secrets
+		Player[string] m_secondarySecrets;
 	}
 
+	/// Players map, indexed by username string
 	@property Player[string] players() { return m_players; }
 
 	/// Get or create Player for connection.
-	Player authorizeConnection(PlayerConnection con, string username, string password)
+	Player authorizeConnection(PlayerConnection con, string username, string password,
+		string secondaryConnectionSecret)
 	{
 		assert(con);
 		username = strip(username);
@@ -829,7 +884,10 @@ final class PlayerCollection
 				// player is already present, let's try to authorize new connection
 				enforce!AuthException(p.areCredentialsEqual(username, password),
 					"invalid login or password");
-				p.emplaceConnection(con);
+				PlayerConnection oldConnection = p.emplaceConnection(con);
+				if (oldConnection && oldConnection.secondaryConnectionSecret)
+					m_secondarySecrets.remove(oldConnection.secondaryConnectionSecret);
+				m_secondarySecrets[secondaryConnectionSecret] = *p;
 				return *p;
 			}
 			else
@@ -837,10 +895,36 @@ final class PlayerCollection
 				// new player
 				Player np = new Player(con, username, password);
 				m_players[username] = np;
+				m_secondarySecrets[secondaryConnectionSecret] = np;
 				return np;
 			}
 		}
 	}
+
+	/// Get Player for secondary connection.
+	Player authorizeSecondaryConnection(PlayerConnection con,
+		string secondaryConnectionSecret)
+	{
+		assert(con);
+		if (!secondaryConnectionSecret)
+			throw new AuthException("Empty secondaryConnectionSecret");
+		synchronized(this)
+		{
+			Player* p = secondaryConnectionSecret in m_secondarySecrets;
+			if (p !is null)
+			{
+				// player is already present, set it's secondary connection
+				p.emplaceSecondaryConnection(con);
+				return *p;
+			}
+			else
+			{
+				// secret not in the known secrets map, throw
+				throw new AuthException("Invalid secondaryConnectionSecret");
+			}
+		}
+	}
+
 
 	/// Remove dead subless connection-less player objects from the hash-table.
 	void purgeDanglingPlayers()

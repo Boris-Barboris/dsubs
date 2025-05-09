@@ -1,5 +1,7 @@
 module dsubs_server.submarine;
 
+import std.typecons: Nullable;
+
 import dsubs_common.api.entities;
 import dsubs_common.math;
 
@@ -240,7 +242,7 @@ final class SubmarineFactory: VesselFactory
 	string[] allowedPropulsors;
 	bool playable = false;
 	SubHydrophonePrototype[] hprots;
-	SubSonarPrototype* asprot;
+	Nullable!SubSonarPrototype asprot;
 	AmmoRoomPrototype[int] roomProtos;
 	TubeConfig[int] tubeProtos;
 
@@ -249,7 +251,7 @@ final class SubmarineFactory: VesselFactory
 		return const SubmarineTemplate(
 			name, description, model.hullModel, propulsionMounts,
 			model.elevatedHullShapeIdx, hprots.map!(hp => hp.tmpl).array,
-			(asprot !is null) ? asprot.tmpl : SonarTemplate.init,
+			(!asprot.isNull) ? asprot.get.tmpl : SonarTemplate.init,
 			allowedPropulsors, roomProtos.byValue.map!(rp => rp.tmpl).array,
 			tubeProtos.byValue.map!(tp => tp.tmpl).array);
 	}
@@ -298,13 +300,14 @@ final class SubmarineFactory: VesselFactory
 			res.m_hydrophones ~= h;
 		}
 		// active sonar
-		if (asprot)
+		if (!asprot.isNull)
 		{
 			Transform2D t = new Transform2D();
-			t.position = asprot.mount.mountCenter.tod;
-			t.rotation = asprot.mount.rotation;
+			t.position = asprot.get.mount.mountCenter.tod;
+			t.rotation = asprot.get.mount.rotation;
 			res.transform.addChild(t);
-			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, asprot.sonarProto);
+			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, 
+				asprot.get.sonarProto);
 			res.m_sonar.owner = res;
 			res.m_sonar.onPreKinematics += ()
 			{

@@ -43,6 +43,8 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 		Submarine m_simFlowSub;
 		// constructed per-connection because of bugs.
 		RSAKeyInfo m_backendPrivKeyInfo;
+		// connection for audio and other bulk data streaming
+		PlayerConnection m_secondaryConnection;
 	}
 
 	@property Player player() { return m_player; }
@@ -54,10 +56,21 @@ final class PlayerConnection: ProtocolConnection!BackendProtocol
 	@property Submarine simFlowSub() { return m_simFlowSub; }
 	@property void simFlowSub(Submarine rhs) { m_simFlowSub = rhs; }
 
+	@property PlayerConnection secondaryConnection() { return m_secondaryConnection; }
+	@property void secondaryConnection(PlayerConnection rhs)
+	{
+		m_secondaryConnection = rhs;
+	}
+
 	this(Socket sock)
 	{
 		super(sock);
 		mixinHandlers(this);
+	}
+
+	@property string secondaryConnectionSecret() const
+	{
+		return m_secondaryConnectionSecret;
 	}
 
 private:
@@ -70,15 +83,20 @@ private:
 
 	int loginFailureSleep = 2;
 
+	string m_secondaryConnectionSecret;
+
 	void h_loginReq(LoginReq req)
 	{
 		enforce!AuthException(m_player is null, "already authorized");
 		try
 		{
 			m_backendPrivKeyInfo = RSA.decodeKey(backendPrivKey);
+			if (!m_secondaryConnectionSecret)
+				m_secondaryConnectionSecret = randomUUID().toString();
 			m_player = Globals.players.authorizeConnection(this,
 				decrypt(req.username, &m_backendPrivKeyInfo),
-				decrypt(req.password, &m_backendPrivKeyInfo));
+				decrypt(req.password, &m_backendPrivKeyInfo),
+				m_secondaryConnectionSecret);
 			Submarine sub = m_player.submarine;
 			LoginSuccessRes resMsg = LoginSuccessRes(Globals.entityDb.commonEntityDbHash);
 			if (sub)
@@ -92,6 +110,7 @@ private:
 					resMsg.simulatorScenarioType = spawner.scenarioType;
 				}
 			}
+			resMsg.secondaryConnectionSecret = m_secondaryConnectionSecret;
 			loginFailureSleep = 2;
 			sendMessage(cast(immutable) resMsg);
 			if (resMsg.alreadySpawned)
@@ -105,7 +124,29 @@ private:
 		{
 			Thread.sleep(dur!"seconds"(loginFailureSleep));
 			// simple 2-3-4-...-8 increase
-			if (loginFailureSleep < 8)
+			if (loginFailureSleep < 5)
+				loginFailureSleep += 1;
+			sendMessage(immutable LoginFailureRes(aex.msg));
+		}
+	}
+
+	void h_loginSecondaryReq(LoginSecondaryReq req)
+	{
+		enforce!AuthException(m_player is null, "already authorized");
+		try
+		{
+			m_player = Globals.players.authorizeSecondaryConnection(this,
+				req.secondaryConnectionSecret);
+			// we are now a secondary connection. Clear message handlers because we
+			// are stream-only. Nothing is expected to arrive from the client.
+			clearHandlers();
+			maxWriteQueueSize = 16;		// reduce to prevent overqueing
+		}
+		catch (AuthException aex)
+		{
+			Thread.sleep(dur!"seconds"(loginFailureSleep));
+			// simple 2-3-4-...-8 increase
+			if (loginFailureSleep < 5)
 				loginFailureSleep += 1;
 			sendMessage(immutable LoginFailureRes(aex.msg));
 		}

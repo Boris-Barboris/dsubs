@@ -387,7 +387,13 @@ private:
 			foreach (ref hydroProto; fc.hydrophones)
 				hydroProto.mount.setCenterFromModel(*objModel);
 			foreach (ref sonarProto; fc.activeSonars)
+			{
+				// trace("sonarProto of sub ", fc.name, " : ", sonarProto, ", json: ",
+				// 	jv["activeSonars"], " chirps ptr: ",
+				// 	sonarProto.sonarProto.pingParams.chirps.ptr,
+				// 	" fc.activeSonars.ptr : ", fc.activeSonars.ptr);
 				sonarProto.mount.setCenterFromModel(*objModel);
+			}
 			foreach (ref tubeConfig; fc.tubes)
 				tubeConfig.setCenterFromModel(*objModel);
 		}
@@ -397,7 +403,8 @@ private:
 		sf.hprots = fc.hydrophones;
 		enforce(fc.activeSonars.length <= 1,
 			"engine does not support multiple active sonars");
-		sf.asprot = fc.activeSonars ? &fc.activeSonars[0] : null;
+		if (fc.activeSonars)
+			sf.asprot = fc.activeSonars[0];
 		foreach (tubeProto; fc.tubes)
 		{
 			sf.tubeProtos[tubeProto.tmpl.id] = tubeProto;

@@ -29,7 +29,8 @@ final class ConListener
 	void bindSockets()
 	{
 		short port = environment.get("DSUBS_PORT", "17855").to!short;
-		TcpServer server = TcpServer("0.0.0.0", port);
+		string listenIp = environment.get("DSUBS_LISTEN_IP", "0.0.0.0");
+		TcpServer server = TcpServer(listenIp, port);
 		publicSock = listenTcp(server);
 	}
 

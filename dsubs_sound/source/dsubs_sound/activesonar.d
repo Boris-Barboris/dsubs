@@ -180,7 +180,10 @@ package struct PingTdsCache
 
 	PreparedPingTds* get(const PingParameters params)
 	{
-		return params in m_cache;
+		// trace("getting PingParameters from cache: ", params);
+		PreparedPingTds* res = params in m_cache;
+		// trace("result: ", res);
+		return res;
 	}
 }
 
@@ -976,7 +979,7 @@ private float[] getPingSamples(int lifeTime, const Chirp[] chirps,
 	int curChirp = 0;
 	float freq = chirps[curChirp].startFreq;
 	float chirpDur = chirps[curChirp].duration;
-	float dfreq = (chirps[curChirp].endFreq - freq) / chirps[curChirp].duration * dt;
+	float dfreq = (chirps[curChirp].endFreq - freq) / chirpDur * dt;
 	for (size_t i = 0; i < samples.length; i++)
 	{
 		samples[i] = sin(phase);
@@ -994,8 +997,9 @@ private float[] getPingSamples(int lifeTime, const Chirp[] chirps,
 				samples[i+1..$] = 0.0f;
 				break;
 			}
+			chirpDur = chirps[curChirp].duration;
 			freq = chirps[curChirp].startFreq;
-			dfreq = (chirps[curChirp].endFreq - freq) / chirps[curChirp].duration * dt;
+			dfreq = (chirps[curChirp].endFreq - freq) / chirpDur * dt;
 		}
 	}
 	float[] reverbed;
