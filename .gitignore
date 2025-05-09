@@ -39,6 +39,20 @@ librequests.a
 
 *dub.selections.json
 
+docs/1436372983445.jpg
+docs/UI_storyboards/
+dsubs_server/dsubs_sound
+dsubs_sound/highfreq-chirp.wav
+dsubs_sound/midfreq-chirp.wav
+dsubs_sound/opencl_ifft.wav
+dsubs_sound/std_hydrophone_vs_big_iron_1km.wav
+dsubs_sound/std_hydrophone_vs_current.wav
+dsubs_sound/std_hydrophone_vs_std_propeller_1km.wav
+dsubs_sound/std_hydrophone_vs_std_propeller_cav_1km.wav
+dsubs_sound/std_propeller_bb.wav
+dsubs_sound/whitenoise_water_filtered.wav
+libopenblas
+
 .dub/
 .vscode/
 *.dll
