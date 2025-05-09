@@ -27,7 +27,7 @@ Forum link: https://www.subsim.com/radioroom/showthread.php?p=2598851
 * Execute command: ```dub --arch=x86_64 -b debug```.
 * If it fails to build and run the server, open an issue, so we can fix the documentation.
 
-## Compiling the server on Windows
+## Compiling the server on Linux
 
 * Download and install the compiler using script: https://dlang.org/install.html. It behaves like python virtualenv, so you need to activate it before trying to invoke dub/dmd.
 ```bash
