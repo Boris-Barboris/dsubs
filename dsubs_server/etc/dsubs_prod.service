@@ -1,14 +1,20 @@
 [Unit]
 Description=DSubs prod server
-Wants=network-online.target
-After=network.target network-online.target
+Wants=network-online.target mariadb.service docker.service
+After=network.target network-online.target mariadb.service docker.service
+StartLimitBurst=15
+StartLimitIntervalSec=240
 
 [Service]
-User=boris
+User=ubuntu
 Environment="DSUBS_PORT=17955"
-Environment="MYSQL_CONSTRING='host=localhost;port=3306;user=dsubs_server;pwd=PASSWORD;db=dsubs_prod'"
-WorkingDirectory=/home/boris/src/dsubs/dsubs_server
-ExecStart=/home/boris/src/dsubs/dsubs_server/dsubs_server
+Environment="MYSQL_CONSTRING=host=localhost;port=3306;user=dsubs_server;pwd=SOMEPASSWORD;db=dsubs_prod"
+Environment="INFLUXDB_URL=http://127.0.0.1:8086/write?db=dsubs_prod"
+Environment="EMAIL_DEST=youremail@gmail.com"
+WorkingDirectory=/home/ubuntu/src/dsubs/dsubs_server/prod
+ExecStart=/home/ubuntu/src/dsubs/dsubs_server/dsubs_server
+Restart=on-failure
+RestartSec=20
 
 [Install]
-WantedBy=postboot.target
+WantedBy=multi-user.target
