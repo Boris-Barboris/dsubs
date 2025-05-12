@@ -1,0 +1,731 @@
+schell_j_the_art_of_game_design_a_book_of_lenses.pdf
+
+
+
+1). High-level focus can be defined in experiences, that you want to convey.
+
+Examples for Dsubs:
+    - experience of being hunted by half-blind enemy
+        - experience of blockade running with loot, tension
+    - experience of chasing and playing with an unknowing prey
+    - experience of ambushing an unknowing prey
+    - experience of dodging dangerous munitions, evasion and running away
+    - experience of high-precision sniping from the edge of torpedo range
+    - experience of cooperating with a strong, obedient and helpful ally
+    - experience of overcoming hordes of dumber but nominally stronger enemies
+    - experience of overcoming one extremely capable and strong enemy (boss)
+    - experience of fine-tuning your vessel to the task at hand
+    - experience of getting observably stronger, power creep
+    - experience of learning new, better tools
+    - experience of predicting the enemy, reading his mind
+    - experience of seeking a barely-visible enemy, search and reward
+    - experience of planning ahead and executing the complex plan successfully
+    - experience of making an educated guess and being correct
+    - experience of having an emotional investment in the bigger picture: politics, for example.
+    - experience of strange perception
+
+
+● What experience do I want the player to have?
+● What is essential to that experience?
+● How can my game capture that essence?
+
+
+
+2). Fun is pleasure with surprises.
+
+● What will surprise players when they play my game?
+● Does the story in my game have surprises? Do the game rules? Does the
+artwork? The technology?
+● Do your rules give players ways to surprise each other?
+● Do your rules give players ways to surprise themselves?
+
+TODO here! Important question, not much surprises atm in Dsubs.
+
+Surprise is a crucial part of all entertainment — it is at the root of humor,
+strategy, and problem solving.
+
+
+
+3). "Play is manipulation that indulges curiosity."
+Make the player curios in each mission/step.
+
+● What questions does my game put into the player’s mind?
+● What am I doing to make them care about these questions?
+● What can I do to make them invent even more questions?
+
+For example, a maze-finding videogame might have a time-limit goal such that
+at each level, players are trying to answer the question: “Can I find my way
+through this maze in 30 seconds?” A way to make them care more would be
+to play interesting animations when they solve each maze, so players might
+also ask the question: “I wonder what the next animation will be?”
+
+
+
+4). Lense of value
+
+● What is valuable to the players in my game?
+● How can I make it more valuable to them?
+● What is the relationship between value in the game and the player’s
+motivations?
+
+Remember, the value of the items and score in the game is a direct reflection
+of how much players care about succeeding in your game. By thinking about
+what the players really care about and why, you can often get insights about
+how your game can improve.
+
+
+
+5).
+
+● What problems does my game ask the player to solve?
+● Are there hidden problems to solve that arise as part of gameplay?
+● How can my game generate new problems so that players keep coming
+back?
+
+TODO: think about hidden problems.
+
+
+
+6).
+
+● What is my theme?
+● Am I using every means possible to reinforce that theme?
+
+A unifying theme is good — it focuses your design toward a single goal. But some
+themes are better than others. The best themes are ones that resonate with players —
+themes that touch players deeply
+
+
+TODO: Dsubs is not currently fulfilling diving/sea experience and theme.
+Dry and waterless, mathematical. Focus on the sound and combat with no atmosphere.
+Sprincle some LOGH-style political drama?
+
+Example theme:
+
+Resource prospectors in harsh conditions under ice on foreign planet?
+Theme of a pirate on his path to apex predator state?
+Professional captain in the midst of war?
+
+
+● What is it about my game that feels powerful and special?
+● When I describe my game to people, what ideas get them really excited?
+● If I had no constraints of any kind, what would this game be like?
+● I have certain instincts about how this game should be. What is driving
+those instincts?
+
+
+
+7).
+
+● Does this game feel right?
+● Will the intended audience like this game enough?
+● Is this a well-designed game?
+● Is this game novel enough?
+● Will this game sell?
+● Is it technically possible to build this game?
+● Does this game meet our social and community goals?
+● Do the playtesters enjoy this game enough?
+
+
+
+8).
+
+Story, Mechanics, Aesthetics, Technology.
+
+TODO:
+
+
+
+9).
+
+● What could keep this game from being great?
+● How can we stop that from happening?
+
+
+
+10).
+
+● If my game had no goal, would it be fun at all? If not, how can I change
+that?
+● When people see my game, do they want to start interacting with it, even
+before they know what to do? If not, how can I change that?
+
+
+
+11).
+
+He argues that you are in pre-production until you have finished two publishable
+levels of your game, complete with all necessary features. In other words, until
+you have two completely finished levels, you are still figuring out the fundamental
+95
+design of your game. Once you reach this magic point, you are now in production.
+This means that you know enough about what your game really is that you can
+safely schedule the rest of development. Cerny states that usually this point is gen-
+erally reached when 30% of the necessary budget has been spent. So, if it costs you
+$1 million to get to this point, it will probably cost you another $2.3 million to actu-
+ally complete the game. This is a great rule of thumb, and realistically, this might be
+the most accurate way to really plan the release date for a game. The problem with
+it is that you won’t really know what the game will cost or when it will be complete
+until you have already spent 30% of what it will take to get there.
+
+
+
+12).
+Ask yourself these questions about the people who will play your game
+● In general, what do they like?
+● What don’t they like? Why?
+● What do they expect to see in a game?
+● If I were in their place, what would I want to see in a game?
+● What would they like or dislike about my game in particular?
+
+
+
+
+
+13).
+
+● What does your game judge about the players?
+● How does it communicate this judgment?
+● Do players feel the judgment is fair?
+● Do they care about the judgment?
+● Does the judgment make them want to improve?
+
+
+
+
+
+
+14).
+
+● Does my game have clear goals? If not, how can I fix that?
+● Are the goals of the player the same goals I intended?
+● Are there parts of the game that distract players to the point they forget
+their goal? If so, can these distractions be reduced, or tied into the game
+goals?
+● Does my game provide a steady stream of not-too-easy, not-too-hard chal-
+lenges, taking into account the fact that the player’s skills may be gradually
+improving?
+● Are the player’s skills improving at the rate I had hoped? If not, how can I
+change that?
+
+
+
+15).
+
+● What is the ultimate goal of my game?
+● Is that goal clear to players?
+● If there is a series of goals, do the players understand that?
+● Are the different goals related to each other in a meaningful way?
+● Are my goals concrete, achievable, and rewarding?
+● Do I have a good balance of short- and long-term goals?
+● Do players have a chance to decide on their own goals?
+
+
+
+16).
+
+● What skills does my game require from the player?
+● Are there categories of skill that this game is missing?
+● Which skills are dominant?
+● Are these skills creating the experience I want?
+● Are some players much better at these skills than others? Does this make
+the game feel unfair?
+● Can players improve their skills with practice?
+● Does this game demand the right level of skill?
+
+
+
+17).
+
+● What in my game is truly random? What parts just feel random?
+● Does the randomness give the players positive feelings of excitement and
+challenge, or does it give them negative feelings of hopelessness and lack
+of control?
+● Would changing my probability distribution curves improve my game?
+● Do players have the opportunity to take interesting risks in the game?
+● What is the relationship between chance and skill in my game? Are there
+ways I can make random elements feel more like the exercise of a skill? Are
+there ways I can make exercising skills feel more like risk-taking?
+
+
+
+18).
+
+● What are the challenges in my game?
+● Are they too easy, too hard, or just right?
+● Can my challenges accommodate a wide variety of skill levels?
+● How does the level of challenge increase as the player succeeds?
+● Is there enough variety in the challenges?
+● What is the maximum level of challenge in my game?
+
+
+
+19).
+
+● What choices am I asking the player to make?
+● Are they meaningful? How?
+● Am I giving the player the right number of choices? Would more make
+them feel more powerful? Would less make the game clearer?
+● Are there any dominant strategies in my game?
+
+
+
+
+20).
+
+Giving a player the choice to play it safe for a low reward, or to take a risk for
+a big reward is a great way to make your game interesting and exciting. To use
+the Lens of Triangularity, ask yourself these questions:
+● Do I have triangularity now? If not, how can I get it?
+● Is my attempt at triangularity balanced? That is, are the rewards commen-
+surate with the risks?
+
+
+
+21).
+
+● Are my players here to be judged (skill), or to take risks (chance)?
+● Skill tends to be more serious than chance: Is my game serious or casual?
+● Are parts of my game tedious? If so, will adding elements of chance enliven
+them?
+● Do parts of my game feel too random? If so, will replacing elements of
+chance with elements of skill or strategy make the players feel more in
+control?
+
+
+
+22).
+
+● Are my players looking for mindless action, or an intellectual challenge?
+● Would adding more places that involve puzzle-solving in my game make it
+more interesting?
+● Are there places where the player can relax their brain, and just play the
+game without thinking?
+● Can I give the player a choice — either succeed by exercising a high level
+of dexterity, or by finding a clever strategy that works with a minimum of
+physical skill?
+● If “1” means all physical, and “10” means all mental, what number would
+my game get?
+● This lens works particularly well when used in conjunction with Lens #16:
+Lens of the Player.
+
+
+
+23).
+
+● What is it that determines the length of my gameplay activities?
+● Are my players frustrated because the game ends too early? How can I
+change that?
+● Are my players bored because the game goes on for too long? How can I
+change that?
+● Setting a time limit can make gameplay more exciting. Is it a good idea for
+my game?
+● Would a hierarchy of time structures help my game? That is, several short
+rounds that together comprise a larger round?
+
+
+
+24).
+
+Everyone likes to be told they are doing a good job. Ask these questions to
+determine if your game is giving out the right rewards in the right amounts at
+the right times:
+● What rewards is my game giving out now? Can it give out others as well?
+● Are players excited when they get rewards in my game, or are they bored
+by them? Why?
+● Getting a reward you don’t understand is like getting no reward at all. Do
+my players understand the rewards they are getting?
+● Are the rewards my game gives out too regular? Can they be given out in a
+more variable way?
+● How are my rewards related to one another? Is there a way that they could
+be better connected?
+● How are my rewards building? Too fast, too slow, or just right?
+
+
+2 kinds:
+    - story continuation/cutscene
+    - more powerful toys and submarine tuning
+
+
+
+25).
+
+One thing that psychological study has shown is that reward is always a better
+tool for reinforcement than punishment. Whenever possible, if you need to encour-
+age a player to do something, it is better to use a reward than a punishment, if you
+can.
+
+● What are the punishments in my game?
+● Why am I punishing the players? What do I hope to achieve by it?
+● Do my punishments seem fair to the players? Why or why not?
+● Is there a way to turn these punishments into rewards and get the same, or
+a better effect?
+● Are my strong punishments balanced against commensurately strong rewards?
+
+
+
+26).
+
+● What are the elements of my game?
+● What are the purposes of each element? Count these up to give the element
+an “elegance rating.”
+● For elements with only one or two purposes, can some of these be com-
+bined into each other, or removed altogether?
+● For elements with several purposes, is it possible for them to take on even
+more?
+
+
+
+
+27).
+
+Only detail what you can do well. Players have rich, detailed imaginations. If
+there is something you need to present that is of lower quality than your play-
+ers will be able to imagine, don’t do it — let the imagination do the heavy lift-
+ing!
+
+Familiar worlds do not need much detail.
+
+Use the binocular effect. When spectators bring binoculars to an opera or a
+sporting event, they use them mostly at the beginning of the event, to get a close-
+up view of the different players or performers. Once this close-up view has been
+put into memory, the glasses can be set aside, for now the imagination goes to
+work, filling in the close-ups on the tiny distant figures.
+
+● What must the player understand to play my game?
+● Can some element of imagination help them understand that better?
+● What high-quality, realistic details can we provide in this game?
+● What details would be low quality if we provided them? Can imagination
+fill the gap instead?
+● Can I give details that the imagination will be able to reuse again and again?
+● What details I provide inspire imagination?
+● What details I provide stifle imagination?
+
+
+
+28). Balancing...
+
+The rule of doubling and halving suggests that when changing values to balance
+your game, you will waste time by changing them by small amounts. Instead,
+start by doubling or halving your values in the direction they need to go.
+
+Plan to balance. You know you are going to have to balance your game. As you
+are designing it, you might have a pretty good idea of what aspects of it you will
+203
+need to balance. Take advantage of that, and put in systems that make it easy to
+change the values you expect to have to balance
+
+Let the players do it. Every once in a while you will run in to a designer who
+has this bright idea: “Let’s let the players balance the game
+
+
+
+
+29).
+
+A puzzle is a game with a dominant strategy
+
+● How will players know how to begin solving my puzzle, or playing my
+game? Do I need to explain it, or is it self-evident?
+● Does my puzzle or game act like something they have seen before? If it
+does, how can I draw attention to that similarity. If it does not, how can I
+make them understand how it does behave?
+● Does my puzzle or game draw people in, and make them want to touch it
+and manipulate it? If not, how I can I change it so that it does?
+
+TMA is essentially a puzzle, and an unintuitive one. UX must be much improved.
+Currently you need a video or a guide to even start it.
+
+Target classification is another puzzle. There must be a dominant strategy for it then. No too similar sounds.
+
+
+
+● What does it mean to make progress in my game or puzzle?
+● Is there enough progress in my game? Is there a way I can add more interim
+steps of progressive success?
+● What progress is visible, and what progress is hidden? Can I find a way to
+reveal what is hidden?
+
+● Increase Difficulty Gradually
+
+
+
+● Are there bottlenecks in my design where players are unable to proceed if
+they cannot solve a particular challenge? If so, can I add parallel challenges
+for a player to work on when this challenge stumps them?
+● If parallel challenges are too similar, the parallelism offers little benefit. Are
+my parallel challenges different enough from each other to give players the
+benefit of variety?
+● Can my parallel challenges be connected somehow? Is there a way that
+making progress on one can make it easier to solve the others?
+
+
+Puzzle Principle #9: Give the answer
+
+TODO: not sure how to fix this, but currently active sonar is a shortcut and
+the true "hardcore" answer can be made by shooting and getting a hit.
+
+
+
+30).
+
+● What information does a player need to receive that isn’t obvious just by
+looking at the game world?
+● When does the player need this information? All the time? Only occasion-
+ally? Only at the end of a level?
+● How can this information be delivered to the player in a way that won’t
+interfere with the player’s interactions with the game world?
+● Are there elements of the game world that are easier to interact with using
+a virtual interface (like a pop-up menu, for instance) than they are to inter-
+act with directly?
+● What kind of virtual interface is best suited to my physical interface? Pop-
+up menus, for example, are a poor match for a gamepad controller.
+
+
+
+31).
+
+To call an interface “juicy” might seem kind of silly — although it is very com-
+mon to hear an interface with very little feedback described as “dry.” Juicy
+interfaces are fun the moment you pick them up. To maximize juiciness, ask
+yourself these questions:
+● Is my interface giving the player continuous feedback for their actions? If
+not, why not?
+● Is second-order motion created by the actions of the player? Is this motion
+powerful and interesting?
+● Juicy systems reward the player many ways at once. When I give the player
+a reward, how many ways am I simultaneously rewarding them? Can I find
+more ways?
+
+
+
+32).
+
+Interest curves.
+
+● If I draw an interest curve of my experience, how is it generally shaped?
+● Does it have a hook?
+● Does it have gradually rising interest, punctuated by periods of rest?
+● Is there a grand finale, more interesting than everything else?
+● What changes would give me a better interest curve?
+● Is there a fractal structure to my interest curve? Should there be?
+● Do my intuitions about the interest curve match the observed interest of
+the players? If I ask playtesters to draw an interest curve, what does it
+look like?
+
+
+Thought: sonar and sensor subsystem should be introduced later. First, simple
+navigation and weaponry must capture the attention, and they must be fun.
+
+
+
+33).
+
+● What aspects of my game will capture the interest of a player immediately?
+● Does my game let the player see or do something they have never seen or
+done before?
+● What base instincts does my game appeal to? Can it appeal to more of
+them?
+● What higher instincts does my game appeal to? Can it appeal to more of
+those?
+● Does dramatic change and anticipation of dramatic change happen in my
+game? How can it be more dramatic?
+
+
+
+34).
+
+We love to experience things of great beauty. Use this lens to make your game
+a joy forever by asking yourself these questions:
+● What elements make up my game? How can each one can be more beautiful?
+● Some things are not beautiful in themselves, but are beautiful in combi-
+nation. How can the elements of my game be composed in a way that is
+poetic and beautiful?
+● What does beauty mean within the context of my game?
+
+
+Beauty of visuals.
+Beauty of sounds: Guns from world of warships as inspiration.
+
+
+
+35).
+
+One key indicator that someone is enjoying an experience is that they have
+projected their imaginations into it. When they do this, their enjoyment of
+the experience increases significantly, in a sort of virtuous circle. To examine
+whether your game is well-suited to induce projection from your players, ask
+yourself these questions:
+● What is there in my game that players can relate to? What else can I add?
+● What is there in my game that will capture a player’s imagination? What
+else can I add?
+● Are there places in the game that players have always wanted to visit?
+● Does the player get to be a character they could imagine themselves to be?
+● Are there other characters in the game that the players would be interested
+to meet (or to spy on)?
+● Do the players get to do things that they would like to do in real life, but
+can’t?
+● Is there an activity in the game that once a player starts doing, it is hard to
+stop?
+
+
+
+
+36).
+
+A goal with no obstacles is not worth pursuing. Use this lens to make sure
+your obstacles are ones that your players will want to overcome.
+● What is the relationship between the main character and the goal? Why
+does the character care about it?
+● What are the obstacles between the character and the goal?
+● Is there an antagonist who is behind the obstacles? What is the relationship
+between the protagonist and the antagonist?
+● Do the obstacles gradually increase in difficulty?
+● Some say “The bigger the obstacle, the better the story.” Are your obstacles
+big enough? Can they be bigger?
+● Great stories often involve the protagonist transforming in order to over-
+come the obstacle. How does your protagonist transform?
+
+
+
+
+37).
+
+Ask yourself these questions:
+● Does my game really need a story? Why?
+● Why will players be interested in this story?
+281
+● How does the story support the other parts of the tetrad (aesthetics, tech-
+nology, gameplay)? Can it do a better job?
+● How do the other parts of the tetrad support the story? Can they do a better
+job?
+● How can my story be better?
+
+
+Unfortunately, yes. Initial focus on multiplayer proved the lack of people. Not enough
+enthusiasts, wich means singleplayer must be the focus. And that needs at least a
+nominal story.
+
+Gameplay is too slow and nerdy to lack story unfortunately. Action genres will always
+be more fun.
+
+
+
+38).
+
+The whole thing was only possible because we did something very unusual —
+we made the characters in the game have two simultaneous goals. On one hand,
+their goal is to engage the players in a challenging battle. On the other hand, their
+goal is to lead the players to interesting places to keep the flow of the experience
+optimal. I call this principle collusion, since the game characters are colluding with
+the designer to make an experience that will be optimal for the players. It is an
+interesting form of indirect control that joins methods of using goals, characters,
+and visual design for a single unified effect.
+
+Characters should fulfill their roles in the game world, but when possible, also
+serve as the many minions of the game designer, working toward the design-
+er’s ultimate aim, which is to ensure an engaging experience for the player.
+To make sure your characters are living up to this responsibility, ask yourself
+these questions:
+● What do I want the player to experience?
+● How can the characters help fulfill this experience, without compromising
+their goals in the game world?
+
+
+
+Make the campaign AI not only working for itself, but also script it to help the plot.
+
+
+
+39).
+
+To make sure your characters are doing everything your game needs them to
+do, ask yourself these questions:
+● What are the roles I need the characters to fill?
+● What characters have I already imagined?
+● Which characters map well to which roles?
+● Can any characters fill more than one role?
+● Do I need to change the characters to better fit the roles?
+● Do I need any new characters?
+
+
+
+40).
+
+● How does each of my characters change throughout the game?
+● How am I communicating those changes to the player? Can I communicate
+them more clearly, or more strongly?
+● Is there enough change?
+● Are the changes surprising and interesting?
+● Are the changes believable?
+
+
+
+41).
+
+A good game cannot contain properties that defeat the game’s very purpose.
+To remove those contradictory qualities, ask yourself these questions:
+● What is the purpose of my game?
+● What are the purposes of each subsystem in my game?
+● Is there anything at all in my game that contradicts these purposes?
+● If so, how can I change that?
+
+
+
+IDEA: "hunger clock" can be implemented by oxigen/energy depleting. Progress
+must be sustained by refueling in new locations.
+
+
+
+42).
+
+Audio
+feedback is much more visceral than visual feedback, and more easily simulates
+touch.
+
+
+
+43).
+
+Community Tip #5: Let Players Express Themselves
+
+This is quite hard in Dsubs. Custom sound emission and sub tuning comes to mind.
+Open microphone?
+
+
+
+44).
+
+Community Tip #7: Force Players to Depend on Each Other
+
+IDEA: Make some content for two+ campains or for very competent hot-seat pair?
+Very hard multiplayer CO-OP missions?
+
+
+45).
+
+● Do I love my project? If not, how can I change that?
+● Does everyone on the team love the project? If not, how can that be changed?
+
+
+
+46).
+
+Game Design Overview.
+Detailed Design Document.
+Story Overview
+
+Technical Design Document
+Pipeline Overview
+System Limitations
+Art Bible
+Concept Art Overview
+
+Story Bible
+Script
+Game Tutorial and Manual
+
+
+
+47). IDEA: Feeedback form for players.
+
