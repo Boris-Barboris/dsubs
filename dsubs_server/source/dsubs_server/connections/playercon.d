@@ -348,6 +348,13 @@ private:
 			p.handlePauseSimulatorReq(req);
 	}
 
+	void h_timeAccelerationReq(TimeAccelerationReq req)
+	{
+		Player p = simFlowValidation();
+		if (p)
+			p.handleTimeAccelerationReq(req);
+	}
+
 	void h_replayGetDataReq(ReplayGetDataReq req)
 	{
 		// does not require authorization

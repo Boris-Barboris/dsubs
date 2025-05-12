@@ -256,7 +256,7 @@ final class SimulatorScheduler
 				if (simToRun.doSleep)
 				{
 					Duration expectedInterval = msecs(
-						(1000 / simToRun.timeAcceleration).to!uint);
+						(1000 * 10 / simToRun.timeAccelerationFactor).to!uint);
 					if (late > msecs(50))
 					{
 						warning("Simulator loop stalling for ", late);
@@ -387,7 +387,24 @@ final class Simulator
 	/// player observers.
 	bool runWithoutPlayers = false;
 
-	float timeAcceleration = 1.0f;
+	// 10 is normal, 5 is half-speed, 80 is 8x
+	private short m_timeAccelerationFactor = 10;
+
+	// edge flag to trigger the send of messages
+	private bool m_timeAccelerationFactorChanged;
+
+	@property short timeAccelerationFactor() const { return m_timeAccelerationFactor; }
+
+	/// Must be called while holding simMut.reader
+	@property void timeAccelerationFactor(short rhs)
+	{
+		enforce(canBePaused, "Cannot change timeAccelerationFactor of simulator " ~ id);
+		// use doSleep = false if you need no actual pause between simulation steps.
+		enforce(rhs > 0 && rhs < 1000, "Insane time acceleration factor proposed");
+		m_timeAccelerationFactorChanged = true;
+		m_timeAccelerationFactor = rhs;
+		// trace("Setting simulator ", m_id, " acceleration factor to ", rhs);
+	}
 
 	bool canBePaused = true;
 
@@ -453,6 +470,28 @@ final class Simulator
 		}
 	}
 
+	/// All players that own vessels in this sim receive new time acceleration factor.
+	private void sendTimeAccelUpdateToPlayers()
+	{
+		static struct SubPlayerPair
+		{
+			Player player;
+			Submarine sub;
+		}
+
+		SubPlayerPair[] playersToUpdate;
+		foreach (Submarine sub; vessels.submarines)
+		{
+			if (sub && sub.player)
+				playersToUpdate ~= SubPlayerPair(sub.player, sub);
+		}
+		foreach (SubPlayerPair pair; Globals.taskPool.parallel(playersToUpdate, 1))
+		{
+			pair.player.sendTimeAccelerationFactorUpdate(
+				pair.sub, m_timeAccelerationFactor);
+		}
+	}
+
 	/// All players that own non-dead vessels in this sim receive message.
 	private void sendTerminatingToPlayers()
 	{
@@ -513,6 +552,12 @@ final class Simulator
 				// edge-triggered update to players
 				m_pausedChanged = false;
 				sendPauseUpdateToPlayers();
+			}
+			if (m_timeAccelerationFactorChanged)
+			{
+				// edge-triggered update to players
+				m_timeAccelerationFactorChanged = false;
+				sendTimeAccelUpdateToPlayers();
 			}
 			if (m_paused)
 			{

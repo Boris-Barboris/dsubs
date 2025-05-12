@@ -368,6 +368,7 @@ final class Player: Captain
 			recState.canAbandon =
 				scenario.spawner.scenarioType != ScenarioType.persistentSimulator;
 		}
+		recState.timeAccelerationFactor = s.simulator.timeAccelerationFactor;
 		return cast(immutable) recState;
 	}
 
@@ -537,6 +538,21 @@ final class Player: Captain
 			if (s !is submarine)
 				return;
 			s.simulator.paused = req.shouldBePaused;
+		}
+	}
+
+	void handleTimeAccelerationReq(TimeAccelerationReq req)
+	{
+		Submarine s = submarine;
+		if (s is null)
+			return;
+		enforce(req.timeAccelerationFactor >= 5 && req.timeAccelerationFactor <= 80,
+			"timeAccelerationFactor not in [5, 80] range");
+		synchronized(s.simulator.simMut.reader)
+		{
+			if (s !is submarine)
+				return;
+			s.simulator.timeAccelerationFactor = req.timeAccelerationFactor;
 		}
 	}
 
@@ -718,6 +734,23 @@ final class Player: Captain
 		if (con && con.isOpen && con.simulatorFlow && (con.simFlowSub is s))
 		{
 			con.sendMessage(immutable SimulatorPausedRes(isSimPaused));
+		}
+	}
+
+	// simMut.writer is held by the simulator
+	void sendTimeAccelerationFactorUpdate(Submarine subToUpdate, short currentFactor)
+	{
+		Submarine s = submarine;
+
+		// Dangling submarine reference protection
+		// TODO: verify the need in this check.
+		if (subToUpdate !is s)
+			return;
+
+		PlayerConnection con = m_connection;
+		if (con && con.isOpen && con.simulatorFlow && (con.simFlowSub is s))
+		{
+			con.sendMessage(immutable TimeAccelerationRes(currentFactor));
 		}
 	}
 
