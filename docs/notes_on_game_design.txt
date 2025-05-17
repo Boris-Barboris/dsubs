@@ -5,24 +5,69 @@ schell_j_the_art_of_game_design_a_book_of_lenses.pdf
 1). High-level focus can be defined in experiences, that you want to convey.
 
 Examples for Dsubs:
-    - experience of being hunted by half-blind enemy
-        - experience of blockade running with loot, tension
-    - experience of chasing and playing with an unknowing prey
+
+    - experience of being hunted by half-blind enemy.
+
+        Hide and seek emotions, when fast and powerful but unperceptive enemy is running around looking for prey and you have to hide or go perfectly silent/still in order to evade it. Much improved by fear of being found and loosing something presious. Is stronger when you've made some progress and need to return somewhere. Should not be overused and become routime. Couple of rare encounters, where you are warned that the enemy is overwhelming. Enemy must be dumbed down in order for it to work. Small scriptiing to improve tension can be good.
+        If the enemy is easily killed, the tension will disappear.
+
+    - experience of blockade running with loot, tension
+
+        The end of the mission maximizes the cost of error, especially when no save-everywhere system is present. When you have some desirable entity captured in your cargo and you want to return to base with it/save progress, you become risk-averse. Tension can be created in this moment by forcing the stealth/interception encounter. Must be rare, majority of the times there must be no unusual threat, but when there is a threat - it must be real. Not overwhelming, but real.
+
+    - experience of chasing and playing with an unknowing prey.
+
+        It is fun to observe and stalk the prey. Anticipation of a kill must be built. It cannot be executed lightly, creeping in and observing is required to nurture obsession and focus. Limitations, such as no attack opportunity or legal restrictions must be conjured in order to prevent the player from executing the target immediately. When the prey notices you it will run, so the player must be told to get close and advised on the probability of the kill beforehand. Otherwise he will just shoot and be disappointed that he missed. Creeping must be taught. Target's mind state also must be explicit in the interaction, hints of "cluelessness" must be given.
+
     - experience of ambushing an unknowing prey
+        Continuation of the previous experience, but that is more passive: the player knows and plans beforehand, and does not stalk. Mines or lying in cover are some examples of an ambush. Surprise and fear of the target must be made explicit. If laying in cover by a group/with an ally, AI ally must be smart enough or commanded to actually stay hidden and wait for the first gun to fire. Concept of ambush also implies existance of environmental cover (for example isles), as well as shadowing techniques, like masquerading (which deserves a mission episode of it's own).
+
     - experience of dodging dangerous munitions, evasion and running away
+
+        Itano circus. Near misses of the enemy are dramatic. Timely decoy application is stylish and skillful and therefore must be rewarded with improved efficiency. Rapid maneuvering also must be a valid tactic, hence hostile munitions must not be very agile. Moreso, the fact of the enemy attacking you must be visible/observable. In-combat noise chaos problem prevents this ATM because of passive sonar being too overwhelming of a screen. Some solution must be cheated in for incoming munitions to be telegraphed, or the sensor experience and early warning must be much improved. Currently, range towards enemy torpedo is very hard to estimate because it's loudness on the screen has almost no volume gradient and track width difference. Decoys must reward proper timing and their effectiveness easily demonstrated. Example would be hard-kill decoys that actually hunt the incoming torpedo. Current decoys are sensor-focused and must be used early. Decoy lifetime must be deterministic and obvious to the player on the tacmap.
+
     - experience of high-precision sniping from the edge of torpedo range
+
+        Sniper's delight. Heavy hard-to-aim sniping weapons must be available, sniper style must be respected. Snipers are also efficient, so killing only the specified target should be more prestigious than killing everyone. Hitman score is a good example of perfectionism. Sniping munitions are also notorious to give no time for the target to react. Supercavitating lances, or simply heavyweight MIRV-torpedoes that are wire-guided to the target's location are just this. Important part is that the player outranges the enemy and is stealthy before the shot. Specialized submarines for such gameplay style may be necessary: large slow-to-reload tubes. Mission score should take firing range into account to have something to boast about. After-salvo evasion must also be stressful and involve 'running away from the overwhelming odds' experience. TMA puzzle must be precise enough for such an experience and sensor systems must not lose target's track in chaos after the shot, wich may be impossible in underwater ruleset of slow munitions.
+
     - experience of cooperating with a strong, obedient and helpful ally
+
+        Escort mission that is actually fun must involve a useful, strong and intuitive ally that makes your life easier and can be used tactically. Let's focus on just a simple duet of submarines experience. Ally must respect player's ROE and stealth profile in order to not break his cover and must provide useful intel about the enemies he encounters. Ally needs a personality in order for the player to not want to lose him. His defensive skills must be superb, his probability of suicide should be very low. Mission must be structured is such a way that you
+        need an ally to cover more ground and do some aggro + sidepunch combo, for example distracting an important target's escorts from it's vicinity in order for the player to snipe the main target itself. AI must clearly communicate it's current intentions, perhaps part of the AI debugging toolset must be part of the player's UI.
+
     - experience of overcoming hordes of dumber but nominally stronger enemies
+
+        Non-sniper, chaingunner experience of dogfight with small numerous enemies. Such playstyle must be viable and involve very close maneuvering and rapid fire. Current sensor toolset will make this playstyle very hard due to TMA inertia and sensors being overwhelmed. Merging contact problem also is at odds with close fight. Perhaps "true sight" at very close distances must be introduced. Periodic active sonar ping and automatic reflection marking should also help. Enemy AI may need tuning on easy mode in order to prevent self-preservation behaviours, which make the brawling impossible.
+
     - experience of overcoming one extremely capable and strong enemy (boss)
+
+        Hard AI with player-tier submarine is a must for a sense of challenge. Self-preservation is a must, as well as variery of it's arsenal and defensive measures. But it must be telegraphed and dramatized, otherwise the player will not discern the fight from other casual encounters. This requires either a mission-level lore dump/warning or some other plot tool.
+
     - experience of fine-tuning your vessel to the task at hand
+
+        Tinkerers like tuning their vessel. Overcharging/overheat management and energy rebalancing is in-simulator level tuning that adds skill ceiling (but it must not be front-loaded in the first missions, but introduced as the mid-game tool or submarine module). Pre-mission vessel tuning that satisfies the "build" creator's mind, and alters the general playstyle/dominant strategy. Aesthetic tuning: color and stuff, but it may be optional. At the very least captain's portrait and name must be tunable.
+
     - experience of getting observably stronger, power creep
+
+        Campaign must progress from simple submarine to an apex predator. New weapons and modules MUST be introduced, and they should vary in principle of their operation. Just increasing the power of torpedoes is a lame mechanic. Also, late campaign levels must clearly demonstrate that previous threats and enemies are now easy and can be dispatched rapidly.
+
     - experience of learning new, better tools
+
+        Principle of operation of new modules, weapons and maybe even sensors must significantly differ from the previous tools. While new kinds of weapons still use the lauch tubes, their properties and tactics must differ. Examples of late-introduced tools can be hard-kill decoys, supercavitating torpedoes, overclocking, sound masquerading tools, wireless-guidance, wingman/escort, remote sensors (towed array, torpedo-like UAV).
+
     - experience of predicting the enemy, reading his mind
+
+        Sniping or ambushing requires transperency and predictability from NPC patrols/fleets. Their mind must be readable, for example via some kind of comm sniffing or audible ques on waterfall screen. Alternatively, "true sight" may need to be introduced to show the enemy's intention. Right now such ques are tube sounds/equalization. Familiar concept of "Aggro" is expected by the player, and it is often hinted by visual and audio signalling.
+
     - experience of seeking a barely-visible enemy, search and reward
+
+        Mission or secondary objectives can be dedicated to this experience. Reward can be both lore-wise and in credits/upgrades. Example mechanics would involve organizing each mission in some kind of resource-rich map that should be explored and completed, besides the main objective. Player may roleplay some kind of a mining/prospector submarine that competes for planet's resources. When the hidee is an enemy, perhaps some detective work or small puzzle must be introduced? For example, sound ques or slow stalking and pattern recognition from the player must reveal which of the contacts is the required one.
+
     - experience of planning ahead and executing the complex plan successfully
     - experience of making an educated guess and being correct
     - experience of having an emotional investment in the bigger picture: politics, for example.
     - experience of strange perception
+    - experience of delving deeper than you should, fear
 
 
 ● What experience do I want the player to have?
