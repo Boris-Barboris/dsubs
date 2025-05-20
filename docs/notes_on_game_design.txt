@@ -17,7 +17,7 @@ Examples for Dsubs:
 
     - experience of chasing and playing with an unknowing prey.
 
-        It is fun to observe and stalk the prey. Anticipation of a kill must be built. It cannot be executed lightly, creeping in and observing is required to nurture obsession and focus. Limitations, such as no attack opportunity or legal restrictions must be conjured in order to prevent the player from executing the target immediately. When the prey notices you it will run, so the player must be told to get close and advised on the probability of the kill beforehand. Otherwise he will just shoot and be disappointed that he missed. Creeping must be taught. Target's mind state also must be explicit in the interaction, hints of "cluelessness" must be given.
+        It is fun to observe and stalk the prey. Anticipation of a kill must be built. It cannot be executed lightly, creeping in and observing is required to nurture obsession and focus. Limitations, such as no attack opportunity or legal restrictions must be conjured in order to prevent the player from executing the target immediately. When the prey notices you it will run, so the player must be told to get close and advised on the probability of the kill beforehand. Otherwise he will just shoot and be disappointed that he missed. Creeping must be taught. Target's mind state also must be explicit in the interaction, hints of "cluelessness" must be given. Additionally, tracker's experience can be fun: tracking an enemy in noisy/opaque environment by using wake-detection.
 
     - experience of ambushing an unknowing prey
         Continuation of the previous experience, but that is more passive: the player knows and plans beforehand, and does not stalk. Mines or lying in cover are some examples of an ambush. Surprise and fear of the target must be made explicit. If laying in cover by a group/with an ally, AI ally must be smart enough or commanded to actually stay hidden and wait for the first gun to fire. Concept of ambush also implies existance of environmental cover (for example isles), as well as shadowing techniques, like masquerading (which deserves a mission episode of it's own).
@@ -64,10 +64,24 @@ Examples for Dsubs:
         Mission or secondary objectives can be dedicated to this experience. Reward can be both lore-wise and in credits/upgrades. Example mechanics would involve organizing each mission in some kind of resource-rich map that should be explored and completed, besides the main objective. Player may roleplay some kind of a mining/prospector submarine that competes for planet's resources. When the hidee is an enemy, perhaps some detective work or small puzzle must be introduced? For example, sound ques or slow stalking and pattern recognition from the player must reveal which of the contacts is the required one.
 
     - experience of planning ahead and executing the complex plan successfully
+
+        Another dimension to ambushing, sniping and wingman-commanding tactics. May also be induced by Co-op gaming in campaign. Cross-referenced by torpedo guidance and advanced waypoint functionality. Baiting and mimicry tactics must work on AI.
+
     - experience of making an educated guess and being correct
+
+        TMA and target classification/analysis puzzle essentially must be tested by combat or replay to know if the guess was correct. Perhaps some scripting tools can quicken this process and give earlier feedback about truth.
+
     - experience of having an emotional investment in the bigger picture: politics, for example.
+
+        Common laws of drama and tragedy apply to the main campaign plot, but it is expensive. Perhaps extensive comic-style plot that does long character exposition can benefit the gameplay and attract the player, but it is hard to do this in just a simulator. Voice acting is also expected in modern games, but this is much harder, since even modern NN tools are sup-bar.
+
     - experience of strange perception
+
+        Accentuate acoustic perception and impreciseness of knowledge, but gradually/slowly. Near the end of campaign most sensory hand-holding should be gone, and the acoustic/TMA framework must take the foreground. Being just the sensor operator/acoustic is a bit boring.
+
     - experience of delving deeper than you should, fear
+
+        Europa-themed under-ice campaing idea is an example: you gradually descend towards the core of the planet, heat and pressure increases and should damage the player (slowly). Local wildlife and cryptide encounters should induce additional alienation and surprise, especially if unannounced. Visuals and VFX should accentuate the discoveries (see Sunless Skies).
 
 
 ● What experience do I want the player to have?
@@ -89,10 +103,26 @@ TODO here! Important question, not much surprises atm in Dsubs.
 Surprise is a crucial part of all entertainment — it is at the root of humor,
 strategy, and problem solving.
 
+Plot ideas:
+    - Unexpected life on Europa.
+    - Kraken-like apex predator. Not only it exists, it is sentient and communicating. It understands humor.
+    - Going deeper first half of the campaign and then surviving the ascent. See "Orb run" from DCSS. Perhaps, your own side betrayed you?
+    - There are pirates already on the Jupiter's moon.
+
+Meta ideas:
+    - Some mission, while advertised as singleplayer, in reality is PvP/multiplayer (may not be practical).
+    - Final credits in form of an audio message, broadcasted to the water, containing thanks from the developers.
+
+Scenario-level ideas:
+    - Extremely-compenent minor enemy with very hard AI, unexpected boss.
+    - AI recognizing player and juust running away screaming. "Yeah, not gonna deal with this". AI humor stuff.
+    - Littered loot in obscure places. Unlockables, hidden on the maps.
+    - Wingman betrays you.
+
 
 
 3). "Play is manipulation that indulges curiosity."
-Make the player curios in each mission/step.
+Make the player curious in each mission/step.
 
 ● What questions does my game put into the player’s mind?
 ● What am I doing to make them care about these questions?
@@ -103,6 +133,14 @@ at each level, players are trying to answer the question: “Can I find my way
 through this maze in 30 seconds?” A way to make them care more would be
 to play interesting animations when they solve each maze, so players might
 also ask the question: “I wonder what the next animation will be?”
+
+
+- Curiosity about Europa's past and present. Geologics, life and aliens.
+- Curiosity about new weapons and systems that the player can use.
+- Curiosity about your classification and TMA skills, is my solution correct? TMA precision scoring and leaderboards.
+- Curious sounds and visuals that entice investigation.
+- Curiousity about what happenned to the SoS-signalling crew. First Kraken encounter?
+- Landscape of each mission must be unusual in some way, themed perhaps? DCSS level variery and branching as inspiration. Salt sea, hot sea, iceberg field, crystal field, volcano streams/hot zones?
 
 
 
@@ -119,6 +157,11 @@ what the players really care about and why, you can often get insights about
 how your game can improve.
 
 
+Speedy, stealthy, powerful submarines that can go deeper and deeper.
+Weapons that work on the specified depth.
+Safety is valuable, tools and information that helps to stay safe is valuable.
+
+
 
 5).
 
@@ -129,6 +172,11 @@ back?
 
 TODO: think about hidden problems.
 
+Fighting for truth in the imprecise world of acoustics.
+TMA problem. Hidden classification problem. Hidden merged contact problem. Hidden kill verification problem.
+Attack vector problem. Hidden escape problem. Hidden mid-course weapon correction while defending problem.
+Mission logistics and planning problem. Hidden fuel and energy problem.
+New problems in this genre are usually done by new or "infinite" randomized scenarios.
 
 
 6).
@@ -147,9 +195,13 @@ Sprincle some LOGH-style political drama?
 
 Example theme:
 
-Resource prospectors in harsh conditions under ice on foreign planet?
+Resource prospectors in harsh conditions under ice on foreign planet/moon (Europa)?
 Theme of a pirate on his path to apex predator state?
 Professional captain in the midst of war?
+Diving into the dangerous unknown and competing for the spoils of exploration in the context of imprecise knowledge and strong opposing force.
+Constant struggle to stay afloat, not boiled or frozen, alive and with enough fuel/air.
+Mystery of an alternative life cradle.
+Darkness, pressure, danger. One might say, these are dangerous waters, LMAO.
 
 
 ● What is it about my game that feels powerful and special?
@@ -157,6 +209,9 @@ Professional captain in the midst of war?
 ● If I had no constraints of any kind, what would this game be like?
 ● I have certain instincts about how this game should be. What is driving
 those instincts?
+
+Underwater mystery and combat.
+No constraints dream: open-worldy MMO simulator where you go deeper and deeper. Something closer to multiplayer Sunless Skies with upgrades and such.
 
 
 
@@ -177,7 +232,7 @@ those instincts?
 
 Story, Mechanics, Aesthetics, Technology.
 
-TODO:
+TODO: after the design.
 
 
 
@@ -187,6 +242,8 @@ TODO:
 ● How can we stop that from happening?
 
 
+TODO: after the design.
+
 
 10).
 
@@ -195,6 +252,10 @@ that?
 ● When people see my game, do they want to start interacting with it, even
 before they know what to do? If not, how can I change that?
 
+
+If there was no campaign, most players are repelled by sensor system and unintuitiveness of underwater combat. In order for them to stay, navigation and combat tactics must precede sensor system, everything must be faster and punchy/animated/sound good. Graphics must be gorgeous and catch an eye. Weapons and punchy explostions are expected, feeling of power when launching. Audio-visual feedback is a must for all actions. Tactile perception of operating a powerful vessel.
+Alternative is a fun multiplayer competition and cooperation experience, hence the multi-station experience must be improved.
+For the player to want to interact with the game, UI must be very attractive.
 
 
 11).
@@ -224,6 +285,14 @@ Ask yourself these questions about the people who will play your game
 ● What would they like or dislike about my game in particular?
 
 
+Hardcore simmers:
+    sensors and weapons, complex systems with high skill ceiling, engaging combat situtationa and plot, damage model, advanced lobby-based or infinite multiplayer, RP opportunities and realism flavor elements. Medium pace.
+Arcady top-down tank/shooter fans, evolution of Bubble tanks flash game:
+    upgrade system, amazing punchy combat, gorgeous audio and visuals, casual multiplayer with matchmakin, good game balance without dominant strategy. Fast pace.
+Crew RPG fans:
+    RPG elements, crew system, memorable characters, upgrade and tuning system, perk/skill system, damage and repair model, good enemy/ally system, RP opportunities in campaign. Slow to turn-based pace.
+
+Pace obvously must be dynamic, as is already implemented via time acceleration. But it is not a good solution for multiplayer, hence the general game design must somehow compress these three ways to play in order for the multiplayer to be not-too-slow.
 
 
 
@@ -236,7 +305,11 @@ Ask yourself these questions about the people who will play your game
 ● Does the judgment make them want to improve?
 
 
-
+Negative judgement about bad classification/TMA is communicated very late: when the weapon misses or even in replay screen.
+Bad defense and dodging is communicated by taking damage.
+Inattentiveness to sensors and/or navigation is communicated by taking damage.
+Lack of stealth and finesse is punished by danger and scenarion-level stealth points reduction.
+Campaign must not kill the player with just one hit, at least most of the time.
 
 
 
@@ -254,6 +327,8 @@ improving?
 change that?
 
 
+TODO: after the design.
+
 
 15).
 
@@ -264,6 +339,12 @@ change that?
 ● Are my goals concrete, achievable, and rewarding?
 ● Do I have a good balance of short- and long-term goals?
 ● Do players have a chance to decide on their own goals?
+
+
+To become the best and strongest underwater captain on the Europa?
+To get to the truth about this moon first?
+To make the bank from the discoveries, get the first juciest loot, and retire filthy rich?
+To build the coolest submarine on the Europa?
 
 
 
@@ -277,6 +358,19 @@ change that?
 the game feel unfair?
 ● Can players improve their skills with practice?
 ● Does this game demand the right level of skill?
+
+
+Spacial thinking and awareness.
+Agressiveness.
+Good hearing.
+Mid-term planning of maneuvering.
+Long-term resource planning.
+Fast multi-tasking: offense and defense are sumultanious.
+Threat prioritization.
+Curiosity and attentiveness to surrounding sounds.
+Precise point-and-click of mouse to issue commands rapidly.
+Cooperation skills in multi-station.
+Submarine build crafting??
 
 
 
@@ -293,6 +387,12 @@ ways I can make random elements feel more like the exercise of a skill? Are
 there ways I can make exercising skills feel more like risk-taking?
 
 
+Some AI decisions currently, they must be made deterministic IMO.
+Campaign/scenario level seed must be deterministic.
+Weapon target prioritization decisions are random.
+AI target detection decisions are a bit random.
+
+
 
 18).
 
@@ -304,6 +404,8 @@ there ways I can make exercising skills feel more like risk-taking?
 ● What is the maximum level of challenge in my game?
 
 
+TODO: after the implementation.
+
 
 19).
 
@@ -313,6 +415,8 @@ there ways I can make exercising skills feel more like risk-taking?
 them feel more powerful? Would less make the game clearer?
 ● Are there any dominant strategies in my game?
 
+
+TODO: after the design.
 
 
 
@@ -326,6 +430,12 @@ the Lens of Triangularity, ask yourself these questions:
 surate with the risks?
 
 
+- unlockables that will not be available without taking the risk
+- reward agressiveness by making some enemies vulnerable to it
+- victory screen point system rewards speed as well as precision
+- risky platforms must have risky and fun weapons.
+
+
 
 21).
 
@@ -336,6 +446,10 @@ them?
 ● Do parts of my game feel too random? If so, will replacing elements of
 chance with elements of skill or strategy make the players feel more in
 control?
+
+Judged - skill.
+
+TODO: after implementation.
 
 
 
@@ -354,6 +468,10 @@ my game get?
 ● This lens works particularly well when used in conjunction with Lens #16:
 Lens of the Player.
 
+Both, actually, arcady players like top-down mindless action more.
+Agressive submarines must be played more like a top-down shooter than a TMA-perfectionist sniper. Dogfighting must be arcady. Long-range sniping must be simulatory.
+
+TODO: after design.
 
 
 23).
@@ -367,6 +485,11 @@ change that?
 my game?
 ● Would a hierarchy of time structures help my game? That is, several short
 rounds that together comprise a larger round?
+
+Hunger clock and limited supply of energy/health/weapons is a must.
+Some scenarios should have a time limit.
+
+TODO: after design and implementation.
 
 
 
@@ -387,9 +510,11 @@ be better connected?
 ● How are my rewards building? Too fast, too slow, or just right?
 
 
-2 kinds:
-    - story continuation/cutscene
-    - more powerful toys and submarine tuning
+- story continuation/cutscene
+- more powerful toys and submarine tuning opportunities
+- new ways to deal with previously-annoying situations and obstacles
+- punchy audio-visual feedback for kills, maybe even voiced crew affirmations
+- victory screen points and ranking
 
 
 
@@ -408,6 +533,9 @@ a better effect?
 ● Are my strong punishments balanced against commensurately strong rewards?
 
 
+TODO: after the design.
+
+
 
 26).
 
@@ -419,6 +547,8 @@ bined into each other, or removed altogether?
 ● For elements with several purposes, is it possible for them to take on even
 more?
 
+
+TODO: after the design.
 
 
 
@@ -446,6 +576,8 @@ fill the gap instead?
 ● What details I provide inspire imagination?
 ● What details I provide stifle imagination?
 
+TODO: after the design.
+
 
 
 28). Balancing...
@@ -461,9 +593,10 @@ need to balance. Take advantage of that, and put in systems that make it easy to
 change the values you expect to have to balance
 
 Let the players do it. Every once in a while you will run in to a designer who
-has this bright idea: “Let’s let the players balance the game
+has this bright idea: “Let’s let the players balance the game..."
 
 
+TODO: after the design.
 
 
 29).
@@ -508,7 +641,7 @@ making progress on one can make it easier to solve the others?
 Puzzle Principle #9: Give the answer
 
 TODO: not sure how to fix this, but currently active sonar is a shortcut and
-the true "hardcore" answer can be made by shooting and getting a hit.
+the true "hardcore" answer can be made by shooting and getting a hit. Replays help with the rest, but they are essentially a cheat in campaigns.
 
 
 
