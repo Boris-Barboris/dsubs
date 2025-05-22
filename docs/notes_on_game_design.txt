@@ -660,6 +660,12 @@ act with directly?
 up menus, for example, are a poor match for a gamepad controller.
 
 
+Hydrophone-specific mechanics. Sound propagation principles. Underwater
+communication. Whole TMA stuff. Advanced weapon control. Self-noise and
+detectability is unknown (and it's not fun for stealth enjoyers).
+
+TODO: after design.
+
 
 31).
 
@@ -674,6 +680,8 @@ powerful and interesting?
 ● Juicy systems reward the player many ways at once. When I give the player
 a reward, how many ways am I simultaneously rewarding them? Can I find
 more ways?
+
+TODO: after UI implementation.
 
 
 
@@ -694,6 +702,9 @@ look like?
 
 Thought: sonar and sensor subsystem should be introduced later. First, simple
 navigation and weaponry must capture the attention, and they must be fun.
+Advanced simulator-tier stuff is not as fun as midless combat and should be delayed.
+
+TODO: after design and implementation.
 
 
 
@@ -710,6 +721,12 @@ those?
 game? How can it be more dramatic?
 
 
+- Underwater aesthetics
+- Beautiful customizable submarine
+- VFX and SFX of swimming around, shooting and killing.
+
+TODO: after implementation.
+
 
 34).
 
@@ -724,6 +741,8 @@ poetic and beautiful?
 
 Beauty of visuals.
 Beauty of sounds: Guns from world of warships as inspiration.
+
+TODO: after implementation
 
 
 
@@ -746,6 +765,7 @@ can’t?
 ● Is there an activity in the game that once a player starts doing, it is hard to
 stop?
 
+TODO: after implementation
 
 
 
@@ -764,6 +784,7 @@ big enough? Can they be bigger?
 ● Great stories often involve the protagonist transforming in order to over-
 come the obstacle. How does your protagonist transform?
 
+TODO: after campaign design
 
 
 
@@ -780,11 +801,7 @@ job?
 ● How can my story be better?
 
 
-Unfortunately, yes. Initial focus on multiplayer proved the lack of people. Not enough
-enthusiasts, wich means singleplayer must be the focus. And that needs at least a
-nominal story.
-
-Gameplay is too slow and nerdy to lack story unfortunately. Action genres will always
+Unfortunately, yes. Initial focus on multiplayer proved the lack of people in the target audience. Not enough enthusiasts, wich means singleplayer must be the focus. And that needs at least a nominal story. Gameplay is too slow and nerdy to lack story unfortunately. Action genres will always
 be more fun.
 
 
@@ -813,6 +830,8 @@ their goals in the game world?
 
 Make the campaign AI not only working for itself, but also script it to help the plot.
 
+TODO: after campaign design.
+
 
 
 39).
@@ -826,6 +845,7 @@ do, ask yourself these questions:
 ● Do I need to change the characters to better fit the roles?
 ● Do I need any new characters?
 
+TODO: after campaign design.
 
 
 40).
@@ -837,6 +857,7 @@ them more clearly, or more strongly?
 ● Are the changes surprising and interesting?
 ● Are the changes believable?
 
+TODO: after campaign design.
 
 
 41).
@@ -852,6 +873,8 @@ To remove those contradictory qualities, ask yourself these questions:
 
 IDEA: "hunger clock" can be implemented by oxigen/energy depleting. Progress
 must be sustained by refueling in new locations.
+
+TODO: after design.
 
 
 
@@ -884,6 +907,9 @@ Very hard multiplayer CO-OP missions?
 
 ● Do I love my project? If not, how can I change that?
 ● Does everyone on the team love the project? If not, how can that be changed?
+
+
+TODO: after implementation.
 
 
 
