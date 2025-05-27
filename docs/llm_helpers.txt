@@ -1,0 +1,209 @@
+my experience is that gemma2-9 is a lot better than llama3-8b. Like miles away.
+
+Gemma-2-9B-It-SPPO-Iter3-Q5_K_M
+
+
+
+docker pull ghcr.io/open-webui/open-webui:main
+
+11434 port is default
+
+docker run -d -p 3010:8080 -e OLLAMA_BASE_URL=http://192.168.42.6:11434 -v open-webui:/app/backend/data --name open-webui ghcr.io/open-webui/open-webui:main
+
+
+iptables -t nat -A POSTROUTING -s 172.17.0.0/16 ! -d 172.17.0.0/16 -j MASQUERADE
+
+it's working:
+http://localhost:3010/c/123ec20a-012f-4882-a3e7-322be4073b10
+
+
+That's a thrilling pitch, Alex! I can definitely help you brainstorm some titles that capture the intensity and alien mystery of your Europa prospectors game. Here are a few ideas, playing on different aspects of your description:
+
+Emphasizing the Competition and Stakes:
+
+     Europa's Rush
+     Ocean of Greed
+     Blackwater Dominion
+     Submergence: Europa
+     Deep Dive: The Lunar Mine
+     Beneath the Ice
+
+
+Highlighting the Alien Environment and Combat:
+
+     Abyssal Fury
+     Bioluminescent Bloodbath
+     Blind Descent
+     Kraken's Claim
+     Europa's Maw
+
+
+Adding a Touch of Horror and the "Dying Screams" Theme:
+
+     Echoes in the Abyss
+     The Europa Requiem
+     Silent Hunt
+     Last Light of Europa
+     The Unseen Harvest
+
+
+More Evocative and Abstract Titles:
+
+     Leviathan's Cradle
+     Europa's Heart
+     Chthonic Depths
+     The Hydrostatic Throne
+     Midnight Sunless
+
+
+Tips for Choosing the Best Title:
+
+     Keep it Concise: Shorter titles are more memorable.
+     Consider Your Target Audience: What kind of tone and genre will resonate with them?
+     Check Availability: Make sure the name isn't already taken (domain, trademarks, etc.).
+
+
+Good luck with your game development, Alex! I hope these suggestions inspire you to find the perfect title.
+
+
+Can you suggest some titles that emphasize darkness and blindness?
+
+
+You bet! Here are some titles that lean heavily into the darkness and blindness of Europa's under-ice ocean, emphasizing the unsettling, disorienting nature of the environment: **Directly Referencing Darkness & Blindness:** * Blind Fathoms * The Dark Abyss * Blackwater Blind * Sightless Depths * Unseen Hunter * The No-Light Zone * Shadow Submergence **Evoking Atmosphere and Mystery:** * Inky Depths * The Unlit Sea * Murkbound * Where Sunlight Fears to Tread * Europa's Veil * Abyssal Echo **Adding a Hint of Dread:** * The Blind Watchers (hints at unseen creatures) * Sunken Silence (plays on the lack of light and sound) * The Unblinking Deep (suggests something observing) * Phantoms of Europa Remember, the right title will pique players' curiosity and make them want to explore this terrifying, hidden world. Let me know if you'd like to brainstorm further based on any particular vibe or theme you're leaning towards!
+profile
+lucasalmeida/gemma-2-9b-it-sppo-iter3:Q4_K_M
+
+
+You bet!  Here are some titles that lean heavily into the darkness and blindness of Europa's under-ice ocean, emphasizing the unsettling, disorienting nature of the environment:
+
+Directly Referencing Darkness & Blindness:
+
+     Blind Fathoms
+     The Dark Abyss
+     Blackwater Blind
+     Sightless Depths
+     Unseen Hunter
+     The No-Light Zone
+     Shadow Submergence
+
+
+Evoking Atmosphere and Mystery:
+
+     Inky Depths
+     The Unlit Sea
+     Murkbound
+     Where Sunlight Fears to Tread
+     Europa's Veil
+     Abyssal Echo
+
+
+Adding a Hint of Dread:
+
+     The Blind Watchers (hints at unseen creatures)
+     Sunken Silence (plays on the lack of light and sound)
+     The Unblinking Deep (suggests something observing)
+     Phantoms of Europa
+
+
+Remember, the right title will pique players' curiosity and make them want to explore this terrifying, hidden world.
+
+Let me know if you'd like to brainstorm further based on any particular vibe or theme you're leaning towards!
+
+
+Under a Frozen Sky (hints at the weight of the ice above)
+
+Echo War
+
+
+
+
+
+Directly Referencing Sound & Blindness:
+
+     Echo War
+     Blind Sonar
+     The Soundless Hunt
+     Silent Siege
+     Whispers in the Abyss
+
+
+Playing on the Claustrophobic Nature of Sound-Based Combat:
+
+     Cacophony's Cage
+     The Listening Deep
+     Underwater Symphony of Death
+     Claustrophobia's Chorus
+     Sound's Grasp
+
+
+Evoking a Sense of Unseen Ambush:
+
+     The Sonar Strike
+     Blind Echo Strike
+     The Soundless Stalker
+     The Abyssal Whisperer
+
+
+Adding a Hint of Alien Weirdness:
+
+     The Whale Song War (evokes a primal, alien communication)
+     Europa's Acoustic Requiem
+     Echolocation's Reign
+
+
+
+
+Thanks! I like the title “Echo War: Under a Frozen Sky”
+
+
+
+
+
+
+Wild West/Gunslinger Inspiration:
+
+     Europa's Dead Eye:  Classic gunslinger imagery, but with an alien twist.
+     The Blind Saloon:  Suggests a lawless frontier town, but submerged.
+     Frontier Fathoms:  Combines the frontier theme with the deep-sea setting.
+     Hydrothermal High Noon:  Adds a touch of the alien environment to the classic showdown.
+
+
+"Sonic Subs: Under a Frozen Sky"
+
+"Blind Saloon: Under a Frozen Sky"
+
+
+"Blind Saloon: Under a Frozen Sky" is a fantastic choice!  It combines several strong elements:
+
+1. Intriguing Contrasts:
+
+     Blind Saloon: Immediately establishes a unique setting - a lawless watering hole, but without sight. This sparks curiosity: how does it function? What dangers lurk?
+     Under a Frozen Sky: Creates a vivid, atmospheric backdrop. It's desolate, alien, and hints at a harsh environment.
+
+
+2. Evocative Imagery:
+
+     Saloon:  Conjures up classic Wild West imagery: rough-and-tumble, gambling, brawls, quick draws.
+     Frozen Sky:  Adds a chilling, otherworldly twist. It's not your typical saloon, it's something different, unsettling.
+
+
+3. Thematic Depth:
+
+     Blindness: Adds a layer of tension and unpredictability.  Combat, negotiations, even simple interactions become more dangerous.
+     Isolation: The frozen sky suggests a remote, unforgiving world. The saloon becomes a refuge, but also a potential trap.
+
+
+Why It Works Well:
+
+     Memorable & Unique: It's not a typical "underwater" or "combat" title. It stands out and sticks in the mind.
+     Broad Appeal: Can attract fans of Wild West, sci-fi, and survival genres.
+     Storytelling Potential:  The title itself hints at a rich backstory and intriguing characters.
+
+
+Potential Enhancements (Optional):
+
+     Emphasize the Sound:  Consider adding "Echo Saloon" or "Whispering Guns" to further hint at the sound-based gameplay.
+     Add a Location Specificity: "Blind Saloon: Europa's Edge" or "The Frozen Fathoms Saloon"  grounds it more firmly in your setting.
+
+
+Overall, "Blind Saloon: Under a Frozen Sky" is a fantastic title that captures the essence of your game in a creative, evocative, and memorable way.  It has a great mix of intrigue, atmosphere, and thematic depth.
