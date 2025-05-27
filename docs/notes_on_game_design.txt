@@ -106,7 +106,7 @@ strategy, and problem solving.
 Plot ideas:
     - Unexpected life on Europa.
     - Kraken-like apex predator. Not only it exists, it is sentient and communicating. It understands humor.
-    - Going deeper first half of the campaign and then surviving the ascent. See "Orb run" from DCSS. Perhaps, your own side betrayed you?
+    - Going deeper for the most part of the campaign and then surviving the ascent. See "Orb run" from DCSS. Perhaps, your own side betrayed you?
     - There are pirates already on the Jupiter's moon.
 
 Meta ideas:
@@ -588,7 +588,6 @@ start by doubling or halving your values in the direction they need to go.
 
 Plan to balance. You know you are going to have to balance your game. As you
 are designing it, you might have a pretty good idea of what aspects of it you will
-203
 need to balance. Take advantage of that, and put in systems that make it easy to
 change the values you expect to have to balance
 
