@@ -207,3 +207,31 @@ Potential Enhancements (Optional):
 
 
 Overall, "Blind Saloon: Under a Frozen Sky" is a fantastic title that captures the essence of your game in a creative, evocative, and memorable way.  It has a great mix of intrigue, atmosphere, and thematic depth.
+
+
+
+
+on image gen:
+
+I think most people these days use a combination of FLUX and SDXL. On the SDXL side, you have a few popular spinoffs that are still SDXL, but have diverged significantly and are treated almost like alternate base models: Pony, Illustrious, and NoobAI. All 3 are fairly difficult to control, so I think most people stick to finetunes and merges built on top of those.
+
+A1111 has mostly been supplanted by Forge and reForge (although there are still some A1111 users who rely on specific extensions). Forge is an A1111 spinoff that contains a lot of under-the-hood improvements and FLUX compatibility. reForge is another spinoff that tries to incorporate as many of those improvements as possible while maintaining as much compatibility with A1111 extensions as possible (no FLUX though).
+
+Comfy is the most powerful and flexible UI, and gets all the new tech first, but the node-based interface is not for everyone. If you want to be on the bleeding edge, or control each step of the render pipeline, then this one's for you. If you prefer simple, or sticking with more standard workflows, then this one might be overkill.
+
+Invoke and Krita are the most artistically-minded UIs, and make it very easy for you to manually shape and iterate over an image until you get exactly what you want. Invoke seems to be more AI-first, while Krita is more drawing tools first.
+
+ControlNet is still very much a thing. For base SDXL and Pony I'd recommend xinsir's union (all-in-one) models or mistoline (all-in-one "line" model - scribble/canny/softedge/etc). For Illustrious and Noob, Mistoline still works, and there's dedicated Noob models, but xinsir is weak. FLUX also has its own ControlNets.
+
+IPAdapter is like ControlNet but is more focused on style than specific composition.
+
+Regional Prompting / Regional Guidance lets you direct parts of your prompt at specific parts of the image.
+
+Not a plugin, but I'd consider Inpainting to be one of the most essential skills you can learn.
+
+
+
+
+It shouldn't require so much VRAM to use SDXL. I have RTX3070 8G and it works well in ComfyUI generating 1024X1024
+
+https://github.com/AUTOMATIC1111/stable-diffusion-webui/pull/11757
