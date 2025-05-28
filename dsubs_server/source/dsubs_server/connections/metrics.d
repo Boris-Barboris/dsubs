@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 module dsubs_server.connections.metrics;
 
-import std.algorithm: map, merge, multiwayMerge;
+import std.algorithm: map, merge, multiwayMerge, startsWith;
 import std.range: replace, assumeSorted;
 import std.base64: Base64;
 import std.array: array;
@@ -217,18 +217,22 @@ final class MetricsService
 	{
 		long fromUnix = SysTime(from, UTC()).toUnixTime!long;
 		long untilUnix = SysTime(until, UTC()).toUnixTime!long;
+		string multiplayerDelayFilter = "";
+		// FIXME: all MP simulators must be delayed, not only main_arena-likes.
+		if (simulatorInstance.startsWith("main_arena"))
+			multiplayerDelayFilter = " AND time < now() - 15m";
 		string queryVessels = "SELECT time, " ~
 			"object_class_name, dead, prototype_name, captain_name, " ~
 			"pos_x, pos_y, vel_x, vel_y FROM replay_data_vessels WHERE " ~
-			`simulator_instance = '` ~ simulatorInstance ~ `' AND ` ~
-			`time < now() - 60m AND time >= ` ~ fromUnix.to!string ~ NANOS ~
+			`simulator_instance = '` ~ simulatorInstance ~ `' ` ~
+			multiplayerDelayFilter ~ ` AND time >= ` ~ fromUnix.to!string ~ NANOS ~
 			` AND time < ` ~ untilUnix.to!string ~ NANOS;
 		// trace(queryVessels);
 		string queryAnimals = "SELECT time, " ~
 			`object_class_name, dead, species, "name", ` ~
 			"pos_x, pos_y, vel_x, vel_y FROM replay_data_animals WHERE " ~
-			`simulator_instance = '` ~ simulatorInstance ~ `' AND ` ~
-			`time < now() - 60m AND time >= ` ~ fromUnix.to!string ~ NANOS ~
+			`simulator_instance = '` ~ simulatorInstance ~ `' ` ~
+			multiplayerDelayFilter ~ ` AND time >= ` ~ fromUnix.to!string ~ NANOS ~
 			` AND time < ` ~ untilUnix.to!string ~ NANOS;
 		// trace(queryAnimals);
 		auto vesselContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryVessels));

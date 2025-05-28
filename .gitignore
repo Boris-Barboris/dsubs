@@ -36,6 +36,7 @@ callgrind.out*
 id_dsubs*
 Thumbs.db
 librequests.a
+.envrc
 
 *dub.selections.json
 
