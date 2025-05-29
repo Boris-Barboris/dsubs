@@ -235,3 +235,16 @@ Not a plugin, but I'd consider Inpainting to be one of the most essential skills
 It shouldn't require so much VRAM to use SDXL. I have RTX3070 8G and it works well in ComfyUI generating 1024X1024
 
 https://github.com/AUTOMATIC1111/stable-diffusion-webui/pull/11757
+
+
+
+
+Among the local models ollama/qwen2.5-coder:32b seems to be the best.
+
+https://www.reddit.com/r/LocalLLaMA/comments/1gpwrq1/how_to_use_qwen25coderinstruct_without/
+
+
+https://www.reddit.com/r/LocalLLaMA/comments/1cvw3s5/my_personal_guide_for_developing_software_with_ai/
+
+https://aider.chat/
+https://github.com/mufeedvh/code2prompt
