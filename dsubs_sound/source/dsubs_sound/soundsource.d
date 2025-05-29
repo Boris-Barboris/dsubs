@@ -583,7 +583,8 @@ version (unittest)
 		loadSpectrumFromImage(q, *cavSpec, "std_propeller_cav.png", 70.0f, 150.0f);
 		cavSpec.addUniformNoise(q, 0.5f);
 		tmpl.baseCavSpectrum = cavSpec;
-		tmpl.tmParams = stdTrochParams();
+		auto trochParams = stdTrochParams();
+		tmpl.tmParams = &trochParams;
 		tmpl.bladeRadius = 4.2f;
 		tmpl.bladeAoA = dgr2rad(30.0);
 		tmpl.critNormalVel = 5.0f;

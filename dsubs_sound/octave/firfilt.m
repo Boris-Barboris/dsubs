@@ -1,4 +1,4 @@
-/*
+#{
 DSubs
 Copyright (C) 2017-2025 Baranin Alexander
 
@@ -14,14 +14,18 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+#}
 sf = 8192; sf2 = sf/2;
-b = fir1( 128, [50, 2500] ./ sf2 , "pass");
-#b = fir1( 50, [1900, 2500] ./ sf2 , "pass");
+#b = fir1( 128, [50, 2500] ./ sf2 , "pass");
+b = fir1( 50, [1900, 2500] ./ sf2 , "pass");
 #b = fir1( 50, [3650, 3750] ./ sf2 , "pass");
 #b = fir1( 50, 3500 / sf2 , "high");
 
+d_synthesized = csvread("native_filter_values.csv");
+
 clf
-[h, w] = freqz (b, [1], 512, sf);
+[h, w] = freqz (d_synthesized, [1], 512, sf);
 freqz_plot (w, h);
+#[h, w] = freqz (b, [1], 512, sf);
+#freqz_plot (w, h);
 csvwrite("filter_values.csv", b);

@@ -1,4 +1,4 @@
-/*
+#{
 DSubs
 Copyright (C) 2017-2025 Baranin Alexander
 
@@ -14,7 +14,7 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+#}
 srate = 128;
 t = linspace(0.0, 2 * pi, srate);
 data = 2.0 * sin(2 * pi * t + 0.07) + 0.5 * sin(5.76 * pi * t + 0.31);

@@ -21,6 +21,7 @@ dsubs_client/dsubs_client
 dsubs_server/dsubs_server
 dsubs_sound/dsubs_sound
 dsubs_sound/octave/filter_values.csv
+dsubs_sound/octave/native_filter_values.csv
 dsubs_sound/dsubs_sound-test-library
 dsubs_sound/dsubs_sound-test-application
 dsubs_sound/libdsubs_sound.a

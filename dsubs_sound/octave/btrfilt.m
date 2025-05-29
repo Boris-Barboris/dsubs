@@ -1,4 +1,4 @@
-/*
+#{
 DSubs
 Copyright (C) 2017-2025 Baranin Alexander
 
@@ -14,7 +14,7 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+#}
 sf = 4096; sf2 = sf/2;
 [b,a] = butter( 15, 600 / sf2 , "high");
 
