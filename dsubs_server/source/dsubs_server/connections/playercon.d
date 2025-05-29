@@ -370,5 +370,7 @@ private:
 			ReplayDataRes res = ReplayDataRes(req.metricsDate, slices);
 			sendMessage(cast(immutable) res);
 		}
+		else
+			info("ignoring replay request since metrics is disabled");
 	}
 }
