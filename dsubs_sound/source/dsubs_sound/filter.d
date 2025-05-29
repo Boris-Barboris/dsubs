@@ -21,6 +21,7 @@ import std.algorithm;
 import std.array;
 import std.csv;
 import std.range;
+import std.math;
 import std.traits;
 import std.stdio;
 import std.string: strip;
@@ -256,3 +257,82 @@ immutable float[] octaveBp1900_2500 = [
 immutable float[] octaveHp3500 = [
 	0.0008895017693282614,-0.001108192884008094,0.001198853049918372,-0.001046810712144222,0.0004922197121350511,0.0005858473275367584,-0.002161209844236898,0.003972250850232683,-0.005500193546094496,0.006046248974717272,-0.004910762497931523,0.001641614908216096,0.003712335693458722,-0.01042302702872873,0.01705368913446635,-0.02162101482651102,0.0219438094284972,-0.01611939409056642,0.003025122950353519,0.01727835926087336,-0.04335500517688493,0.07248376022890009,-0.1010391304378595,0.1250992350193627,-0.1411598035481207,0.1468010993182979,-0.1411598035481207,0.1250992350193627,-0.1010391304378595,0.07248376022890007,-0.04335500517688495,0.01727835926087336,0.003025122950353518,-0.01611939409056641,0.0219438094284972,-0.02162101482651102,0.01705368913446635,-0.01042302702872873,0.003712335693458724,0.001641614908216097,-0.004910762497931524,0.006046248974717278,-0.005500193546094493,0.003972250850232687,-0.002161209844236899,0.0005858473275367583,0.0004922197121350517,-0.001046810712144222,0.001198853049918372,-0.001108192884008095,0.0008895017693282612
 ];
+
+
+float[] hammingWindow(int order)
+{
+	assert(order > 1 && order < 10000);
+	float[] res = new float[order];
+	for (int i = 0; i < order; i++)
+	{
+		res[i] = 0.54f - 0.46f * cos(2.0f * PI * i / (order - 1));
+	}
+	return res;
+}
+
+float sinc(float x)
+{
+	// Sinc function: sin(pi*x) / (pi*x).
+	if (x == 0)
+		return 1.0f;
+	else
+		return sin(PI * x) / (PI * x);
+}
+
+enum FirFilterGoal
+{
+	lowpass,
+	highpass,
+	bandpass
+}
+
+// minFreq is used for highpass and bandpass, maxFreq - for lowpass and bandpass
+float[] firFilterDesign(int order, int minFreq, int maxFreq, FirFilterGoal goal,
+	int samplingRage = GLOBAL_SRATE)
+{
+	// Normalize frequencies by the Nyquist frequency (fs/2)
+	float nyquistFreq = samplingRage / 2.0;
+	float[] idealResponse;
+	final switch (goal)
+	{
+		case FirFilterGoal.lowpass:
+			float wc = maxFreq / nyquistFreq;	// Cutoff frequency for low-pass;
+			idealResponse =
+				iota(0, order).map!(n =>
+					sinc(2.0f * wc * (n - (order - 1) / 2.0f))).array();
+			break;
+		case FirFilterGoal.highpass:
+			float wc = minFreq / nyquistFreq;	// Cutoff frequency for high-pass;
+			idealResponse =
+				iota(0, order).map!(n =>
+					-sinc(2.0f * wc * (n - (order - 1) / 2.0f))).array();
+			idealResponse[order / 2] += 1.0f;	// Add the impulse at the center
+			break;
+		case FirFilterGoal.bandpass:
+			float wcl = minFreq / nyquistFreq;	// Cutoff frequency for high-pass;
+			float wch = maxFreq / nyquistFreq;	// Cutoff frequency for low-pass;
+			idealResponse =
+				iota(0, order).map!(n =>
+					sinc(2.0f * wch * (n - (order - 1) / 2.0f)) -
+					sinc(2.0f * wcl * (n - (order - 1) / 2.0f))).array();
+			break;
+	}
+	// Apply Hamming window
+	float[] window = hammingWindow(order);
+	float[] filterTaps =
+		iota(0, order).map!(i => idealResponse[i] * window[i]).array;
+
+	return filterTaps;
+}
+
+unittest
+{
+	float[] nativeBp1900_2500 = firFilterDesign(50, 1900, 2500, FirFilterGoal.bandpass);
+	for (size_t i = 0; i < nativeBp1900_2500.length; i++)
+	{
+		trace("native: ", nativeBp1900_2500[i], ", octave: ",
+			octaveBp1900_2500[i], ", diff = ",
+			nativeBp1900_2500[i] - octaveBp1900_2500[i]);
+	}
+	trace("native filter values: ", nativeBp1900_2500);
+}
