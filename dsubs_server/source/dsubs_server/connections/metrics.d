@@ -218,37 +218,41 @@ final class MetricsService
 		long fromUnix = SysTime(from, UTC()).toUnixTime!long;
 		long untilUnix = SysTime(until, UTC()).toUnixTime!long;
 		string multiplayerDelayFilter = "";
+		string timeFilter = "";
 		// FIXME: all MP simulators must be delayed, not only main_arena-likes.
 		if (simulatorInstance.startsWith("main_arena"))
+		{
 			multiplayerDelayFilter = " AND time < now() - 15m";
+			// non-arena simulators rarely last long, so no need for time filter.
+			timeFilter = ` AND time >= ` ~ fromUnix.to!string ~ NANOS ~
+			` AND time < ` ~ untilUnix.to!string ~ NANOS;
+		}
 		string queryVessels = "SELECT time, " ~
 			"object_class_name, dead, prototype_name, captain_name, " ~
 			"pos_x, pos_y, vel_x, vel_y FROM replay_data_vessels WHERE " ~
 			`simulator_instance = '` ~ simulatorInstance ~ `' ` ~
-			multiplayerDelayFilter ~ ` AND time >= ` ~ fromUnix.to!string ~ NANOS ~
-			` AND time < ` ~ untilUnix.to!string ~ NANOS;
+			multiplayerDelayFilter ~ timeFilter;
 		// trace(queryVessels);
 		string queryAnimals = "SELECT time, " ~
 			`object_class_name, dead, species, "name", ` ~
 			"pos_x, pos_y, vel_x, vel_y FROM replay_data_animals WHERE " ~
 			`simulator_instance = '` ~ simulatorInstance ~ `' ` ~
-			multiplayerDelayFilter ~ ` AND time >= ` ~ fromUnix.to!string ~ NANOS ~
-			` AND time < ` ~ untilUnix.to!string ~ NANOS;
+			multiplayerDelayFilter ~ timeFilter;
 		// trace(queryAnimals);
 		auto vesselContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryVessels));
 		//trace(vesselContent);
-		// auto animalContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryAnimals));
+		auto animalContent = getContent(m_influxReadUrl, queryParams("epoch", "s", "q", queryAnimals));
 		//trace(animalContent);
 		JSONValue vesselJson = parseJSON(cast(string) vesselContent.data)["results"][0]; // ["series"][0]["values"];
 		if ("series" in vesselJson.object)
 			vesselJson = vesselJson["series"][0]["values"];
 		else
 			vesselJson = JSONValue(string[].init);
-		// JSONValue animalJson = parseJSON(cast(string) animalContent.data)["results"][0]; // ["series"][0]["values"];
-		// if ("series" in animalJson.object)
-		// 	animalJson = animalJson["series"][0]["values"];
-		// else
-		// 	animalJson = JSONValue(string[].init);
+		JSONValue animalJson = parseJSON(cast(string) animalContent.data)["results"][0]; // ["series"][0]["values"];
+		if ("series" in animalJson.object)
+			animalJson = animalJson["series"][0]["values"];
+		else
+			animalJson = JSONValue(string[].init);
 
 		static struct UnifiedReplayObject
 		{
@@ -272,10 +276,10 @@ final class MetricsService
 		}
 
 		/// globally-sorted merged arrays of entities
-		// auto sortedUROs = multiwayMerge!((a, b) => a.unixTime < b.unixTime)(
- 		// 		[vesselJson.array.map!(vj => json2URO(vj)).array,
-		// 		animalJson.array.map!(aj => json2URO(aj, false)).array]);
-		auto sortedUROs = vesselJson.array.map!(vj => json2URO(vj));
+		auto sortedUROs = multiwayMerge!((a, b) => a.unixTime < b.unixTime)(
+ 				[vesselJson.array.map!(vj => json2URO(vj)).array,
+				animalJson.array.map!(aj => json2URO(aj, false)).array]);
+		// auto sortedUROs = vesselJson.array.map!(vj => json2URO(vj));
 
 		ReplaySlice[] res;
 		// slice being formed now

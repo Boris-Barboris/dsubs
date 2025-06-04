@@ -364,9 +364,10 @@ private:
 			Date day = Date.fromISOExtString(req.metricsDate);
 			DateTime from = DateTime(day);
 			DateTime until = DateTime(day + days(1));
-			info("Sending replay data from ", from, " until ", until);
 			ReplaySlice[] slices = Globals.metrics.queryReplaySlices(
 				req.simulatorInstance, from, until);
+			info("Sending ", slices.length, " replay slices for simulator ",
+				req.simulatorInstance, " from ", from, " until ", until);
 			ReplayDataRes res = ReplayDataRes(req.metricsDate, slices);
 			sendMessage(cast(immutable) res);
 		}
