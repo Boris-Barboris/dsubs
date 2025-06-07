@@ -248,3 +248,7 @@ https://www.reddit.com/r/LocalLLaMA/comments/1cvw3s5/my_personal_guide_for_devel
 
 https://aider.chat/
 https://github.com/mufeedvh/code2prompt
+
+
+Prom.ai (условно бесплатный) — лучше работает с архитектурой, точнее передает планировку. Когда я загрузила в него рукой нарисованный эскиз кровати, он сработал корректнее Midjourney. Минус — выдает изображения небольшого разрешения, которые потом приходится увеличивать.
+
