@@ -127,6 +127,9 @@ private Platform loadOpenclLibrary()
 }
 
 
+__gshared size_t g_totalBytesInVram = 0;
+
+
 /// Monochrome single-channel image
 struct Image(T)
 	if (is(T == ubyte) || is(T == float))
@@ -148,6 +151,8 @@ struct Image(T)
 		m_height = height;
 		cl_int err;
 		m_mem = clCreateImage(ctx.m_ctx, flags, &imgFormat, &desc, null, &err);
+		g_totalBytesInVram += size();
+		trace("g_totalBytesInVram: ", g_totalBytesInVram);
 		err.clError();
 	}
 
@@ -215,6 +220,8 @@ struct Buffer
 		scope(failure) release();
 		clEnqueueWriteBuffer(q.m_q, m_mem, true, 0, m_size, data.ptr, 0,
 			null, null).clError;
+		g_totalBytesInVram += size;
+		trace("g_totalBytesInVram: ", g_totalBytesInVram);
 	}
 
 	this(DsubsSoundOpenclCtx ctx, size_t size,
@@ -222,6 +229,8 @@ struct Buffer
 	{
 		cl_int err;
 		m_size = size;
+		g_totalBytesInVram += size;
+		trace("g_totalBytesInVram: ", g_totalBytesInVram);
 		m_mem = clCreateBuffer(ctx.m_ctx, flags, m_size, null, &err);
 		//trace("new buffer pointer ", m_mem);
 		err.clError();
