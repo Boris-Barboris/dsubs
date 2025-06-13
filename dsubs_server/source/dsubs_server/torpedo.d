@@ -787,7 +787,7 @@ final class TorpedoGuidance: IGuidance
 				trace(v, " is in explosion radius");
 		}
 		m_torpedo.kill("detonation", null);
-		if (m_detonationSoundProto.tds)
+		if (m_detonationSoundProto)
 		{
 			SoundSource detonationSoundSource = new PrerecordedSoundSource(
 				new Transform2D(explosionCenter),
