@@ -137,18 +137,17 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 			animal.soundTimings.meanSongPause /= 2;
 			animal.soundTimings.songPauseVariance /= 2;
 			animal.randomSounds = [
-				PrerecordedSoundPrototype(
-					Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming1.wav"),
+				new PrerecordedSoundConfig(
+					"../dsubs_sound/scenario_sounds/man_screaming1.wav",
 					9.0f, 95.0f),
-				PrerecordedSoundPrototype(
-					Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming2.wav"),
+				new PrerecordedSoundConfig(
+					"../dsubs_sound/scenario_sounds/man_screaming2.wav",
 					9.0f, 95.0f),
-				PrerecordedSoundPrototype(
-					Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming3.wav"),
+				new PrerecordedSoundConfig(
+					"../dsubs_sound/scenario_sounds/man_screaming3.wav",
 					9.0f, 95.0f),
 			];
 		}
-		// TODO: add sick screams
 		animal.register(m_simulator);
 		return animal;
 	}
@@ -266,13 +265,11 @@ regulations. You are NOT TO USE your main active sonar at ranges less than
 				cast(usecs_t) 20 * 1000_000L
 			);
 			jukebox.randomSounds = [
-				PrerecordedSoundPrototype(
-					Globals.sctx.getWavFile(
-						"../dsubs_sound/scenario_sounds/Monrroe - Out of Time (feat. Zara Kershaw).wav"),
+				new PrerecordedSoundConfig(
+						"../dsubs_sound/scenario_sounds/Monrroe - Out of Time (feat. Zara Kershaw).wav",
 					10.0f, 105.0f),
-				PrerecordedSoundPrototype(
-					Globals.sctx.getWavFile(
-						"../dsubs_sound/scenario_sounds/Epiphany-TwoThirds.wav"),
+				new PrerecordedSoundConfig(
+						"../dsubs_sound/scenario_sounds/Epiphany-TwoThirds.wav",
 					10.0f, 105.0f),
 			];
 			jukebox.setSimulator(m_simulator);

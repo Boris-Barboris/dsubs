@@ -512,6 +512,7 @@ final class Simulator
 			animals.shutdownAll();
 			acous.clean();
 		}
+		Globals.sctx.runWavFileGC();
 	}
 
 	private

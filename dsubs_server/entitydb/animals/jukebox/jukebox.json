@@ -4,11 +4,9 @@
     "maxSpeed": 6,
     "randomSoundConfigs": [
         {
-            "proto": {
-                "addToIlevel": 88,
-                "minOmniFactor": 0,
-                "radius": 9
-            },
+            "addToIlevel": 88,
+            "minOmniFactor": 0,
+            "radius": 9,
             "tdsFilename": "..\/dsubs_sound\/big_iron_8192.wav"
         }
     ],

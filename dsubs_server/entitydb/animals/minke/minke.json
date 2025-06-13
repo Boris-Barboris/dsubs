@@ -4,27 +4,21 @@
     "maxSpeed": 8,
     "randomSoundConfigs": [
         {
-            "proto": {
-                "addToIlevel": 95,
-                "minOmniFactor": 0,
-                "radius": 9
-            },
+            "addToIlevel": 95,
+            "minOmniFactor": 0,
+            "radius": 9,
             "tdsFilename": "..\/dsubs_sound\/bio_sounds\/minke_whale1_8192.wav"
         },
         {
-            "proto": {
-                "addToIlevel": 95,
-                "minOmniFactor": 0,
-                "radius": 9
-            },
+            "addToIlevel": 95,
+            "minOmniFactor": 0,
+            "radius": 9,
             "tdsFilename": "..\/dsubs_sound\/bio_sounds\/minke_whale_boing1_8192.wav"
         },
         {
-            "proto": {
-                "addToIlevel": 95,
-                "minOmniFactor": 0,
-                "radius": 9
-            },
+            "addToIlevel": 95,
+            "minOmniFactor": 0,
+            "radius": 9,
             "tdsFilename": "..\/dsubs_sound\/bio_sounds\/minke_whale_boing2_8192.wav"
         }
     ],

@@ -184,20 +184,16 @@
     "tubes": [
         {
             "firingSoundConfig": {
-                "proto": {
-                    "addToIlevel": 92,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 92,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/launch1_8192.wav"
             },
             "firingTime": 3000000,
             "floodSoundConfig": {
-                "proto": {
-                    "addToIlevel": 82,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 82,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/hissing1_8192.wav"
             },
             "floodTime": 9000000,
@@ -211,11 +207,9 @@
             },
             "openFlowNoiseMult": 3,
             "openSoundConfig": {
-                "proto": {
-                    "addToIlevel": 82,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 82,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/hatchopen1_8192.wav"
             },
             "openTime": 6000000,
@@ -229,20 +223,16 @@
         },
         {
             "firingSoundConfig": {
-                "proto": {
-                    "addToIlevel": 90,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 90,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/launch1_8192.wav"
             },
             "firingTime": 3000000,
             "floodSoundConfig": {
-                "proto": {
-                    "addToIlevel": 75,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 75,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/hissing2_5sec_8192.wav"
             },
             "floodTime": 5000000,
@@ -256,11 +246,9 @@
             },
             "openFlowNoiseMult": 1,
             "openSoundConfig": {
-                "proto": {
-                    "addToIlevel": 75,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 75,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/hatchopen1_8192.wav"
             },
             "openTime": 6000000,
@@ -274,20 +262,16 @@
         },
         {
             "firingSoundConfig": {
-                "proto": {
-                    "addToIlevel": 90,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 90,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/launch1_8192.wav"
             },
             "firingTime": 3000000,
             "floodSoundConfig": {
-                "proto": {
-                    "addToIlevel": 75,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 75,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/hissing2_5sec_8192.wav"
             },
             "floodTime": 5000000,
@@ -301,11 +285,9 @@
             },
             "openFlowNoiseMult": 1,
             "openSoundConfig": {
-                "proto": {
-                    "addToIlevel": 75,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 75,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/hatchopen1_8192.wav"
             },
             "openTime": 6000000,
@@ -319,20 +301,16 @@
         },
         {
             "firingSoundConfig": {
-                "proto": {
-                    "addToIlevel": 92,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 92,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/launch1_8192.wav"
             },
             "firingTime": 3000000,
             "floodSoundConfig": {
-                "proto": {
-                    "addToIlevel": 82,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 82,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/hissing1_8192.wav"
             },
             "floodTime": 9000000,
@@ -346,11 +324,9 @@
             },
             "openFlowNoiseMult": 3,
             "openSoundConfig": {
-                "proto": {
-                    "addToIlevel": 82,
-                    "minOmniFactor": 0,
-                    "radius": 4
-                },
+                "addToIlevel": 82,
+                "minOmniFactor": 0,
+                "radius": 4,
                 "tdsFilename": "..\/dsubs_sound\/hatchopen1_8192.wav"
             },
             "openTime": 6000000,

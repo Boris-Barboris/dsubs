@@ -152,7 +152,7 @@ struct Image(T)
 		cl_int err;
 		m_mem = clCreateImage(ctx.m_ctx, flags, &imgFormat, &desc, null, &err);
 		g_totalBytesInVram += size();
-		trace("g_totalBytesInVram: ", g_totalBytesInVram);
+		// trace("g_totalBytesInVram: ", g_totalBytesInVram);
 		err.clError();
 	}
 
@@ -168,7 +168,10 @@ struct Image(T)
 		if (!m_released)
 		{
 			if (m_mem != cl_mem.init)
+			{
 				clReleaseMemObject(m_mem);
+				g_totalBytesInVram -= size();
+			}
 			m_released = true;
 		}
 	}
@@ -216,12 +219,12 @@ struct Buffer
 		m_size = data.length;
 		m_mem = clCreateBuffer(q.m_ctx.m_ctx, flags, m_size, null, &err);
 		err.clError();
-		//trace("new buffer pointer ", m_mem);
+		// trace("new buffer pointer ", m_mem);
 		scope(failure) release();
 		clEnqueueWriteBuffer(q.m_q, m_mem, true, 0, m_size, data.ptr, 0,
 			null, null).clError;
 		g_totalBytesInVram += size;
-		trace("g_totalBytesInVram: ", g_totalBytesInVram);
+		// trace("g_totalBytesInVram: ", g_totalBytesInVram);
 	}
 
 	this(DsubsSoundOpenclCtx ctx, size_t size,
@@ -230,7 +233,7 @@ struct Buffer
 		cl_int err;
 		m_size = size;
 		g_totalBytesInVram += size;
-		trace("g_totalBytesInVram: ", g_totalBytesInVram);
+		// trace("g_totalBytesInVram: ", g_totalBytesInVram);
 		m_mem = clCreateBuffer(ctx.m_ctx, flags, m_size, null, &err);
 		//trace("new buffer pointer ", m_mem);
 		err.clError();
@@ -258,6 +261,7 @@ struct Buffer
 			{
 				//printf("releasing buffer %p\n", m_mem);
 				clReleaseMemObject(m_mem);
+				g_totalBytesInVram -= size();
 			}
 			m_released = true;
 		}
@@ -270,10 +274,12 @@ struct Buffer
 		cl_mem m_mem;
 	}
 
+	@property bool released() const { return m_released; }
+
 	package @property const(cl_mem)* mem() const return { return &m_mem; }
 
 	/// buffer data size in bytes
-	@property size_t size() const { return m_size; }
+	@property size_t size() const nothrow @nogc { return m_size; }
 
 
 package:
@@ -282,6 +288,8 @@ package:
 	{
 		assert(m_mem !is cl_mem.init);
 		assert(dest.m_size == m_size);
+		assert(!m_released);
+		assert(!dest.m_released);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
@@ -302,6 +310,8 @@ package:
 		assert(m_mem !is cl_mem.init);
 		assert(dest.m_size >= count);
 		assert(m_size >= count);
+		assert(!m_released);
+		assert(!dest.m_released);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
@@ -319,6 +329,7 @@ package:
 	AsyncEvent enqueueFullFill(T)(CommandQueue q, const T val, const(AsyncEvent)* onlyAfter)
 	{
 		assert(m_mem !is cl_mem.init);
+		assert(!m_released);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
@@ -337,6 +348,7 @@ package:
 		const(AsyncEvent)* onlyAfter)
 	{
 		assert(m_mem !is cl_mem.init);
+		assert(!m_released);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
@@ -355,6 +367,7 @@ package:
 	{
 		assert(m_mem !is cl_mem.init);
 		assert(data.length + offset <= m_size);
+		assert(!m_released);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
@@ -373,6 +386,7 @@ package:
 	{
 		assert(m_mem !is cl_mem.init);
 		assert(source.length == m_size);
+		assert(!m_released);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 		{
@@ -391,6 +405,7 @@ package:
 	AsyncEvent enqueueFullRead(CommandQueue q, void* dest, const(AsyncEvent)* onlyAfter)
 	{
 		assert(m_mem !is cl_mem.init);
+		assert(!m_released);
 		AsyncEvent evt;
 		if (onlyAfter is null)
 			clEnqueueReadBuffer(q.m_q, m_mem, false, 0, m_size, dest, 0, null, &evt.cl).clError;
@@ -406,6 +421,7 @@ package:
 	void fullRead(CommandQueue q, void* dest, const(AsyncEvent)* onlyAfter)
 	{
 		assert(m_mem !is cl_mem.init);
+		assert(!m_released);
 		if (onlyAfter is null)
 		{
 			clEnqueueReadBuffer(q.m_q, m_mem, true, 0, m_size, dest,
@@ -680,7 +696,16 @@ final class DsubsSoundOpenclCtx
 
 		// global stuff
 		FIRFilter*[string] m_filters;
-		VarTds*[string] m_wavFiles;
+
+		struct WavFileRecord
+		{
+			string fileName;
+			VarTds* varTds;
+			uint refCounter;
+		}
+
+		WavFileRecord[string] m_wavFiles;
+		uint[string] m_refCount;
 	}
 
 	package FIRFilter* getFilter(string name)
@@ -702,21 +727,52 @@ final class DsubsSoundOpenclCtx
 		queue(0).finish();
 	}
 
-	VarTds* getWavFile(string filePath)
+	/// throws when the file does not exist
+	void checkWavFile(string filePath)
 	{
 		synchronized(m_wavMut)
 		{
-			VarTds** res = filePath in m_wavFiles;
+			WavFileRecord* res = filePath in m_wavFiles;
 			if (res)
-				return *res;
+				return;
+		}
+		int byteCount;
+		int srate;
+		trace("checking wav ", filePath);
+		checkWavFileHeader(filePath, byteCount, srate);
+	}
+
+	VarTds* getWavFile(string filePath, bool refCount = true)
+	{
+		synchronized(m_wavMut)
+		{
+			WavFileRecord* res = filePath in m_wavFiles;
+			if (res)
+			{
+				if (refCount)
+				{
+					res.refCounter++;
+					// trace("res.refCounter++ ", filePath, " current count ",
+					// 	res.refCounter);
+				}
+				return res.varTds;
+			}
 		}
 		synchronized(m_wavLock.get(filePath))
 		{
 			synchronized(m_wavMut)
 			{
-				VarTds** res = filePath in m_wavFiles;
+				WavFileRecord* res = filePath in m_wavFiles;
 				if (res)
-					return *res;
+				{
+					if (refCount)
+					{
+						res.refCounter++;
+						// trace("res.refCounter++ ", filePath, " current count ",
+						// 	res.refCounter);
+					}
+					return res.varTds;
+				}
 			}
 			short[] samples;
 			int byteCount;
@@ -729,8 +785,90 @@ final class DsubsSoundOpenclCtx
 			VarTds* newTds = new VarTds(m_queues[0], samplesFloat);
 			synchronized(m_wavMut)
 			{
-				m_wavFiles[filePath] = newTds;
+				m_wavFiles[filePath] = WavFileRecord(filePath, newTds, 1);
 				return newTds;
+			}
+		}
+	}
+
+	enum size_t WavVramGCLimit = 200_000_000L;	// TODO: move to ENV variable
+
+	void releaseWavFileReference(string filePath, ref VarTds* ptrToClear)
+	{
+		synchronized(m_wavLock.get(filePath))
+		{
+			synchronized(m_wavMut)
+			{
+				WavFileRecord* res = filePath in m_wavFiles;
+				if (res)
+				{
+					assert(res.refCounter > 0);
+					res.refCounter--;
+					// trace("res.refCounter-- ", filePath, " current count ", res.refCounter);
+					if (res.refCounter == 0)
+					{
+						if (g_totalBytesInVram <= WavVramGCLimit)
+						{
+							// trace("VRAM usage is still modest (", g_totalBytesInVram,
+							// 	"), skipping unload for ", filePath);
+							return;
+						}
+						if (res.varTds.length >= GLOBAL_SRATE * 10)
+						{
+							trace("res.refCounter == 0, releasing ", filePath);
+							res.varTds.release();
+							m_wavFiles.remove(filePath);
+							ptrToClear = null;
+						}
+						else
+						{
+							// trace("res.refCounter == 0, skipping unload for small sound",
+							// 	filePath);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	void runWavFileGC()
+	{
+		synchronized(m_wavMut)
+		{
+			trace("WAVGC report: g_totalBytesInVram == ", g_totalBytesInVram);
+			if (g_totalBytesInVram <= WavVramGCLimit / 2)
+			{
+				trace("WAVGC skipping due to modest VRAM consumption");
+				return;
+			}
+			string[] filePathsToRelease;
+			foreach (pair; m_wavFiles.byKeyValue)
+			{
+				if (pair.value.refCounter == 0)
+				{
+					filePathsToRelease ~= pair.key;
+					trace("WAVGC: res.refCounter == 0, releasing ", pair.key);
+					pair.value.varTds.release();
+				}
+				else
+					trace("WAVGC report: ", pair.key, " refCounter == ",
+						pair.value.refCounter);
+			}
+			foreach (filePath; filePathsToRelease)
+				m_wavFiles.remove(filePath);
+		}
+	}
+
+	int getWavFileRefCount(string filePath)
+	{
+		synchronized(m_wavLock.get(filePath))
+		{
+			synchronized(m_wavMut)
+			{
+				WavFileRecord* res = filePath in m_wavFiles;
+				if (res)
+					return res.refCounter;
+				return 0;
 			}
 		}
 	}

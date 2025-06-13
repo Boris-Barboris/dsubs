@@ -26,11 +26,9 @@
     "description": "\"Tornado\" supercavitating torpedo.\nHas no sensors and relies solely on magnetic fuse and\nlarge explosive charge. Effective blast radius is only about 100m.\n\n\nSensors: none.\nActive speed: 90 m\/s.\nInactive speed: 30 m\/s.\nMax range: 2700m.\n",
     "detonationMassK": 7.30000019073486328,
     "detonationSoundProto": {
-        "proto": {
-            "addToIlevel": 143,
-            "minOmniFactor": 0.00200000009499490261,
-            "radius": 40
-        },
+        "addToIlevel": 143,
+        "minOmniFactor": 0.00200000009499490261,
+        "radius": 40,
         "tdsFilename": "..\/dsubs_sound\/explosion1_8192.wav"
     },
     "entityType": "Torpedo",

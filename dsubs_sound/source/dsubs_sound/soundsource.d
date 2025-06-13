@@ -76,6 +76,10 @@ abstract class SoundSource
 	/// Must be invoked by simulator in postAcousticsUpdate.
 	Event!(void delegate()) onPostAcoustics;
 
+	/// Release reference counters that the library deems necessary to release.
+	/// Call when you know that the sound source will no longer be used.
+	void release() {}
+
 	/** Generate band intensity and time-domain signal(s) for a hydrophone.
 	'onTdsReady' callback must be called in order to imprint the time-domain
 	signal onto the listener. SoundSource is responsible for signal distortion
@@ -485,12 +489,23 @@ abstract class FixedLengthSoundSource: FiniteSoundSource
 }
 
 
-struct PrerecordedSoundPrototype
+class PrerecordedSoundPrototype
 {
-	VarTds* tds;
 	float radius;
 	dB addToIlevel = 0.0f;
 	float minOmniFactor = 0.0f;
+
+	protected VarTds* m_tds;
+
+	@property VarTds* tds() { return m_tds; }
+
+	// use to increase the reference counter
+	void incRef() {}
+
+	// use to decrease the reference counter
+	void decRef() {}
+
+	int getRefCount() { return 0; }
 }
 
 
@@ -498,6 +513,8 @@ final class PrerecordedSoundSource: FixedLengthSoundSource
 {
 	this(Transform2D t, PrerecordedSoundPrototype proto, size_t* sampleOffset = null)
 	{
+		assert(proto);
+		proto.incRef();
 		assert(proto.tds);
 		super(t, proto.tds.length, sampleOffset);
 		m_proto = proto;
@@ -506,6 +523,15 @@ final class PrerecordedSoundSource: FixedLengthSoundSource
 	private
 	{
 		PrerecordedSoundPrototype m_proto;
+		bool m_released;
+	}
+
+	override void release()
+	{
+		assert(!m_released);
+		// trace("releasing PrerecordedSoundSource");
+		m_proto.decRef();
+		m_released = true;
 	}
 
 	override @property float radius() const { return m_proto.radius; }
@@ -521,6 +547,8 @@ final class PrerecordedSoundSource: FixedLengthSoundSource
 	{
 		assert(minFreq >= 1);
 		assert(maxFreq <= ISpectrum.MAX_FREQ);
+		assert(!m_released);
+		// assert(m_proto.getRefCount() > 0);
 		float range = max(10.0f, (listenerPos - position).length);
 		float prevRange = max(10.0f, (prevListenerPos - prevPos).length);
 		float avgRange = 0.5f * (range + prevRange);
@@ -536,6 +564,11 @@ final class PrerecordedSoundSource: FixedLengthSoundSource
 		{
 			prevDestOffset += -prevSourceOffset;
 			prevSourceOffset = 0;
+		}
+		if (m_proto.tds.released)
+		{
+			trace("Detected released buffer of prototype ", m_proto, " with refcount ",
+				m_proto.getRefCount());
 		}
 		m_proto.tds.copyTo(q, q.s_vartds2sec,
 			prevSourceOffset.to!size_t, prevDestOffset);

@@ -68,11 +68,9 @@
     "description": "\"Electra\" medium wire-guided torpedo.\nPassive sensor is only effective against cavitating targets.\n\nSensors: active sonar or passive hydrophone.\nEffective speed range (active): 19-25 m\/s.\nEffective speed range (passive): 19-25 m\/s.\nMax range (25m\/s): 6900m.\nMax range (19m\/s): 10100m.\nSearch patterns: snake, spiral.\n",
     "detonationMassK": 4.5,
     "detonationSoundProto": {
-        "proto": {
-            "addToIlevel": 143,
-            "minOmniFactor": 0.00200000009499490261,
-            "radius": 40
-        },
+        "addToIlevel": 143,
+        "minOmniFactor": 0.00200000009499490261,
+        "radius": 40,
         "tdsFilename": "..\/dsubs_sound\/explosion1_8192.wav"
     },
     "entityType": "Torpedo",

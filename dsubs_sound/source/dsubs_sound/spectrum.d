@@ -173,6 +173,8 @@ struct VarTds
 
 	void release() @nogc nothrow { buf.release(); }
 
+	@property bool released() const { return buf.released; }
+
 	@property size_t length() const { return buf.size / float.sizeof; }
 
 	pragma(inline)

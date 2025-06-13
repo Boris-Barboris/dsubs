@@ -1,3 +1,4 @@
+
 /*
 DSubs
 Copyright (C) 2017-2025 Baranin Alexander
@@ -166,13 +167,6 @@ struct TubeConfig
 	{
 		mountPointConfig.setCenterFromModel(model);
 		tmpl.mount = mountPointConfig.mountPoint;
-	}
-
-	void buildSoundProtos(DsubsSoundOpenclCtx ctx)
-	{
-		floodSoundConfig.buildPrototype(ctx);
-		openSoundConfig.buildPrototype(ctx);
-		firingSoundConfig.buildPrototype(ctx);
 	}
 }
 
@@ -384,7 +378,7 @@ final class Tube: IFlowNoiseMultiplier
 			m_wireGuidedWeapon = w;
 		size_t soundOffset = dsubs_sound.common.uniform!("[]", size_t, size_t)(
 			0, GLOBAL_SRATE / 8);
-		startPlayingSound(&m_proto.firingSoundConfig.proto, &soundOffset);
+		startPlayingSound(m_proto.firingSoundConfig, &soundOffset);
 		TubeOperationResult res = TubeOperationResult(
 			true, false, true, wf.name, wireGuidanceId, false);
 		return res;
@@ -529,12 +523,12 @@ final class Tube: IFlowNoiseMultiplier
 		}
 	}
 
-	private void startPlayingSound(const(PrerecordedSoundPrototype)* proto, size_t* sampleOffset = null)
+	private void startPlayingSound(const PrerecordedSoundPrototype proto, size_t* sampleOffset = null)
 	{
-		if (proto is null || proto.tds is null)
+		if (proto is null)
 			return;
 		PrerecordedSoundSource currentSound = new PrerecordedSoundSource(
-			m_transform, cast() *proto, sampleOffset);
+			m_transform, cast() proto, sampleOffset);
 		m_sub.simulator.acous.registerSource(currentSound);
 	}
 
@@ -547,7 +541,7 @@ final class Tube: IFlowNoiseMultiplier
 			case TubeState.dry:
 			{
 				m_state = TubeState.flooding;
-				startPlayingSound(&m_proto.floodSoundConfig.proto);
+				startPlayingSound(m_proto.floodSoundConfig);
 				break;
 			}
 			case TubeState.flooded:
@@ -555,19 +549,19 @@ final class Tube: IFlowNoiseMultiplier
 				if (m_desiredState > TubeState.flooded)
 				{
 					m_state = TubeState.opening;
-					startPlayingSound(&m_proto.openSoundConfig.proto);
+					startPlayingSound(m_proto.openSoundConfig);
 				}
 				else
 				{
 					m_state = TubeState.drying;
-					startPlayingSound(&m_proto.floodSoundConfig.proto);
+					startPlayingSound(m_proto.floodSoundConfig);
 				}
 				break;
 			}
 			case TubeState.open:
 			{
 				m_state = TubeState.closing;
-				startPlayingSound(&m_proto.openSoundConfig.proto);
+				startPlayingSound(m_proto.openSoundConfig);
 				break;
 			}
 			default:

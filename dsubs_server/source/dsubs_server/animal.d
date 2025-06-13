@@ -71,7 +71,7 @@ final class Animal: Killable, IHasTransform, IHasRigidBody
 		return (transform.wposition - m_destination).length < 30.0f;
 	}
 
-	@property ref PrerecordedSoundPrototype[] randomSounds()
+	@property ref PrerecordedSoundConfig[] randomSounds()
 	{
 		return m_jukebox.randomSounds;
 	}
@@ -194,8 +194,7 @@ final class AnimalFactory
 	final Animal build(string name)
 	{
 		Animal res = new Animal(cast() this);
-		res.m_jukebox.randomSounds = animalConfig.randomSoundConfigs.map!(
-			rs => rs.proto).array;
+		res.m_jukebox.randomSounds = animalConfig.randomSoundConfigs;
 		res.m_jukebox.soundTimings = soundTimings;
 		res.m_name = name;
 		res.m_rigidBody.mass = mass;

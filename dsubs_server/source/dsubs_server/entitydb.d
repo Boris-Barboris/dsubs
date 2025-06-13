@@ -188,7 +188,7 @@ final class EntityDb
 		m_objModelsLockMap = new LockMap();
 		info("Building entity database");
 		loadFromDirectory("entitydb/");
-		preloadScenarioSounds();
+		checkScenarioSounds();
 		sanityCheckDb();
 		immutable EntityDbStruct enititydb = immutable EntityDbStruct(
 			m_propulsors.values.filter!(a => a.playable).map!(
@@ -337,8 +337,6 @@ private:
 	{
 		AnimalFactory af = new AnimalFactory();
 		deserializeJson(af.animalConfig, jv);
-		foreach (ref randomSound; af.randomSoundConfigs)
-			randomSound.buildPrototype(Globals.sctx);
 		synchronized(this)
 		{
 			m_animals[af.species] = af;
@@ -350,8 +348,6 @@ private:
 	{
 		TorpedoFactory tf = new TorpedoFactory();
 		deserializeJson(tf.torpedoConfig, jv);
-		if (tf.detonationSoundProto.tdsFilename.length > 0)
-			tf.detonationSoundProto.buildPrototype(Globals.sctx);
 		synchronized(this)
 		{
 			m_weapons[tf.name] = tf;
@@ -414,8 +410,6 @@ private:
 			foreach (ref tubeConfig; fc.tubes)
 				tubeConfig.setCenterFromModel(*objModel);
 		}
-		foreach (ref tubeConfig; fc.tubes)
-			tubeConfig.buildSoundProtos(Globals.sctx);
 		sf.propulsionMounts = fc.propulsionMounts.map!(mpc => mpc.mountPoint).array;
 		sf.hprots = fc.hydrophones;
 		enforce(fc.activeSonars.length <= 1,
@@ -434,16 +428,16 @@ private:
 		trace("Finished loading Submarine ", sf.name);
 	}
 
-	void preloadScenarioSounds()
+	void checkScenarioSounds()
 	{
-		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming1.wav");
-		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming2.wav");
-		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/man_screaming3.wav");
-		Globals.sctx.getWavFile(
+		Globals.sctx.checkWavFile("../dsubs_sound/scenario_sounds/man_screaming1.wav");
+		Globals.sctx.checkWavFile("../dsubs_sound/scenario_sounds/man_screaming2.wav");
+		Globals.sctx.checkWavFile("../dsubs_sound/scenario_sounds/man_screaming3.wav");
+		Globals.sctx.checkWavFile(
 			"../dsubs_sound/scenario_sounds/Monrroe - Out of Time (feat. Zara Kershaw).wav");
-		Globals.sctx.getWavFile(
+		Globals.sctx.checkWavFile(
 			"../dsubs_sound/scenario_sounds/Epiphany-TwoThirds.wav");
-		Globals.sctx.getWavFile("../dsubs_sound/scenario_sounds/sos.wav");
+		Globals.sctx.checkWavFile("../dsubs_sound/scenario_sounds/sos.wav");
 	}
 
 }

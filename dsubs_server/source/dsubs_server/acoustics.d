@@ -22,7 +22,7 @@ import std.algorithm.setops: cartesianProduct;
 import dsubs_common.containers.array;
 
 import dsubs_sound.activesonar;
-import dsubs_sound.common: GLOBAL_SRATE;
+import dsubs_sound.common: GLOBAL_SRATE, dB;
 import dsubs_sound.hydrophone;
 import dsubs_sound.soundsource;
 import dsubs_sound.spectrum;
@@ -124,6 +124,8 @@ final class AcousticEnv
 			s.release();
 		m_sonars.length = 0;
 		m_reflectors.length = 0;
+		foreach (s; m_sources)
+			s.release();
 		m_sources.length = 0;
 	}
 
@@ -258,8 +260,9 @@ final class AcousticEnv
 			else
 			{
 				// source is no longer active and must be unregistered
-				m_sources[i] = m_sources[$-1];
+				m_sources[i] = m_sources[$-1];	// unstable remove
 				m_sources.length--;
+				s.release();
 			}
 		}
 	}
@@ -267,16 +270,55 @@ final class AcousticEnv
 
 
 // Serializable
-struct PrerecordedSoundConfig
+final class PrerecordedSoundConfig: PrerecordedSoundPrototype
 {
 	string tdsFilename;
-	PrerecordedSoundPrototype proto;
-	alias proto this;
 
-	void buildPrototype(DsubsSoundOpenclCtx ctx)
+	this() {}
+
+	this(string fileName, float radius, dB addToIlevel, float minOmniFactor = 0.0f)
 	{
-		if (proto.tds is null)
-			proto.tds = ctx.getWavFile(tdsFilename);
+		tdsFilename = fileName;
+		this.radius = radius;
+		this.addToIlevel = addToIlevel;
+		this.minOmniFactor = minOmniFactor;
+	}
+
+	override void incRef()
+	{
+		// trace("PrerecordedSoundConfig incRef: ", tdsFilename);
+		// increases refcount
+		auto varTdsPtr = Globals.sctx.getWavFile(tdsFilename, true);
+		if (m_tds is null)
+			m_tds = varTdsPtr;
+	}
+
+	override VarTds* tds()
+	{
+		if (m_tds && m_tds.released)
+		{
+			// m_tds was released through another PrerecordedSoundConfig referencing
+			// the same tdsFilename
+			m_tds = Globals.sctx.getWavFile(tdsFilename, false);
+		}
+		return m_tds;
+	}
+
+	override void decRef()
+	{
+		if (tdsFilename && m_tds)
+		{
+			assert(!m_tds.released);
+			// trace("PrerecordedSoundConfig decRef: ", tdsFilename);
+			Globals.sctx.releaseWavFileReference(tdsFilename, m_tds);
+		}
+	}
+
+	override int getRefCount()
+	{
+		int res = Globals.sctx.getWavFileRefCount(tdsFilename);
+		// trace("tdsFilename ", tdsFilename, " refCount is ", res);
+		return res;
 	}
 }
 
@@ -316,7 +358,7 @@ struct JukeboxSoundTimings
 /// Set of prerecorded sounds that plays itself with specified periodicity
 class Jukebox
 {
-	PrerecordedSoundPrototype[] randomSounds;
+	PrerecordedSoundConfig[] randomSounds;
 	JukeboxSoundTimings soundTimings;
 
 	private
@@ -380,8 +422,8 @@ class Jukebox
 			// spawn new sound source
 			size_t sourceIdx = uniform!"[)"(0, randomSounds.length);
 			// info("starting song");
-			m_currentSoundSource = new PrerecordedSoundSource(m_transform,
-				randomSounds[sourceIdx]);
+			PrerecordedSoundPrototype proto = randomSounds[sourceIdx];
+			m_currentSoundSource = new PrerecordedSoundSource(m_transform, proto);
 			m_currentSoundSource.owner = m_owner;
 			m_simulator.acous.registerSource(m_currentSoundSource);
 			m_nextSoundStart =
@@ -393,6 +435,9 @@ class Jukebox
 	void shutdown()
 	{
 		if (m_currentSoundSource && !m_currentSoundSource.finished)
+		{
 			m_simulator.acous.unregisterSource(m_currentSoundSource);
+			m_currentSoundSource.release();
+		}
 	}
 }

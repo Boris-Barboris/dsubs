@@ -4,27 +4,21 @@
     "maxSpeed": 13,
     "randomSoundConfigs": [
         {
-            "proto": {
-                "addToIlevel": 100,
-                "minOmniFactor": 0,
-                "radius": 9
-            },
+            "addToIlevel": 100,
+            "minOmniFactor": 0,
+            "radius": 9,
             "tdsFilename": "..\/dsubs_sound\/bio_sounds\/orca1_8192.wav"
         },
         {
-            "proto": {
-                "addToIlevel": 100,
-                "minOmniFactor": 0,
-                "radius": 9
-            },
+            "addToIlevel": 100,
+            "minOmniFactor": 0,
+            "radius": 9,
             "tdsFilename": "..\/dsubs_sound\/bio_sounds\/orca2_8192.wav"
         },
         {
-            "proto": {
-                "addToIlevel": 100,
-                "minOmniFactor": 0,
-                "radius": 9
-            },
+            "addToIlevel": 100,
+            "minOmniFactor": 0,
+            "radius": 9,
             "tdsFilename": "..\/dsubs_sound\/bio_sounds\/orca3_8192.wav"
         }
     ],

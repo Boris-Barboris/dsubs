@@ -68,11 +68,9 @@
     "description": "\"Minoga\" heavy wire-guided torpedo.\nTip: passive sensor is only effective against loud targets.\n\nSensors: active sonar or passive hydrophone.\nEffective speed range (active): 21-29 m\/s.\nEffective speed range (passive): 21-26 m\/s.\nMax range (29m\/s): 8000m.\nMax range (21m\/s): 11200m.\nSearch patterns: straight, snake, spiral.\n",
     "detonationMassK": 4.5,
     "detonationSoundProto": {
-        "proto": {
-            "addToIlevel": 145,
-            "minOmniFactor": 0.00200000009499490261,
-            "radius": 40
-        },
+        "addToIlevel": 145,
+        "minOmniFactor": 0.00200000009499490261,
+        "radius": 40,
         "tdsFilename": "..\/dsubs_sound\/explosion1_8192.wav"
     },
     "entityType": "Torpedo",

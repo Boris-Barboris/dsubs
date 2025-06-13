@@ -4,11 +4,9 @@
     "maxSpeed": 6,
     "randomSoundConfigs": [
         {
-            "proto": {
-                "addToIlevel": 92,
-                "minOmniFactor": 0,
-                "radius": 5
-            },
+            "addToIlevel": 92,
+            "minOmniFactor": 0,
+            "radius": 5,
             "tdsFilename": "..\/dsubs_sound\/bio_sounds\/mulloway1_8192.wav"
         }
     ],
