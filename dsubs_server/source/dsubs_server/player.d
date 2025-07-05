@@ -143,6 +143,12 @@ final class Player: Captain
 		static shared int s_playerCount = 0;
 	}
 
+	@property bool isDeveloper() const
+	{
+		return m_username == "admin" || m_username == "Boris-Barboris" ||
+			Globals.database is null;
+	}
+
 	static int getPlayersOnline()
 	{
 		return atomicLoad(s_playerCount);
@@ -888,6 +894,75 @@ final class Player: Captain
 		if (s.dead)
 			unsetSubmarine(s);
 	}
+
+	//
+	// Observer section
+	//
+
+	// Player is currently observing this simulator.
+	// Reset to null when connection is closed.
+	private Simulator m_observedSimulator;
+
+	final @property Simulator observedSimulator()
+	{
+		return atomicLoad(m_observedSimulator);
+	}
+
+	// called from the simulator when evicting the observer
+	void unsetObservedSimulator()
+	{
+		atomicStore(m_observedSimulator, null);
+	}
+
+	void stopObservingSimulator()
+	{
+		Simulator oldObservedSim = m_observedSimulator;
+		if (oldObservedSim)
+		{
+			synchronized(oldObservedSim.simMut.reader)
+			{
+				oldObservedSim.unregisterObserver(m_username);
+				assert(m_observedSimulator is null);
+			}
+		}
+	}
+
+	ObservableEntityUpdate[] observeSimulator(Simulator rhs)
+	{
+		assert(rhs);
+		enforce(m_submarine is null, "Player has a submarine, cannot oserve a simulator");
+		Simulator oldObservedSim = m_observedSimulator;
+		if (oldObservedSim)
+		{
+			synchronized(oldObservedSim.simMut.reader)
+			{
+				oldObservedSim.unregisterObserver(m_username);
+				assert(m_observedSimulator is null);
+			}
+		}
+		synchronized(rhs.simMut.reader)
+		{
+			rhs.registerObserver(this);
+			ObservableEntityUpdate[] res = rhs.getObservableEntities();
+			atomicStore(m_observedSimulator, rhs);
+			return res;
+		}
+	}
+
+	void sendObserverUpdate(ObservableEntityUpdate[] entityUpdates,
+							SimulatorLogRecord[] logRecords,
+							usecs_t atTime)
+	{
+		PlayerConnection con = m_connection;
+		assert(m_submarine is null);
+		if (con && con.isOpen && con.simulatorFlow)
+		{
+			DevObserverSimulatorUpdateRes msg =
+				DevObserverSimulatorUpdateRes(
+					atTime, entityUpdates, logRecords);
+			con.sendMessage(cast(immutable) msg);
+		}
+	}
 }
 
 
@@ -985,7 +1060,8 @@ final class PlayerCollection
 		{
 			foreach (Player p; m_players.byValue)
 			{
-				if (p.connection is null && p.submarine is null)
+				if (p.connection is null && p.submarine is null &&
+						p.observedSimulator is null)
 					playersToRemove ~= p.name;
 			}
 			foreach (uname; playersToRemove)
@@ -994,7 +1070,8 @@ final class PlayerCollection
 				Player p = m_players[uname];
 				synchronized(p)
 				{
-					if (p.connection is null && p.submarine is null)
+					if (p.connection is null && p.submarine is null &&
+						p.observedSimulator is null)
 					{
 						trace("evicting ", uname, " Player from PlayerCollection");
 						m_players.remove(uname);

@@ -128,6 +128,7 @@ private:
 				}
 			}
 			resMsg.secondaryConnectionSecret = m_secondaryConnectionSecret;
+			resMsg.developerMode = m_player.isDeveloper;
 			loginFailureSleep = 2;
 			sendMessage(cast(immutable) resMsg);
 			if (resMsg.alreadySpawned)
@@ -373,5 +374,66 @@ private:
 		}
 		else
 			info("ignoring replay request since metrics is disabled");
+	}
+
+	//
+	// developer mode commands
+	//
+
+	/// Return false if not in simulator message flow.
+	private void enforceDeveloper(Player p)
+	{
+		enforce!AuthException(p, "unauthorized");
+		enforce!AuthException(p.isDeveloper, "player is not a developer");
+	}
+
+	void h_devSimulatorsListReq(DevSimulatorsListReq req)
+	{
+		Player p = m_player;
+		enforceDeveloper(p);
+		DevSimulatorsListRes res;
+		res.simulators = Globals.simulators.listSimulators();
+		sendMessage(cast(immutable) res);
+	}
+
+	void h_devObserveSimulatorReq(DevObserveSimulatorReq req)
+	{
+		Player p = m_player;
+		enforceDeveloper(p);
+		DevObserveSimulatorRes res;
+		synchronized(p)
+		{
+			if (m_simulatorFlow)
+			{
+				res.success = false;
+				sendMessage(cast(immutable) res);
+				return;
+			}
+			Simulator sim = Globals.simulators.findByUniqId(req.uniqId);
+			if (sim is null)
+			{
+				info("Simulator with uniqId " ~ req.uniqId ~ " not found");
+				res.success = false;
+				sendMessage(cast(immutable) res);
+				return;
+			}
+			ObservableEntityUpdate[] allEntities = p.observeSimulator(sim);
+			m_simulatorFlow = true;
+			res.success = true;
+			res.simRecord = Globals.simulators.getSimRecordForSim(sim);
+			res.allEntities = allEntities;
+			sendMessage(cast(immutable) res);
+		}
+	}
+
+	void h_devStopObservingReq(DevStopObservingReq req)
+	{
+		Player p = m_player;
+		enforceDeveloper(p);
+		synchronized(p)
+		{
+			p.stopObservingSimulator();
+			m_simulatorFlow = false;
+		}
 	}
 }

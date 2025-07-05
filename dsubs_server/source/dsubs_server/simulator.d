@@ -35,6 +35,8 @@ import core.stdc.stdlib;
 import dsubs_common.proftimer;
 import dsubs_common.event;
 import dsubs_common.api.entities: ScenarioType;
+import dsubs_common.api.deventities;
+import dsubs_common.api.deventities: SimulatorRecord;
 
 import dsubs_server.common;
 import dsubs_server.acoustics;
@@ -122,6 +124,46 @@ final class SimulatorScheduler
 		{
 			error("database error: ", ex.toString());
 		}
+	}
+
+	Simulator findByUniqId(string uniqId)
+	{
+		synchronized(m_cond.mutex)
+		{
+			foreach (sim; m_simulators[])
+			{
+				if (sim.uniqId == uniqId)
+					return sim;
+			}
+		}
+		return null;
+	}
+
+	SimulatorRecord[] listSimulators()
+	{
+		SimulatorRecord[] res;
+		synchronized(m_cond.mutex)
+		{
+			foreach (sim; m_simulators[])
+			{
+				res ~= getSimRecordForSim(sim);
+			}
+		}
+		return res;
+	}
+
+	static SimulatorRecord getSimRecordForSim(Simulator sim)
+	{
+		SimulatorRecord simRec;
+		simRec.id = sim.id;
+		simRec.uniqId = sim.uniqId;
+		if (sim.scenario)
+		{
+			simRec.scenarioName = sim.scenario.name;
+		}
+		simRec.connectedPlayers = sim.getConnectedPlayers();
+		simRec.creatorPlayerName = sim.creatorPlayerName;
+		return simRec;
 	}
 
 	this(bool exitOnEmpty = false)
@@ -322,11 +364,18 @@ final class Simulator
 		/// Reference counter, number of connected players that have non-dead
 		/// m_submarine in this simulator.
 		shared int m_connectedPlayers;
+
+		string m_creatorPlayerName;
+
+		/// set of observers
+		Player[string] m_observers;
 	}
 
 	int getConnectedPlayers() const { return atomicLoad(m_connectedPlayers); }
 
 	void incConnectedPlayers() { atomicOp!"+="(m_connectedPlayers, 1); }
+
+	@property string creatorPlayerName() const { return m_creatorPlayerName; }
 
 	void decConnectedPlayers()
 	{
@@ -334,13 +383,44 @@ final class Simulator
 		assert(result >= 0);
 	}
 
+	// returns the removed player or null if there was no such observer
+	Player unregisterObserver(string username)
+	{
+		synchronized(this)
+		{
+			Player* res = username in m_observers;
+			if (m_observers.remove(username))
+			{
+				res.unsetObservedSimulator();
+				return *res;
+			}
+			return null;
+		}
+	}
+
+	void registerObserver(Player player)
+	{
+		assert(player.submarine is null);
+		synchronized(this)
+		{
+			Player* res = player.username in m_observers;
+			if (m_observers.remove(player.username))
+			{
+				// TODO: maybe need some proper eviction
+				res.unsetObservedSimulator();
+			}
+			m_observers[player.username] = player;
+		}
+	}
+
 	/// id will be a random UUID string if left as null.
-	this(string id = null)
+	this(string id = null, string creatorPlayerName = null)
 	{
 		m_uniqId = randomUUID().toString();
 		if (id is null)
 			id = m_uniqId;
 		m_id = id;
+		m_creatorPlayerName = creatorPlayerName;
 		simMut = new ReadWriteMutex();
 		phys = new PhysicalEnv();
 		acous = new AcousticEnv();
@@ -639,6 +719,10 @@ final class Simulator
 			// Look at scenario.sendChangesOrFinish.
 			sendUpdateToPlayers();
 			profiler.stopLast();
+			// send updates to observers
+			profiler.start("sendUpdateToObservers");
+			sendUpdateToObservers();
+			profiler.stopLast();
 			// additional logic for time-based termination
 			if (finished)
 				sendTerminatingToPlayers();
@@ -671,6 +755,38 @@ final class Simulator
 			}
 			Globals.auxTaskPool.put(
 				task(&Globals.metrics.writeSimulatorMetrics, id, profiler));
+		}
+	}
+
+	// reader lock must be held
+	ObservableEntityUpdate[] getObservableEntities()
+	{
+		ObservableEntityUpdate[] res;
+		res.reserve(32);
+		vessels.appendObserverEntityUpdates(res);
+		return res;
+	}
+
+	/// All players that own vessels in this sim receive update.
+	/// Sim writer lock is held.
+	private void sendUpdateToObservers()
+	{
+		Player[] playersToSendUpdateTo;
+		foreach (Player p; m_observers.byValue)
+		{
+			if (p.connection && p.connection.isOpen &&
+					p.connection.simulatorFlow)
+				playersToSendUpdateTo ~= p;
+		}
+		if (playersToSendUpdateTo.length > 0)
+		{
+			ObservableEntityUpdate[] entityUpdates = getObservableEntities();
+			// parallelize, some functions in sendUpdate are blocking/heavy.
+			foreach (Player p; Globals.taskPool.parallel(
+				playersToSendUpdateTo, 1))
+			{
+				p.sendObserverUpdate(entityUpdates, [], m_worldTime);
+			}
 		}
 	}
 }
