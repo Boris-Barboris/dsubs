@@ -263,6 +263,8 @@ Good luck!`;
 			info("Scheduling new civilian bot spawn");
 			usecs_t delay = uniform!("(]", usecs_t, usecs_t)(0, SPAWN_DELAY_BASE);
 			m_civBotSpawnRequests++;
+			if (m_simulator.worldTime == 0)
+				delay = 0;
 			delayCivilianBotSpawn(delay);
 		}
 

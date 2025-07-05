@@ -217,9 +217,9 @@ abstract class ScenarioSpawner
 
 	@property ScenarioType scenarioType() const;
 
-	Scenario createSimulatorAndScenario(string simId = null)
+	Scenario createSimulatorAndScenario(string playerName, string simId = null)
 	{
-		Simulator sim = new Simulator(simId);
+		Simulator sim = new Simulator(simId, playerName);
 		Scenario res = m_factory(sim);
 		res.m_spawner = this;
 		return res;
@@ -315,7 +315,7 @@ private final class PersistentScenarioSpawner: ScenarioSpawner
 		super(constants, factory);
 		// eagerly builds the simulator
 		m_persistentId = persistentSimId;
-		m_scenario = createSimulatorAndScenario(m_persistentId);
+		m_scenario = createSimulatorAndScenario(null, m_persistentId);
 		m_simulator = scenario.simulator;
 		m_simulator.runWithoutPlayers = true;
 		m_simulator.canBePaused = false;
@@ -324,7 +324,7 @@ private final class PersistentScenarioSpawner: ScenarioSpawner
 	/// in case of crash we recreate the simulator
 	void recreateSimulator()
 	{
-		m_scenario = createSimulatorAndScenario(m_persistentId);
+		m_scenario = createSimulatorAndScenario(null, m_persistentId);
 		m_simulator = scenario.simulator;
 		m_simulator.runWithoutPlayers = true;
 		m_simulator.canBePaused = false;
@@ -507,7 +507,7 @@ chain of swift naval skirmishes with a neighbour's navy.`);
 					"scenario not found");
 				spawner = m_spawnableScenarios[req.simulatorIdOrScenarioName];
 				spawner.validateSpawnRequest(player, req);
-				scen = spawner.createSimulatorAndScenario();
+				scen = spawner.createSimulatorAndScenario(player.name);
 				break;
 			case SpawnRequestType.existingSimulator:
 				// for now we only look in persistent sims

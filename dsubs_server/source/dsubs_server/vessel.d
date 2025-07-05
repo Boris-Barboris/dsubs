@@ -32,13 +32,14 @@ import dsubs_server.ai.captain: ContactRelation;
 import dsubs_server.player: Captain;
 import dsubs_server.common;
 import dsubs_server.dynamics;
+import dsubs_server.observable;
 import dsubs_server.propulsion;
 import dsubs_server.objfile: ObjModel;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.simulator;
 
 
-abstract class Killable
+abstract class Killable: IObservableEntity
 {
 	private
 	{
@@ -50,6 +51,8 @@ abstract class Killable
 		Simulator m_simulator;
 		Captain m_killer;
 	}
+
+	protected ObservableEntityCache m_observableCache;
 
 	this()
 	{
@@ -89,11 +92,47 @@ abstract class Killable
 				m_deathTime = m_simulator.worldTime;
 				m_causeOfDeath = cause;
 				onFirstKill();
+				m_observableCache.log(m_id.toString(), typeof(this).stringof,
+					"Entity killed, cause: " ~  cause ~ ", killer: " ~
+						(killer ? killer.name() : ""));
 				return true;
 			}
 			else
 				return false;
 		}
+	}
+
+	void markNewObservationEpoch()
+	{
+		m_observableCache.clearCache();
+	}
+
+	StructuredObservableEntityUpdate getObserverUpdate()
+	{
+		if (m_observableCache.generated)
+			return m_observableCache.entityUpdateCache;
+		updateObservableCache();
+		m_observableCache.generated = true;
+		return m_observableCache.entityUpdateCache;
+	}
+
+	protected void updateObservableCache()
+	{
+		m_observableCache.id = m_id.toString();
+		m_observableCache.entityType = this.classBaseName;
+		m_observableCache.stateUpdateJson["dead"] = this.dead;
+		if (this.dead)
+		{
+			m_observableCache.stateUpdateJson["causeOfDeath"] = this.causeOfDeath;
+			if (this.killer)
+				m_observableCache.stateUpdateJson["killer"] = this.killer.name;
+		}
+	}
+
+	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
+	{
+		appendTo ~= m_observableCache.logRecords;
+		return m_observableCache.logRecords.length;
 	}
 }
 
@@ -189,7 +228,13 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 			prop.shutdown();
 	}
 
-	final @property float targetThrottle() const { return m_propulsors[0].targetThrottle; }
+	final @property float targetThrottle() const
+	{
+		if (m_propulsors)
+			return m_propulsors[0].targetThrottle;
+		else
+			return 0.0f;
+	}
 
 	/// set propulsor's target throttle
 	final @property void targetThrottle(float target)
@@ -235,11 +280,26 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 			m_transform.wrotation,
 			m_rigidBody.kinet.angVel);
 	}
+
+	override void updateObservableCache()
+	{
+		super.updateObservableCache();
+		m_observableCache.transformSnapshot = this.kinematicSnapshot;
+		// TODO: fill m_observableCache.entityUpdateCache.stateUpdateJson
+		m_observableCache.stateUpdateJson["prototypeName"] = this.prototypeName;
+		m_observableCache.stateUpdateJson["speed"] = this.rigidBody.kinet.velLength;
+		m_observableCache.stateUpdateJson["mass"] = this.rigidBody.mass;
+		m_observableCache.stateUpdateJson["targetThrottle"] = this.targetThrottle;
+		m_observableCache.stateUpdateJson["course"] =
+			-this.rigidBody.kinet.rotation.compassAngle.rad2dgr;
+		m_observableCache.stateUpdateJson["targetCourse"] =
+			-this.targetCourse.compassAngle.rad2dgr;
+	}
 }
 
 
 /// Set of vessels that are active
-final class VesselCollection
+final class VesselCollection: IObservableCollection
 {
 	private
 	{
@@ -324,6 +384,27 @@ final class VesselCollection
 	{
 		m_submarines.length = 0;
 		m_entities.length = 0;
+	}
+
+	void markNewObservationEpoch()
+	{
+		foreach (v; m_entities)
+			v.markNewObservationEpoch();
+	}
+
+	size_t appendObserverEntityUpdates(ref ObservableEntityUpdate[] appendTo)
+	{
+		foreach (v; m_entities)
+			appendTo ~= v.getObserverUpdate().toUnstructured();
+		return m_entities.length;
+	}
+
+	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
+	{
+		size_t res;
+		foreach (v; m_entities)
+			res += v.appendObserverLogRecords(appendTo);
+		return res;
 	}
 }
 

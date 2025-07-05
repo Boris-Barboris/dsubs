@@ -680,10 +680,13 @@ final class PhysicalEnv
 			m_entities ~= e;
 			RigidBody rb = cast(RigidBody) e;
 			if (rb)
+			{
+				// FIXME: hardcoded 100x100 square
 				rb.spacialTreeNode = m_spacialTree.addLeaf(
 					Rectangle(rb.transform.wposition.to!vec2f - vec2f(50, 50),
 						vec2f(100, 100)),
 					rb);
+			}
 		}
 	}
 
