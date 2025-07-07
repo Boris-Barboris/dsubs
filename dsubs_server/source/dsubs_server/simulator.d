@@ -763,6 +763,7 @@ final class Simulator
 	{
 		ObservableEntityUpdate[] res;
 		res.reserve(32);
+		vessels.markNewObservationEpoch();
 		vessels.appendObserverEntityUpdates(res);
 		return res;
 	}

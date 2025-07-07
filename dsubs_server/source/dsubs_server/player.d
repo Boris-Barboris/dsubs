@@ -927,6 +927,8 @@ final class Player: Captain
 		}
 	}
 
+
+	// rhs reader lock must be held
 	ObservableEntityUpdate[] observeSimulator(Simulator rhs)
 	{
 		assert(rhs);
@@ -940,13 +942,10 @@ final class Player: Captain
 				assert(m_observedSimulator is null);
 			}
 		}
-		synchronized(rhs.simMut.reader)
-		{
-			rhs.registerObserver(this);
-			ObservableEntityUpdate[] res = rhs.getObservableEntities();
-			atomicStore(m_observedSimulator, rhs);
-			return res;
-		}
+		rhs.registerObserver(this);
+		ObservableEntityUpdate[] res = rhs.getObservableEntities();
+		atomicStore(m_observedSimulator, rhs);
+		return res;
 	}
 
 	void sendObserverUpdate(ObservableEntityUpdate[] entityUpdates,

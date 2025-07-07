@@ -417,12 +417,15 @@ private:
 				sendMessage(cast(immutable) res);
 				return;
 			}
-			ObservableEntityUpdate[] allEntities = p.observeSimulator(sim);
-			m_simulatorFlow = true;
-			res.success = true;
-			res.simRecord = Globals.simulators.getSimRecordForSim(sim);
-			res.allEntities = allEntities;
-			sendMessage(cast(immutable) res);
+			synchronized(sim.simMut.reader)
+			{
+				ObservableEntityUpdate[] allEntities = p.observeSimulator(sim);
+				m_simulatorFlow = true;
+				res.success = true;
+				res.simRecord = Globals.simulators.getSimRecordForSim(sim);
+				res.allEntities = allEntities;
+				sendMessage(cast(immutable) res);
+			}
 		}
 	}
 

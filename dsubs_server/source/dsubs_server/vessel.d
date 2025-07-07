@@ -110,12 +110,17 @@ abstract class Killable: IObservableEntity
 	{
 		if (m_observableCache.generated)
 			return m_observableCache.entityUpdateCache;
-		m_observableCache.id = m_id.toString();
-		m_observableCache.entityType = typeof(this).stringof;
-		m_observableCache.stateUpdateJson["dead"] = this.dead;
-		m_observableCache.stateUpdateJson["causeOfDeath"] = this.causeOfDeath;
+		updateObservableCache();
 		m_observableCache.generated = true;
 		return m_observableCache.entityUpdateCache;
+	}
+
+	protected void updateObservableCache()
+	{
+		m_observableCache.id = m_id.toString();
+		m_observableCache.entityType = this.classBaseName;
+		m_observableCache.stateUpdateJson["dead"] = this.dead;
+		m_observableCache.stateUpdateJson["causeOfDeath"] = this.causeOfDeath;
 	}
 
 	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
@@ -262,6 +267,13 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 			m_rigidBody.kinet.vel,
 			m_transform.wrotation,
 			m_rigidBody.kinet.angVel);
+	}
+
+	override void updateObservableCache()
+	{
+		super.updateObservableCache();
+		m_observableCache.transformSnapshot = this.kinematicSnapshot;
+		// TODO: fill m_observableCache.entityUpdateCache.stateUpdateJson
 	}
 }
 

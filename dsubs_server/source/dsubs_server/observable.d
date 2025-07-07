@@ -92,3 +92,31 @@ interface IObservableCollection
 	size_t appendObserverEntityUpdates(ref ObservableEntityUpdate[] appendTo);
 	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo);
 }
+
+
+private string baseName(ClassInfo classinfo)
+{
+	import std.array;
+	import std.algorithm : countUntil;
+	import std.range : retro;
+
+	string qualName = classinfo.name;
+
+	ptrdiff_t dotIndex = qualName.retro.countUntil('.');
+
+	if (dotIndex < 0) {
+		return qualName;
+	}
+
+	return qualName[$ - dotIndex .. $];
+}
+
+
+string classBaseName(Object instance)
+{
+	if (instance is null) {
+		return "null";
+	}
+
+	return instance.classinfo.baseName;
+}
