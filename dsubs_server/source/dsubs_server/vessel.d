@@ -285,7 +285,6 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 	{
 		super.updateObservableCache();
 		m_observableCache.transformSnapshot = this.kinematicSnapshot;
-		// TODO: fill m_observableCache.entityUpdateCache.stateUpdateJson
 		m_observableCache.stateUpdateJson["prototypeName"] = this.prototypeName;
 		m_observableCache.stateUpdateJson["speed"] = this.rigidBody.kinet.velLength;
 		m_observableCache.stateUpdateJson["mass"] = this.rigidBody.mass;
@@ -386,26 +385,7 @@ final class VesselCollection: IObservableCollection
 		m_entities.length = 0;
 	}
 
-	void markNewObservationEpoch()
-	{
-		foreach (v; m_entities)
-			v.markNewObservationEpoch();
-	}
-
-	size_t appendObserverEntityUpdates(ref ObservableEntityUpdate[] appendTo)
-	{
-		foreach (v; m_entities)
-			appendTo ~= v.getObserverUpdate().toUnstructured();
-		return m_entities.length;
-	}
-
-	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
-	{
-		size_t res;
-		foreach (v; m_entities)
-			res += v.appendObserverLogRecords(appendTo);
-		return res;
-	}
+	mixin ObservableCollectionCommonMethods;
 }
 
 

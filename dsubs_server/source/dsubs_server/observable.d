@@ -95,6 +95,31 @@ interface IObservableCollection
 }
 
 
+mixin template ObservableCollectionCommonMethods()
+{
+	void markNewObservationEpoch()
+	{
+		foreach (v; m_entities)
+			v.markNewObservationEpoch();
+	}
+
+	size_t appendObserverEntityUpdates(ref ObservableEntityUpdate[] appendTo)
+	{
+		foreach (v; m_entities)
+			appendTo ~= v.getObserverUpdate().toUnstructured();
+		return m_entities.length;
+	}
+
+	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
+	{
+		size_t res;
+		foreach (v; m_entities)
+			res += v.appendObserverLogRecords(appendTo);
+		return res;
+	}
+}
+
+
 private string baseName(ClassInfo classinfo)
 {
 	import std.array;

@@ -21,6 +21,8 @@ import std.algorithm.comparison: max;
 
 import dsubs_common.containers.array;
 import dsubs_common.math;
+import dsubs_common.api.entities: KinematicSnapshot;
+import dsubs_common.json;
 
 import dsubs_sound.common: uniform;
 import dsubs_sound.soundsource;
@@ -30,6 +32,7 @@ import dsubs_server.common;
 import dsubs_server.dynamics;
 import dsubs_server.simulator;
 import dsubs_server.acoustics;
+import dsubs_server.observable;
 import dsubs_server.vessel;
 
 
@@ -65,6 +68,8 @@ final class Animal: Killable, IHasTransform, IHasRigidBody
 		// continue forever. Drag of m_rigidBody us zero, so this works.
 		m_rigidBody.kinet.vel = m_velocity;
 	}
+
+	@property vec2d destination() const { return m_destination; }
 
 	@property bool arrivedAtDestination()
 	{
@@ -114,10 +119,33 @@ final class Animal: Killable, IHasTransform, IHasRigidBody
 		simulator.animals.unregisterEntity(this);
 	}
 
+	protected KinematicSnapshot fakeTransformSnapshot()
+	{
+		KinematicSnapshot res;
+		res.atTime = simulator.worldTime;
+		res.position = m_transform.wposition;
+		res.rotation = m_transform.wrotation;
+		res.velocity = m_rigidBody.kinet.vel;
+		res.angVel = 0.0;
+		return res;
+	}
+
+	override void updateObservableCache()
+	{
+		super.updateObservableCache();
+		m_observableCache.transformSnapshot = fakeTransformSnapshot();
+		m_observableCache.stateUpdateJson["name"] = m_name;
+		m_observableCache.stateUpdateJson["species"] = species;
+		m_observableCache.stateUpdateJson["speed"] = this.rigidBody.kinet.velLength;
+		m_observableCache.stateUpdateJson["mass"] = this.rigidBody.mass;
+		m_observableCache.stateUpdateJson["course"] =
+			-this.rigidBody.kinet.rotation.compassAngle.rad2dgr;
+		m_observableCache.stateUpdateJson["destination"] = destination.v.toJson;
+	}
 }
 
 
-final class AnimalCollection
+final class AnimalCollection: IObservableCollection
 {
 	private
 	{
@@ -172,6 +200,8 @@ final class AnimalCollection
 		foreach (a; deadAnimals)
 			a.shutdown();
 	}
+
+	mixin ObservableCollectionCommonMethods;
 }
 
 
