@@ -20,6 +20,7 @@ module dsubs_server.weaponry;
 
 import std.algorithm;
 import std.array: array;
+import std.json;
 
 import dsubs_common.api.entities;
 import dsubs_common.math;
@@ -222,6 +223,21 @@ final class Tube: IFlowNoiseMultiplier
 		TubeState m_desiredState = TubeState.dry;
 		// used to send updates after the simulation step is done
 		TubeOperationResult m_lastSimUpdateResults;
+	}
+
+	JSONValue toJson()
+	{
+		JSONValue[string] objectFields;
+		JSONValue res = JSONValue(objectFields);
+		res["id"] = m_proto.tmpl.id;
+		res["type"] = m_proto.tmpl.type.to!string;
+		res["roomId"] = m_proto.tmpl.roomId;
+		res["loadedWeapon"] = loadedWeapon;
+		res["desiredWeapon"] = desiredWeapon;
+		res["transitionTimeCounter"] = m_transitionTimeCounter;
+		res["state"] = m_state.to!string;
+		res["desiredState"] = m_desiredState.to!string;
+		return res;
 	}
 
 	override float getFlowNoiseMult() const

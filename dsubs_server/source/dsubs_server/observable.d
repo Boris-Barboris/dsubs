@@ -41,6 +41,7 @@ struct StructuredObservableEntityUpdate
 }
 
 
+/// Common observation state caching structure
 struct ObservableEntityCache
 {
 	bool generated;

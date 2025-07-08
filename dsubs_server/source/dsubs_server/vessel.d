@@ -93,7 +93,8 @@ abstract class Killable: IObservableEntity
 				m_causeOfDeath = cause;
 				onFirstKill();
 				m_observableCache.log(m_id.toString(), typeof(this).stringof,
-					"Entity killed, cause: " ~  cause ~ ", killer: " ~ killer.name());
+					"Entity killed, cause: " ~  cause ~ ", killer: " ~
+						(killer ? killer.name() : ""));
 				return true;
 			}
 			else
@@ -120,7 +121,11 @@ abstract class Killable: IObservableEntity
 		m_observableCache.id = m_id.toString();
 		m_observableCache.entityType = this.classBaseName;
 		m_observableCache.stateUpdateJson["dead"] = this.dead;
-		m_observableCache.stateUpdateJson["causeOfDeath"] = this.causeOfDeath;
+		if (this.dead)
+		{
+			m_observableCache.stateUpdateJson["causeOfDeath"] = this.causeOfDeath;
+			m_observableCache.stateUpdateJson["killer"] = this.killer.name;
+		}
 	}
 
 	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
@@ -274,6 +279,12 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 		super.updateObservableCache();
 		m_observableCache.transformSnapshot = this.kinematicSnapshot;
 		// TODO: fill m_observableCache.entityUpdateCache.stateUpdateJson
+		m_observableCache.stateUpdateJson["prototypeName"] = this.prototypeName;
+		m_observableCache.stateUpdateJson["speed"] = this.rigidBody.kinet.velLength;
+		m_observableCache.stateUpdateJson["mass"] = this.rigidBody.mass;
+		m_observableCache.stateUpdateJson["targetThrottle"] = this.targetThrottle;
+		m_observableCache.stateUpdateJson["targetCourse"] =
+			this.targetCourse.compassAngle.rad2dgr;
 	}
 }
 

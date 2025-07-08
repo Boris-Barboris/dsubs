@@ -46,6 +46,7 @@ import dsubs_server.email;
 import dsubs_server.dynamics;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.globals;
+import dsubs_server.observable;
 import dsubs_server.vessel;
 import dsubs_server.player: Player;
 import dsubs_server.torpedo;
@@ -369,6 +370,8 @@ final class Simulator
 
 		/// set of observers
 		Player[string] m_observers;
+
+		IObservableCollection[] m_observables;
 	}
 
 	int getConnectedPlayers() const { return atomicLoad(m_connectedPlayers); }
@@ -428,6 +431,14 @@ final class Simulator
 		animals = new AnimalCollection();
 		weapons = new WeaponCollection();
 		bots = new BotCollection();
+		m_observables = [
+			// phys,
+			// acous,
+			vessels,
+			// animals,
+			// weapons,
+			// bots
+		];
 	}
 
 	private usecs_t m_worldTime = 0;
@@ -762,9 +773,12 @@ final class Simulator
 	ObservableEntityUpdate[] getObservableEntities()
 	{
 		ObservableEntityUpdate[] res;
-		res.reserve(32);
-		vessels.markNewObservationEpoch();
-		vessels.appendObserverEntityUpdates(res);
+		res.reserve(64);
+		foreach (IObservableCollection observableCollection; m_observables)
+		{
+			observableCollection.markNewObservationEpoch();
+			observableCollection.appendObserverEntityUpdates(res);
+		}
 		return res;
 	}
 
@@ -783,8 +797,7 @@ final class Simulator
 		{
 			ObservableEntityUpdate[] entityUpdates = getObservableEntities();
 			// parallelize, some functions in sendUpdate are blocking/heavy.
-			foreach (Player p; Globals.taskPool.parallel(
-				playersToSendUpdateTo, 1))
+			foreach (Player p; Globals.taskPool.parallel(playersToSendUpdateTo, 1))
 			{
 				p.sendObserverUpdate(entityUpdates, [], m_worldTime);
 			}

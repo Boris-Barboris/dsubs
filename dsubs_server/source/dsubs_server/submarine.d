@@ -215,6 +215,16 @@ final class Submarine: Vessel
 		}
 		return res;
 	}
+
+	override void updateObservableCache()
+	{
+		super.updateObservableCache();
+		m_observableCache.stateUpdateJson["captain"] = this.m_captain.name;
+		m_observableCache.stateUpdateJson["side"] = this.m_captain.side.name;
+		m_observableCache.stateUpdateJson["tubes"] =
+			m_tubes.byValue.map!(t => t.toJson()).array();
+		m_observableCache.stateUpdateJson["side"] = this.m_captain.side.name;
+	}
 }
 
 
@@ -323,7 +333,7 @@ final class SubmarineFactory: VesselFactory
 			t.position = asprot.get.mount.mountCenter.tod;
 			t.rotation = asprot.get.mount.rotation;
 			res.transform.addChild(t);
-			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t, 
+			res.m_sonar = new ActiveSonar(Globals.sctx.queue(0), t,
 				asprot.get.sonarProto);
 			res.m_sonar.owner = res;
 			res.m_sonar.onPreKinematics += ()
