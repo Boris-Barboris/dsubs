@@ -124,7 +124,8 @@ abstract class Killable: IObservableEntity
 		if (this.dead)
 		{
 			m_observableCache.stateUpdateJson["causeOfDeath"] = this.causeOfDeath;
-			m_observableCache.stateUpdateJson["killer"] = this.killer.name;
+			if (this.killer)
+				m_observableCache.stateUpdateJson["killer"] = this.killer.name;
 		}
 	}
 
@@ -227,7 +228,13 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 			prop.shutdown();
 	}
 
-	final @property float targetThrottle() const { return m_propulsors[0].targetThrottle; }
+	final @property float targetThrottle() const
+	{
+		if (m_propulsors)
+			return m_propulsors[0].targetThrottle;
+		else
+			return 0.0f;
+	}
 
 	/// set propulsor's target throttle
 	final @property void targetThrottle(float target)
@@ -283,8 +290,10 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 		m_observableCache.stateUpdateJson["speed"] = this.rigidBody.kinet.velLength;
 		m_observableCache.stateUpdateJson["mass"] = this.rigidBody.mass;
 		m_observableCache.stateUpdateJson["targetThrottle"] = this.targetThrottle;
+		m_observableCache.stateUpdateJson["course"] =
+			-this.rigidBody.kinet.rotation.compassAngle.rad2dgr;
 		m_observableCache.stateUpdateJson["targetCourse"] =
-			this.targetCourse.compassAngle.rad2dgr;
+			-this.targetCourse.compassAngle.rad2dgr;
 	}
 }
 

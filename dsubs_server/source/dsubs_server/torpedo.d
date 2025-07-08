@@ -64,6 +64,8 @@ interface IGuidance
 	void activateByWire(bool shouldBeActive);
 
 	WireGuidanceFullState getFullState(bool includeWeaponParams);
+
+	void observeToJson(ref JSONValue objToAddFieldsTo);
 }
 
 
@@ -115,6 +117,15 @@ abstract class Weapon: Vessel
 		m_guidance.shutdown();
 		onFirstKill();
 		simulator.weapons.unregisterEntity(this);
+	}
+
+	override void updateObservableCache()
+	{
+		super.updateObservableCache();
+		if (m_shooterCaptain)
+			m_observableCache.stateUpdateJson["shooterCaptain"] = m_shooterCaptain.name;
+		if (m_guidance)
+			m_guidance.observeToJson(m_observableCache.stateUpdateJson);
 	}
 }
 
@@ -183,6 +194,12 @@ class StaticDecoyGuidance: IGuidance
 	}
 
 	void shutdown() {}
+
+	override void observeToJson(ref JSONValue objToAddFieldsTo)
+	{
+		objToAddFieldsTo["active"] = m_active;
+		objToAddFieldsTo["fuelLeft"] = m_fuelLeft;
+	}
 }
 
 
@@ -217,6 +234,11 @@ final class PassiveDecoyGuidance: StaticDecoyGuidance
 	protected override void onActivate()
 	{
 		m_decoy.targetThrottle = uniform(0.8f, 1.0f);
+	}
+
+	override void observeToJson(ref JSONValue objToAddFieldsTo)
+	{
+		objToAddFieldsTo["targetThrottle"] = m_decoy.targetThrottle;
 	}
 }
 
@@ -627,6 +649,29 @@ final class TorpedoGuidance: IGuidance
 		res.weaponParams ~= WeaponParamValue(WeaponParamType.sensorMode);
 		res.weaponParams[$-1].sensorMode = m_sensorMode;
 		return res;
+	}
+
+	override void observeToJson(ref JSONValue objToAddFieldsTo)
+	{
+		WireGuidanceFullState fullState = getFullState(false);
+		objToAddFieldsTo["wireGuidanceFullState"] = [
+			"tubeId": JSONValue(fullState.tubeId),
+			"rangeLeft": JSONValue(fullState.rangeLeft),
+			"active": JSONValue(fullState.active),
+			"tracking": JSONValue(fullState.tracking),
+			"marchCourse": JSONValue(m_marchCourse),
+			"activeSpeed": JSONValue(m_activeSpeed),
+			"marchSpeed": JSONValue(m_marchSpeed),
+			"activationRange": JSONValue(m_activationRange),
+			"searchPattern": JSONValue(m_searchPattern.to!string),
+			"sensorMode": JSONValue(m_sensorMode.to!string),
+		];
+		if (fullState.tracking)
+			objToAddFieldsTo["wireGuidanceFullState"]["trackingDir"] =
+				fullState.trackingDir;
+		objToAddFieldsTo["fuelLeft"] = m_fuelLeft;
+		objToAddFieldsTo["pingIntervalSearch"] = m_pingIntervalSearch;
+		objToAddFieldsTo["sinceLastPing"] = m_sinceLastPing;
 	}
 
 	private

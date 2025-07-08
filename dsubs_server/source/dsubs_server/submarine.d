@@ -223,7 +223,8 @@ final class Submarine: Vessel
 		m_observableCache.stateUpdateJson["side"] = this.m_captain.side.name;
 		m_observableCache.stateUpdateJson["tubes"] =
 			m_tubes.byValue.map!(t => t.toJson()).array();
-		m_observableCache.stateUpdateJson["side"] = this.m_captain.side.name;
+		m_observableCache.stateUpdateJson["ammoRooms"] =
+			m_rooms.byValue.map!(t => t.toJson()).array();
 	}
 }
 

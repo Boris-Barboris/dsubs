@@ -20,10 +20,10 @@ module dsubs_server.weaponry;
 
 import std.algorithm;
 import std.array: array;
-import std.json;
 
 import dsubs_common.api.entities;
 import dsubs_common.math;
+import dsubs_common.json;
 
 import dsubs_sound.soundsource;
 import dsubs_sound.common;
@@ -147,6 +147,12 @@ final class AmmoRoom
 		foreach (kvPair; m_storedWeapons.byKeyValue)
 			res.storedWeapons ~= WeaponCount(kvPair.key, kvPair.value);
 		return res;
+	}
+
+	JSONValue toJson()
+	{
+		AmmoRoomFullState state = fullState;
+		return state.toJson();
 	}
 }
 
