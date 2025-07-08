@@ -538,28 +538,42 @@ final class Player: Captain
 	void handlePauseSimulatorReq(PauseSimulatorReq req)
 	{
 		Submarine s = submarine;
+		Simulator sim;
 		if (s is null)
-			return;
-		synchronized(s.simulator.simMut.reader)
 		{
-			if (s !is submarine)
+			sim = observedSimulator;
+			if (sim is null)
 				return;
-			s.simulator.paused = req.shouldBePaused;
+		}
+		else
+			sim = s.simulator;
+		synchronized(sim.simMut.reader)
+		{
+			if (s && s !is submarine)
+				return;
+			sim.paused = req.shouldBePaused;
 		}
 	}
 
 	void handleTimeAccelerationReq(TimeAccelerationReq req)
 	{
 		Submarine s = submarine;
+		Simulator sim;
 		if (s is null)
-			return;
+		{
+			sim = observedSimulator;
+			if (sim is null)
+				return;
+		}
+		else
+			sim = s.simulator;
 		enforce(req.timeAccelerationFactor >= 5 && req.timeAccelerationFactor <= 80,
 			"timeAccelerationFactor not in [5, 80] range");
-		synchronized(s.simulator.simMut.reader)
+		synchronized(sim.simMut.reader)
 		{
-			if (s !is submarine)
+			if (s && s !is submarine)
 				return;
-			s.simulator.timeAccelerationFactor = req.timeAccelerationFactor;
+			sim.timeAccelerationFactor = req.timeAccelerationFactor;
 		}
 	}
 

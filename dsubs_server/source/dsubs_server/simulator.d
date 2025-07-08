@@ -434,8 +434,8 @@ final class Simulator
 		m_observables = [
 			// phys,
 			// acous,
-			vessels,
-			// animals,
+			vessels.IObservableCollection,
+			animals.IObservableCollection,
 			// weapons,
 			// bots
 		];
