@@ -433,7 +433,7 @@ final class Simulator
 		bots = new BotCollection();
 		m_observables = [
 			// phys,
-			// acous,
+			acous.IObservableCollection,
 			vessels.IObservableCollection,
 			animals.IObservableCollection,
 			// weapons,
