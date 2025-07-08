@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 module dsubs_server.acoustics;
 
 import std.algorithm.setops: cartesianProduct;
+import std.uuid;
 
 import dsubs_common.containers.array;
 
@@ -31,21 +32,22 @@ import dsubs_sound.opencl: CommandQueue, DsubsSoundOpenclCtx;
 
 import dsubs_server.common;
 import dsubs_server.simulator;
+import dsubs_server.observable;
 
 
-final class AcousticEnv
+final class AcousticEnv: IObservableCollection
 {
 	private
 	{
-		Hydrophone[] m_hydrophones;
-		SoundSource[] m_sources;
+		ObservableHydrophone[] m_hydrophones;
+		ObservableSoundSource[] m_sources;
 		ActiveSonar[] m_sonars;
 		Reflector[] m_reflectors;
 	}
 
 	@property Reflector[] reflectors() { return m_reflectors; }
 
-	@property SoundSource[] sources() { return m_sources; }
+	@property auto sources() { return m_sources.map!(oss => oss.m_soundSource); }
 
 	// all register and unregister calls are supposed to
 	// be called while holding simMut.reader
@@ -54,7 +56,7 @@ final class AcousticEnv
 	{
 		synchronized(this)
 		{
-			m_hydrophones ~= e;
+			m_hydrophones ~= new ObservableHydrophone(e);
 		}
 	}
 
@@ -62,7 +64,7 @@ final class AcousticEnv
 	{
 		synchronized(this)
 		{
-			m_sources ~= e;
+			m_sources ~= new ObservableSoundSource(e);
 		}
 	}
 
@@ -86,7 +88,7 @@ final class AcousticEnv
 	{
 		synchronized(this)
 		{
-			m_hydrophones.removeFirstUnstable(e);
+			m_hydrophones.removeFirst!(el => el.m_hydrophone is e)();
 		}
 	}
 
@@ -94,7 +96,7 @@ final class AcousticEnv
 	{
 		synchronized(this)
 		{
-			m_sources.removeFirstUnstable(e);
+			m_sources.removeFirst!(el => el.m_soundSource is e)();
 		}
 	}
 
@@ -195,7 +197,8 @@ final class AcousticEnv
 		foreach (source; m_sources)
 			source.transform.rebuild();
 
-		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
+		foreach (ObservableHydrophone hydrophone; Globals.taskPool.parallel(
+			m_hydrophones, 1))
 		{
 			if (hydrophone.active)
 			{
@@ -226,7 +229,8 @@ final class AcousticEnv
 		// at this point all source rendering commands are dispatched and it's
 		// time to compose the final images on hydrophones. These functions require
 		// that the composition is performed by 1 command queue per-hydrophone.
-		foreach (Hydrophone hydrophone; Globals.taskPool.parallel(m_hydrophones, 1))
+		foreach (ObservableHydrophone hydrophone; Globals.taskPool.parallel(
+			m_hydrophones, 1))
 		{
 			if (hydrophone.active)
 			{
@@ -249,7 +253,7 @@ final class AcousticEnv
 		size_t i = 0;
 		while (i < m_sources.length)
 		{
-			SoundSource s = m_sources[i];
+			SoundSource s = m_sources[i].m_soundSource;
 			s.onPostAcoustics();
 			FiniteSoundSource finiteSource = cast(FiniteSoundSource) s;
 			if (finiteSource is null || !finiteSource.finished)
@@ -265,6 +269,147 @@ final class AcousticEnv
 				s.release();
 			}
 		}
+	}
+
+	// observation stuff
+	void markNewObservationEpoch()
+	{
+		foreach (h; m_hydrophones)
+			h.markNewObservationEpoch();
+		foreach (ss; m_sources)
+			ss.markNewObservationEpoch();
+	}
+
+	size_t appendObserverEntityUpdates(ref ObservableEntityUpdate[] appendTo)
+	{
+		foreach (h; m_hydrophones)
+			appendTo ~= h.getObserverUpdate().toUnstructured();
+		foreach (ss; m_sources)
+			appendTo ~= ss.getObserverUpdate().toUnstructured();
+		return m_hydrophones.length;
+	}
+
+	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
+	{
+		size_t res;
+		foreach (h; m_hydrophones)
+			res += h.appendObserverLogRecords(appendTo);
+		foreach (ss; m_sources)
+			res += ss.appendObserverLogRecords(appendTo);
+		return res;
+	}
+}
+
+
+private final class ObservableHydrophone: IObservableEntity
+{
+	private
+	{
+		UUID m_id;
+		Hydrophone m_hydrophone;
+		ObservableEntityCache m_observableCache;
+	}
+
+	@property Hydrophone hydrophone() { return m_hydrophone; }
+	@property UUID id() { return m_id; }
+
+	this(Hydrophone h)
+	{
+		m_id = randomUUID();
+		m_hydrophone = h;
+	}
+
+	alias m_hydrophone this;
+
+	void markNewObservationEpoch()
+	{
+		m_observableCache.clearCache();
+	}
+
+	StructuredObservableEntityUpdate getObserverUpdate()
+	{
+		if (m_observableCache.generated)
+			return m_observableCache.entityUpdateCache;
+		updateObservableCache();
+		m_observableCache.generated = true;
+		return m_observableCache.entityUpdateCache;
+	}
+
+	void updateObservableCache()
+	{
+		m_observableCache.id = m_id.toString();
+		m_observableCache.entityType = m_hydrophone.classBaseName;
+		m_observableCache.transformSnapshot.position = m_hydrophone.transform.wposition;
+		m_observableCache.transformSnapshot.rotation = m_hydrophone.transform.wrotation;
+		m_observableCache.transformSnapshot.velocity = vec2d(0, 0);
+		m_observableCache.transformSnapshot.angVel = 0.0;
+		m_observableCache.stateUpdateJson["active"] = m_hydrophone.active;
+		m_observableCache.stateUpdateJson["mirrored"] = m_hydrophone.mirrored;
+		m_observableCache.stateUpdateJson["canBeActive"] = m_hydrophone.canBeActive;
+		m_observableCache.stateUpdateJson["maintainImprints"] =
+			m_hydrophone.maintainImprints;
+		m_observableCache.stateUpdateJson["listenDir"] = m_hydrophone.listenDir;
+	}
+
+	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
+	{
+		appendTo ~= m_observableCache.logRecords;
+		return m_observableCache.logRecords.length;
+	}
+}
+
+
+private final class ObservableSoundSource: IObservableEntity
+{
+	private
+	{
+		UUID m_id;
+		SoundSource m_soundSource;
+		ObservableEntityCache m_observableCache;
+	}
+
+	@property SoundSource soundSource() { return m_soundSource; }
+	@property UUID id() { return m_id; }
+
+	this(SoundSource ss)
+	{
+		m_id = randomUUID();
+		m_soundSource = ss;
+	}
+
+	alias m_soundSource this;
+
+	void markNewObservationEpoch()
+	{
+		m_observableCache.clearCache();
+	}
+
+	StructuredObservableEntityUpdate getObserverUpdate()
+	{
+		if (m_observableCache.generated)
+			return m_observableCache.entityUpdateCache;
+		updateObservableCache();
+		m_observableCache.generated = true;
+		return m_observableCache.entityUpdateCache;
+	}
+
+	void updateObservableCache()
+	{
+		m_observableCache.id = m_id.toString();
+		m_observableCache.entityType = m_soundSource.classBaseName;
+		m_observableCache.transformSnapshot.position = m_soundSource.transform.wposition;
+		m_observableCache.transformSnapshot.rotation = m_soundSource.transform.wrotation;
+		m_observableCache.transformSnapshot.velocity = vec2d(0, 0);
+		m_observableCache.transformSnapshot.angVel = 0.0;
+		if (m_soundSource.owner)
+			m_observableCache.stateUpdateJson["owner"] = m_soundSource.owner.toString();
+		m_observableCache.stateUpdateJson["radius"] = m_soundSource.radius;
+	}
+
+	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
+	{
+		appendTo ~= m_observableCache.logRecords;
+		return m_observableCache.logRecords.length;
 	}
 }
 

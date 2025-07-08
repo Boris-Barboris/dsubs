@@ -307,6 +307,8 @@ final class AttachedWire: IForce
 		m_segmentLength = m_maxLength / m_maxSegmentCount;
 	}
 
+	@property float currentLength() const { return m_segmentLength * m_points.length; }
+
 	@property float desiredLength() const { return m_desiredLength; }
 
 	@property void desiredLength(float rhs)

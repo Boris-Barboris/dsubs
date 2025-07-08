@@ -21,6 +21,7 @@ import std.typecons: Nullable;
 
 import dsubs_common.api.entities;
 import dsubs_common.math;
+import dsubs_common.json;
 
 import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
@@ -225,6 +226,13 @@ final class Submarine: Vessel
 			m_tubes.byValue.map!(t => t.toJson()).array();
 		m_observableCache.stateUpdateJson["ammoRooms"] =
 			m_rooms.byValue.map!(t => t.toJson()).array();
+		// data about wires
+		m_observableCache.stateUpdateJson["wires"] =
+			m_rigidBody.wires.map!(wire => JSONValue([
+				"maxLength": wire.maxLength,
+				"currentLength": wire.currentLength,
+				"desiredLength": wire.desiredLength
+			])).array;
 	}
 }
 
