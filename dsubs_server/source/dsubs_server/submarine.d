@@ -220,8 +220,10 @@ final class Submarine: Vessel
 	override void updateObservableCache()
 	{
 		super.updateObservableCache();
-		m_observableCache.stateUpdateJson["captain"] = this.m_captain.name;
-		m_observableCache.stateUpdateJson["side"] = this.m_captain.side.name;
+		if (this.m_captain)
+			m_observableCache.stateUpdateJson["captain"] = this.m_captain.name;
+		if (this.m_captain.side)
+			m_observableCache.stateUpdateJson["side"] = this.m_captain.side.name;
 		m_observableCache.stateUpdateJson["tubes"] =
 			m_tubes.byValue.map!(t => t.toJson()).array();
 		m_observableCache.stateUpdateJson["ammoRooms"] =

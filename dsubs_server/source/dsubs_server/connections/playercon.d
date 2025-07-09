@@ -396,6 +396,28 @@ private:
 		sendMessage(cast(immutable) res);
 	}
 
+	void h_devTerminateSimulatorReq(DevTerminateSimulatorReq req)
+	{
+		Player p = m_player;
+		enforceDeveloper(p);
+		Simulator sim = Globals.simulators.findByUniqId(req.simulatorUniqId);
+		if (sim)
+		{
+			synchronized(sim.simMut.reader)
+			{
+				sim.terminateAsync();
+			}
+		}
+	}
+
+	void h_devCreateSimulatorReq(DevCreateSimulatorReq req)
+	{
+		Player p = m_player;
+		enforceDeveloper(p);
+		info("Handling DevCreateSimulatorReq request for ", p.name);
+		p.handleDevCreateSimulatorReq(req);
+	}
+
 	void h_devObserveSimulatorReq(DevObserveSimulatorReq req)
 	{
 		Player p = m_player;

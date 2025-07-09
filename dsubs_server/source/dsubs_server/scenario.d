@@ -50,6 +50,7 @@ import dsubs_server.scenarios.tutorials.torpedotutorial;
 import dsubs_server.scenarios.tutorials.hydrophonetutorial;
 import dsubs_server.scenarios.campaign1.mission1;
 import dsubs_server.scenarios.campaign1.mission2;
+import dsubs_server.scenarios.developer.botsubsduel1;
 
 
 /// Action to run after specified clock time.
@@ -199,6 +200,8 @@ abstract class ScenarioSpawner
 	void validateSpawnRequest(Player player, const SpawnReq req)
 	{
 		const EntityDbShort allowedTitles = m_constants.allowedEntities;
+		if (scenarioType == ScenarioType.developer && !player.isDeveloper)
+			throw new Exception("Scenario available only for developers");
 		enforce(canFind(allowedTitles.controllableSubNames, req.submarineName),
 			"invalid submarineName " ~ req.submarineName);
 		enforce(canFind(allowedTitles.propulsorNames, req.propulsorName),
@@ -246,6 +249,30 @@ private final class StandaloneScenarioSpawner: ScenarioSpawner
 		super.validateSpawnRequest(player, req);
 	}
 }
+
+
+private final class DeveloperScenarioSpawner: ScenarioSpawner
+{
+	this(AvailableScenarioConstants constants, Scenario delegate(Simulator sim) factory)
+	{
+		super(constants, factory);
+	}
+
+	override @property ScenarioType scenarioType() const
+	{
+		return ScenarioType.developer;
+	}
+
+	override void validateSpawnRequest(Player player, const SpawnReq req)
+	{
+		enforce(req.type == SpawnRequestType.newSimulator);
+		assert(req.simulatorIdOrScenarioName == m_constants.name);
+		if (scenarioType == ScenarioType.developer && !player.isDeveloper)
+			throw new Exception("Scenario available only for developers");
+		// no common spawn request validation needed
+	}
+}
+
 
 private final class TutorialScenarioSpawner: ScenarioSpawner
 {
@@ -368,6 +395,15 @@ final class ScenarioDatabase
 		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
 	}
 
+	private void addDeveloperScenario(T)()
+	{
+		AvailableScenarioConstants scenConstants = T.getConstants();
+		assert(scenConstants.name !in m_spawnableScenarios, "duplicate scenario name");
+		m_spawnableScenarios[scenConstants.name] =
+			new DeveloperScenarioSpawner(scenConstants, sim => new T(sim));
+		m_spawnableScenariosOrdered ~= m_spawnableScenarios[scenConstants.name];
+	}
+
 	private void addCampaignMission(MissClass)(ref Campaign campaign)
 	{
 		AvailableScenarioConstants scenConstants = MissClass.getConstants();
@@ -400,6 +436,8 @@ final class ScenarioDatabase
 		addTutorial!ActiveSonarTutorial();
 		addTutorial!TorpedoTutorial();
 		addTutorial!HydrophoneTmaTutorial();
+
+		addDeveloperScenario!BotSubsDuel1Dev();
 
 		Campaign perilousFluids = Campaign(
 			"Perilous Fluids",
@@ -518,6 +556,18 @@ chain of swift naval skirmishes with a neighbour's navy.`);
 				scen = (cast(PersistentScenarioSpawner) spawner).scenario;
 				break;
 		}
+		return scen;
+	}
+
+	Scenario generateScenarioForCreateSimulatorReq(Player developer, string scenarioName)
+	{
+		enforce(scenarioName in m_spawnableScenarios, "scenario not found");
+		ScenarioSpawner spawner = m_spawnableScenarios[scenarioName];
+		SpawnReq req;
+		req.type = SpawnRequestType.newSimulator;
+		req.simulatorIdOrScenarioName = scenarioName;
+		spawner.validateSpawnRequest(developer, req);
+		Scenario scen = spawner.createSimulatorAndScenario(developer.name);
 		return scen;
 	}
 }
