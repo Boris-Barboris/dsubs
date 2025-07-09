@@ -491,7 +491,7 @@ final class Simulator
 	{
 		enforce(canBePaused, "Cannot change timeAccelerationFactor of simulator " ~ id);
 		// use doSleep = false if you need no actual pause between simulation steps.
-		enforce(rhs > 0 && rhs < 1000, "Insane time acceleration factor proposed");
+		enforce(rhs > 0 && rhs < 2000, "Insane time acceleration factor proposed");
 		m_timeAccelerationFactorChanged = true;
 		m_timeAccelerationFactor = rhs;
 		// trace("Setting simulator ", m_id, " acceleration factor to ", rhs);
