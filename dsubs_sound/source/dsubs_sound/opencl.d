@@ -692,7 +692,7 @@ final class DsubsSoundOpenclCtx
 		Program m_prog;
 		CommandQueue[] m_queues;
 		Mutex m_wavMut;
-		LockMap m_wavLock;
+		LockMap m_wavLockMap;
 
 		// global stuff
 		FIRFilter*[string] m_filters;
@@ -758,7 +758,7 @@ final class DsubsSoundOpenclCtx
 				return res.varTds;
 			}
 		}
-		synchronized(m_wavLock.get(filePath))
+		synchronized(m_wavLockMap.get(filePath))
 		{
 			synchronized(m_wavMut)
 			{
@@ -795,7 +795,7 @@ final class DsubsSoundOpenclCtx
 
 	void releaseWavFileReference(string filePath, ref VarTds* ptrToClear)
 	{
-		synchronized(m_wavLock.get(filePath))
+		synchronized(m_wavLockMap.get(filePath))
 		{
 			synchronized(m_wavMut)
 			{
@@ -861,7 +861,7 @@ final class DsubsSoundOpenclCtx
 
 	int getWavFileRefCount(string filePath)
 	{
-		synchronized(m_wavLock.get(filePath))
+		synchronized(m_wavLockMap.get(filePath))
 		{
 			synchronized(m_wavMut)
 			{
@@ -883,7 +883,7 @@ final class DsubsSoundOpenclCtx
 	this(int queueCount)
 	{
 		m_wavMut = new Mutex();
-		m_wavLock = new LockMap();
+		m_wavLockMap = new LockMap();
 		m_plat = loadOpenclLibrary();
 		cl_context_properties[] ctx_props;
 		ctx_props ~= cast(cl_context_properties) CL_CONTEXT_PLATFORM;
