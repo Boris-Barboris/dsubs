@@ -56,7 +56,7 @@ final class BotSubsDuel1Dev: DeveloperScenario
 				WeaponCount("Decoy(passive)", 10)])],
 			[TubeSpawnState(2, "Decoy(active)"), TubeSpawnState(3, "Decoy(passive)")]);
 		Submarine botSub1 = Globals.entityDb.buildSubFromLoadout(req1, crew1);
-		botSub1.transform.position = vec2d(2000.0, 2500.0);
+		botSub1.transform.position = vec2d(3000.0, 2500.0);
 		botSub1.transform.rotation = dgr2rad(90);
 		m_simulator.bots.registerEntity(crew1);
 		crew1.goal = new SwimToDestinationGoal(crew1, vec2d(-20000.0, 0.0));
@@ -70,7 +70,7 @@ final class BotSubsDuel1Dev: DeveloperScenario
 		AICrew crew2 = new AICrew(BOT_DIFFICULTY.medium, "Pumpjet Stork2");
 		crew2.side = new SideOfConflict("Stork2 side");
 		Submarine botSub2 = Globals.entityDb.buildSubFromLoadout(req2, crew2);
-		botSub2.transform.position = vec2d(-2000.0, 1500.0);
+		botSub2.transform.position = vec2d(-3000.0, -1000.0);
 		botSub2.transform.rotation = dgr2rad(-90);
 		m_simulator.bots.registerEntity(crew2);
 		crew2.goal = new SwimToDestinationGoal(crew2, vec2d(20000.0, 1000.0));

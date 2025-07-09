@@ -579,8 +579,11 @@ final class Player: Captain
 		}
 		else
 			sim = s.simulator;
-		enforce(req.timeAccelerationFactor >= 5 && req.timeAccelerationFactor <= 80,
-			"timeAccelerationFactor not in [5, 80] range");
+		if (!isDeveloper)
+		{
+			enforce(req.timeAccelerationFactor >= 5 && req.timeAccelerationFactor <= 80,
+				"timeAccelerationFactor not in [5, 80] range");
+		}
 		synchronized(sim.simMut.reader)
 		{
 			if (s && s !is submarine)
