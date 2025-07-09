@@ -72,6 +72,7 @@ abstract class Killable: IObservableEntity
 
 	final protected void registerSimulator(Simulator sim)
 	{
+		assert(m_simulator is null);
 		m_simulator = sim;
 		m_registerTime = sim.worldTime;
 	}

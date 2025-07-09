@@ -419,6 +419,18 @@ final class Player: Captain
 		}
 	}
 
+	void handleDevCreateSimulatorReq(const DevCreateSimulatorReq req)
+	{
+		synchronized(this)
+		{
+			enforce(isDeveloper, "Not a developer");
+			Scenario scen = Globals.scenarioDb.generateScenarioForCreateSimulatorReq(
+				this, req.scenarioName);
+			// schedule simulator for execution
+			Globals.simulators.add(scen.simulator);
+		}
+	}
+
 	void handleThrottleRequest(const ThrottleReq req)
 	{
 		Submarine s = submarine;
