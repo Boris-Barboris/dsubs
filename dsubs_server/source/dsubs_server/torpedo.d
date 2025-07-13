@@ -837,6 +837,7 @@ final class TorpedoGuidance: IGuidance
 			SoundSource detonationSoundSource = new PrerecordedSoundSource(
 				new Transform2D(explosionCenter),
 				m_detonationSoundProto, null);
+			detonationSoundSource.factory = m_detonationSoundProto;
 			m_torpedo.simulator.acous.registerSource(detonationSoundSource);
 		}
 	}

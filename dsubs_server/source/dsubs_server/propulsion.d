@@ -124,6 +124,7 @@ final class BasicPropulsor: Propulsor
 	{
 		assert(vesselRb);
 		m_vesselRb = vesselRb;
+		// FIXME: perhaps owner should be set to propulsor, not the submarine
 		m_sound.owner = vesselRb.vesselOwner;	// let's set the owner to vessel
 		m_sound.onPreKinematics += ()
 		{
@@ -240,7 +241,8 @@ final class PropulsorFactory
 		res.shaftRotFreq = shaftRotFreq;
 		res.m_sound = new PropellerSound(
 			Globals.sctx.queue(0), res.transform, soundPrototype);
-		res.m_sound.owner = res;
+		res.m_sound.owner = res;	// will be reset to vessel in propulsor's bootstrap
+		res.m_sound.factory = cast() this;
 		return res;
 	}
 }

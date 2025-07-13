@@ -345,7 +345,8 @@ private final class PersistentScenarioSpawner: ScenarioSpawner
 		m_scenario = createSimulatorAndScenario(null, m_persistentId);
 		m_simulator = scenario.simulator;
 		m_simulator.runWithoutPlayers = true;
-		m_simulator.canBePaused = false;
+		if (Globals.database)
+			m_simulator.canBePaused = false;
 	}
 
 	/// in case of crash we recreate the simulator
@@ -354,7 +355,8 @@ private final class PersistentScenarioSpawner: ScenarioSpawner
 		m_scenario = createSimulatorAndScenario(null, m_persistentId);
 		m_simulator = scenario.simulator;
 		m_simulator.runWithoutPlayers = true;
-		m_simulator.canBePaused = false;
+		if (Globals.database)
+			m_simulator.canBePaused = false;
 	}
 
 	override @property ScenarioType scenarioType() const

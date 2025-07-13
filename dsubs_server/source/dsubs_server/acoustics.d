@@ -21,6 +21,7 @@ import std.algorithm.setops: cartesianProduct;
 import std.uuid;
 
 import dsubs_common.containers.array;
+import dsubs_common.json: toJson;
 
 import dsubs_sound.activesonar;
 import dsubs_sound.common: GLOBAL_SRATE, dB;
@@ -33,6 +34,7 @@ import dsubs_sound.opencl: CommandQueue, DsubsSoundOpenclCtx;
 import dsubs_server.common;
 import dsubs_server.simulator;
 import dsubs_server.observable;
+import dsubs_server.propulsion;
 
 
 final class AcousticEnv: IObservableCollection
@@ -403,6 +405,22 @@ private final class ObservableSoundSource: IObservableEntity
 		m_observableCache.transformSnapshot.angVel = 0.0;
 		if (m_soundSource.owner)
 			m_observableCache.stateUpdateJson["owner"] = m_soundSource.owner.toString();
+		if (m_soundSource.factory)
+		{
+			PropulsorFactory pf = cast(PropulsorFactory) m_soundSource.factory;
+			if (pf)
+			{
+				m_observableCache.stateUpdateJson["propulsorConfig"] =
+					pf.propulsorConfig.toJson();
+			}
+
+			PrerecordedSoundConfig psc = cast(PrerecordedSoundConfig) m_soundSource.factory;
+			if (psc)
+			{
+				m_observableCache.stateUpdateJson["prerecordedSoundConfig"] =
+					psc.toJson();
+			}
+		}
 		m_observableCache.stateUpdateJson["radius"] = m_soundSource.radius;
 	}
 
@@ -570,6 +588,7 @@ class Jukebox
 			PrerecordedSoundPrototype proto = randomSounds[sourceIdx];
 			m_currentSoundSource = new PrerecordedSoundSource(m_transform, proto);
 			m_currentSoundSource.owner = m_owner;
+			m_currentSoundSource.factory = proto;
 			m_simulator.acous.registerSource(m_currentSoundSource);
 			m_nextSoundStart =
 				(1e6 * m_currentSoundSource.totalSamples / GLOBAL_SRATE).to!usecs_t +

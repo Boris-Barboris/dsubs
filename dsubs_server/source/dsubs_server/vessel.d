@@ -93,7 +93,7 @@ abstract class Killable: IObservableEntity
 				m_deathTime = m_simulator.worldTime;
 				m_causeOfDeath = cause;
 				onFirstKill();
-				m_observableCache.log(m_id.toString(), typeof(this).stringof,
+				m_observableCache.log(m_id.toString(), this.classBaseName,
 					"Entity killed, cause: " ~  cause ~ ", killer: " ~
 						(killer ? killer.name() : ""));
 				return true;
@@ -244,6 +244,8 @@ class Vessel: Killable, IHasTransform, IHasRigidBody
 		enforce(target <= 1.0f && target >= -1.0f, "Throttle not in [-1, 1] interval");
 		foreach (prop; m_propulsors)
 			prop.targetThrottle = target;
+		// m_observableCache.log(m_id.toString(), this.classBaseName,
+		// 	"Vessel setting throttle to " ~ target.to!string);
 	}
 
 	final @property float targetCourse() const { return m_rudder.targetCourse; }

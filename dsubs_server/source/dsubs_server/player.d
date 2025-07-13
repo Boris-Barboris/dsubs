@@ -145,7 +145,7 @@ final class Player: Captain
 
 	@property bool isDeveloper() const
 	{
-		return m_username == "admin" || m_username == "Boris-Barboris" ||
+		return m_username == "Boris-Barboris" || m_username == "Boris-Barboris2" ||
 			Globals.database is null;
 	}
 

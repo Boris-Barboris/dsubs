@@ -43,6 +43,9 @@ abstract class SoundSource
 	/// Abstract owner
 	Object owner;
 
+	/// Abstract factory that spawned it
+	Object factory;
+
 	this(Transform2D t)
 	{
 		m_transform = t;

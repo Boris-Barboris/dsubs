@@ -551,6 +551,7 @@ final class Tube: IFlowNoiseMultiplier
 			return;
 		PrerecordedSoundSource currentSound = new PrerecordedSoundSource(
 			m_transform, cast() proto, sampleOffset);
+		currentSound.factory = cast() proto;
 		m_sub.simulator.acous.registerSource(currentSound);
 	}
 

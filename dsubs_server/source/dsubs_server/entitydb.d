@@ -47,8 +47,6 @@ import dsubs_sound.opencl: CommandQueue;
 import dsubs_sound.common: GLOBAL_SRATE;
 
 import dsubs_server.common;
-import dsubs_server.acoustics: JukeboxSoundTimings, PrerecordedSoundConfig,
-	SpectrumImageConfig;
 import dsubs_server.objfile;
 import dsubs_server.propulsion;
 import dsubs_server.sensors;

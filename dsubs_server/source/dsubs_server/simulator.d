@@ -662,6 +662,8 @@ final class Simulator
 			profiler.start("onSimulationPassStart");
 			onSimulationPassStart(this, m_worldTime);
 			profiler.stopLast();
+			foreach (IObservableCollection observableCollection; m_observables)
+				observableCollection.markNewObservationEpoch();
 			if (scenario)
 			{
 				profiler.start("scenario.onBeforeSimulation");
@@ -775,9 +777,17 @@ final class Simulator
 		ObservableEntityUpdate[] res;
 		res.reserve(64);
 		foreach (IObservableCollection observableCollection; m_observables)
-		{
-			observableCollection.markNewObservationEpoch();
 			observableCollection.appendObserverEntityUpdates(res);
+		return res;
+	}
+
+	SimulatorLogRecord[] getObserverLogRecords()
+	{
+		SimulatorLogRecord[] res;
+		res.reserve(32);
+		foreach (IObservableCollection observableCollection; m_observables)
+		{
+			observableCollection.appendObserverLogRecords(res);
 		}
 		return res;
 	}
@@ -796,10 +806,11 @@ final class Simulator
 		if (playersToSendUpdateTo.length > 0)
 		{
 			ObservableEntityUpdate[] entityUpdates = getObservableEntities();
+			SimulatorLogRecord[] logRecords = getObserverLogRecords();
 			// parallelize, some functions in sendUpdate are blocking/heavy.
 			foreach (Player p; Globals.taskPool.parallel(playersToSendUpdateTo, 1))
 			{
-				p.sendObserverUpdate(entityUpdates, [], m_worldTime);
+				p.sendObserverUpdate(entityUpdates, logRecords, m_worldTime);
 			}
 		}
 	}
