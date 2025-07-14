@@ -161,12 +161,29 @@ final class AICrew: AICrewTemp
 			m_acoustic.execute();
 	}
 
+	override void markNewObservationEpoch()
+	{
+		super.markNewObservationEpoch();
+		if (m_captain)
+			m_captain.btRoot.markNewObservationEpoch();
+		if (m_helmsman)
+			m_helmsman.btRoot.markNewObservationEpoch();
+		if (m_acoustic)
+			m_acoustic.btRoot.markNewObservationEpoch();
+	}
+
 	override void updateObservableCache()
 	{
 		super.updateObservableCache();
 		m_observableCache.stateUpdateJson["name"] = this.m_name;
 		m_observableCache.stateUpdateJson["difficulty"] = this.m_difficulty.to!string;
 		m_observableCache.stateUpdateJson["goal"] = this.m_goal.to!string;
+		if (m_captain)
+			m_observableCache.stateUpdateJson["captain"] = m_captain.btRoot.toJson();
+		if (m_helmsman)
+			m_observableCache.stateUpdateJson["helmsman"] = m_helmsman.btRoot.toJson();
+		if (m_acoustic)
+			m_observableCache.stateUpdateJson["acoustic"] = m_acoustic.btRoot.toJson();
 	}
 }
 
@@ -461,6 +478,8 @@ final class AICaptain
 		HelmsmanOrderGoal m_helmsmansOrderGoal;
 		usecs_t m_lastOrderToHelmsman;
 	}
+
+	@property BehaviourTreeNode btRoot() { return m_btRoot; }
 
 	private @property bool helmsmanOrderOnCooldown()
 	{
@@ -934,7 +953,7 @@ final class AICaptain
 		/// For this many seconds we will keep the contact alive
 		enum float MAX_SOLUTION_AGE_SEC = 600.0f;
 
-		override ExecutionResult execute(ref int ticks)
+		protected override ExecutionResult doExecute(ref int ticks)
 		{
 			if (m_mainTarget is null)
 				return ExecutionResult.failure;

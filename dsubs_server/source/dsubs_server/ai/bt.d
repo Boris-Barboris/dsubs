@@ -19,8 +19,8 @@ module dsubs_server.ai.bt;
 
 import std.algorithm.comparison: min, max;
 import std.algorithm: canFind, minElement;
-
 import std.conv: to;
+import std.json;
 
 import dsubs_common.containers.array;
 
@@ -58,7 +58,45 @@ class BehaviourTreeNode
 	override string toString() { return description; }
 
 	/// Propagate and consume ticks and return the execution result.
-	abstract ExecutionResult execute(ref int ticks);
+	ExecutionResult execute(ref int ticks)
+	{
+		m_wasExecutedInLastEpoch = true;
+		int ticksBefore = ticks;
+		m_execResultInLastEpoch = doExecute(ticks);
+		m_ticksConsumedInLastEpoch = ticksBefore - ticks;
+		return m_execResultInLastEpoch;
+	}
+
+	abstract protected ExecutionResult doExecute(ref int ticks);
+
+	protected
+	{
+		bool m_wasExecutedInLastEpoch;
+		int m_ticksConsumedInLastEpoch;
+		ExecutionResult m_execResultInLastEpoch;
+	}
+
+	JSONValue toJson()
+	{
+		JSONValue[string] objectFields;
+		JSONValue res = JSONValue(objectFields);
+		res["nodeType"] = this.classBaseName;
+		res["description"] = m_description;
+		res["wasExecuted"] = m_wasExecutedInLastEpoch;
+		if (m_wasExecutedInLastEpoch)
+		{
+			res["ticksConsumed"] = m_ticksConsumedInLastEpoch;
+			res["execResult"] = m_execResultInLastEpoch.to!string;
+		}
+		return res;
+	}
+
+	/// Used to reset observer-related counters
+	void markNewObservationEpoch()
+	{
+		m_wasExecutedInLastEpoch = false;
+		m_ticksConsumedInLastEpoch = 0;
+	}
 }
 
 
@@ -96,6 +134,21 @@ abstract class LinearChildrenNode: ControlFlowNode
 	{
 		m_lastIdxMemory = 0;
 		m_children = newChildrenArray;
+	}
+
+	override JSONValue toJson()
+	{
+		JSONValue res = super.toJson();
+		res["lastIdxMemory"] = m_lastIdxMemory;
+		res["children"] = m_children.map!(c => c.toJson()).array;
+		return res;
+	}
+
+	override void markNewObservationEpoch()
+	{
+		super.markNewObservationEpoch();
+		foreach (c; m_children)
+			c.markNewObservationEpoch();
 	}
 }
 
@@ -137,7 +190,7 @@ final class SequenceNode: LinearChildrenNode
 		super(description, children, memory, file, line);
 	}
 
-	override ExecutionResult execute(ref int ticks)
+	protected override ExecutionResult doExecute(ref int ticks)
 	{
 		assert(ticks > 0);
 		for (size_t i = memory ? m_lastIdxMemory : 0; i < m_children.length; i++)
@@ -183,7 +236,7 @@ final class FallbackNode: LinearChildrenNode
 		super(description, children, memory, file, line);
 	}
 
-	override ExecutionResult execute(ref int ticks)
+	protected override ExecutionResult doExecute(ref int ticks)
 	{
 		assert(ticks > 0);
 		for (size_t i = memory ? m_lastIdxMemory : 0; i < m_children.length; i++)
@@ -229,7 +282,7 @@ final class RoundRobinNode: LinearChildrenNode
 		ExecutionResult[] m_childrenResults;
 	}
 
-	override ExecutionResult execute(ref int ticks)
+	protected override ExecutionResult doExecute(ref int ticks)
 	{
 		assert(ticks > 0);
 		if (m_children.length == 0)
@@ -265,6 +318,13 @@ final class RoundRobinNode: LinearChildrenNode
 		}
 		return ExecutionResult.running;
 	}
+
+	override JSONValue toJson()
+	{
+		JSONValue res = super.toJson();
+		res["timeSlice"] = m_timeSlice;
+		return res;
+	}
 }
 
 
@@ -288,7 +348,7 @@ final class ParallelNode: LinearChildrenNode
 		this.m_successThreshold = successThreshold;
 	}
 
-	override ExecutionResult execute(ref int ticks)
+	protected override ExecutionResult doExecute(ref int ticks)
 	{
 		assert(ticks > 0);
 		if (m_children.length == 0)
@@ -328,7 +388,7 @@ final class ConditionNode: BehaviourTreeNode
 		predicate = pred;
 	}
 
-	override ExecutionResult execute(ref int ticks)
+	protected override ExecutionResult doExecute(ref int ticks)
 	{
 		assert(ticks > 0);
 		bool res = predicate();
@@ -391,7 +451,7 @@ abstract class FixedCostActionNode: ActionNode
 
 	abstract ExecutionResult onTicksCostConsumed();
 
-	override ExecutionResult execute(ref int ticks)
+	protected override ExecutionResult doExecute(ref int ticks)
 	{
 		assert(ticks > 0);
 		if (!shouldBeRunning)
@@ -411,6 +471,14 @@ abstract class FixedCostActionNode: ActionNode
 		else
 			return ExecutionResult.running;
 	}
+
+	override JSONValue toJson()
+	{
+		JSONValue res = super.toJson();
+		res["ticksCost"] = m_ticksCost;
+		res["ticksToFinish"] = m_ticksToFinish;
+		return res;
+	}
 }
 
 
@@ -422,7 +490,7 @@ abstract class FixedCostActionNode: ActionNode
 // 		super("No-op action", file, line);
 // 	}
 
-// 	override ExecutionResult execute(ref int ticks)
+// 	protected override ExecutionResult doExecute(ref int ticks)
 // 	{
 // 		assert(ticks > 0);
 // 		return ExecutionResult.success;

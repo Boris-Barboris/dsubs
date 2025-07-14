@@ -87,6 +87,8 @@ final class AIHelmsman
 		bool m_idleThrottleTemp;
 	}
 
+	@property BehaviourTreeNode btRoot() { return m_btRoot; }
+
 	OrderQueue!WhereToSwim whereToSwimOrder;
 	OrderQueue!NavigationSpeed navigationSpeedOrder;
 
@@ -160,7 +162,7 @@ final class AIHelmsman
 			super("Adjust rudder according to current order", file, line);
 		}
 
-		override ExecutionResult execute(ref int ticks)
+		protected override ExecutionResult doExecute(ref int ticks)
 		{
 			assert(ticks > 0);
 			m_idleThrottleTemp = false;
@@ -194,7 +196,7 @@ final class AIHelmsman
 			super("Adjust throttle according to current order", file, line);
 		}
 
-		override ExecutionResult execute(ref int ticks)
+		protected override ExecutionResult doExecute(ref int ticks)
 		{
 			assert(ticks > 0);
 			if (m_idleThrottleTemp)

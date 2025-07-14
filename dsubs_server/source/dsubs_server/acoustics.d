@@ -19,6 +19,7 @@ module dsubs_server.acoustics;
 
 import std.algorithm.setops: cartesianProduct;
 import std.uuid;
+import std.range: chain;
 
 import dsubs_common.containers.array;
 import dsubs_common.json: toJson;
@@ -273,33 +274,13 @@ final class AcousticEnv: IObservableCollection
 		}
 	}
 
-	// observation stuff
-	void markNewObservationEpoch()
+	private @property auto observablesRange()
 	{
-		foreach (h; m_hydrophones)
-			h.markNewObservationEpoch();
-		foreach (ss; m_sources)
-			ss.markNewObservationEpoch();
+		return chain(m_hydrophones.map!(h => cast(IObservableEntity) h),
+			m_sources.map!(s => cast(IObservableEntity) s));
 	}
 
-	size_t appendObserverEntityUpdates(ref ObservableEntityUpdate[] appendTo)
-	{
-		foreach (h; m_hydrophones)
-			appendTo ~= h.getObserverUpdate().toUnstructured();
-		foreach (ss; m_sources)
-			appendTo ~= ss.getObserverUpdate().toUnstructured();
-		return m_hydrophones.length;
-	}
-
-	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
-	{
-		size_t res;
-		foreach (h; m_hydrophones)
-			res += h.appendObserverLogRecords(appendTo);
-		foreach (ss; m_sources)
-			res += ss.appendObserverLogRecords(appendTo);
-		return res;
-	}
+	mixin ObservableCollectionCommonMethods!(observablesRange);
 }
 
 

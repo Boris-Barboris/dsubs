@@ -58,6 +58,8 @@ final class AIAcoustic
 		int m_ticksPerExecute;
 	}
 
+	@property BehaviourTreeNode btRoot() { return m_btRoot; }
+
 	void execute()
 	{
 		int ticks = m_ticksPerExecute;
@@ -151,7 +153,7 @@ final class AIAcoustic
 
 		private float m_detectionMargin = 0.0f;
 
-		override ExecutionResult execute(ref int ticks)
+		protected override ExecutionResult doExecute(ref int ticks)
 		{
 			Submarine sub = m_crew.submarine;
 			m_lastImprints.length = 0;
@@ -231,7 +233,7 @@ final class AIAcoustic
 			return ExecutionResult.running;
 		}
 
-		override ExecutionResult execute(ref int ticks)
+		protected override ExecutionResult doExecute(ref int ticks)
 		{
 			if (m_running)
 				return onRunning(ticks, false);
