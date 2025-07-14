@@ -25,7 +25,7 @@ import dsubs_server.vessel;
 import dsubs_server.player;
 import dsubs_server.submarine;
 import dsubs_server.ai.common;
-import dsubs_server.ai.captain;
+import dsubs_server.ai.aicaptain;
 
 
 
@@ -109,7 +109,7 @@ final class AIHelmsman
 			return whereToSwimOrder.hasOrder || navigationSpeedOrder.hasOrder;
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			if (whereToSwimOrder.hasOrder)
 			{
@@ -167,7 +167,7 @@ final class AIHelmsman
 			final switch (m_whereToSwim.type)
 			{
 				case WhereToSwimType.idle:
-					break;
+					return ExecutionResult.failure;
 				case WhereToSwimType.course:
 					m_crew.submarine.targetCourse = m_whereToSwim.course;
 					break;

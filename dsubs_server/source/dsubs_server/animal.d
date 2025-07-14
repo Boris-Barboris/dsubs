@@ -201,7 +201,7 @@ final class AnimalCollection: IObservableCollection
 			a.shutdown();
 	}
 
-	mixin ObservableCollectionCommonMethods;
+	mixin ObservableCollectionCommonMethods!(m_entities);
 }
 
 

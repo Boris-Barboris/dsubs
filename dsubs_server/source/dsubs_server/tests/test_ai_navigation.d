@@ -26,7 +26,7 @@ import dsubs_server.common;
 import dsubs_server.entitydb;
 import dsubs_server.submarine;
 import dsubs_server.propulsion;
-import dsubs_server.ai.captain;
+import dsubs_server.ai.aicaptain;
 
 import dsubs_server.tests.common;
 

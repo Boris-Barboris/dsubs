@@ -95,54 +95,27 @@ interface IObservableCollection
 }
 
 
-mixin template ObservableCollectionCommonMethods()
+mixin template ObservableCollectionCommonMethods(alias entities)
 {
 	void markNewObservationEpoch()
 	{
-		foreach (v; m_entities)
+		foreach (v; entities)
 			v.markNewObservationEpoch();
 	}
 
 	size_t appendObserverEntityUpdates(ref ObservableEntityUpdate[] appendTo)
 	{
-		foreach (v; m_entities)
+		size_t lengthWas = appendTo.length;
+		foreach (v; entities)
 			appendTo ~= v.getObserverUpdate().toUnstructured();
-		return m_entities.length;
+		return appendTo.length - lengthWas;
 	}
 
 	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
 	{
 		size_t res;
-		foreach (v; m_entities)
+		foreach (v; entities)
 			res += v.appendObserverLogRecords(appendTo);
 		return res;
 	}
-}
-
-
-private string baseName(ClassInfo classinfo)
-{
-	import std.array;
-	import std.algorithm : countUntil;
-	import std.range : retro;
-
-	string qualName = classinfo.name;
-
-	ptrdiff_t dotIndex = qualName.retro.countUntil('.');
-
-	if (dotIndex < 0) {
-		return qualName;
-	}
-
-	return qualName[$ - dotIndex .. $];
-}
-
-
-string classBaseName(Object instance)
-{
-	if (instance is null) {
-		return "null";
-	}
-
-	return instance.classinfo.baseName;
 }

@@ -25,7 +25,7 @@ import dsubs_common.math.angles;
 
 import dsubs_server.common;
 import dsubs_server.bots;
-import dsubs_server.ai.captain;
+import dsubs_server.ai.aicaptain;
 import dsubs_server.player: SideOfConflict;
 import dsubs_server.vessel;
 import dsubs_server.submarine;

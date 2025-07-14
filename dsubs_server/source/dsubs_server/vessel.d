@@ -28,7 +28,7 @@ import dsubs_common.containers.array: removeFirstUnstable;
 
 import dsubs_sound.activesonar: Reflector, ReflectorPrototype;
 
-import dsubs_server.ai.captain: ContactRelation;
+import dsubs_server.ai.aicaptain: ContactRelation;
 import dsubs_server.player: Captain;
 import dsubs_server.common;
 import dsubs_server.dynamics;
@@ -388,7 +388,7 @@ final class VesselCollection: IObservableCollection
 		m_entities.length = 0;
 	}
 
-	mixin ObservableCollectionCommonMethods;
+	mixin ObservableCollectionCommonMethods!(m_entities);
 }
 
 

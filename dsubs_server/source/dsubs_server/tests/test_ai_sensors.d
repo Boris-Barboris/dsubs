@@ -27,8 +27,8 @@ import dsubs_server.entitydb;
 import dsubs_server.submarine;
 import dsubs_server.propulsion;
 import dsubs_server.ai.common;
-import dsubs_server.ai.captain;
-import dsubs_server.ai.acoustic;
+import dsubs_server.ai.aicaptain;
+import dsubs_server.ai.aiacoustic;
 
 import dsubs_server.tests.common;
 

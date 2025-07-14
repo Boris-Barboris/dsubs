@@ -28,7 +28,8 @@ import dsubs_server.common;
 import dsubs_server.submarine: Submarine;
 import dsubs_server.weaponry;
 import dsubs_server.player;
-import dsubs_server.ai.captain;
+import dsubs_server.ai.aicaptain;
+import dsubs_server.observable;
 
 
 /// Simple bot captain that just swims to his destination.
@@ -72,39 +73,50 @@ final class BotCaptain: AICrewTemp
 			m_submarine.targetCourse = courseAngle(diff);
 		}
 	}
+
+	override void updateObservableCache()
+	{
+		super.updateObservableCache();
+		m_observableCache.stateUpdateJson["name"] = this.name;
+		m_observableCache.stateUpdateJson["destination"] = this.m_destination.to!string;
+		m_observableCache.stateUpdateJson["chosenThrottle"] = this.m_chosenThrottle;
+		m_observableCache.stateUpdateJson["reachedDest"] = this.m_reachedDest;
+	}
 }
 
 
-final class BotCollection
+final class BotCollection: IObservableCollection
 {
 	private
 	{
-		bool[AICrewTemp] m_bots;
+		bool[AICrewTemp] m_entities;
 	}
 
-	@property auto captains() { return m_bots.byKey; }
+	@property auto captains() { return m_entities.byKey; }
 
-	@property size_t count() const { return m_bots.length; }
+	@property size_t count() const { return m_entities.length; }
 
 	void clean()
 	{
-		m_bots.clear();
+		m_entities.clear();
 	}
 
 	void registerEntity(AICrewTemp cpt)
 	{
-		m_bots[cpt] = true;
+		m_entities[cpt] = true;
 	}
 
 	void onAfterSimulation()
 	{
 		// remove captains with dead submarines
-		AICrewTemp[] cptToRemove = m_bots.byKey.filter!(cpt =>
+		AICrewTemp[] cptToRemove = m_entities.byKey.filter!(cpt =>
 			cpt.submarine && cpt.submarine.dead).array;
 		foreach (AICrewTemp cpt; cptToRemove)
-			m_bots.remove(cpt);
+			m_entities.remove(cpt);
 		// alive captains need an update
-		foreach (AICrewTemp bcpt; Globals.taskPool.parallel(m_bots.keys, 1))
+		foreach (AICrewTemp bcpt; Globals.taskPool.parallel(m_entities.byKey, 1))
 			bcpt.afterSimulation();
 	}
+
+	mixin ObservableCollectionCommonMethods!(captains);
 }

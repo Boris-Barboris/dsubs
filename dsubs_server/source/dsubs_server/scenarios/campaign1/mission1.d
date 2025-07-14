@@ -28,7 +28,7 @@ import dsubs_sound.soundsource;
 
 import dsubs_server.common;
 import dsubs_server.bots;
-import dsubs_server.ai.captain;
+import dsubs_server.ai.aicaptain;
 import dsubs_server.acoustics;
 import dsubs_server.animal;
 import dsubs_server.vessel;

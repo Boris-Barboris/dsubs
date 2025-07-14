@@ -20,6 +20,7 @@ module dsubs_server.player;
 import std.algorithm.iteration;
 import std.array: array;
 import std.string: strip;
+import std.uuid;
 
 import core.atomic;
 
@@ -39,7 +40,7 @@ import dsubs_server.weaponry;
 import dsubs_server.torpedo;
 import dsubs_server.scenario: Scenario;
 import dsubs_server.simulator: Simulator;
-import dsubs_server.ai.captain: ContactRelation;
+import dsubs_server.ai.aicaptain: ContactRelation;
 
 
 class AuthException: Exception
@@ -86,11 +87,19 @@ class Captain
 	}
 
 	private SideOfConflict m_side;
+	private UUID m_id;
+
+	this()
+	{
+		m_id = randomUUID();
+	}
 
 	final @property SideOfConflict side() { return m_side; }
 	@property void side(SideOfConflict rhs) { m_side = rhs; }
 
 	abstract @property string name() const;
+
+	final @property UUID id() const { return m_id; }
 
 	final @property Submarine submarine()
 	{

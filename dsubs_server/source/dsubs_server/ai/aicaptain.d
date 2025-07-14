@@ -15,7 +15,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-module dsubs_server.ai.captain;
+module dsubs_server.ai.aicaptain;
 
 import std.algorithm: any, filter, map, sort, startsWith;
 import std.array: array;
@@ -33,19 +33,56 @@ import dsubs_server.weaponry;
 import dsubs_server.torpedo;
 import dsubs_server.vessel;
 import dsubs_server.player;
+import dsubs_server.observable;
 import dsubs_server.simulator;
 import dsubs_server.submarine;
 import dsubs_server.ai.common;
 import dsubs_server.ai.helmsman;
-import dsubs_server.ai.acoustic;
+import dsubs_server.ai.aiacoustic;
 
 public import dsubs_server.ai.common: BOT_DIFFICULTY;
 
 
-/// temporary interface in order to not break default BR scenario
-abstract class AICrewTemp: Captain
+/// temporary (permanent) interface in order to not break default BR scenario
+abstract class AICrewTemp: Captain, IObservableEntity
 {
 	void afterSimulation();
+
+	protected ObservableEntityCache m_observableCache;
+
+	void markNewObservationEpoch()
+	{
+		m_observableCache.clearCache();
+	}
+
+	StructuredObservableEntityUpdate getObserverUpdate()
+	{
+		if (m_observableCache.generated)
+			return m_observableCache.entityUpdateCache;
+		updateObservableCache();
+		m_observableCache.generated = true;
+		return m_observableCache.entityUpdateCache;
+	}
+
+	protected void updateObservableCache()
+	{
+		m_observableCache.id = id.toString();
+		m_observableCache.entityType = this.classBaseName;
+		Submarine sub = this.submarine;
+		if (sub)
+		{
+			m_observableCache.transformSnapshot = sub.kinematicSnapshot;
+			// offset position for easy clicks in editor
+			m_observableCache.transformSnapshot.position += vec2d(80, -40);
+			m_observableCache.stateUpdateJson["dead"] = sub.dead;
+		}
+	}
+
+	size_t appendObserverLogRecords(ref SimulatorLogRecord[] appendTo)
+	{
+		appendTo ~= m_observableCache.logRecords;
+		return m_observableCache.logRecords.length;
+	}
 }
 
 
@@ -123,6 +160,14 @@ final class AICrew: AICrewTemp
 		if (m_acoustic)
 			m_acoustic.execute();
 	}
+
+	override void updateObservableCache()
+	{
+		super.updateObservableCache();
+		m_observableCache.stateUpdateJson["name"] = this.m_name;
+		m_observableCache.stateUpdateJson["difficulty"] = this.m_difficulty.to!string;
+		m_observableCache.stateUpdateJson["goal"] = this.m_goal.to!string;
+	}
 }
 
 
@@ -175,6 +220,12 @@ final class SwimToDestinationGoal: CrewGoal
 		else
 			return GoalStatus.needAction;
 	}
+
+	override string toString()
+	{
+		return "SwimToDestinationGoal(" ~ m_destination.to!string ~ ", status: " ~
+			status().to!string ~ ")";
+	}
 }
 
 
@@ -206,7 +257,7 @@ struct OrderQueue(T)
 }
 
 
-/// Strongly-typed CIC state, blackboard.
+/// Essentially a typical AI blackboard.
 final class CrewState
 {
 	Contact*[Vessel] contacts;
@@ -487,9 +538,9 @@ final class AICaptain
 			return captainOrder.hasOrder;
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
-			trace("ProcessNewOrder onTicksConsumed");
+			trace("ProcessNewOrder onTicksCostConsumed");
 			if (!captainOrder.hasOrder)
 				return ExecutionResult.failure;
 			m_activeGoal = captainOrder.popFront();
@@ -514,7 +565,7 @@ final class AICaptain
 				m_helmsmansOrderGoal != HelmsmanOrderGoal.sync;
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			SwimToDestinationGoal goal = cast(SwimToDestinationGoal) m_activeGoal;
 			assert(goal);
@@ -542,7 +593,7 @@ final class AICaptain
 			return m_activeGoal is null && m_helmsmansOrderGoal != HelmsmanOrderGoal.sync;
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			trace("Ordering helmsman to idle");
 			WhereToSwim whereToSwim;
@@ -602,7 +653,7 @@ final class AICaptain
 			super("Perform TMA for all important contacts", 3000, false, file, line);
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			// loop over all contacts and update their solutions
 			Vessel[] contactsToRemove;
@@ -719,7 +770,7 @@ final class AICaptain
 					c.solution.positionKnown);
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			static struct VesselAndRange
 			{
@@ -761,6 +812,7 @@ final class AICaptain
 				return false;
 			// if we're already defending, helmsman's cooldown should not
 			// cause Failure, but success.
+			// FIXME: case for a state machine, not a BT
 			invertShouldBeRunning = m_helmsmansOrderGoal == HelmsmanOrderGoal.defense;
 			return !helmsmanOrderOnCooldown || !invertShouldBeRunning;
 		}
@@ -776,7 +828,7 @@ final class AICaptain
 			return evadeVector;
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			double evasionCourse = courseAngle(getEvasionDirection());
 			WhereToSwim wts;
@@ -828,7 +880,7 @@ final class AICaptain
 			return 1e3 / totalMiss / max(1.0, relPos.length);
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			static struct VesselAndDanger
 			{
@@ -916,7 +968,7 @@ final class AICaptain
 				t.loadedWeapon == null);
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			foreach (Tube tube; m_crew.submarine.tubeRange)
 			{
@@ -967,7 +1019,7 @@ final class AICaptain
 				return "Decoy(active)";
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			foreach (Tube tube; m_crew.submarine.tubeRange)
 			{
@@ -1002,7 +1054,7 @@ final class AICaptain
 				t.loadedWeapon.startsWith("Decoy"));
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			foreach (Tube tube; m_crew.submarine.tubeRange)
 			{
@@ -1037,7 +1089,7 @@ final class AICaptain
 				t.loadedWeapon == null);
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			foreach (Tube tube; m_crew.submarine.tubeRange)
 			{
@@ -1068,7 +1120,7 @@ final class AICaptain
 			return m_mainTarget !is null;
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal == HelmsmanOrderGoal.attack)
 				return ExecutionResult.success;
@@ -1110,7 +1162,7 @@ final class AICaptain
 			return m_mainTarget !is null;
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			if (helmsmanOrderOnCooldown && m_helmsmansOrderGoal == HelmsmanOrderGoal.attack)
 				return ExecutionResult.success;
@@ -1192,7 +1244,7 @@ final class AICaptain
 			return hasActiveSonar(m_crew.submarine);
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			m_lastPing = simulator.worldTime;
 			ActiveSonar sonar = m_crew.submarine.sonar;
@@ -1251,7 +1303,7 @@ final class AICaptain
 				t.loadedWeapon.startsWith("Decoy"));
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			auto tubes = m_crew.submarine.tubeRange;
 			Tube chosenTube;
@@ -1296,7 +1348,7 @@ final class AICaptain
 			return mainContact().solution.velocity;
 		}
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			auto tubes = m_crew.submarine.tubeRange;
 			if (!torpedoBudgetOk)

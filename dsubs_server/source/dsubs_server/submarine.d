@@ -26,7 +26,7 @@ import dsubs_common.json;
 import dsubs_sound.activesonar;
 import dsubs_sound.hydrophone;
 
-import dsubs_server.ai.captain: ContactRelation;
+import dsubs_server.ai.aicaptain: ContactRelation;
 import dsubs_server.common;
 import dsubs_server.vessel;
 import dsubs_server.sensors;

@@ -38,7 +38,7 @@ import dsubs_server.player;
 import dsubs_server.bots;
 import dsubs_server.scenario;
 import dsubs_server.simulator;
-import dsubs_server.ai.captain;
+import dsubs_server.ai.aicaptain;
 import dsubs_server.ai.common;
 
 

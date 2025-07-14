@@ -15,7 +15,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-module dsubs_server.ai.acoustic;
+module dsubs_server.ai.aiacoustic;
 
 import std.algorithm: filter;
 import std.array: array;
@@ -35,7 +35,7 @@ import dsubs_server.submarine;
 import dsubs_server.torpedo;
 import dsubs_server.ai.common;
 import dsubs_server.ai.bt;
-import dsubs_server.ai.captain;
+import dsubs_server.ai.aicaptain;
 
 
 final class AIAcoustic
@@ -221,7 +221,7 @@ final class AIAcoustic
 
 		private ExecutionResult onRunning(ref int ticks, bool isPing)
 		{
-			if (isPing || consumeLocalTicks(m_ticksCost, m_ticksLeft, ticks))
+			if (isPing || consumeMinOfTicks(m_ticksCost, m_ticksLeft, ticks))
 			{
 				pushImprintToCIC(isPing);
 				m_running = false;
@@ -288,7 +288,7 @@ final class AIAcoustic
 
 		enum float CLASSIFICATION_MARGIN = 100.0f;
 
-		override ExecutionResult onTicksConsumed()
+		override ExecutionResult onTicksCostConsumed()
 		{
 			// we go through all imprints and provide ray data to CIC (crew state)
 			foreach (ref SourceImprint si; m_lastImprints)

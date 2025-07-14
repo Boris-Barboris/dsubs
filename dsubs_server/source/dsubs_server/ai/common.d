@@ -39,6 +39,6 @@ int ticksPerDifficulty(BOT_DIFFICULTY diff)
 		case BOT_DIFFICULTY.medium:
 			return 200;
 		case BOT_DIFFICULTY.hard:
-			return 250;
+			return 300;
 	}
 }

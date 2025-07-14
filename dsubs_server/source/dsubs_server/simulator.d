@@ -437,7 +437,7 @@ final class Simulator
 			vessels.IObservableCollection,
 			animals.IObservableCollection,
 			// weapons,
-			// bots
+			bots
 		];
 	}
 

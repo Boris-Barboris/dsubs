@@ -51,10 +51,13 @@ class BehaviourTreeNode
 
 	this(string description, string file, size_t line)
 	{
-		m_description = file ~ ":" ~ line.to!string ~ " " ~ description;
+		m_description = classBaseName(this) ~ " " ~ file ~ ":" ~
+			line.to!string ~ " " ~ description;
 	}
 
-	/// Propagate ticks and return the execution result.
+	override string toString() { return description; }
+
+	/// Propagate and consume ticks and return the execution result.
 	abstract ExecutionResult execute(ref int ticks);
 }
 
@@ -68,16 +71,18 @@ class ControlFlowNode: BehaviourTreeNode
 }
 
 
+/// Abstract control-flow node that operates on the array of children
 abstract class LinearChildrenNode: ControlFlowNode
 {
 	protected
 	{
 		BehaviourTreeNode[] m_children;
+
+		// When true, control node will remember the last child it stopped execution
+		// on in the previous "execute" call.
+		bool memory;
 		size_t m_lastIdxMemory;
 	}
-
-	/// Sequence simulator
-	bool memory;
 
 	this(string description, BehaviourTreeNode[] children, bool memory = false,
 		string file = __FILE__, size_t line = __LINE__)
@@ -95,31 +100,34 @@ abstract class LinearChildrenNode: ControlFlowNode
 }
 
 
-abstract class DecoratorNode: ControlFlowNode
-{
-	protected
-	{
-		BehaviourTreeNode m_child;
-	}
+// probably not needed
+// abstract class DecoratorNode: ControlFlowNode
+// {
+// 	protected
+// 	{
+// 		BehaviourTreeNode m_child;
+// 	}
 
-	this(string description, BehaviourTreeNode child, string file, size_t line)
-	{
-		super(description, file, line);
-		m_child = child;
-	}
+// 	this(string description, BehaviourTreeNode child, string file, size_t line)
+// 	{
+// 		super(description, file, line);
+// 		m_child = child;
+// 	}
 
-	final @property BehaviourTreeNode child()
-	{
-		return m_child;
-	}
+// 	final @property BehaviourTreeNode child()
+// 	{
+// 		return m_child;
+// 	}
 
-	final @property void child(BehaviourTreeNode rhs)
-	{
-		m_child = rhs;
-	}
-}
+// 	final @property void child(BehaviourTreeNode rhs)
+// 	{
+// 		m_child = rhs;
+// 	}
+// }
 
 
+/// Executes children in sequential order, switching to next when previous
+/// returned 'success'.
 final class SequenceNode: LinearChildrenNode
 {
 
@@ -150,19 +158,23 @@ final class SequenceNode: LinearChildrenNode
 }
 
 
-/// Returns true if the local ticks counter has reached zero.
-bool consumeLocalTicks(int consume, ref int ticksLeftLocal, ref int ticksLeftGlobal)
+/// Consumes at most 'consume' ticks from both 'ticks1' and 'ticks2', without running
+/// them into the negatives. Returns true if the ticks1 counter has reached zero.
+bool consumeMinOfTicks(int consume, ref int ticks1, ref int ticks2)
 {
-	assert(ticksLeftLocal >= 0);
-	assert(ticksLeftGlobal >= 0);
+	assert(ticks1 >= 0);
+	assert(ticks2 >= 0);
 	assert(consume >= 0);
-	int delta = min(consume, ticksLeftLocal, ticksLeftGlobal);
-	ticksLeftLocal -= delta;
-	ticksLeftGlobal -= delta;
-	return ticksLeftLocal == 0;
+	int delta = min(consume, ticks1, ticks2);
+	ticks1 -= delta;
+	ticks2 -= delta;
+	return ticks1 == 0;
 }
 
 
+/// Executes children in sequential order, switching to next when previous
+/// returned 'failure'. Finishes on the first child that has returned success.
+/// Also commonly knows as BT Selector.
 final class FallbackNode: LinearChildrenNode
 {
 	this(string description, BehaviourTreeNode[] children, bool memory = false,
@@ -182,8 +194,14 @@ final class FallbackNode: LinearChildrenNode
 				return ExecutionResult.running;
 			BehaviourTreeNode child = m_children[i];
 			ExecutionResult res = child.execute(ticks);
-			if (res == ExecutionResult.running || res == ExecutionResult.success)
+			if (res == ExecutionResult.running)
 				return res;
+			if (res == ExecutionResult.success)
+			{
+				if (memory)
+					m_lastIdxMemory = 0;
+				return res;
+			}
 		}
 		if (memory)
 			m_lastIdxMemory = 0;
@@ -192,7 +210,7 @@ final class FallbackNode: LinearChildrenNode
 }
 
 
-/// Distributes ticks among the children until all children either return final
+/// Distributes ticks among the children in slices until all children either return final
 /// status (either success or failure), or the ticks are exhausted. Returns failure only
 /// if all children have returned failure.
 final class RoundRobinNode: LinearChildrenNode
@@ -201,12 +219,14 @@ final class RoundRobinNode: LinearChildrenNode
 		string file = __FILE__, size_t line = __LINE__)
 	{
 		super(description, children, true, file, line);
+		m_childrenResults.length = children.length;
 		m_timeSlice = timeSlice;
 	}
 
 	private
 	{
 		int m_timeSlice;
+		ExecutionResult[] m_childrenResults;
 	}
 
 	override ExecutionResult execute(ref int ticks)
@@ -216,26 +236,28 @@ final class RoundRobinNode: LinearChildrenNode
 			return ExecutionResult.failure;
 		int i = m_lastIdxMemory.to!int - 1;
 		scope(exit) m_lastIdxMemory = (i + 1) % m_children.length.to!int;
-		ExecutionResult[] childrenResults;
-		childrenResults.length = m_children.length;
+		m_childrenResults.length = m_children.length;
+		m_childrenResults[] = ExecutionResult.running;
+		int finalResults = 0;
 		while (ticks > 0)
 		{
 			i = (i + 1) % m_children.length.to!int;
-			if (isFinalResult(childrenResults[i]))
+			if (isFinalResult(m_childrenResults[i]))
 				continue;
 			int currentSlice = min(m_timeSlice, ticks);
 			BehaviourTreeNode child = m_children[i];
 			int ticksToSpend = currentSlice;
-			childrenResults[i] = child.execute(ticksToSpend);
+			m_childrenResults[i] = child.execute(ticksToSpend);
 			int spentTicks = currentSlice - ticksToSpend;
 			ticks -= spentTicks;
 			assert(ticks >= 0);
-			assert((childrenResults[i] != ExecutionResult.running) || spentTicks > 0,
+			assert((m_childrenResults[i] != ExecutionResult.running) || spentTicks > 0,
 				"subtree returned running but did not reduce ticks");
-			// TODO: maybe optimize linear search
-			if (!canFind(childrenResults, ExecutionResult.running))
+			if (isFinalResult(m_childrenResults[i]))
+				finalResults++;
+			if (finalResults >= m_childrenResults.length)
 			{
-				if (canFind(childrenResults, ExecutionResult.success))
+				if (canFind(m_childrenResults, ExecutionResult.success))
 					return ExecutionResult.success;
 				else
 					return ExecutionResult.failure;
@@ -246,46 +268,55 @@ final class RoundRobinNode: LinearChildrenNode
 }
 
 
-/// Returns success if more than successThreshold have returned success.
+/// Returns success if more or equal to 'successThreshold' number of children
+/// have returned success. Clones ticks and distributes it all children.
+/// The original ticks counter is reduced by the largest number of tickes
+/// consumed by it's children.
 final class ParallelNode: LinearChildrenNode
 {
-	int successThreshold;
+	private
+	{
+		int m_successThreshold;
+		int[] m_childTicks;
+	}
 
 	this(string description, BehaviourTreeNode[] children, int successThreshold = 1,
 		string file = __FILE__, size_t line = __LINE__)
 	{
 		super(description, children, false, file, line);
-		this.successThreshold = successThreshold;
+		m_childTicks.length = children.length;
+		this.m_successThreshold = successThreshold;
 	}
 
 	override ExecutionResult execute(ref int ticks)
 	{
 		assert(ticks > 0);
 		if (m_children.length == 0)
-			return successThreshold <= 0 ? ExecutionResult.success : ExecutionResult.failure;
-		int[] childTicks;
-		childTicks.length = m_children.length;
-		childTicks[] = ticks;
+			return m_successThreshold <= 0 ?
+				ExecutionResult.success : ExecutionResult.failure;
+		m_childTicks.length = m_children.length;
+		m_childTicks[] = ticks;
 		int successCount;
 		int failureCount;
 		foreach (i, child; m_children)
 		{
-			ExecutionResult res = child.execute(childTicks[i]);
+			ExecutionResult res = child.execute(m_childTicks[i]);
 			if (res == ExecutionResult.success)
 				successCount++;
 			else if (res == ExecutionResult.failure)
 				failureCount++;
 		}
-		ticks = minElement(childTicks);
-		if (successCount >= successThreshold)
+		ticks = minElement(m_childTicks);
+		if (successCount >= m_successThreshold)
 			return ExecutionResult.success;
-		if (failureCount >= m_children.length - successThreshold + 1)
+		if (failureCount >= m_children.length - m_successThreshold + 1)
 			return ExecutionResult.failure;
 		return ExecutionResult.running;
 	}
 }
 
 
+/// Simply returns 'success' or 'failure' based on the return value of a predicate.
 final class ConditionNode: BehaviourTreeNode
 {
 	bool delegate() predicate;
@@ -315,12 +346,12 @@ abstract class ActionNode: BehaviourTreeNode
 	protected
 	{
 		/// ticks needed to finish the job.
-		int m_ticksLeft;
+		int m_ticksToFinish;
 	}
 
 	invariant
 	{
-		assert(m_ticksLeft >= 0);
+		assert(m_ticksToFinish >= 0);
 	}
 
 	this(string description, string file, size_t line)
@@ -344,35 +375,38 @@ abstract class FixedCostActionNode: ActionNode
 		assert(cost >= 0);
 		super(description, file, line);
 		m_ticksCost = cost;
-		m_ticksLeft = cost;
+		m_ticksToFinish = cost;
 		m_invertShouldBeRunning = invertShouldBeRunning;
 	}
 
 	@property bool invertShouldBeRunning() const { return m_invertShouldBeRunning; }
 	@property void invertShouldBeRunning(bool rhs) { m_invertShouldBeRunning = rhs; }
 
+	/// FIXME: Heresy to BT execution model, essentially in-built ConditionNode that
+	/// is overriden in child classes in order to improve semantic code locality.
 	@property bool shouldBeRunning()
 	{
 		return true;
 	}
 
-	abstract ExecutionResult onTicksConsumed();
+	abstract ExecutionResult onTicksCostConsumed();
 
 	override ExecutionResult execute(ref int ticks)
 	{
 		assert(ticks > 0);
 		if (!shouldBeRunning)
 		{
-			m_ticksLeft = m_ticksCost;
+			// resets progress
+			m_ticksToFinish = m_ticksCost;
 			if (m_invertShouldBeRunning)
 				return ExecutionResult.success;
 			return ExecutionResult.failure;
 		}
-		if (consumeLocalTicks(m_ticksCost, m_ticksLeft, ticks))
+		if (consumeMinOfTicks(m_ticksCost, m_ticksToFinish, ticks))
 		{
-			m_ticksLeft = m_ticksCost;
+			m_ticksToFinish = m_ticksCost;
 			// trace("FixedCostActionNode ", description, " reached fire time");
-			return onTicksConsumed();
+			return onTicksCostConsumed();
 		}
 		else
 			return ExecutionResult.running;
@@ -380,16 +414,17 @@ abstract class FixedCostActionNode: ActionNode
 }
 
 
-final class NopAction: ActionNode
-{
-	this(string file = __FILE__, size_t line = __LINE__)
-	{
-		super("No-op action", file, line);
-	}
+// probably not needed
+// final class NopAction: ActionNode
+// {
+// 	this(string file = __FILE__, size_t line = __LINE__)
+// 	{
+// 		super("No-op action", file, line);
+// 	}
 
-	override ExecutionResult execute(ref int ticks)
-	{
-		assert(ticks > 0);
-		return ExecutionResult.success;
-	}
-}
+// 	override ExecutionResult execute(ref int ticks)
+// 	{
+// 		assert(ticks > 0);
+// 		return ExecutionResult.success;
+// 	}
+// }
