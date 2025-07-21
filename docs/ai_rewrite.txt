@@ -10,10 +10,12 @@ Current problems:
 8). ReceiveHydrophoneData probably should not be a BT action in the first place, since it should always be executed. AddNewHydrophoneContact and ClassifyAndTrack are problematic as well, since they cannot be expressed in configuration. Although, per-tree tunable detection margins are good, as well as the inherent protection from perfect machine speed. These nodes make sure AI is overwhelmed by target-rich environments just as human. Perhaps friendly filtered-out imprints should also slow AI down?
 9). Balance between parameter-tuning and hardcoded values must be struck. Example: engagement range, hardcoded vs calculated based on torpedo range.
 10). How to handle multi-weapon bots that have different tactics based on weapons.
-11). Bots that can handle multiple threats and multiple targets. Threat and target prioritization should be part of a blackboard.
+11). Bots that can handle multiple threats and multiple targets. Threat and target prioritization should be part of a blackboard?
 12). Blackboard is unobservable.
 13). Play sound node/action, when player feedback is needed.
-14). Group AI is currently absent.
+14). Group AI is currently absent and cannot be incorporated.
+15). There is no re-use between the AI trees, except the obvious sonar/hydrophone subtrees that probably should not be BTs in the first place.
+16). Not sure how to implement cutscene logic in the current architecture.
 
 
 Let's try to design BTs for a bots that would be easy to configure from text files and see what is needed in engine to support such trees.
@@ -22,27 +24,75 @@ Let's try to design BTs for a bots that would be easy to configure from text fil
 AIs should have certain scenario-level tunables:
 
 strategicOrder:
-    PatrolCircle
-    NavigateWaypoints
+    PatrolCircle:
+        circle center (position or reference), circle radius, desired speed
+    NavigateWaypoints   // perhaps should not exist, just a waypoint strategic goal
+        list of:
+            waypoint position, and one of:
+                desired_speed to approach that waypoint
+                desired_time to approach that waypoint
     PatrolWaypoints
-    FollowVessel
-    Mine??
-    Dock (and subsequently despawn)
+        list of:
+            waypoint position, desired_speed
+    FollowVessel    // attack vessel is the same as follow enemy with attackRules=agressive
+        vessel_reference to follow
+        desired_distance
+    Mine
+        waypoint position (mining place)
+        approach_speed to approach
+        time to spend mining
+        sound_effect??
+    Dock
+        dock_reference
+        approach_speed to approach the dock's area
+        despawn_after_dock?
+    LayInWait
+        waypoint position
+        time to spend waiting
     ...
+
+Strategic orders must chain into each other or loop around, and should have a way to transition into the next one. This chaining should be tunable on the scenario editor level.
+
+
+All the variables below should be tunable per strategic order/waypoint
+
 sensorDiscipline:
     stealthy    // passive until attacked, some active in combat
     active      // active sometimes in search mode, lots of active in combat
-shootingRules:
+attackRules:
     defensive   // only shoot back
     agressive   // shoot first
-offensiveTactics:
+offensiveTactics:   ?? perhaps this should be part of the particular enemy tree
     chase       // pursue and keep in the preferred engagement range
     evade       // keep away from the target
     ignore      // do not account for the target in navigational choices
 defensiveTactics:
-    evade,      // actively maneuver to evade torps
-    decoysOnly  // only use decoys/modules
+    evade,       // actively maneuver to evade torps
+    decoysOnly,  // only use decoys/modules
+    ignore       // melancholy
+
+It is an open question if such tunables should represent specific subtrees and be used as condition/state machine variables.
 
 
-Simple civilian BOT AI that just swims to the destination:
+Simple BT that just swims to the destination:
+
+Fallback:
+    Sequence:
+        // if there is a next waypoint, trigger of the goal should switch destination to it
+        Condition: distance_to_waypoint() < 100
+        Action: gently_approach_destination($destination.position)
+    Sequence:
+        Action: set_course_towards($destionation.position)
+        Action: set_throttle_according_to_spd($destionation.desired_speed)
+
+This tree cannot handle collision aviodance!!
+Should navigation be represented by behaviour tree in the first place?
+Why should hard AI perform FollowVessel in any different way in comparison to the easy AI?
+The only thing I can think of is evasive maneuvering for hard AI (zigzagging and small speed changes to make TMA harder).
+BTs are needed to be configurable. If there is no difference, there is nothing to configure.
+Maybe strategicOrder should just be a common actio node that is always the same?
+
+
+Also, complex/cramped spaces may require strafing/rotation capability for submarines.
+
 
