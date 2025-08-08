@@ -16,6 +16,7 @@ Current problems:
 14). Group AI is currently absent and cannot be incorporated.
 15). There is no re-use between the AI trees, except the obvious sonar/hydrophone subtrees that probably should not be BTs in the first place.
 16). Not sure how to implement cutscene logic in the current architecture.
+17). Wildlife eating habits and general target/FoF filtering is unconfigurable.
 
 
 Let's try to design BTs for a bots that would be easy to configure from text files and see what is needed in engine to support such trees.
@@ -45,16 +46,40 @@ strategicOrder:
     Dock
         dock_reference
         approach_speed to approach the dock's area
-        despawn_after_dock?
     LayInWait
         waypoint position
         time to spend waiting
+    Despawn
+    SelfDesctruct
+        soundToPlay ??
+        leaveDebris
+        EntitiesToSpawn
     ...
 
-Strategic orders must chain into each other or loop around, and should have a way to transition into the next one. This chaining should be tunable on the scenario editor level.
+StrategicOrder:
+    Nullable!time_t maxDuration     // for orders like patrol for 30 minutes
+    Nullable!time_t deadline        // for orders like patrol until 12:30
+    StrategicOrder nextOrder        // can loop around to any previous order
+
+perhaps conditional nextOrder selection is needed?
+
+StrategicOrder:
+    Nullable!time_t maxDuration     // for orders like patrol for 30 minutes
+    Nullable!time_t deadline        // for orders like patrol until 12:30
+    StrategicOrder nextOrderSelector()
+
+    nextOrderSelector:
+        specificOrder:  standard deterministic selector for next or looping order
+        randomOrder:    list of orders to choose randomly from, with probability weights?
+        ifElseSelector: scenarioCondition, followed by two next orders
+
+Looks like scenario state should act as a blackboard of it's own, in order to allow execution of predicates on it.
+Let's call such predicates ScenarioCondition's.
+
+Strategic orders must chain into each other and/or loop around, and should have a way to transition into the next one. This chaining should be tunable on the scenario editor level.
 
 
-All the variables below should be tunable per strategic order/waypoint
+Variables below should be tunable per strategic order/waypoint:
 
 sensorDiscipline:
     stealthy    // passive until attacked, some active in combat
@@ -62,16 +87,20 @@ sensorDiscipline:
 attackRules:
     defensive   // only shoot back
     agressive   // shoot first
-offensiveTactics:   ?? perhaps this should be part of the particular enemy tree
+combatNavigationTactics:   ?? perhaps this should be part of the particular btree
     chase       // pursue and keep in the preferred engagement range
-    evade       // keep away from the target
-    ignore      // do not account for the target in navigational choices
-defensiveTactics:
-    evade,       // actively maneuver to evade torps
+    evade       // keep away from danger
+    ignore      // do not account for the target in navigational choices.
+defensiveTactics:   // reaction to weapons
+    evade,       // actively maneuver to evade torps.
     decoysOnly,  // only use decoys/modules
     ignore       // melancholy
+movementStyle:
+    rigid,       // naiive simple unobfuscated movement
+    sporadic     // sporadic evasive maneuvering to obfuscate real speed
+        // and direction
 
-It is an open question if such tunables should represent specific subtrees and be used as condition/state machine variables.
+It is an open question if such tunables should represent specific subtrees or be used as condition/state machine variables.
 
 
 Simple BT that just swims to the destination:
@@ -89,10 +118,152 @@ This tree cannot handle collision aviodance!!
 Should navigation be represented by behaviour tree in the first place?
 Why should hard AI perform FollowVessel in any different way in comparison to the easy AI?
 The only thing I can think of is evasive maneuvering for hard AI (zigzagging and small speed changes to make TMA harder).
-BTs are needed to be configurable. If there is no difference, there is nothing to configure.
+BTs are needed to be configurable and observable. If there is no difference, there is nothing to configure.
 Maybe strategicOrder should just be a common actio node that is always the same?
-
 
 Also, complex/cramped spaces may require strafing/rotation capability for submarines.
 
 
+BT for strategic order that is fully in-engine:
+
+Sequence:
+    Action: navigateForStrategicOrder
+
+This tree implies that all strategic orders are naivgational, which is not the case for mining. Maybe some scenarios like rescuing/repairing need to be represented as BTs as well?
+
+Sequence:
+    Action: executeStrategicOrder   ??
+
+?? How to force AI to dock or perform an order even when it is attacked? Some orders should override combat trees...
+
+
+Fallback:
+    Action: executeStrategicOrder
+    Subtree: mainCombatSubtree
+
+if executeStrategicOrder is constantly returning "Running", it will never  return control to combat subtree. But how to inverse the priority?
+
+
+Fallback:
+    Sequence:
+        Condition: defensiveTactics == evade
+        Condition: listOfDangers.length > 0
+        Subtree: evadeDangersSubtree
+    Sequence:
+        Condition: combatNavigationTactics != ignore
+        Condition: listOfTargets.length > 0
+        Subtree: combatSubtree
+    Action: executeStrategicOrder
+
+
+perhaps combatNavigationTactics is actually targetStance
+
+targetStance:
+    ignore
+    react  ?? particulars are handled by combatSubtree and combatNavigationTactics
+
+Honestly, looks like working on serialization and configurability will be a major PITA
+
+Previous tree has problems with reacting to dangers
+
+
+Fallback:
+    Sequence:
+        Condition: defensiveTactics == evade
+        Condition: listOfDangers.length > 0
+        Subtree: evadeDangersSubtree
+    Sequence:
+        Condition: combatNavigationTactics != ignore
+        Condition: listOfTargets.length > 0
+        Subtree: combatSubtree
+    Action: executeStrategicOrder
+    Sequence:
+        Condition: defensiveTactics != evade
+        Condition: listOfDangers.length > 0
+        Subtree: selfDefenseSubtree
+
+executeStrategicOrder will probably always return Running and selfDefenseSubtree will not be called. Since selfDefenseSubtree is about
+decoys and various subsystems, we should split it into the parallel tree, just like offensive modules
+
+
+RoundRobin:
+    // navigational and strategic subtree
+    Fallback:
+        Sequence:
+            Condition: defensiveTactics == evade
+            Condition: listOfDangers.length > 0
+            Subtree: evadeDangersSubtree
+        Sequence:
+            Condition: combatNavigationTactics != ignore
+            Condition: listOfTargets.length > 0
+            Condition: haveAmmo() == true   ?? is this OK?
+            Subtree: combatNavigationSubtree
+        Action: executeStrategicOrder
+    // module control and weaponry subtree
+    Fallback:
+        Sequence:
+            Condition: defensiveTactics != ignore
+            Condition: listOfDangers.length > 0
+            Subtree: selfDefenseSubtree
+        Sequence:
+            Condition: listOfTargets.length > 0
+            Subtree: weaponControlSubtree
+
+
+This tree has problems with managing/reloading tubes when there are no dangers
+or targets. Active sonar is also not in a tree.
+
+
+
+RoundRobin:
+    // navigational and strategic subtree
+    Fallback:
+        Sequence:
+            Condition: defensiveTactics == evade
+            Condition: listOfDangers.length > 0
+            Subtree: evadeDangersSubtree
+        Sequence:
+            Condition: combatNavigationTactics != ignore
+            Condition: listOfTargets.length > 0
+            Condition: ammoCount("weapons") > 0   ?? is this OK?
+            Subtree: combatNavigationSubtree
+        Action: executeStrategicOrder
+    // weaponry subtree
+    Fallback:
+        Sequence:
+            Condition: defensiveTactics != ignore
+            Condition: listOfDangers.length > 0
+            Subtree: selfDefenseSubtree
+        Sequence:
+            Condition: ammoCount("decoys") > 0
+            Action: loadDecoysToTubes   // a lot of unconfigurable logic inside
+        Sequence:
+            Condition: listOfTargets.length > 0
+            Subtree: weaponControlSubtree
+        Sequence:
+            Condition: ammoCount("weapons") > 0
+            Action: loadWeaponsToTubes  // same problem of invisibility
+    // Sensor control discipline
+    Fallback:
+        // active sonar
+        Fallback:
+            Sequence:
+                Condition: sensorDiscipline == active
+                Condition: listOfTargets.length == 0
+                Condition: timeSinceLastPing() > 5m
+                Action: lastPing := now()   ?? this probably must be part of emitPing
+                Action: emitPing
+            Sequence:   // when attacking
+                Condition: listOfTargets.length > 0
+                Condition: timeSinceLastPing() >
+                    (sensorDiscipline == active ? 30s : 2m)     // hard to implement
+                Action: lastPing := now()   ?? this probably must be part of emitPing
+                Action: emitPing
+        Sequence:
+            Condition: listOfTowedArrays.length > 0
+            Action: extendTowedArrays
+
+
+Action: lastPing := now() is probably superfluous and should be automatically performed inside emitPing in-engine action.
+Modules we'll tackle later.
+Let's try to actually write the subtees.
