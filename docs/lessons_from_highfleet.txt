@@ -1,0 +1,33 @@
+Aesthetics:
+    high cost, high fidelity, this took a lot of time and tuning
+    VFX deserves the highest praise: engines, smoke, explosions, nuke flash,
+        animaiton/camera sync.
+    SFX honestly top notch.
+    rain effect is impressive first 20 times.
+    nice g-lock blackout flavor effect. Magazine animation is nice and punchy.
+    Shooting is satisfying.
+Gameplay:
+    UI problems:
+        UI is style over usability, obstructs and annoys.
+        UI is fixed-aspect-ratio due to stylization.
+        Glitch shaders over the top.
+        WASD-only camera panning
+        zoom too coarse-grained, annoying glitches
+        fucking RAIN EFFECT
+    game world multilayering (old problem):
+        strategic layer, tactical layer, dock layer
+            jumping around is annoying
+        tactically you are as if strategic layer no longer exists, isolation
+        time acceleration as an obvious consequence
+        aircraft cannnot be uysed in tactical layer. arbitrary barriers.
+    physics simulation are too heavy to keep tactical layers real-time on strategy map
+    useless radio-intercept mini-game
+    graphics/drawing tools are primitive, obviously elint needs advanced TMA
+    radar UI annoying, why can't it be overlayed over the tacmap?
+    fleet split/merge unreliable
+    refueling cannot be ordered from the strategic map
+    unintuitive inistant and obscure fuel split system
+    annoying landing mini-game that is fun only first 15 times
+    useless RPG dialogue mechanics of persuasion, no depth and only little flavor.
+    while the tutorial is good, it is not enough as it does not teach surviving in the campaign (mainly, the economy is unexplained).
+    difficulty curve fine for good players but brutal for genre newcommers.

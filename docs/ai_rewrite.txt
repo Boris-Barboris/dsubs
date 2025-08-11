@@ -247,13 +247,13 @@ RoundRobin:
     Fallback:
         // active sonar
         Fallback:
-            Sequence:
+            Sequence:   // periodic search ping
                 Condition: sensorDiscipline == active
                 Condition: listOfTargets.length == 0
                 Condition: timeSinceLastPing() > 5m
                 Action: lastPing := now()   ?? this probably must be part of emitPing
                 Action: emitPing
-            Sequence:   // when attacking
+            Sequence:   // frequent ping when fighting
                 Condition: listOfTargets.length > 0
                 Condition: timeSinceLastPing() >
                     (sensorDiscipline == active ? 30s : 2m)     // hard to implement
@@ -261,9 +261,57 @@ RoundRobin:
                 Action: emitPing
         Sequence:
             Condition: listOfTowedArrays.length > 0
-            Action: extendTowedArrays
+            Action: extendTowedArrays(75%)
 
 
 Action: lastPing := now() is probably superfluous and should be automatically performed inside emitPing in-engine action.
 Modules we'll tackle later.
-Let's try to actually write the subtees.
+Let's try to actually write the subtrees.
+
+
+// simple subtree that runs sideways from the trajectories of incoming torpedoes
+evadeDangersSubtree:
+    Sequence:
+        Action: selectMainDanger(listOfDangers)
+        Condition: mainDanger != null
+        Action: swimRelativeToSelf(courseTowards(mainDanger) + 90deg, 1000m, 100%)
+            // sprint sideways relative to danger
+
+selectMainDanger needs to take into account torpedo damage potential as well.
+
+swimRelativeToSelf needs to be inertial/sticky in order to not rapidly shift between opposite 90degree directions.
+
+// agressive subtree that runs diagonally towards the danger
+evadeDangersSubtree:
+    Sequence:
+        Action: selectMainDanger(listOfDangers)
+        Condition: mainDanger != null
+        Action: swimRelativeToSelf(courseTowards(mainDanger) + 45deg, 1000m, 100%)
+            // sprint sideways and forward relative to danger
+
+
+// tree that only sees danger in torps that will come very close
+// and runs away from danger
+evadeDangersSubtree:
+    Sequence:
+        Action: selectMainDanger(listOfDangers, 1500m)
+        Condition: mainDanger != null
+        Action: swimRelativeToSelf(courseTowards(mainDanger) + 120deg, 2000m, 100%)
+            // sprint away and sideways relative to danger
+
+
+// tree that evades to maximize transversal velocity
+evadeDangersSubtree:
+    Sequence:
+        Action: selectMainDanger(listOfDangers, 1500m)
+        Condition: mainDanger != null
+        Action:
+            evadeCourse := maximizeTransversalFor(mainDanger, spdAtThrottle(100%))
+        Action: swimRelativeToSelf(evadeCourse, 2000m, 100%)
+
+
+// tree that accounts for multiple dangers
+
+
+
+TODO: let's write subtrees that tackle two-weapon submarine, for example electra+tornado Lima.
