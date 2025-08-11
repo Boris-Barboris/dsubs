@@ -235,14 +235,12 @@ RoundRobin:
             Condition: listOfDangers.length > 0
             Subtree: selfDefenseSubtree
         Sequence:
+            Condition: numberOfEmptyTubes("decoy") > 0
             Condition: ammoCount("decoys") > 0
-            Action: loadDecoysToTubes   // a lot of unconfigurable logic inside
+            Action: loadDecoysToTubes({"active": 1, "passive": 1})
         Sequence:
             Condition: listOfTargets.length > 0
             Subtree: weaponControlSubtree
-        Sequence:
-            Condition: ammoCount("weapons") > 0
-            Action: loadWeaponsToTubes  // same problem of invisibility
     // Sensor control discipline
     Fallback:
         // active sonar
@@ -310,8 +308,190 @@ evadeDangersSubtree:
         Action: swimRelativeToSelf(evadeCourse, 2000m, 100%)
 
 
-// tree that accounts for multiple dangers
+// tree that accounts for multiple dangers and dodges away when no ammo and into the danger
+// when has ammo
+evadeDangersSubtree:
+    Sequence:
+        Action: dangersPrioritised := sortDangers(listOfDangers, 2500m, 5.0f)   // 5.0 is some factor that reduces weight of small or distant dangers
+        Condition: dangersPrioritised.length > 0
+        Fallback:
+            Sequence:
+                Condition: ammoCount("weapons") > 0
+                Action: evadeCourse := course(
+                    weightedEvadeCourse(dangersPrioritised, spdAtThrottle(100%)).normalized +
+                    corseVector(dangersPrioritised[0]).normalized)
+            // else
+            Action: evadeCourse := course(
+                    weightedEvadeCourse(dangersPrioritised, spdAtThrottle(100%)).normalized -
+                    corseVector(dangersPrioritised[0]).normalized)
+        Action: swimRelativeToSelfFor(evadeCourse, 2000m, 100%, 20s)    // maintain sprint for at least 20 seconds
+
+
+Last action is an example of a continuous action that should tick in "real" simulator-time units, not imaginary ticks. Perhaps it's not a good idea to bind tick count to AI difficulty?
+Perhaps, a decorator:
+
+RunAndSleepFor: 20s
+    Action: swimRelativeToSelf(evadeCourse, 2000m, 100%)    // maintain sprint
+
+which will first pass ticks down to action, when the action completes it will continue
+to return Running for 20 seconds and then return Completed.
+
+Or a simple
+Sleep: 20s action, that requires memory for a Sequence. Actually, RunAndSleepFor requires memory as well so who cares.
+
+
+If we want to danger list to be constantly updated, we set the memory to false
+if we want to stay and sprint in some direction for 10 seconds after whe have selected the
+dodge direction, sleep action + memory is the right call.
+
+
+swimRelativeToSelfFor should contain collision avoidance logic.
 
 
 
-TODO: let's write subtrees that tackle two-weapon submarine, for example electra+tornado Lima.
+now some examples for the agressive combat navigation (suitable for Lima):
+
+combatNavigationSubtree:
+    SequenceMem:
+        Action: mainTarget = listOfTargets[0]
+        Fallback:
+            SequenceMem:
+                // long range sprint sequence
+                Condition: distanceTo(mainTarget) > 4000:
+                Action: desiredCourse := calculateIntercept(mainTarget, 100%)
+                Action: swimRelativeToSelf(desiredCourse, 1000m, 100%)
+                Sleep: 30s
+                // cycle to tactical speed to update contact
+                Action: setSpeed("tactical")
+                Sleep: 10s
+                Sequence:
+                    // ping during the sprint pause, nice
+                    Condition: timeSinceLastPing() >
+                        (sensorDiscipline == active ? 30s : 2m)
+                    Action: emitPing()
+            SequenceMem:
+                // middle range
+                Condition: distanceTo(mainTarget) > 1500:
+                Action: desiredCourse := calculateOrbitEntry(mainTarget, "tactical")
+                Action: swimRelativeToSelf(desiredCourse, 500m, "tactical")
+                Sleep: 5s
+            SequenceMem:
+                // close range, slowly orbit
+                Action: desiredCourse := courseTowards(mainTarget) + 90deg
+                Action: swimRelativeToSelf(desiredCourse, 500m, "silent")
+                Sleep: 5s
+
+
+swimRelativeToSelf distance parameter breaks with sleep for 30s because some boats may run further than 1000m on flank throttle, and it may break pathfinding. Perhaps bots should not recieve damage from environmental collisions?
+
+
+Second problem is chasing, what if the target is close, like 2000m away, but running fast and
+away from us? Do we need to try to match speed?
+
+Possible add speed-matching block after long range sprint
+
+SequenceMem:
+    // speed-matching fast targets
+    Condition: speed(mainTarget) > 10:
+    Action: desiredCourse := courseTowards(mainTarget)
+    Action: swimRelativeToSelf(desiredCourse, 1000m, 100%)
+    Sleep: 20s
+    Action: setSpeed("tactical")
+    Sleep: 10s
+
+
+full tree:
+
+combatNavigationSubtree:
+    SequenceMem:
+        Action: mainTarget = listOfTargets[0]
+        Fallback:   // no memory since we need to snap out of close-range behaviour fast
+            SequenceMem:
+                // long range sprint sequence
+                Condition: distanceTo(mainTarget) > 4000:
+                Action: desiredCourse := calculateIntercept(mainTarget, 100%)
+                Action: swimRelativeToSelf(desiredCourse, 1000m, 100%)
+                Sleep: 30s
+                // cycle to tactical speed to update contact
+                Action: setSpeed("tactical")
+                Sleep: 10s
+                Sequence:
+                    // ping during the sprint pause, nice
+                    Condition: timeSinceLastPing() >
+                        (sensorDiscipline == active ? 30s : 2m)
+                    Action: emitPing()
+                    Sleep: 5s
+            SequenceMem:
+                // middle range
+                Condition: distanceTo(mainTarget) > 1200:
+                FallbackMem:
+                    SequenceMem:
+                        // speed-matching fast targets and sprinting towards them again
+                        Condition: speed(mainTarget) > 10:
+                        Action: desiredCourse := courseTowards(mainTarget)
+                        Action: swimRelativeToSelf(desiredCourse, 1000m, 100%)
+                        Sleep: 20s
+                        Action: setSpeed("tactical")
+                        Sleep: 10s
+                        // simply entering orbit on tactical speed
+                    SequenceMem:
+                        Action: desiredCourse := calculateOrbitEntry(mainTarget, "tactical")
+                        Action: swimRelativeToSelf(desiredCourse, 500m, "tactical")
+                        Sleep: 5s
+            SequenceMem:
+                // close range, slowly orbit
+                Action: desiredCourse := courseTowards(mainTarget) + 90deg
+                Action: swimRelativeToSelf(desiredCourse, 500m, "silent")
+                Sleep: 10s
+
+
+
+decoys subtree
+
+selfDefenseSubtree:
+    SequenceMem:
+        Condition: any(distanceTo(d) < 2500 for d in listOfDangers)
+        Action: launchDecoy("active")
+        Sleep: 3s
+        Action: launchDecoy("passive")
+        Sleep: 30s
+
+
+let's write subtree that tackle weaponry of a two-weapon submarine, for example electra+tornado Lima.
+
+
+weaponControlSubtree:
+    Fallback:
+        // load sequence
+        Sequence:
+            Condition: numberOfEmptyTubes("weapon") > 0
+            Condition: ammoCount("weapons") > 0
+            Action: loadWeaponsToTubes({"Tornado": 1, "Electra": 1})
+        // launch sequence
+        Sequence:
+            Condition: mainTarget != null
+            FallbackMem:
+                // Tornado is priority
+                SequenceMem:
+                    Condition: numberOfLoadedWeapons("Tornado") > 0
+                    Action: firingSolution = calcShooting(mainTarget, "Tornado", 100%)
+                    Condition: firingSolution.exists && firingSolution.fuelBurned < 80%
+                    Action: openTubeWithWeapon("Tornado")
+                    Action: fireTubeWithWeapon("Tornado", firingSolution)
+                    Sleep: 20s
+                // fallback to Electra
+                SequenceMem:
+                    Condition: numberOfLoadedWeapons("Electra") > 0
+                    Action: randomSensorMode = selectFromWeighted(
+                        {"active": 3, "passive": 1})
+                    Action: randomTorpSpd = randomFloat(electra.minSpd, electra.maxSpd)
+                    Action: firingSolution = calcShooting(
+                        mainTarget, "Electra", randomTorpSpd)
+                    Condition: firingSolution.exists && firingSolution.fuelBurned < 75%
+                    Action: openTubeWithWeapon("Electra")
+                    Action: fireTubeWithWeapon("Electra", firingSolution)
+                    Sleep: 20s  // some reasonable anti-spam cooldowns
+
+
+
+The fact that the tree state must be serializable/saveable should be remembered.
