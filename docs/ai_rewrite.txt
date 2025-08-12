@@ -411,7 +411,9 @@ combatNavigationSubtree:
                 Condition: distanceTo(mainTarget) > 4000:
                 Action: desiredCourse := calculateIntercept(mainTarget, 100%)
                 Action: swimRelativeToSelf(desiredCourse, 1000m, 100%)
-                Sleep: 30s
+                Sleep: 30s  // if pathfinding requires turnes, they should be
+                            // performed even during this sleep, in a low-level
+                            // helmsman/steering controller.
                 // cycle to tactical speed to update contact
                 Action: setSpeed("tactical")
                 Sleep: 10s
@@ -495,3 +497,157 @@ weaponControlSubtree:
 
 
 The fact that the tree state must be serializable/saveable should be remembered.
+
+
+Next concept example should tackle advanced animal AI.
+For simple animals that serve no ecological function we can just
+hardcode (with the new exception of the pathfinding).
+For advanced large animals that have more than instincts BTs come handy.
+
+exhample 1: filter-feeding whale that is scared of loud noises (pings and explosions):
+
+whaleFilterFeeder:
+    FStateMachine:
+        SelectingDestination:
+            Sequence:
+                Action: destination := pickRandomPosInFeedingArea()
+                    // scenario should define feeding area
+                Action: randomSpeed := rng[0.3..0.7]
+                SwitchState: SwimmingToDestination
+        SwimmingToDestination:
+            Fallback:
+                Sequence: // loud noise reacion
+                    Condition: distanceToClosestObject(["explosion", "ping"]) < 5000
+                    Action: runAwayFromPos = closestObject(["explosion", "ping"]).wposition
+                    SwitchState: RunningAway
+                Sequence:
+                    Condition: distanceTo(destination) < 100
+                    SwitchState: SelectingDestination
+                Sequence:
+                    swimTo(destination, randomSpeed)
+        RunningAway:
+            SequenceMem:
+                Action: swimRelativeToSelf(-runAwayFromPos, 2000m, 100%)
+                Sleep: [5s..8s]
+                Loop: 3 times
+                    Action: playSound("scared_whale.wav")
+                    Sleep: 1m
+                SwitchState: SwimmingToDestination
+
+
+1). New State machine node is needed
+2). New Loop node is needed
+3). It's clear some functions like distanceToClosestObject, distanceTo and swimRelativeToSelf should be able to control both Animal and Submarine which are currently different base classes with different control methods. Especially since animals might need some animation later.
+4). swimTo and swimRelativeToSelf may get called every single frame and need root caching to prevent pathfinding performance issues. If engine wants to support movable colliders or ther 'danger' zones, cached route must be periodically recalculated.
+5). Sleep node needs to support random intervals.
+
+
+
+
+example 2: dangerous Leviathan that patrols the area and acts more like a vessel than
+an animal, and attacks loud objects that he thinks are overstepping his boundaries. It can
+either be killed by huge number of torpedoes or can be scared away by some cumulative
+damage (runs away to lick it's wounds).
+
+
+Liviathan:
+    FStateMachine:
+        SelectingPatrolDestination:
+            Sequence:
+                Action: destination := pickRandomPosInPatrolArea()
+                    // scenario should define feeding area
+                Action: randomSpeed := rng[0.2..0.4]
+                SwitchState: SwimmingToDestination
+        Sleeping:
+            Fallback:
+                Sequence:   // wake up from noise
+                    Condition: loudestNoiseInRange(5000m).ilevel > 80dB
+                    Action: target := loudestNoiseInRange(5000m)
+                    Action: playSound("angry_wakeup.wav")
+                    SwitchState: AngryChase
+                SequenceMem:
+                    Loop: 100..150 times
+                        SequenceMem:
+                            Action: playSound("snore.wav")
+                            Sleep: 20s
+                    SwitchState: SelectingPatrolDestination
+        SwimmingToDestination:
+            Fallback:
+                Sequence: // loud noise reacion
+                    TrueForWithCooldown: (10, 2, -0.5)
+                        // aggro meter, needs 10 points to activate, when underlying
+                        // condition succeeds adds 2 points, when it fails substracts 0.5
+                        // points until meets 0
+                        Condition: loudestNoiseInRange(5000m).ilevel > 70dB
+                    Action: target := loudestNoiseInRange(5000m)
+                    Action: playSound("angry_wakeup.wav")
+                    SwitchState: AngryChase
+                Sequence:
+                    Condition: distanceTo(destination) < 100
+                    SwitchState:
+                        SelectingPatrolDestination 90%
+                        Sleeping 10%
+                Sequence:
+                    swimTo(destination, randomSpeed)
+        AngryChase:
+            Fallback:
+                Sequence:   // damage accumulator
+                    Condition: damageTook > 20
+                    Action: damageTook := 0
+                    Action: playSound("scream_in_pain.wav")
+                    SwitchState: StunnedRunaway
+                Sequence:   // lose target that is too quiet
+                    TrueForWithCooldown: (10, 1, -5)
+                        Condition: noiseFrom(target) < 60db
+                    Action: playSound("confused_groan.wav")
+                    SwitchState: LostTarget
+                Sequence:
+                    Condition: distanceTo(target) < 60
+                    SequenceMem:
+                        Action: bite(target)
+                        Action: playSound("bite_roar.wav")
+                        Action: setThrottle(0)
+                        Sleep: 20s  // attack cooldown
+                Sequence:
+                    Action: swimTo(target, 100%)
+                    Action: playSoundNextFrame("chase_huffing.wav", 100%)
+        StunnedRunaway:
+            SequenceMem:
+                Action: swimRelativeToSelf(directionTo(target) + 180, 2000m, 100%)
+                Sleep: 15s
+                Action: playSound("pain_groaning.wav")
+                Sleep: 120s
+                SwitchState: LostTarget
+        LostTarget:
+            Fallback:
+                Sequence:
+                    Condition: target != null
+                    TrueForWithCooldown: (3, 1, -0.2)
+                        Condition: noiseFrom(target) > 70db
+                    Action: playSound("angry_wakeup.wav")
+                    SwitchState: AngryChase
+                Sequence:   // next loud noise in the vicinity, switch target
+                    TrueForWithCooldown: (10, 2, -0.5)
+                        // aggro meter, needs 10 points to activate, when underlying
+                        // condition succeeds adds 2 points, when it fails substracts 0.5
+                        // points until meets 0
+                        Condition: loudestNoiseInRange(2000m).ilevel > 70dB
+                    Action: target := loudestNoiseInRange(2000m)
+                    Action: playSound("angry_wakeup.wav")
+                    SwitchState: AngryChase
+                Sequence:
+                    Condition: distanceTo(searchDestination) < 200
+                    Action: playSound("disappointed.wav")
+                    SwitchState:
+                        SwimmingToDestination 90%
+                        Sleeping 10%
+                SequenceMem:    // search sequence
+                    Action: searchDestination := randomPosAround(target, 1000m)
+                    Action: swimTo(searchDestination, 30%)
+
+
+
+1). Leviathan is blind and needs some custom performative hydrophone to sense his prey
+2). SwitchState needs to accept probability distributions
+3). TrueForWithCooldown is a new node, that perhaps needs additional binding to world time
+    for the case when the BT node that contains it is not hit every tick.
