@@ -188,20 +188,24 @@ final class Loop: ControlFlowNode
 			else
 				m_counter = m_minLoops;
 		}
-		ExecutionResult childRes = m_child.execute(ticks);
-		final switch (childRes)
+		while (ticks > 0 && m_counter > 0)
 		{
-			case ExecutionResult.running:
-				return childRes;
-			case ExecutionResult.failure:
-				// child failure breaks the loop
-				m_counter = 0;
-				return childRes;
-			case ExecutionResult.success:
-				if (--m_counter > 0)
-					return ExecutionResult.running;
-				return childRes;
+			ExecutionResult childRes = m_child.execute(ticks);
+			final switch (childRes)
+			{
+				case ExecutionResult.running:
+					return childRes;
+				case ExecutionResult.failure:
+					// child failure breaks the loop
+					m_counter = 0;
+					return childRes;
+				case ExecutionResult.success:
+					m_counter--;
+			}
 		}
+		if (m_counter > 0)
+			return ExecutionResult.running;
+		return ExecutionResult.success;
 	}
 }
 
@@ -223,15 +227,15 @@ abstract class LinearChildrenNode: ControlFlowNode
 		string file = __FILE__, size_t line = __LINE__)
 	{
 		super(description, file, line);
-		this.children = children;
+		this.m_children = children;
 		this.memory = memory;
 	}
 
-	final @property void children(BehaviourTreeNode[] newChildrenArray)
-	{
-		m_lastIdxMemory = 0;
-		m_children = newChildrenArray;
-	}
+	// @property void children(BehaviourTreeNode[] newChildrenArray)
+	// {
+	// 	m_lastIdxMemory = 0;
+	// 	m_children = newChildrenArray;
+	// }
 
 	override JSONValue toJson()
 	{
@@ -246,6 +250,128 @@ abstract class LinearChildrenNode: ControlFlowNode
 		super.markNewObservationEpoch();
 		foreach (c; m_children)
 			c.markNewObservationEpoch();
+	}
+}
+
+
+/// State node for a state machine, defined later
+final class SMState: ControlFlowNode
+{
+	private
+	{
+		string m_state;
+		BehaviourTreeNode m_child;
+	}
+
+	this(string stateName, BehaviourTreeNode child,
+		string file = __FILE__, size_t line = __LINE__)
+	{
+		assert(child);
+		super("SMState: " ~ stateName, file, line);
+		m_child = child;
+		m_state = stateName;
+	}
+
+	protected override ExecutionResult doExecute(ref int ticks)
+	{
+		return m_child.doExecute(ticks);
+	}
+}
+
+
+struct StateVar
+{
+	string stateName;
+	bool changedFlag;
+
+	string readAndReset()
+	{
+		changedFlag = false;
+		return stateName;
+	}
+
+	void setAndUpdate(string newStateName)
+	{
+		changedFlag = (newStateName != stateName);
+		stateName = newStateName;
+	}
+}
+
+
+final class FStateMachine: LinearChildrenNode
+{
+	private
+	{
+		StateVar* m_stateVar;
+	}
+
+	this(string description, StateVar* stateVar, SMState[] children,
+		string file = __FILE__, size_t line = __LINE__)
+	{
+		super(description, cast (BehaviourTreeNode[]) children, true,
+			file, line);
+		assert(stateVar);
+		m_stateVar = stateVar;
+	}
+
+	protected override ExecutionResult doExecute(ref int ticks)
+	{
+		assert(ticks > 0);
+		assert(m_stateVar);
+		do
+		{
+			string stateName = m_stateVar.readAndReset();
+			for (size_t i = 0; i < m_children.length; i++)
+			{
+				SMState child = cast(SMState) m_children[i];
+				assert(child);
+				if (child.stateName != stateName)
+				{
+					if (i == m_children.length - 1)
+					{
+						// no node for stateName
+						return ExecutionResult.failure;
+					}
+					continue;
+				}
+				// we have found the state
+				ExecutionResult res = child.execute(ticks);
+				if (res == ExecutionResult.failure ||
+						res == ExecutionResult.running)
+					return res;
+			}
+			// child.execute could have changed the state using SwitchSMState
+			// node. If the child succeeded and there are ticks left,
+			// we should immediately jump to the new state and execute it.
+		} while (m_stateVar.changedFlag && ticks > 0);
+		return ExecutionResult.success;
+	}
+}
+
+
+final class SwitchSMState: ControlFlowNode
+{
+	private
+	{
+		string m_newState;
+		StateVar* m_stateVar;
+	}
+
+	this(string newState, StateVar* stateVar,
+		string file = __FILE__, size_t line = __LINE__)
+	{
+		super("SwitchSMState: " ~ newState, file, line);
+		assert(stateVar);
+		m_newState = newState;
+		m_stateVar = stateVar;
+	}
+
+	protected override ExecutionResult doExecute(ref int ticks)
+	{
+		assert(ticks > 0);
+		assert(m_stateVar);
+		m_stateVar.setAndUpdate(m_newState);
+		return ExecutionResult.success;
 	}
 }
 

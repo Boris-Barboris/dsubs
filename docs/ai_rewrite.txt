@@ -530,8 +530,9 @@ whaleFilterFeeder:
                 Action: swimRelativeToSelf(-runAwayFromPos, 2000m, 100%)
                 Sleep: [5s..8s]
                 Loop: 3 times
-                    Action: playSound("scared_whale.wav")
-                    Sleep: 1m
+                    SequenceMem:
+                        Action: playSound("scared_whale.wav")
+                        Sleep: 1m
                 SwitchState: SwimmingToDestination
 
 
